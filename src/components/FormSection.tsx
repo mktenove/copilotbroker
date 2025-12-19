@@ -1,0 +1,131 @@
+import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
+
+const FormSection = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({ name: "", whatsapp: "" });
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+        }
+      },
+      { threshold: 0.2 }
+    );
+
+    if (sectionRef.current) {
+      observer.observe(sectionRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, []);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formData.name.trim() || !formData.whatsapp.trim()) {
+      toast.error("Por favor, preencha todos os campos.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    // Simulate form submission
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
+    setFormData({ name: "", whatsapp: "" });
+    setIsSubmitting(false);
+  };
+
+  const formatWhatsApp = (value: string) => {
+    // Remove all non-numeric characters
+    const numbers = value.replace(/\D/g, "");
+    
+    // Format as (XX) XXXXX-XXXX
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  return (
+    <section id="cadastro" ref={sectionRef} className="py-20 md:py-32 bg-background relative overflow-hidden">
+      {/* Background Elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+      
+      <div className="container relative z-10">
+        <div className={`max-w-xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className="text-center mb-10">
+            <h2 className="section-title mb-4">
+              Cadastre-se e Fique{" "}
+              <span className="text-primary">Um Passo à Frente</span>
+            </h2>
+            <p className="section-subtitle">
+              Garanta seu acesso antecipado ao lançamento mais esperado do Vale dos Sinos.
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="card-luxury p-8 md:p-10 space-y-6">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-2">
+                Nome Completo
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                placeholder="Digite seu nome completo"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
+                WhatsApp
+              </label>
+              <input
+                type="tel"
+                id="whatsapp"
+                value={formData.whatsapp}
+                onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
+                className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                placeholder="(00) 00000-0000"
+                maxLength={16}
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Enviando...
+                </span>
+              ) : (
+                "Quero Acesso Antecipado"
+              )}
+            </button>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Cadastro gratuito e sem compromisso
+            </p>
+          </form>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+export default FormSection;
