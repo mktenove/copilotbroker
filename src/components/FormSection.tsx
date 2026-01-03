@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const FormSection = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -32,14 +33,32 @@ const FormSection = () => {
       return;
     }
 
+    // Validação básica do WhatsApp (mínimo 14 caracteres formatado)
+    if (formData.whatsapp.replace(/\D/g, "").length < 10) {
+      toast.error("Por favor, insira um número de WhatsApp válido.");
+      return;
+    }
+
     setIsSubmitting(true);
     
-    // Simulate form submission
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
-    setFormData({ name: "", whatsapp: "" });
-    setIsSubmitting(false);
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .insert({
+          name: formData.name.trim(),
+          whatsapp: formData.whatsapp.trim(),
+        });
+
+      if (error) throw error;
+
+      toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
+      setFormData({ name: "", whatsapp: "" });
+    } catch (error) {
+      console.error("Erro ao salvar lead:", error);
+      toast.error("Ocorreu um erro ao salvar. Tente novamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatWhatsApp = (value: string) => {
