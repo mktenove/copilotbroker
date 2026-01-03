@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const FormSection = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -39,6 +42,12 @@ const FormSection = () => {
       return;
     }
 
+    // Validação do aceite dos termos
+    if (!acceptedTerms) {
+      toast.error("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+      return;
+    }
+
     setIsSubmitting(true);
     
     try {
@@ -53,6 +62,7 @@ const FormSection = () => {
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });
+      setAcceptedTerms(false);
     } catch (error) {
       console.error("Erro ao salvar lead:", error);
       toast.error("Ocorreu um erro ao salvar. Tente novamente.");
@@ -117,6 +127,34 @@ const FormSection = () => {
                 placeholder="(00) 00000-0000"
                 maxLength={16}
               />
+            </div>
+
+            {/* Checkbox de aceite dos termos */}
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="terms"
+                checked={acceptedTerms}
+                onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                className="mt-0.5"
+              />
+              <label htmlFor="terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
+                Li e aceito os{" "}
+                <Link 
+                  to="/termos#termos-de-uso" 
+                  target="_blank"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2"
+                >
+                  Termos de Uso
+                </Link>{" "}
+                e a{" "}
+                <Link 
+                  to="/termos#politica-de-privacidade" 
+                  target="_blank"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2"
+                >
+                  Política de Privacidade
+                </Link>
+              </label>
             </div>
 
             <button
