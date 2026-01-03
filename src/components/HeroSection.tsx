@@ -18,7 +18,7 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
@@ -68,10 +68,15 @@ const HeroSection = () => {
         {/* Scroll Indicator */}
         <button 
           onClick={scrollToContent}
-          className="absolute bottom-10 left-1/2 -translate-x-1/2 text-foreground/50 hover:text-primary transition-colors cursor-pointer"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-foreground/70 hover:text-primary transition-colors cursor-pointer group"
           aria-label="Scroll para baixo"
         >
-          <ChevronDown className="w-8 h-8 animate-bounce" />
+          <span className="text-sm font-medium tracking-wide uppercase opacity-80 group-hover:opacity-100 transition-opacity">
+            Descubra mais
+          </span>
+          <div className="p-2 rounded-full border border-foreground/20 group-hover:border-primary/50 transition-colors animate-bounce">
+            <ChevronDown className="w-5 h-5" />
+          </div>
         </button>
       </div>
     </section>

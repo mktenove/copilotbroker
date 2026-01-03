@@ -21,7 +21,7 @@ const AboutSection = () => {
           setIsVisible(true);
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.05 }
     );
 
     if (sectionRef.current) {
@@ -43,7 +43,7 @@ const AboutSection = () => {
 
       <div className="container relative z-10">
         {/* Intro Text */}
-        <div className={`max-w-4xl mx-auto text-center mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`max-w-4xl mx-auto text-center mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <p className="text-muted-foreground mb-8 leading-relaxed">
             Em breve, a cidade de Estância Velha vai receber o condomínio fechado de terrenos mais aguardado da região.
             Um projeto assinado pela <span className="text-primary font-semibold">Ábaco</span>, a incorporadora responsável pelo Horizon Clube Residencial — referência absoluta em condomínios de alto padrão.
