@@ -64,16 +64,16 @@ const HeroSection = () => {
             </button>
           </div>
         </div>
-
-        {/* Scroll Indicator */}
-        <button 
-          onClick={scrollToContent}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 p-2 rounded-full border border-foreground/20 hover:border-primary/50 text-foreground/70 hover:text-primary transition-colors cursor-pointer animate-bounce"
-          aria-label="Scroll para baixo"
-        >
-          <ChevronDown className="w-5 h-5" />
-        </button>
       </div>
+
+      {/* Scroll Indicator */}
+      <button 
+        onClick={scrollToContent}
+        className="absolute bottom-8 left-1/2 -translate-x-1/2 z-10 p-2 rounded-full border border-foreground/20 hover:border-primary/50 text-foreground/70 hover:text-primary transition-colors cursor-pointer animate-bounce"
+        aria-label="Scroll para baixo"
+      >
+        <ChevronDown className="w-5 h-5" />
+      </button>
     </section>
   );
 };
