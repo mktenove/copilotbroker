@@ -31,20 +31,20 @@ const BenefitsSection = () => {
   return (
     <section ref={sectionRef} className="py-20 md:py-32 bg-secondary/30 relative overflow-hidden">
       <div className="container relative z-10">
-        <div className={`max-w-4xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`max-w-4xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
           <div className="text-center mb-12">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-6">
+            <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-6 ${isVisible ? 'animate-rotate-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }}>
               <Crown className="w-8 h-8 text-primary" />
             </div>
-            <h2 className="section-title mb-4">
+            <h2 className={`section-title mb-4 ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
               Acesso Antecipado <span className="text-primary">às Vendas</span>
             </h2>
-            <p className="section-subtitle">
+            <p className={`section-subtitle ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '400ms' }}>
               O cadastro abaixo não é apenas para receber informações.
             </p>
           </div>
 
-          <div className="card-luxury p-8 md:p-12 mb-10">
+          <div className={`card-luxury p-8 md:p-12 mb-10 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '500ms' }}>
             <p className="text-lg text-foreground/90 font-medium mb-8 text-center">
               Ele garante:
             </p>
@@ -53,8 +53,8 @@ const BenefitsSection = () => {
               {benefits.map((benefit, index) => (
                 <div
                   key={benefit}
-                  className={`flex items-start gap-4 transition-all duration-700 ${isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-10'}`}
-                  style={{ transitionDelay: `${(index + 1) * 150}ms` }}
+                  className={`flex items-start gap-4 ${isVisible ? 'animate-fade-in-left' : 'opacity-0'}`}
+                  style={{ animationDelay: `${(index + 3) * 150}ms` }}
                 >
                   <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
                     <Check className="w-5 h-5 text-primary" />
@@ -65,7 +65,7 @@ const BenefitsSection = () => {
             </div>
           </div>
 
-          <div className={`text-center transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className={`text-center ${isVisible ? 'animate-blur' : 'opacity-0'}`} style={{ animationDelay: '1000ms' }}>
             <p className="text-foreground/80 text-lg italic">
               Sem cadastro, você será apenas mais um tentando comprar quando todo mundo já comprou.
             </p>
