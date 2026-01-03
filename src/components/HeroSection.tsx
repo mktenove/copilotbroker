@@ -33,9 +33,9 @@ const HeroSection = () => {
 
       {/* Content */}
       <div className="relative z-10 container text-center px-4 pt-20">
-        <div className={`space-y-6 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`space-y-6 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
           {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full">
+          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }}>
             <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
             <span className="text-primary text-sm font-medium uppercase tracking-wider">
               Pré-Lançamento Exclusivo
@@ -43,23 +43,23 @@ const HeroSection = () => {
           </div>
 
           {/* Main Title */}
-          <h1 className="font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] max-w-5xl mx-auto">
+          <h1 className={`font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] max-w-5xl mx-auto ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
             O Maior Lançamento Imobiliário de{" "}
             <span className="text-primary">Estância Velha</span>{" "}
             Está Prestes a Ser Revelado
           </h1>
 
           {/* Subtitle */}
-          <p className="font-serif text-xl md:text-2xl text-foreground/80 italic max-w-2xl mx-auto">
+          <p className={`font-serif text-xl md:text-2xl text-foreground/80 italic max-w-2xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '500ms' }}>
             Poucas pessoas terão acesso primeiro.
           </p>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className={`text-muted-foreground max-w-xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '600ms' }}>
             A maioria vai descobrir quando já for tarde.
           </p>
 
           {/* CTA Button */}
-          <div className="pt-6">
-            <button onClick={scrollToForm} className="btn-primary">
+          <div className={`pt-6 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '800ms' }}>
+            <button onClick={scrollToForm} className="btn-primary animate-glow">
               Quero Acesso Antecipado
             </button>
           </div>

@@ -43,24 +43,24 @@ const AboutSection = () => {
 
       <div className="container relative z-10">
         {/* Intro Text */}
-        <div className={`max-w-4xl mx-auto text-center mb-16 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`max-w-4xl mx-auto text-center mb-16 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
           <p className="text-muted-foreground mb-8 leading-relaxed">
             Em breve, a cidade de Estância Velha vai receber o condomínio fechado de terrenos mais aguardado da região.
             Um projeto assinado pela <span className="text-primary font-semibold">Ábaco</span>, a incorporadora responsável pelo Horizon Clube Residencial — referência absoluta em condomínios de alto padrão.
           </p>
           
-          <div className="divider-gold mx-auto mb-8" />
+          <div className={`divider-gold mx-auto mb-8 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }} />
           
-          <p className="text-lg text-foreground/80 italic font-serif">
+          <p className={`text-lg text-foreground/80 italic font-serif ${isVisible ? 'animate-blur' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
             Ainda não revelamos tudo. E isso é proposital.
           </p>
-          <p className="text-muted-foreground mt-2">
+          <p className={`text-muted-foreground mt-2 ${isVisible ? 'animate-blur' : 'opacity-0'}`} style={{ animationDelay: '400ms' }}>
             Porque alguns lugares não precisam ser explicados. Eles precisam ser vividos.
           </p>
         </div>
 
         {/* Main Section Title */}
-        <div className={`text-center mb-16 transition-all duration-1000 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`text-center mb-16 ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
           <h2 className="section-title mb-4">
             Um Novo Jeito de Morar.{" "}
             <span className="text-primary">No Ponto Mais Alto da Cidade.</span>
@@ -68,7 +68,7 @@ const AboutSection = () => {
         </div>
 
         {/* Description */}
-        <div className={`max-w-3xl mx-auto text-center mb-16 transition-all duration-1000 delay-300 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`max-w-3xl mx-auto text-center mb-16 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '400ms' }}>
           <p className="text-lg text-foreground/90 leading-relaxed mb-6">
             Imagine viver no topo do morro, no Bairro Floresta. Onde a paisagem se abre. Onde o horizonte é mais amplo. Onde o silêncio, o verde e a vista criam uma conexão rara entre o ser humano e a imensidão da terra.
           </p>
@@ -78,8 +78,8 @@ const AboutSection = () => {
         </div>
 
         {/* Aerial View Image */}
-        <div className={`relative mb-16 transition-all duration-1000 delay-400 ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
-          <div className="relative rounded-xl overflow-hidden shadow-2xl border border-border/30">
+        <div className={`relative mb-16 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '500ms' }}>
+          <div className="relative rounded-xl overflow-hidden shadow-2xl border border-border/30 hover:shadow-[0_0_60px_hsl(var(--primary)/0.15)] transition-shadow duration-700">
             <img 
               src={aerialView} 
               alt="Vista aérea do condomínio mostrando a distribuição completa do empreendimento" 
@@ -93,14 +93,14 @@ const AboutSection = () => {
         </div>
 
         {/* CTA Button */}
-        <div className={`text-center mb-20 transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`text-center mb-20 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '700ms' }}>
           <button onClick={scrollToForm} className="btn-primary">
             Quero Acesso Antecipado
           </button>
         </div>
 
         {/* Features Grid */}
-        <div className={`transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '800ms' }}>
           <p className="text-center text-foreground/80 mb-10">
             Aqui, cada detalhe nasce do equilíbrio perfeito entre:
           </p>
@@ -109,10 +109,10 @@ const AboutSection = () => {
             {features.map((feature, index) => (
               <div 
                 key={feature.label}
-                className="card-luxury text-center group"
-                style={{ animationDelay: `${index * 100}ms` }}
+                className={`card-luxury text-center group ${isVisible ? 'animate-rotate-in' : 'opacity-0'}`}
+                style={{ animationDelay: `${index * 100 + 900}ms` }}
               >
-                <feature.icon className="w-8 h-8 text-primary mx-auto mb-3 transition-transform duration-300 group-hover:scale-110" />
+                <feature.icon className="w-8 h-8 text-primary mx-auto mb-3 transition-transform duration-300 group-hover:scale-110 group-hover:rotate-6" />
                 <p className="text-sm font-medium text-foreground">{feature.label}</p>
               </div>
             ))}

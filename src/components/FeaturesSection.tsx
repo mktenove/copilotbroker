@@ -37,7 +37,7 @@ const FeaturesSection = () => {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary/50 to-transparent" />
       
       <div className="container relative z-10">
-        <div className={`text-center mb-16 transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`text-center mb-16 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
           <h2 className="section-title mb-4">
             O Que Já Podemos <span className="text-primary">Antecipar</span>
           </h2>
@@ -50,10 +50,10 @@ const FeaturesSection = () => {
           {features.map((feature, index) => (
             <div
               key={feature.title}
-              className={`card-luxury flex items-center gap-4 transition-all duration-700 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}
-              style={{ transitionDelay: `${index * 100}ms` }}
+              className={`card-luxury flex items-center gap-4 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`}
+              style={{ animationDelay: `${index * 100 + 200}ms` }}
             >
-              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+              <div className="flex-shrink-0 w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                 <feature.icon className="w-6 h-6 text-primary" />
               </div>
               <p className="font-medium text-foreground">{feature.title}</p>
@@ -62,8 +62,8 @@ const FeaturesSection = () => {
         </div>
 
         {/* Additional Info */}
-        <div className={`text-center max-w-2xl mx-auto transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6">
+        <div className={`text-center max-w-2xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '800ms' }}>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-6 animate-glow">
             <span className="text-2xl">🔒</span>
           </div>
           <p className="text-xl text-foreground/90 font-medium mb-2">
