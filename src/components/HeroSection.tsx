@@ -68,15 +68,10 @@ const HeroSection = () => {
         {/* Scroll Indicator */}
         <button 
           onClick={scrollToContent}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-foreground/70 hover:text-primary transition-colors cursor-pointer group"
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 p-2 rounded-full border border-foreground/20 hover:border-primary/50 text-foreground/70 hover:text-primary transition-colors cursor-pointer animate-bounce"
           aria-label="Scroll para baixo"
         >
-          <span className="text-sm font-medium tracking-wide uppercase opacity-80 group-hover:opacity-100 transition-opacity">
-            Descubra mais
-          </span>
-          <div className="p-2 rounded-full border border-foreground/20 group-hover:border-primary/50 transition-colors animate-bounce">
-            <ChevronDown className="w-5 h-5" />
-          </div>
+          <ChevronDown className="w-5 h-5" />
         </button>
       </div>
     </section>
