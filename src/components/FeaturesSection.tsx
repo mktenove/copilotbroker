@@ -3,7 +3,7 @@ import { MapPin, Ruler, Cable, Waves, Home, Eye } from "lucide-react";
 
 const features = [
   { icon: Home, title: "Condomínio fechado de terrenos" },
-  { icon: MapPin, title: "300 lotes exclusivos" },
+  { icon: MapPin, title: "350 lotes exclusivos" },
   { icon: Ruler, title: "Terrenos amplos, a partir de 500m²" },
   { icon: Cable, title: "Fiação subterrânea" },
   { icon: Waves, title: "Piscina aquecida" },

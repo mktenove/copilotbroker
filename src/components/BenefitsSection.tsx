@@ -3,7 +3,7 @@ import { Check, Crown } from "lucide-react";
 
 const benefits = [
   "Prioridade no recebimento dos detalhes oficiais",
-  "Acesso prioritário na abertura de vendas",
+  "Maior velocidade no acesso ao espelho de vendas e tabela de preços",
   "Chance real de escolher os melhores lotes",
 ];
 
