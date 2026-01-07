@@ -52,7 +52,7 @@ const AboutSection = () => {
           <div className={`divider-gold mx-auto mb-8 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }} />
           
           <p className={`text-lg text-foreground/80 italic font-serif ${isVisible ? 'animate-blur' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
-            Ainda não revelamos tudo. E isso é proposital.
+            Ainda não revelamos tudo.
           </p>
           <p className={`text-muted-foreground mt-2 ${isVisible ? 'animate-blur' : 'opacity-0'}`} style={{ animationDelay: '400ms' }}>
             Porque alguns lugares não precisam ser explicados. Eles precisam ser vividos.

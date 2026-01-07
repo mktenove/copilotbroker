@@ -38,7 +38,7 @@ const HeroSection = () => {
           <div className={`inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }}>
             <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
             <span className="text-primary text-sm font-medium uppercase tracking-wider">
-              Pré-Lançamento Exclusivo
+              Pré-Lançamento
             </span>
           </div>
 
