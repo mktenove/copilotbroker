@@ -9,7 +9,7 @@ const FormSection = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -18,7 +18,7 @@ const FormSection = () => {
           setIsVisible(true);
         }
       },
-      { threshold: 0.2 }
+      { threshold: 0.15 }
     );
 
     if (sectionRef.current) {
@@ -83,66 +83,88 @@ const FormSection = () => {
   };
 
   return (
-    <section id="cadastro" ref={sectionRef} className="py-20 md:py-32 bg-background relative overflow-hidden">
+    <section 
+      id="cadastro" 
+      ref={sectionRef} 
+      className="py-16 sm:py-20 md:py-32 bg-background relative overflow-hidden"
+      aria-labelledby="form-title"
+    >
       {/* Background Elements */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-primary/5 rounded-full blur-3xl" aria-hidden="true" />
       
-      <div className="container relative z-10">
+      <div className="container relative z-10 px-4">
         <div className={`max-w-xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
-          <div className="text-center mb-10">
-            <h2 className="section-title mb-4">
+          <header className="text-center mb-8 sm:mb-10">
+            <h2 id="form-title" className="section-title mb-4 text-2xl sm:text-3xl md:text-4xl">
               Cadastre-se e Fique{" "}
               <span className="text-primary">Um Passo à Frente</span>
             </h2>
-            <p className="section-subtitle">
+            <p className="section-subtitle text-sm sm:text-base">
               Garanta seu acesso antecipado ao lançamento mais esperado do Vale dos Sinos.
             </p>
-          </div>
+          </header>
 
-          <form onSubmit={handleSubmit} className="card-luxury p-8 md:p-10 space-y-6">
+          <form 
+            onSubmit={handleSubmit} 
+            className="card-luxury p-6 sm:p-8 md:p-10 space-y-5 sm:space-y-6"
+            aria-label="Formulário de cadastro para acesso antecipado"
+          >
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-foreground/80 mb-2">
+              <label htmlFor="name-landing" className="block text-sm font-medium text-foreground/80 mb-2">
                 Nome Completo
               </label>
               <input
                 type="text"
-                id="name"
+                id="name-landing"
+                name="name"
+                autoComplete="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-base"
                 placeholder="Digite seu nome completo"
+                aria-required="true"
               />
             </div>
 
             <div>
-              <label htmlFor="whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
+              <label htmlFor="whatsapp-landing" className="block text-sm font-medium text-foreground/80 mb-2">
                 WhatsApp
               </label>
               <input
                 type="tel"
-                id="whatsapp"
+                id="whatsapp-landing"
+                name="whatsapp"
+                autoComplete="tel"
+                inputMode="numeric"
                 value={formData.whatsapp}
                 onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
-                className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-base"
                 placeholder="(00) 00000-0000"
                 maxLength={16}
+                aria-required="true"
               />
             </div>
 
             {/* Checkbox de aceite dos termos */}
             <div className="flex items-start gap-3">
               <Checkbox
-                id="terms"
+                id="terms-landing"
+                name="terms"
                 checked={acceptedTerms}
                 onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-                className="mt-0.5"
+                className="mt-0.5 min-w-[20px]"
+                aria-required="true"
               />
-              <label htmlFor="terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
+              <label 
+                htmlFor="terms-landing" 
+                className="text-xs sm:text-sm text-foreground/80 leading-relaxed cursor-pointer"
+              >
                 Li e aceito os{" "}
                 <Link 
                   to="/termos#termos-de-uso" 
                   target="_blank"
-                  className="text-primary hover:text-primary/80 underline underline-offset-2"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  rel="noopener"
                 >
                   Termos de Uso
                 </Link>{" "}
@@ -150,7 +172,8 @@ const FormSection = () => {
                 <Link 
                   to="/termos#politica-de-privacidade" 
                   target="_blank"
-                  className="text-primary hover:text-primary/80 underline underline-offset-2"
+                  className="text-primary hover:text-primary/80 underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded"
+                  rel="noopener"
                 >
                   Política de Privacidade
                 </Link>
@@ -160,22 +183,23 @@ const FormSection = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-h-[48px] text-sm sm:text-base"
+              aria-busy={isSubmitting}
             >
               {isSubmitting ? (
                 <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" aria-hidden="true">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Enviando...
+                  <span>Enviando...</span>
                 </span>
               ) : (
                 "Quero Acesso Antecipado"
               )}
             </button>
 
-            <p className="text-center text-sm text-muted-foreground">
+            <p className="text-center text-xs sm:text-sm text-muted-foreground">
               Cadastro gratuito e sem compromisso
             </p>
           </form>

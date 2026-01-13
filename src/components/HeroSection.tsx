@@ -18,61 +18,83 @@ const HeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
+    <section 
+      className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center justify-center overflow-hidden"
+      aria-labelledby="hero-title"
+    >
+      {/* Background Image with lazy loading consideration */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${heroBg})` }}
+        role="img"
+        aria-label="Vista panorâmica do terreno do empreendimento em Estância Velha"
       />
       
       {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/50 to-background/90" />
+      <div className="absolute inset-0 bg-gradient-to-b from-background/80 via-background/50 to-background/90" aria-hidden="true" />
       
       {/* Subtle Grain Texture */}
-      <div className="absolute inset-0 opacity-20 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iLjA1Ii8+PC9zdmc+')]" />
+      <div className="absolute inset-0 opacity-20 mix-blend-overlay bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iLjA1Ii8+PC9zdmc+')]" aria-hidden="true" />
 
       {/* Content */}
-      <div className="relative z-10 container text-center px-4 pt-20">
-        <div className={`space-y-6 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
+      <div className="relative z-10 container text-center px-4 pt-16 sm:pt-20">
+        <header className={`space-y-4 sm:space-y-6 ${isVisible ? 'animate-fade-up' : 'opacity-0'}`}>
           {/* Badge */}
-          <div className={`inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/30 rounded-full ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '200ms' }}>
-            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            <span className="text-primary text-sm font-medium uppercase tracking-wider">
+          <div 
+            className={`inline-flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-primary/10 border border-primary/30 rounded-full ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} 
+            style={{ animationDelay: '200ms' }}
+          >
+            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" aria-hidden="true" />
+            <span className="text-primary text-xs sm:text-sm font-medium uppercase tracking-wider">
               Pré-Lançamento
             </span>
           </div>
 
           {/* Main Title */}
-          <h1 className={`font-serif text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-semibold leading-[1.1] max-w-5xl mx-auto ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} style={{ animationDelay: '300ms' }}>
+          <h1 
+            id="hero-title"
+            className={`font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-semibold leading-tight max-w-5xl mx-auto ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} 
+            style={{ animationDelay: '300ms' }}
+          >
             O Maior Lançamento Imobiliário de{" "}
             <span className="text-primary">Estância Velha</span>{" "}
             Está Prestes a Ser Revelado
           </h1>
 
           {/* Subtitle */}
-          <p className={`font-serif text-xl md:text-2xl text-foreground/80 italic max-w-2xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '500ms' }}>
+          <p 
+            className={`font-serif text-lg sm:text-xl md:text-2xl text-foreground/80 italic max-w-2xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} 
+            style={{ animationDelay: '500ms' }}
+          >
             Poucas pessoas terão acesso primeiro.
           </p>
-          <p className={`text-muted-foreground max-w-xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} style={{ animationDelay: '600ms' }}>
+          <p 
+            className={`text-sm sm:text-base text-muted-foreground max-w-xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} 
+            style={{ animationDelay: '600ms' }}
+          >
             A maioria vai descobrir quando já for tarde.
           </p>
 
           {/* CTA Button */}
-          <div className={`pt-6 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '800ms' }}>
-            <button onClick={scrollToForm} className="btn-primary animate-glow">
+          <div className={`pt-4 sm:pt-6 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '800ms' }}>
+            <button 
+              onClick={scrollToForm} 
+              className="btn-primary animate-glow min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+              aria-label="Cadastrar para acesso antecipado ao lançamento"
+            >
               Quero Acesso Antecipado
             </button>
           </div>
-        </div>
+        </header>
       </div>
 
       {/* Scroll Indicator */}
       <button 
         onClick={scrollToContent}
-        className="absolute bottom-0 left-1/2 -translate-x-1/2 z-20 text-foreground/50 hover:text-primary transition-colors cursor-pointer"
-        aria-label="Scroll para baixo"
+        className="absolute bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-20 text-foreground/50 hover:text-primary transition-colors cursor-pointer p-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-full"
+        aria-label="Rolar para ver mais informações sobre o empreendimento"
       >
-        <ChevronDown className="w-8 h-8 animate-bounce" />
+        <ChevronDown className="w-6 h-6 sm:w-8 sm:h-8 animate-bounce" aria-hidden="true" />
       </button>
     </section>
   );
