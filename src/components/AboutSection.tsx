@@ -12,7 +12,10 @@ const features = [
 
 const AboutSection = () => {
   const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageInView, setImageInView] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
+  const imageRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -30,6 +33,34 @@ const AboutSection = () => {
 
     return () => observer.disconnect();
   }, []);
+
+  // Lazy load aerial view image
+  useEffect(() => {
+    const imageObserver = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setImageInView(true);
+          imageObserver.disconnect();
+        }
+      },
+      { threshold: 0.1, rootMargin: "200px" }
+    );
+
+    if (imageRef.current) {
+      imageObserver.observe(imageRef.current);
+    }
+
+    return () => imageObserver.disconnect();
+  }, []);
+
+  // Load image when in view
+  useEffect(() => {
+    if (!imageInView) return;
+    
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.src = aerialView;
+  }, [imageInView]);
 
   const scrollToForm = () => {
     document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
@@ -82,17 +113,31 @@ const AboutSection = () => {
           </p>
         </div>
 
-        {/* Aerial View Image */}
-        <figure className={`relative mb-12 sm:mb-16 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} style={{ animationDelay: '500ms' }}>
+        {/* Aerial View Image with Lazy Loading */}
+        <figure 
+          ref={imageRef}
+          className={`relative mb-12 sm:mb-16 ${isVisible ? 'animate-scale-in' : 'opacity-0'}`} 
+          style={{ animationDelay: '500ms' }}
+        >
           <div className="relative rounded-xl overflow-hidden shadow-2xl border border-border/30 hover:shadow-[0_0_60px_hsl(var(--primary)/0.15)] transition-shadow duration-700">
-            <img 
-              src={aerialView} 
-              alt="Vista aérea ilustrativa do condomínio mostrando a distribuição dos 350 lotes em Estância Velha" 
-              className="w-full h-auto"
-              width="1200"
-              height="675"
-              loading="lazy"
+            {/* Placeholder skeleton */}
+            <div 
+              className={`aspect-video bg-secondary animate-pulse ${imageLoaded ? 'hidden' : 'block'}`}
+              aria-hidden="true"
             />
+            {/* Actual image */}
+            {imageInView && (
+              <img 
+                src={aerialView} 
+                alt="Vista aérea ilustrativa do condomínio mostrando a distribuição dos 350 lotes em Estância Velha" 
+                className={`w-full h-auto transition-opacity duration-500 ${imageLoaded ? 'opacity-100' : 'opacity-0 absolute inset-0'}`}
+                width="1200"
+                height="675"
+                loading="lazy"
+                decoding="async"
+                onLoad={() => setImageLoaded(true)}
+              />
+            )}
             <div className="absolute inset-0 bg-gradient-to-t from-background/60 via-transparent to-transparent" aria-hidden="true" />
           </div>
           <figcaption className="text-center text-xs sm:text-sm text-muted-foreground mt-3 sm:mt-4 italic">

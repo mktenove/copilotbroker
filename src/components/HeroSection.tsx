@@ -4,9 +4,15 @@ import heroBg from "@/assets/hero-bg.jpg";
 
 const HeroSection = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
 
   useEffect(() => {
     setIsVisible(true);
+    
+    // Preload hero image for LCP optimization
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.src = heroBg;
   }, []);
 
   const scrollToContent = () => {
@@ -22,9 +28,17 @@ const HeroSection = () => {
       className="relative min-h-[85vh] sm:min-h-[90vh] flex items-center justify-center overflow-hidden"
       aria-labelledby="hero-title"
     >
-      {/* Background Image with lazy loading consideration */}
+      {/* Background placeholder (shown while image loads) */}
       <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        className="absolute inset-0 bg-secondary"
+        aria-hidden="true"
+      />
+      
+      {/* Background Image with progressive loading */}
+      <div 
+        className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-700 ${
+          imageLoaded ? 'opacity-100' : 'opacity-0'
+        }`}
         style={{ backgroundImage: `url(${heroBg})` }}
         role="img"
         aria-label="Vista panorâmica do terreno do empreendimento em Estância Velha"
