@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { ArrowRight } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import Footer from "@/components/Footer";
 
@@ -9,7 +11,7 @@ const Home = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const formRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -64,166 +66,205 @@ const Home = () => {
   };
 
   return (
-    <main className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="py-6 px-4">
-        <div className="container flex justify-center">
-          <a
-            href="https://www.enoveimobiliaria.com.br/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="transition-opacity hover:opacity-80"
-          >
-            <img
-              src={logoEnove}
-              alt="Enove Imobiliária"
-              className="h-12 md:h-14 w-auto"
-            />
-          </a>
-        </div>
-      </header>
+    <>
+      {/* Skip to main content - Accessibility */}
+      <a 
+        href="#main-content" 
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
+      >
+        Pular para o conteúdo principal
+      </a>
 
-      {/* Main Content */}
-      <div className="flex-1 flex items-center justify-center px-4 py-12">
-        <div
-          className={`max-w-2xl w-full text-center transition-all duration-1000 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-        >
-          {/* Suspense Message */}
-          <div className="mb-12">
-            <p className="text-primary font-medium tracking-widest uppercase mb-4 text-sm">
-              Novidade chegando
-            </p>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6 leading-tight">
-              Em Breve
-            </h1>
-            <p className="text-lg md:text-xl text-muted-foreground leading-relaxed mb-6">
-              A cidade de <span className="text-foreground font-medium">Estância Velha</span> receberá 
-              um novo condomínio, que certamente, fará história.
-            </p>
-            <p className="text-2xl md:text-3xl font-semibold text-primary mb-6">
-              Não fique de fora.
-            </p>
+      <div className="min-h-screen bg-background flex flex-col">
+        {/* Header */}
+        <header className="py-4 px-4 sm:py-6" role="banner">
+          <nav className="container flex justify-center" aria-label="Navegação principal">
             <a
-              href="/estanciavelha"
-              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium"
+              href="https://www.enoveimobiliaria.com.br/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg"
+              aria-label="Visitar site da Enove Imobiliária (abre em nova aba)"
             >
-              Saiba mais
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M5 12h14" />
-                <path d="m12 5 7 7-7 7" />
-              </svg>
+              <img
+                src={logoEnove}
+                alt="Enove Imobiliária - Logo"
+                className="h-10 sm:h-12 md:h-14 w-auto"
+                width="140"
+                height="56"
+                loading="eager"
+              />
             </a>
-          </div>
+          </nav>
+        </header>
 
-          {/* Form Card */}
-          <div
-            ref={formRef}
-            className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6 md:p-8"
+        {/* Main Content */}
+        <main 
+          id="main-content" 
+          className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12"
+          role="main"
+        >
+          <article
+            className={`max-w-2xl w-full text-center transition-all duration-700 ease-out ${
+              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
+            }`}
           >
-            <h2 className="text-xl md:text-2xl font-semibold text-foreground mb-2">
-              Cadastre-se para saber mais
-            </h2>
-            <p className="text-muted-foreground mb-6">
-              Seja um dos primeiros a receber informações exclusivas.
-            </p>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <input
-                  type="text"
-                  placeholder="Seu nome completo"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-
-              <div>
-                <input
-                  type="tel"
-                  placeholder="Seu WhatsApp (XX) XXXXX-XXXX"
-                  value={formData.whatsapp}
-                  onChange={(e) =>
-                    setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })
-                  }
-                  maxLength={16}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground"
-                />
-              </div>
-
-              <div className="flex items-start gap-3 text-left">
-                <input
-                  type="checkbox"
-                  id="terms-home"
-                  checked={acceptedTerms}
-                  onChange={(e) => setAcceptedTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-border text-primary focus:ring-primary/50"
-                />
-                <label htmlFor="terms-home" className="text-sm text-muted-foreground">
-                  Li e aceito os{" "}
-                  <a
-                    href="/termos"
-                    target="_blank"
-                    className="text-primary hover:underline"
-                  >
-                    Termos de Uso e Política de Privacidade
-                  </a>
-                  , incluindo o recebimento de informações via WhatsApp.
-                </label>
-              </div>
-
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+            {/* Hero Section */}
+            <header className="mb-8 sm:mb-12">
+              <p className="text-primary font-medium tracking-widest uppercase mb-3 sm:mb-4 text-xs sm:text-sm">
+                Novidade chegando
+              </p>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
+                Em Breve
+              </h1>
+              <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed mb-4 sm:mb-6 px-2">
+                A cidade de{" "}
+                <strong className="text-foreground font-medium">Estância Velha</strong>{" "}
+                receberá um novo condomínio, que certamente, fará história.
+              </p>
+              <p 
+                className="text-xl sm:text-2xl md:text-3xl font-semibold text-primary mb-4 sm:mb-6"
+                aria-label="Chamada principal"
               >
-                {isSubmitting ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <svg
-                      className="animate-spin h-5 w-5"
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                    >
-                      <circle
-                        className="opacity-25"
-                        cx="12"
-                        cy="12"
-                        r="10"
-                        stroke="currentColor"
-                        strokeWidth="4"
-                      />
-                      <path
-                        className="opacity-75"
-                        fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                      />
-                    </svg>
-                    Enviando...
-                  </span>
-                ) : (
-                  "QUERO ACESSO ANTECIPADO"
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
+                Não fique de fora.
+              </p>
+              <Link
+                to="/estanciavelha"
+                className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg px-2 py-1"
+                aria-label="Saiba mais sobre o empreendimento"
+              >
+                Saiba mais
+                <ArrowRight className="w-5 h-5" aria-hidden="true" />
+              </Link>
+            </header>
 
-      <Footer />
-    </main>
+            {/* Lead Capture Form */}
+            <section
+              ref={formRef}
+              className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 sm:p-6 md:p-8"
+              aria-labelledby="form-heading"
+            >
+              <h2 
+                id="form-heading" 
+                className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground mb-2"
+              >
+                Cadastre-se para saber mais
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground mb-5 sm:mb-6">
+                Seja um dos primeiros a receber informações exclusivas.
+              </p>
+
+              <form 
+                onSubmit={handleSubmit} 
+                className="space-y-4"
+                aria-label="Formulário de cadastro para acesso antecipado"
+              >
+                <div>
+                  <label htmlFor="name" className="sr-only">Nome completo</label>
+                  <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Seu nome completo"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-base"
+                    aria-required="true"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="whatsapp" className="sr-only">Número de WhatsApp</label>
+                  <input
+                    id="whatsapp"
+                    name="whatsapp"
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="numeric"
+                    placeholder="Seu WhatsApp (XX) XXXXX-XXXX"
+                    value={formData.whatsapp}
+                    onChange={(e) =>
+                      setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })
+                    }
+                    maxLength={16}
+                    className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-base"
+                    aria-required="true"
+                  />
+                </div>
+
+                <div className="flex items-start gap-3 text-left">
+                  <input
+                    type="checkbox"
+                    id="terms-home"
+                    name="terms"
+                    checked={acceptedTerms}
+                    onChange={(e) => setAcceptedTerms(e.target.checked)}
+                    className="mt-1 w-4 h-4 min-w-[16px] rounded border-border text-primary focus:ring-primary/50 cursor-pointer"
+                    aria-required="true"
+                    aria-describedby="terms-description"
+                  />
+                  <label 
+                    id="terms-description"
+                    htmlFor="terms-home" 
+                    className="text-xs sm:text-sm text-muted-foreground cursor-pointer"
+                  >
+                    Li e aceito os{" "}
+                    <Link
+                      to="/termos"
+                      target="_blank"
+                      className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
+                      rel="noopener"
+                    >
+                      Termos de Uso e Política de Privacidade
+                    </Link>
+                    , incluindo o recebimento de informações via WhatsApp.
+                  </label>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-h-[48px] text-sm sm:text-base"
+                  aria-busy={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg
+                        className="animate-spin h-5 w-5"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span>Enviando...</span>
+                    </span>
+                  ) : (
+                    "QUERO ACESSO ANTECIPADO"
+                  )}
+                </button>
+              </form>
+            </section>
+          </article>
+        </main>
+
+        <Footer />
+      </div>
+    </>
   );
 };
 
