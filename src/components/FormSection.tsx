@@ -51,6 +51,7 @@ const FormSection = () => {
     setIsSubmitting(true);
     
     try {
+      // Salvar no banco de dados
       const { error } = await supabase
         .from("leads")
         .insert({
@@ -59,6 +60,21 @@ const FormSection = () => {
         });
 
       if (error) throw error;
+
+      // Enviar para o webhook
+      await fetch("https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nome_completo: formData.name.trim(),
+          whatsapp: formData.whatsapp.trim(),
+        }),
+      }).catch((webhookError) => {
+        // Não bloquear o fluxo se o webhook falhar
+        console.error("Erro ao enviar webhook:", webhookError);
+      });
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });
