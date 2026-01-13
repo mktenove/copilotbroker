@@ -102,9 +102,29 @@ const Home = () => {
               A cidade de <span className="text-foreground font-medium">Estância Velha</span> receberá 
               um novo condomínio, que certamente, fará história.
             </p>
-            <p className="text-2xl md:text-3xl font-semibold text-primary">
+            <p className="text-2xl md:text-3xl font-semibold text-primary mb-6">
               Não fique de fora.
             </p>
+            <a
+              href="/estanciavelha"
+              className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium"
+            >
+              Saiba mais
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M5 12h14" />
+                <path d="m12 5 7 7-7 7" />
+              </svg>
+            </a>
           </div>
 
           {/* Form Card */}
