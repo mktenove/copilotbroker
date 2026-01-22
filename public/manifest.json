@@ -1,0 +1,23 @@
+{
+  "name": "Enove Imobiliária",
+  "short_name": "Enove",
+  "description": "Novo Condomínio em Estância Velha - Lançamento Exclusivo 2025",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#B8860B",
+  "icons": [
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
