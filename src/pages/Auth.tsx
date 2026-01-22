@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logoEnove from "@/assets/logo-enove.png";
@@ -173,6 +173,13 @@ const Auth = () => {
               "Entrar"
             )}
           </button>
+
+          <p className="text-center text-sm text-muted-foreground pt-2">
+            É corretor?{" "}
+            <Link to="/corretor/cadastro" className="text-primary hover:underline">
+              Cadastre-se aqui
+            </Link>
+          </p>
         </form>
       </div>
     </div>
