@@ -4,3 +4,4 @@ export { KanbanCard } from "./KanbanCard";
 export { LeadDetailSheet } from "./LeadDetailSheet";
 export { LeadTimeline } from "./LeadTimeline";
 export { DocumentChecklist } from "./DocumentChecklist";
+export { QuickNotes } from "./QuickNotes";

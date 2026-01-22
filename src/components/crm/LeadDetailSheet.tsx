@@ -24,6 +24,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { LeadTimeline } from "./LeadTimeline";
 import { DocumentChecklist } from "./DocumentChecklist";
+import { QuickNotes } from "./QuickNotes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -39,6 +40,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
   const [isEditing, setIsEditing] = useState(false);
   const [editedLead, setEditedLead] = useState<Partial<CRMLead>>({});
   const [newNote, setNewNote] = useState("");
+  const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string>("whatsapp");
   const [userId, setUserId] = useState<string | null>(null);
 
@@ -98,7 +100,22 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
     if (success) {
       setNewNote("");
+      setSelectedTemplates([]);
       toast.success("Observação adicionada!");
+    }
+  };
+
+  const handleSelectTemplate = (text: string) => {
+    if (selectedTemplates.includes(text)) {
+      // Remove template
+      const newTemplates = selectedTemplates.filter(t => t !== text);
+      setSelectedTemplates(newTemplates);
+      setNewNote(newTemplates.join(". "));
+    } else {
+      // Add template
+      const newTemplates = [...selectedTemplates, text];
+      setSelectedTemplates(newTemplates);
+      setNewNote(newTemplates.join(". "));
     }
   };
 
@@ -339,30 +356,43 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
           {/* Notes */}
           <div className="space-y-3">
-            <h4 className="font-medium text-sm text-foreground">Observações</h4>
             {lead.notes && (
-              <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
-                {lead.notes}
-              </p>
+              <div className="space-y-1">
+                <h4 className="font-medium text-sm text-foreground">Observações do Lead</h4>
+                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                  {lead.notes}
+                </p>
+              </div>
             )}
-            <div className="flex gap-2">
+            
+            <QuickNotes 
+              onSelectTemplate={handleSelectTemplate}
+              selectedTexts={selectedTemplates}
+            />
+            
+            <div className="space-y-2">
               <Textarea
                 placeholder="Adicionar observação..."
                 value={newNote}
-                onChange={(e) => setNewNote(e.target.value)}
+                onChange={(e) => {
+                  setNewNote(e.target.value);
+                  if (e.target.value === "") {
+                    setSelectedTemplates([]);
+                  }
+                }}
                 className="min-h-[60px]"
               />
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={handleAddNote}
+                disabled={!newNote.trim()}
+              >
+                <MessageSquare className="w-4 h-4 mr-2" />
+                Adicionar Observação
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={handleAddNote}
-              disabled={!newNote.trim()}
-            >
-              <MessageSquare className="w-4 h-4 mr-2" />
-              Adicionar Observação
-            </Button>
           </div>
 
           {/* Timeline */}
