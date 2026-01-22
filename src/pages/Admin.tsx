@@ -150,17 +150,17 @@ const Admin = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={logoEnove} alt="Enove Imobiliária" className="h-10" />
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-serif font-bold text-foreground">Painel Administrativo</h1>
-              <p className="text-sm text-muted-foreground">Enove Imobiliária</p>
+        <div className="container px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <img src={logoEnove} alt="Enove Imobiliária" className="h-8 sm:h-10" />
+            <div>
+              <h1 className="text-base sm:text-lg font-serif font-bold text-foreground">Painel Admin</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Enove Imobiliária</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sair</span>
@@ -170,89 +170,89 @@ const Admin = () => {
 
       {/* Tabs */}
       <div className="border-b border-border bg-card">
-        <div className="container">
+        <div className="container px-4">
           <nav className="flex gap-1">
             <button
               onClick={() => setActiveTab("leads")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "leads"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <Users className="w-4 h-4 inline-block mr-2" />
-              Leads
+              <Users className="w-4 h-4 inline-block mr-1 sm:mr-2" />
+              <span>Leads</span>
             </button>
             <button
               onClick={() => setActiveTab("brokers")}
-              className={`px-6 py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === "brokers"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              <UserCog className="w-4 h-4 inline-block mr-2" />
-              Corretores
+              <UserCog className="w-4 h-4 inline-block mr-1 sm:mr-2" />
+              <span>Corretores</span>
             </button>
           </nav>
         </div>
       </div>
 
       {/* Main Content */}
-      <main className="container py-8">
+      <main className="container px-4 py-6 sm:py-8">
         {activeTab === "leads" ? (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
-              <div className="card-luxury p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-primary" />
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div className="card-luxury p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Total</p>
-                    <p className="text-2xl font-bold text-foreground">{leads.length}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card-luxury p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Calendar className="w-6 h-6 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Hoje</p>
-                    <p className="text-2xl font-bold text-foreground">{todayLeads.length}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
                   </div>
                 </div>
               </div>
-              <div className="card-luxury p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Phone className="w-6 h-6 text-primary" />
+              <div className="card-luxury p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Enove</p>
-                    <p className="text-2xl font-bold text-foreground">{enoveLeads.length}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
                   </div>
                 </div>
               </div>
-              <div className="card-luxury p-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-accent/50 flex items-center justify-center">
-                    <UserCog className="w-6 h-6 text-accent-foreground" />
+              <div className="card-luxury p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                    <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                   </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Corretores</p>
-                    <p className="text-2xl font-bold text-foreground">{brokerLeads.length}</p>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Enove</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{enoveLeads.length}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="card-luxury p-4 sm:p-6">
+                <div className="flex items-center gap-3 sm:gap-4">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/50 flex items-center justify-center shrink-0">
+                    <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-muted-foreground">Corretores</p>
+                    <p className="text-xl sm:text-2xl font-bold text-foreground">{brokerLeads.length}</p>
                   </div>
                 </div>
               </div>
             </div>
 
             {/* Search, Filter and Export */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
-              <div className="relative flex-1">
+            <div className="flex flex-col gap-3 mb-6">
+              <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
                   type="text"
@@ -262,28 +262,30 @@ const Admin = () => {
                   className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
               </div>
-              <select
-                value={sourceFilter}
-                onChange={(e) => setSourceFilter(e.target.value)}
-                className="px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-              >
-                <option value="all">Todos</option>
-                <option value="enove">Enove</option>
-                {brokers.map((broker) => (
-                  <option key={broker.id} value={broker.id}>
-                    {broker.name}
-                  </option>
-                ))}
-              </select>
-              <ExportButton leads={filteredLeads} filename={`leads-${sourceFilter}`} />
-              <button
-                onClick={fetchLeads}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Atualizar</span>
-              </button>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
+                <select
+                  value={sourceFilter}
+                  onChange={(e) => setSourceFilter(e.target.value)}
+                  className="flex-1 min-w-[140px] px-3 py-3 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                  <option value="all">Todos</option>
+                  <option value="enove">Enove</option>
+                  {brokers.map((broker) => (
+                    <option key={broker.id} value={broker.id}>
+                      {broker.name}
+                    </option>
+                  ))}
+                </select>
+                <ExportButton leads={filteredLeads} filename={`leads-${sourceFilter}`} />
+                <button
+                  onClick={fetchLeads}
+                  disabled={isLoading}
+                  className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+                  <span className="hidden sm:inline">Atualizar</span>
+                </button>
+              </div>
             </div>
 
             {/* Leads Table */}

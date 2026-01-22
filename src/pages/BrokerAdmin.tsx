@@ -146,17 +146,17 @@ const BrokerAdmin = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="container py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <img src={logoEnove} alt="Enove Imobiliária" className="h-10" />
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-serif font-bold text-foreground">Painel do Corretor</h1>
-              <p className="text-sm text-muted-foreground">{broker?.name || "Carregando..."}</p>
+        <div className="container px-4 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <img src={logoEnove} alt="Enove Imobiliária" className="h-8 sm:h-10" />
+            <div>
+              <h1 className="text-base sm:text-lg font-serif font-bold text-foreground">Meus Leads</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">{broker?.name || "Carregando..."}</p>
             </div>
           </div>
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span className="hidden sm:inline">Sair</span>
@@ -165,27 +165,27 @@ const BrokerAdmin = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container py-8">
+      <main className="container px-4 py-6 sm:py-8">
         {/* Link da landing page */}
         {broker && (
-          <div className="card-luxury p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Sua landing page</p>
-              <code className="text-sm bg-muted px-3 py-1.5 rounded">{window.location.origin}/estanciavelha/{broker.slug}</code>
-            </div>
+          <div className="card-luxury p-4 mb-6">
+            <p className="text-sm text-muted-foreground mb-2">Sua landing page</p>
+            <code className="block text-xs sm:text-sm bg-muted px-3 py-2 rounded mb-3 break-all">
+              {window.location.origin}/estanciavelha/{broker.slug}
+            </code>
             <div className="flex gap-2">
               <button
                 onClick={copyLink}
-                className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm"
               >
                 {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedLink ? "Copiado!" : "Copiar"}
+                {copiedLink ? "Copiado!" : "Copiar Link"}
               </button>
               <a
                 href={`/estanciavelha/${broker.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
               >
                 <ExternalLink className="w-4 h-4" />
                 Abrir
@@ -195,34 +195,34 @@ const BrokerAdmin = () => {
         )}
 
         {/* Stats */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          <div className="card-luxury p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Users className="w-6 h-6 text-primary" />
+        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+          <div className="card-luxury p-4 sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total de Leads</p>
-                <p className="text-2xl font-bold text-foreground">{leads.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
               </div>
             </div>
           </div>
-          <div className="card-luxury p-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-primary" />
+          <div className="card-luxury p-4 sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Hoje</p>
-                <p className="text-2xl font-bold text-foreground">{todayLeads.length}</p>
+              <div className="min-w-0">
+                <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
+                <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Search and Export */}
-        <div className="flex flex-col sm:flex-row gap-4 mb-6">
-          <div className="relative flex-1">
+        <div className="flex flex-col gap-3 mb-6">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
             <input
               type="text"
@@ -232,15 +232,17 @@ const BrokerAdmin = () => {
               className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
             />
           </div>
-          <ExportButton leads={filteredLeads} filename={`meus-leads`} />
-          <button
-            onClick={fetchLeads}
-            disabled={isLoading}
-            className="flex items-center justify-center gap-2 px-6 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-            <span>Atualizar</span>
-          </button>
+          <div className="flex gap-2">
+            <ExportButton leads={filteredLeads} filename={`meus-leads`} />
+            <button
+              onClick={fetchLeads}
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+              <span>Atualizar</span>
+            </button>
+          </div>
         </div>
 
         {/* Leads Table */}

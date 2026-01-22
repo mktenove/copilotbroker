@@ -1,4 +1,5 @@
 import { Phone, Users, RefreshCw } from "lucide-react";
+import LeadCard from "./LeadCard";
 
 interface Lead {
   id: string;
@@ -36,7 +37,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
       return <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Enove</span>;
     }
     return (
-      <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
+      <span className="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full">
         {lead.source}
       </span>
     );
@@ -63,60 +64,70 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
   }
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead className="bg-muted/50">
-          <tr>
-            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
-            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">WhatsApp</th>
-            {showSource && (
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
-            )}
-            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Corretor</th>
-            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Data de Cadastro</th>
-            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {leads.map((lead) => (
-            <tr key={lead.id} className="hover:bg-muted/30 transition-colors">
-              <td className="px-6 py-4">
-                <span className="font-medium text-foreground">{lead.name}</span>
-              </td>
-              <td className="px-6 py-4">
-                <span className="text-foreground">{lead.whatsapp}</span>
-              </td>
+    <>
+      {/* Mobile: Cards */}
+      <div className="md:hidden space-y-4 p-4">
+        {leads.map((lead) => (
+          <LeadCard key={lead.id} lead={lead} showSource={showSource} />
+        ))}
+      </div>
+
+      {/* Desktop: Table */}
+      <div className="hidden md:block overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-muted/50">
+            <tr>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">WhatsApp</th>
               {showSource && (
-                <td className="px-6 py-4">
-                  {getSourceLabel(lead)}
-                </td>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
               )}
-              <td className="px-6 py-4">
-                {lead.broker?.name ? (
-                  <span className="font-medium text-foreground">{lead.broker.name}</span>
-                ) : (
-                  <span className="text-muted-foreground">—</span>
-                )}
-              </td>
-              <td className="px-6 py-4">
-                <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
-              </td>
-              <td className="px-6 py-4">
-                <a
-                  href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                >
-                  <Phone className="w-4 h-4" />
-                  WhatsApp
-                </a>
-              </td>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Corretor</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Data de Cadastro</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {leads.map((lead) => (
+              <tr key={lead.id} className="hover:bg-muted/30 transition-colors">
+                <td className="px-6 py-4">
+                  <span className="font-medium text-foreground">{lead.name}</span>
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-foreground">{lead.whatsapp}</span>
+                </td>
+                {showSource && (
+                  <td className="px-6 py-4">
+                    {getSourceLabel(lead)}
+                  </td>
+                )}
+                <td className="px-6 py-4">
+                  {lead.broker?.name ? (
+                    <span className="font-medium text-foreground">{lead.broker.name}</span>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="px-6 py-4">
+                  <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
+                </td>
+                <td className="px-6 py-4">
+                  <a
+                    href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Phone className="w-4 h-4" />
+                    WhatsApp
+                  </a>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 };
 
