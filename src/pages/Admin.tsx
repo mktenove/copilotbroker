@@ -10,6 +10,7 @@ import ExportButton from "@/components/admin/ExportButton";
 import BrokerManagement from "@/components/admin/BrokerManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { KanbanBoard } from "@/components/crm";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Lead {
   id: string;
@@ -160,13 +161,16 @@ const Admin = () => {
               <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Enove Imobiliária</p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span className="hidden sm:inline">Sair</span>
+            </button>
+          </div>
         </div>
       </header>
 

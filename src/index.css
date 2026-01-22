@@ -6,6 +6,64 @@
 
 @layer base {
   :root {
+    --background: 45 20% 97%;
+    --foreground: 20 14% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 20 14% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 20 14% 15%;
+
+    --primary: 48 96% 53%;
+    --primary-foreground: 20 14% 4%;
+
+    --secondary: 40 15% 92%;
+    --secondary-foreground: 20 14% 15%;
+
+    --muted: 40 10% 92%;
+    --muted-foreground: 20 10% 45%;
+
+    --accent: 48 96% 53%;
+    --accent-foreground: 20 14% 4%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 40 15% 85%;
+    --input: 40 15% 85%;
+    --ring: 48 96% 53%;
+
+    --radius: 0.5rem;
+
+    /* Custom tokens for luxury real estate */
+    --gold: 48 96% 53%;
+    --gold-light: 48 90% 65%;
+    --gold-dark: 40 85% 40%;
+    --cream: 45 30% 96%;
+    --charcoal: 20 14% 15%;
+    --charcoal-light: 20 15% 25%;
+    
+    /* Gradients */
+    --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--gold)) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
+    --gradient-overlay: linear-gradient(180deg, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.95) 100%);
+    
+    /* Shadows */
+    --shadow-gold: 0 0 40px hsl(var(--gold) / 0.2);
+    --shadow-elegant: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
     --background: 20 14% 4%;
     --foreground: 45 30% 96%;
 
@@ -27,14 +85,12 @@
     --accent: 48 96% 53%;
     --accent-foreground: 20 14% 4%;
 
-    --destructive: 0 84.2% 60.2%;
+    --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
 
     --border: 40 20% 20%;
     --input: 40 20% 20%;
     --ring: 48 96% 53%;
-
-    --radius: 0.5rem;
 
     /* Custom tokens for luxury real estate */
     --gold: 48 96% 53%;
@@ -53,36 +109,6 @@
     --shadow-gold: 0 0 40px hsl(var(--gold) / 0.3);
     --shadow-elegant: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
 
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
-
-  .dark {
-    --background: 20 14% 4%;
-    --foreground: 45 30% 96%;
-    --card: 20 20% 8%;
-    --card-foreground: 45 30% 96%;
-    --popover: 20 20% 8%;
-    --popover-foreground: 45 30% 96%;
-    --primary: 48 96% 53%;
-    --primary-foreground: 20 14% 4%;
-    --secondary: 20 15% 15%;
-    --secondary-foreground: 45 30% 96%;
-    --muted: 20 15% 20%;
-    --muted-foreground: 40 10% 60%;
-    --accent: 48 96% 53%;
-    --accent-foreground: 20 14% 4%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 40 20% 20%;
-    --input: 40 20% 20%;
-    --ring: 48 96% 53%;
     --sidebar-background: 240 5.9% 10%;
     --sidebar-foreground: 240 4.8% 95.9%;
     --sidebar-primary: 224.3 76.3% 48%;
