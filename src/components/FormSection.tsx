@@ -271,9 +271,6 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
                         )}
                       </SelectContent>
                     </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Selecione apenas se você já está em contato com um de nossos corretores
-                    </p>
                   </div>
                 )}
               </div>
