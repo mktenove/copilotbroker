@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Phone, Search, RefreshCw, UserCog } from "lucide-react";
+import { LogOut, Users, Calendar, Phone, Search, RefreshCw, UserCog, BarChart3 } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
 import BrokerManagement from "@/components/admin/BrokerManagement";
-
+import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 interface Lead {
   id: string;
   name: string;
@@ -34,7 +34,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"leads" | "brokers">("leads");
+  const [activeTab, setActiveTab] = useState<"leads" | "brokers" | "analytics">("leads");
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
 
@@ -171,10 +171,10 @@ const Admin = () => {
       {/* Tabs */}
       <div className="border-b border-border bg-card">
         <div className="container px-4">
-          <nav className="flex gap-1">
+          <nav className="flex gap-1 overflow-x-auto">
             <button
               onClick={() => setActiveTab("leads")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "leads"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -185,7 +185,7 @@ const Admin = () => {
             </button>
             <button
               onClick={() => setActiveTab("brokers")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors ${
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "brokers"
                   ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
@@ -193,6 +193,17 @@ const Admin = () => {
             >
               <UserCog className="w-4 h-4 inline-block mr-1 sm:mr-2" />
               <span>Corretores</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === "analytics"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <BarChart3 className="w-4 h-4 inline-block mr-1 sm:mr-2" />
+              <span>Analytics</span>
             </button>
           </nav>
         </div>
@@ -298,8 +309,10 @@ const Admin = () => {
               />
             </div>
           </>
-        ) : (
+        ) : activeTab === "brokers" ? (
           <BrokerManagement />
+        ) : (
+          <AnalyticsDashboard />
         )}
       </main>
     </div>
