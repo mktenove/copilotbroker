@@ -251,7 +251,7 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
                       value={selectedBrokerId || "none"}
                       onValueChange={(value) => setSelectedBrokerId(value === "none" ? "" : value)}
                     >
-                      <SelectTrigger className="w-full bg-background border-border">
+                      <SelectTrigger className="w-full bg-background border-border text-muted-foreground">
                         <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border">
