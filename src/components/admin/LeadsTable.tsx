@@ -32,12 +32,12 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
   };
 
   const getSourceLabel = (lead: Lead) => {
-    if (lead.source === "enove" || !lead.broker_id) {
+    if (lead.source === "enove") {
       return <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Enove</span>;
     }
     return (
       <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-full">
-        {lead.broker?.name || lead.source}
+        {lead.source}
       </span>
     );
   };
@@ -72,6 +72,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
             {showSource && (
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
             )}
+            <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Corretor</th>
             <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Data de Cadastro</th>
             <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
           </tr>
@@ -90,6 +91,13 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
                   {getSourceLabel(lead)}
                 </td>
               )}
+              <td className="px-6 py-4">
+                {lead.broker?.name ? (
+                  <span className="font-medium text-foreground">{lead.broker.name}</span>
+                ) : (
+                  <span className="text-muted-foreground">—</span>
+                )}
+              </td>
               <td className="px-6 py-4">
                 <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
               </td>
