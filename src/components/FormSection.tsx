@@ -248,14 +248,14 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
                 {showBrokerSelect && (
                   <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
                     <Select
-                      value={selectedBrokerId}
-                      onValueChange={setSelectedBrokerId}
+                      value={selectedBrokerId || "none"}
+                      onValueChange={(value) => setSelectedBrokerId(value === "none" ? "" : value)}
                     >
                       <SelectTrigger className="w-full bg-background border-border">
                         <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
                       </SelectTrigger>
                       <SelectContent className="bg-popover border-border">
-                        <SelectItem value="">
+                        <SelectItem value="none">
                           Nenhum / Não encontrei meu corretor
                         </SelectItem>
                         {loadingBrokers ? (
