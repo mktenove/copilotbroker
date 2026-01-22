@@ -39,7 +39,7 @@ const EstanciaVelha = () => {
           <FeaturesSection />
           <UrgencySection />
           <BenefitsSection />
-          <FormSection />
+          <FormSection allowBrokerSelection={true} />
           <DisclaimerSection />
         </main>
         <Footer />

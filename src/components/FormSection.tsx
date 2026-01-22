@@ -3,18 +3,33 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface FormSectionProps {
   brokerId?: string | null;
   brokerSlug?: string | null;
+  allowBrokerSelection?: boolean;
 }
 
-const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
+const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: FormSectionProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+  
+  // Broker selection states
+  const [showBrokerSelect, setShowBrokerSelect] = useState(false);
+  const [brokers, setBrokers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const [loadingBrokers, setLoadingBrokers] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -32,6 +47,33 @@ const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
 
     return () => observer.disconnect();
   }, []);
+
+  const fetchBrokers = async () => {
+    if (brokers.length > 0) return; // Already fetched
+    
+    setLoadingBrokers(true);
+    try {
+      const { data, error } = await supabase
+        .from("brokers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      
+      if (error) throw error;
+      setBrokers(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar corretores:", error);
+    } finally {
+      setLoadingBrokers(false);
+    }
+  };
+
+  const handleToggleBrokerSelect = () => {
+    if (!showBrokerSelect) {
+      fetchBrokers();
+    }
+    setShowBrokerSelect(!showBrokerSelect);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,9 +110,12 @@ const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
         source: brokerSlug || "enove",
       };
 
-      // Se tiver brokerId, adicionar
+      // Se tiver brokerId da URL (landing do corretor), usar ele
+      // Senão, se o usuário selecionou manualmente um corretor, usar esse
       if (brokerId) {
         leadData.broker_id = brokerId;
+      } else if (selectedBrokerId) {
+        leadData.broker_id = selectedBrokerId;
       }
 
       // Salvar no banco de dados
@@ -89,7 +134,7 @@ const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
         body: JSON.stringify({
           nome_completo: formData.name.trim(),
           whatsapp: formData.whatsapp.trim(),
-          broker_id: brokerId || null,
+          broker_id: brokerId || selectedBrokerId || null,
           source: brokerSlug || "enove",
         }),
       }).catch((webhookError) => {
@@ -100,6 +145,8 @@ const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });
       setAcceptedTerms(false);
+      setSelectedBrokerId("");
+      setShowBrokerSelect(false);
     } catch (error) {
       console.error("Erro ao salvar lead:", error);
       toast.error("Ocorreu um erro ao salvar. Tente novamente.");
@@ -181,6 +228,56 @@ const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
                 aria-required="true"
               />
             </div>
+
+            {/* Optional broker selection - only on main landing page */}
+            {allowBrokerSelection && !brokerId && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleToggleBrokerSelect}
+                  className="flex items-center gap-1.5 text-xs sm:text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showBrokerSelect ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                  Já sou atendido por um corretor Enove
+                </button>
+                
+                {showBrokerSelect && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Select
+                      value={selectedBrokerId}
+                      onValueChange={setSelectedBrokerId}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border">
+                        <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        <SelectItem value="">
+                          Nenhum / Não encontrei meu corretor
+                        </SelectItem>
+                        {loadingBrokers ? (
+                          <SelectItem value="loading" disabled>
+                            Carregando...
+                          </SelectItem>
+                        ) : (
+                          brokers.map((broker) => (
+                            <SelectItem key={broker.id} value={broker.id}>
+                              {broker.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione apenas se você já está em contato com um de nossos corretores
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Checkbox de aceite dos termos */}
             <div className="flex items-start gap-3">
