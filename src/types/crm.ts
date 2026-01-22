@@ -96,3 +96,39 @@ export const INTERACTION_CHANNELS = [
   { key: 'email', label: 'E-mail' },
   { key: 'presencial', label: 'Presencial' },
 ];
+
+export type NoteCategory = 'contato' | 'interesse' | 'documentos' | 'financeiro';
+
+export interface NoteTemplate {
+  key: string;
+  label: string;
+  text: string;
+  category: NoteCategory;
+}
+
+export const NOTE_TEMPLATES: NoteTemplate[] = [
+  // Contato
+  { key: 'nao_atendeu', label: 'Não atendeu', text: 'Cliente não atendeu a ligação/mensagem', category: 'contato' },
+  { key: 'retornar_depois', label: 'Retornar depois', text: 'Cliente pediu para retornar em outro momento', category: 'contato' },
+  { key: 'sem_interesse', label: 'Sem interesse', text: 'Cliente informou que não tem interesse no momento', category: 'contato' },
+  
+  // Interesse
+  { key: 'muito_interessado', label: 'Muito interessado', text: 'Cliente demonstrou alto interesse no empreendimento', category: 'interesse' },
+  { key: 'quer_visitar', label: 'Quer visitar', text: 'Cliente solicitou visita ao local', category: 'interesse' },
+  { key: 'comparando_opcoes', label: 'Comparando opções', text: 'Cliente está comparando com outros empreendimentos', category: 'interesse' },
+  
+  // Documentos
+  { key: 'docs_incompletos', label: 'Docs incompletos', text: 'Documentos recebidos estão incompletos ou ilegíveis', category: 'documentos' },
+  { key: 'aguardando_renda', label: 'Aguardando renda', text: 'Aguardando comprovante de renda atualizado', category: 'documentos' },
+  
+  // Financeiro
+  { key: 'aprovado_credito', label: 'Crédito aprovado', text: 'Cliente teve crédito pré-aprovado', category: 'financeiro' },
+  { key: 'analise_credito', label: 'Em análise', text: 'Documentos enviados para análise de crédito', category: 'financeiro' },
+];
+
+export const NOTE_CATEGORY_CONFIG: Record<NoteCategory, { label: string; color: string; bgColor: string }> = {
+  contato: { label: 'Contato', color: 'text-slate-600', bgColor: 'bg-slate-100 hover:bg-slate-200' },
+  interesse: { label: 'Interesse', color: 'text-emerald-600', bgColor: 'bg-emerald-100 hover:bg-emerald-200' },
+  documentos: { label: 'Documentos', color: 'text-orange-600', bgColor: 'bg-orange-100 hover:bg-orange-200' },
+  financeiro: { label: 'Financeiro', color: 'text-blue-600', bgColor: 'bg-blue-100 hover:bg-blue-200' },
+};
