@@ -9,6 +9,7 @@ import BrokerLandingPage from "./pages/BrokerLandingPage";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import BrokerAdmin from "./pages/BrokerAdmin";
+import BrokerSignup from "./pages/BrokerSignup";
 import Termos from "./pages/Termos";
 import NotFound from "./pages/NotFound";
 
@@ -25,6 +26,7 @@ const App = () => (
           <Route path="/estanciavelha" element={<EstanciaVelha />} />
           <Route path="/estanciavelha/:brokerSlug" element={<BrokerLandingPage />} />
           <Route path="/auth" element={<Auth />} />
+          <Route path="/corretor/cadastro" element={<BrokerSignup />} />
           <Route path="/admin" element={<Admin />} />
           <Route path="/corretor/admin" element={<BrokerAdmin />} />
           <Route path="/termos" element={<Termos />} />
