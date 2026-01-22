@@ -65,6 +65,16 @@ const Home = () => {
       // Track lead attribution
       if (insertedLead?.id) {
         await trackLeadAttribution(insertedLead.id);
+        
+        // GA4 conversion event
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'generate_lead', {
+            event_category: 'Lead',
+            event_label: 'home',
+            value: 1,
+            lead_source: 'home'
+          });
+        }
       }
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");

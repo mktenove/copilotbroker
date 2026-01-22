@@ -131,6 +131,17 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       // Track lead attribution
       if (insertedLead?.id) {
         await trackLeadAttribution(insertedLead.id);
+        
+        // GA4 conversion event
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'generate_lead', {
+            event_category: 'Lead',
+            event_label: brokerSlug || 'enove',
+            value: 1,
+            lead_source: brokerSlug || 'enove',
+            broker_id: brokerId || selectedBrokerId || 'none'
+          });
+        }
       }
 
       // Enviar para o webhook
