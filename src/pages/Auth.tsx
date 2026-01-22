@@ -8,21 +8,49 @@ const Auth = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const navigate = useNavigate();
+
+  const checkUserRoleAndRedirect = async (userId: string) => {
+    try {
+      const { data: roleData, error } = await (supabase
+        .from("user_roles" as any)
+        .select("role")
+        .eq("user_id", userId)
+        .maybeSingle() as any);
+
+      if (error) {
+        console.error("Erro ao buscar role:", error);
+        // Se não encontrar role, pode ser um usuário legado - redirecionar para admin
+        navigate("/admin");
+        return;
+      }
+
+      if (roleData?.role === "broker") {
+        navigate("/corretor/admin");
+      } else {
+        navigate("/admin");
+      }
+    } catch (error) {
+      console.error("Erro ao verificar role:", error);
+      navigate("/admin");
+    }
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
+      async (event, session) => {
         if (session) {
-          navigate("/admin");
+          await checkUserRoleAndRedirect(session.user.id);
         }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        navigate("/admin");
+        await checkUserRoleAndRedirect(session.user.id);
+      } else {
+        setIsCheckingAuth(false);
       }
     });
 
@@ -45,28 +73,20 @@ const Auth = () => {
     setIsLoading(true);
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/admin`,
-          },
-        });
-        if (error) throw error;
-        toast.success("Conta criada com sucesso!");
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        if (error) throw error;
-        toast.success("Login realizado com sucesso!");
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (error) throw error;
+      
+      toast.success("Login realizado com sucesso!");
+      
+      if (data.user) {
+        await checkUserRoleAndRedirect(data.user.id);
       }
     } catch (error: any) {
-      if (error.message === "User already registered") {
-        toast.error("Este email já está cadastrado. Faça login.");
-      } else if (error.message === "Invalid login credentials") {
+      if (error.message === "Invalid login credentials") {
         toast.error("Email ou senha incorretos.");
       } else {
         toast.error(error.message || "Ocorreu um erro. Tente novamente.");
@@ -75,6 +95,20 @@ const Auth = () => {
       setIsLoading(false);
     }
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <svg className="animate-spin h-8 w-8 text-primary mx-auto mb-4" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          <p className="text-muted-foreground">Verificando autenticação...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -89,7 +123,7 @@ const Auth = () => {
             Painel Administrativo
           </h1>
           <p className="text-muted-foreground">
-            {isSignUp ? "Crie sua conta para acessar" : "Entre para gerenciar os leads"}
+            Entre para acessar o painel
           </p>
         </div>
 
@@ -133,22 +167,12 @@ const Auth = () => {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                {isSignUp ? "Criando conta..." : "Entrando..."}
+                Entrando...
               </span>
             ) : (
-              isSignUp ? "Criar Conta" : "Entrar"
+              "Entrar"
             )}
           </button>
-
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-primary hover:text-primary/80 transition-colors"
-            >
-              {isSignUp ? "Já tem conta? Faça login" : "Não tem conta? Cadastre-se"}
-            </button>
-          </div>
         </form>
       </div>
     </div>

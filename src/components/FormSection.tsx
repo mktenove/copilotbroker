@@ -4,7 +4,12 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 
-const FormSection = () => {
+interface FormSectionProps {
+  brokerId?: string | null;
+  brokerSlug?: string | null;
+}
+
+const FormSection = ({ brokerId, brokerSlug }: FormSectionProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
@@ -51,13 +56,27 @@ const FormSection = () => {
     setIsSubmitting(true);
     
     try {
+      // Preparar dados do lead
+      const leadData: {
+        name: string;
+        whatsapp: string;
+        broker_id?: string;
+        source: string;
+      } = {
+        name: formData.name.trim(),
+        whatsapp: formData.whatsapp.trim(),
+        source: brokerSlug || "enove",
+      };
+
+      // Se tiver brokerId, adicionar
+      if (brokerId) {
+        leadData.broker_id = brokerId;
+      }
+
       // Salvar no banco de dados
       const { error } = await supabase
         .from("leads")
-        .insert({
-          name: formData.name.trim(),
-          whatsapp: formData.whatsapp.trim(),
-        });
+        .insert(leadData);
 
       if (error) throw error;
 
@@ -70,6 +89,8 @@ const FormSection = () => {
         body: JSON.stringify({
           nome_completo: formData.name.trim(),
           whatsapp: formData.whatsapp.trim(),
+          broker_id: brokerId || null,
+          source: brokerSlug || "enove",
         }),
       }).catch((webhookError) => {
         // Não bloquear o fluxo se o webhook falhar
