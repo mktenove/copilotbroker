@@ -25,6 +25,13 @@ const FloatingCTA = () => {
   }, []);
 
   const scrollToForm = () => {
+    // GA4 event for CTA click
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'scroll_to_form', {
+        event_category: 'Engagement',
+        event_label: 'floating_cta'
+      });
+    }
     document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
   };
 
