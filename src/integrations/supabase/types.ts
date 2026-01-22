@@ -91,31 +91,144 @@ export type Database = {
           },
         ]
       }
+      lead_documents: {
+        Row: {
+          created_at: string
+          document_type: string
+          id: string
+          is_received: boolean
+          lead_id: string
+          received_at: string | null
+          received_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          id?: string
+          is_received?: boolean
+          lead_id: string
+          received_at?: string | null
+          received_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          id?: string
+          is_received?: boolean
+          lead_id?: string
+          received_at?: string | null
+          received_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_documents_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lead_interactions: {
+        Row: {
+          broker_id: string | null
+          channel: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          interaction_type: Database["public"]["Enums"]["interaction_type"]
+          lead_id: string
+          new_status: Database["public"]["Enums"]["lead_status"] | null
+          notes: string | null
+          old_status: Database["public"]["Enums"]["lead_status"] | null
+        }
+        Insert: {
+          broker_id?: string | null
+          channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_type: Database["public"]["Enums"]["interaction_type"]
+          lead_id: string
+          new_status?: Database["public"]["Enums"]["lead_status"] | null
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["lead_status"] | null
+        }
+        Update: {
+          broker_id?: string | null
+          channel?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          interaction_type?: Database["public"]["Enums"]["interaction_type"]
+          lead_id?: string
+          new_status?: Database["public"]["Enums"]["lead_status"] | null
+          notes?: string | null
+          old_status?: Database["public"]["Enums"]["lead_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lead_interactions_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_interactions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       leads: {
         Row: {
           broker_id: string | null
+          cpf: string | null
           created_at: string
+          email: string | null
           id: string
+          last_interaction_at: string | null
           name: string
+          notes: string | null
+          registered_at: string | null
+          registered_by: string | null
           source: string
+          status: Database["public"]["Enums"]["lead_status"]
           updated_at: string
           whatsapp: string
         }
         Insert: {
           broker_id?: string | null
+          cpf?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          last_interaction_at?: string | null
           name: string
+          notes?: string | null
+          registered_at?: string | null
+          registered_by?: string | null
           source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
           whatsapp: string
         }
         Update: {
           broker_id?: string | null
+          cpf?: string | null
           created_at?: string
+          email?: string | null
           id?: string
+          last_interaction_at?: string | null
           name?: string
+          notes?: string | null
+          registered_at?: string | null
+          registered_by?: string | null
           source?: string
+          status?: Database["public"]["Enums"]["lead_status"]
           updated_at?: string
           whatsapp?: string
         }
@@ -198,6 +311,20 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "broker"
+      interaction_type:
+        | "status_change"
+        | "note_added"
+        | "document_request"
+        | "document_received"
+        | "info_sent"
+        | "contact_attempt"
+        | "registration"
+      lead_status:
+        | "new"
+        | "info_sent"
+        | "awaiting_docs"
+        | "docs_received"
+        | "registered"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -326,6 +453,22 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "broker"],
+      interaction_type: [
+        "status_change",
+        "note_added",
+        "document_request",
+        "document_received",
+        "info_sent",
+        "contact_attempt",
+        "registration",
+      ],
+      lead_status: [
+        "new",
+        "info_sent",
+        "awaiting_docs",
+        "docs_received",
+        "registered",
+      ],
     },
   },
 } as const

@@ -2,13 +2,15 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Phone, Search, RefreshCw, UserCog, BarChart3 } from "lucide-react";
+import { LogOut, Users, Calendar, Phone, Search, RefreshCw, UserCog, BarChart3, Kanban } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
 import BrokerManagement from "@/components/admin/BrokerManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import { KanbanBoard } from "@/components/crm";
+
 interface Lead {
   id: string;
   name: string;
@@ -34,7 +36,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"leads" | "brokers" | "analytics">("leads");
+  const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "analytics">("crm");
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
 
@@ -173,6 +175,17 @@ const Admin = () => {
         <div className="container px-4">
           <nav className="flex gap-1 overflow-x-auto">
             <button
+              onClick={() => setActiveTab("crm")}
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === "crm"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Kanban className="w-4 h-4 inline-block mr-1 sm:mr-2" />
+              <span>CRM</span>
+            </button>
+            <button
               onClick={() => setActiveTab("leads")}
               className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "leads"
@@ -211,7 +224,11 @@ const Admin = () => {
 
       {/* Main Content */}
       <main className="container px-4 py-6 sm:py-8">
-        {activeTab === "leads" ? (
+        {activeTab === "crm" ? (
+          <div className="h-[calc(100vh-200px)]">
+            <KanbanBoard isAdmin={true} brokers={brokers} />
+          </div>
+        ) : activeTab === "leads" ? (
           <>
             {/* Stats */}
             <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
