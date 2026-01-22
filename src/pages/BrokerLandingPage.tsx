@@ -12,6 +12,7 @@ import DisclaimerSection from "@/components/DisclaimerSection";
 import Footer from "@/components/Footer";
 import FloatingCTA from "@/components/FloatingCTA";
 import { RefreshCw } from "lucide-react";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 
 interface Broker {
   id: string;
@@ -26,6 +27,9 @@ const BrokerLandingPage = () => {
   const navigate = useNavigate();
   const [broker, setBroker] = useState<Broker | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Track page view
+  usePageTracking();
 
   useEffect(() => {
     const fetchBroker = async () => {

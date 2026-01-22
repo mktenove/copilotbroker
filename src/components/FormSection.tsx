@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { trackLeadAttribution } from "@/hooks/use-page-tracking";
 
 interface FormSectionProps {
   brokerId?: string | null;
@@ -119,11 +120,18 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       }
 
       // Salvar no banco de dados
-      const { error } = await supabase
+      const { data: insertedLead, error } = await supabase
         .from("leads")
-        .insert(leadData);
+        .insert(leadData)
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Track lead attribution
+      if (insertedLead?.id) {
+        await trackLeadAttribution(insertedLead.id);
+      }
 
       // Enviar para o webhook
       await fetch("https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205", {

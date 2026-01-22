@@ -5,6 +5,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import Footer from "@/components/Footer";
+import { usePageTracking, trackLeadAttribution } from "@/hooks/use-page-tracking";
 
 const Home = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -12,6 +13,9 @@ const Home = () => {
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const formRef = useRef<HTMLElement>(null);
+
+  // Track page view
+  usePageTracking();
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -47,12 +51,21 @@ const Home = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await supabase.from("leads").insert({
-        name: formData.name.trim(),
-        whatsapp: formData.whatsapp,
-      });
+      const { data: insertedLead, error } = await supabase
+        .from("leads")
+        .insert({
+          name: formData.name.trim(),
+          whatsapp: formData.whatsapp,
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Track lead attribution
+      if (insertedLead?.id) {
+        await trackLeadAttribution(insertedLead.id);
+      }
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });

@@ -9,8 +9,12 @@ import FormSection from "@/components/FormSection";
 import DisclaimerSection from "@/components/DisclaimerSection";
 import Footer from "@/components/Footer";
 import FloatingCTA from "@/components/FloatingCTA";
+import { usePageTracking } from "@/hooks/use-page-tracking";
 
 const EstanciaVelha = () => {
+  // Track page view
+  usePageTracking();
+
   // Update page meta for this specific landing page
   useEffect(() => {
     document.title = "Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²";
