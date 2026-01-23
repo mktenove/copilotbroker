@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Phone, User, Calendar, Clock, MessageCircle, MapPin } from "lucide-react";
+import { User, Calendar, Clock, MessageCircle, MapPin, Plus } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
@@ -83,7 +83,35 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
         )}
       </div>
 
-      {/* Badges */}
+      {/* Origem - Seção destacada */}
+      <div className="pl-2 mb-3">
+        {lead.lead_origin ? (
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium",
+            ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+          )}>
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            <span className="truncate">{getOriginDisplayLabel(lead.lead_origin)}</span>
+          </div>
+        ) : (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onClick();
+            }}
+            className={cn(
+              "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed",
+              "text-xs text-muted-foreground hover:text-foreground hover:border-primary/50",
+              "transition-colors w-full justify-center bg-muted/30 hover:bg-muted/50"
+            )}
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Adicionar origem</span>
+          </button>
+        )}
+      </div>
+
+      {/* Badges - Source e Broker */}
       <div className="flex flex-wrap items-center gap-1.5 mb-3 pl-2">
         {/* Cadastrado por badge */}
         <span className={cn(
@@ -92,17 +120,6 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
         )}>
           {lead.source === "enove" ? "Enove" : lead.source}
         </span>
-        
-        {/* Origem badge - dinâmico com cores por tipo */}
-        {lead.lead_origin && (
-          <span className={cn(
-            "px-2 py-0.5 text-xs font-medium rounded-full border flex items-center gap-1 max-w-[150px]",
-            ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
-          )}>
-            <MapPin className="w-3 h-3 shrink-0" />
-            <span className="truncate">{getOriginDisplayLabel(lead.lead_origin)}</span>
-          </span>
-        )}
         
         {/* Broker badge */}
         {lead.broker && (
