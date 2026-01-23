@@ -89,7 +89,11 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
     }
   }, []);
 
-  const updateLead = useCallback(async (leadId: string, updates: Partial<CRMLead>) => {
+  const updateLead = useCallback(async (
+    leadId: string, 
+    updates: Partial<CRMLead>,
+    options?: { logOriginChange?: boolean; oldOrigin?: string | null }
+  ) => {
     try {
       const { error } = await supabase
         .from("leads")
@@ -100,6 +104,20 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
         .eq("id", leadId);
 
       if (error) throw error;
+
+      // Log origin change if applicable
+      if (options?.logOriginChange && updates.lead_origin !== undefined) {
+        const oldOrigin = options.oldOrigin || null;
+        const newOrigin = updates.lead_origin || null;
+        
+        await supabase
+          .from("lead_interactions")
+          .insert({
+            lead_id: leadId,
+            interaction_type: "origin_change",
+            notes: `Origem alterada de "${oldOrigin || 'Não definida'}" para "${newOrigin || 'Não definida'}"`,
+          });
+      }
 
       setLeads(prev => prev.map(lead => 
         lead.id === leadId 
