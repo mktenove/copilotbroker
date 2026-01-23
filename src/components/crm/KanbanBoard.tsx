@@ -31,7 +31,7 @@ interface KanbanBoardProps {
   brokers?: { id: string; name: string; slug: string }[];
 }
 
-const STATUSES: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered'];
+const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanBoardProps) {
   const [searchTerm, setSearchTerm] = useState("");
