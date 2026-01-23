@@ -1,19 +1,22 @@
 import { useMemo, useState } from "react";
-import { User, Calendar, Clock, MessageCircle, MapPin, Plus } from "lucide-react";
+import { User, Calendar, Clock, MessageCircle, MapPin, Plus, UserX } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { OriginQuickPicker } from "./OriginQuickPicker";
+import { InactivationPicker } from "./InactivationPicker";
 
 interface KanbanCardProps {
   lead: CRMLead;
   onClick: () => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
+  onInactivate?: (leadId: string, reason: string) => Promise<void>;
 }
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate }: KanbanCardProps) {
   const [isOriginPickerOpen, setIsOriginPickerOpen] = useState(false);
+  const [isInactivationPickerOpen, setIsInactivationPickerOpen] = useState(false);
   
   const {
     attributes,
@@ -64,6 +67,17 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin }: KanbanCardProps) {
     }
   };
 
+  const handleInactivateClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsInactivationPickerOpen(true);
+  };
+
+  const handleInactivateConfirm = async (reason: string) => {
+    if (onInactivate) {
+      await onInactivate(lead.id, reason);
+    }
+  };
+
   return (
     <>
       <div
@@ -92,11 +106,25 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin }: KanbanCardProps) {
           <h4 className="font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
             {lead.name}
           </h4>
-          {isStale && (
-            <span className="shrink-0 px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
-              !
-            </span>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {isStale && (
+              <span className="px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
+                !
+              </span>
+            )}
+            {/* Inactivate Button */}
+            <button
+              onClick={handleInactivateClick}
+              className={cn(
+                "p-1.5 rounded-md opacity-0 group-hover:opacity-100",
+                "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                "transition-all duration-150"
+              )}
+              title="Inativar lead"
+            >
+              <UserX className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Origem - Seção destacada */}
@@ -187,6 +215,15 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin }: KanbanCardProps) {
         isOpen={isOriginPickerOpen}
         onClose={() => setIsOriginPickerOpen(false)}
         onSelect={handleOriginSelect}
+      />
+
+      {/* Inactivation Picker */}
+      <InactivationPicker
+        leadId={lead.id}
+        leadName={lead.name}
+        isOpen={isInactivationPickerOpen}
+        onClose={() => setIsInactivationPickerOpen(false)}
+        onConfirm={handleInactivateConfirm}
       />
     </>
   );

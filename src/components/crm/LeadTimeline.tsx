@@ -1,5 +1,5 @@
-import { LeadInteraction, STATUS_CONFIG } from "@/types/crm";
-import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin } from "lucide-react";
+import { LeadInteraction, STATUS_CONFIG, getInactivationReasonLabel } from "@/types/crm";
+import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin, UserX } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeadTimelineProps {
@@ -14,7 +14,8 @@ const INTERACTION_ICONS: Record<string, React.ElementType> = {
   info_sent: Send,
   contact_attempt: Clock,
   registration: CheckCircle,
-  origin_change: MapPin
+  origin_change: MapPin,
+  inactivation: UserX
 };
 
 const INTERACTION_LABELS: Record<string, string> = {
@@ -25,7 +26,8 @@ const INTERACTION_LABELS: Record<string, string> = {
   info_sent: "Informações Enviadas",
   contact_attempt: "Tentativa de Contato",
   registration: "Cadastro no Ábaco",
-  origin_change: "Origem Alterada"
+  origin_change: "Origem Alterada",
+  inactivation: "Lead Inativado"
 };
 
 export function LeadTimeline({ interactions }: LeadTimelineProps) {
@@ -56,13 +58,26 @@ export function LeadTimeline({ interactions }: LeadTimelineProps) {
               {/* Icon circle */}
               <div className={cn(
                 "absolute left-2 w-5 h-5 rounded-full flex items-center justify-center",
-                "bg-background border-2 border-primary"
+                "bg-background border-2",
+                interaction.interaction_type === "inactivation" 
+                  ? "border-destructive" 
+                  : "border-primary"
               )}>
-                <Icon className="w-3 h-3 text-primary" />
+                <Icon className={cn(
+                  "w-3 h-3",
+                  interaction.interaction_type === "inactivation" 
+                    ? "text-destructive" 
+                    : "text-primary"
+                )} />
               </div>
 
               {/* Content */}
-              <div className="bg-muted/50 rounded-lg p-3">
+              <div className={cn(
+                "rounded-lg p-3",
+                interaction.interaction_type === "inactivation"
+                  ? "bg-destructive/10 border border-destructive/20"
+                  : "bg-muted/50"
+              )}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-foreground">{label}</span>
                   <span className="text-[10px] text-muted-foreground">

@@ -1,4 +1,4 @@
-export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'docs_received' | 'registered';
+export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'docs_received' | 'registered' | 'inactive';
 
 export type InteractionType = 
   | 'status_change'
@@ -8,7 +8,8 @@ export type InteractionType =
   | 'info_sent'
   | 'contact_attempt'
   | 'registration'
-  | 'origin_change';
+  | 'origin_change'
+  | 'inactivation';
 
 export interface CRMLead {
   id: string;
@@ -25,6 +26,9 @@ export interface CRMLead {
   last_interaction_at: string | null;
   registered_at: string | null;
   registered_by: string | null;
+  inactivation_reason: string | null;
+  inactivated_at: string | null;
+  inactivated_by: string | null;
   broker_id: string | null;
   broker?: {
     id: string;
@@ -32,6 +36,23 @@ export interface CRMLead {
     slug: string;
   } | null;
 }
+
+// Motivos de inativação pré-definidos
+export const INACTIVATION_REASONS = [
+  { key: 'sem_interesse', label: 'Sem interesse', icon: '😐' },
+  { key: 'nao_responde', label: 'Não responde', icon: '📵' },
+  { key: 'comprou_outro', label: 'Comprou outro imóvel', icon: '🏠' },
+  { key: 'sem_condicao_financeira', label: 'Sem condição financeira', icon: '💸' },
+  { key: 'desistiu', label: 'Desistiu da compra', icon: '↩️' },
+  { key: 'lead_duplicado', label: 'Lead duplicado', icon: '👥' },
+  { key: 'dados_invalidos', label: 'Dados inválidos/falsos', icon: '⚠️' },
+  { key: 'outro', label: 'Outro motivo', icon: '📝' },
+] as const;
+
+export const getInactivationReasonLabel = (key: string): string => {
+  const reason = INACTIVATION_REASONS.find(r => r.key === key);
+  return reason?.label || key;
+};
 
 // Origens pré-definidas para seleção manual (quando não há UTM)
 export const LEAD_ORIGINS = [
@@ -157,6 +178,11 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
     label: 'Cadastrado no Ábaco',
     color: 'text-slate-600',
     bgColor: 'bg-slate-100 border-slate-300'
+  },
+  inactive: {
+    label: 'Inativos',
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 border-red-200'
   }
 };
 
