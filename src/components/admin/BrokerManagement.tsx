@@ -10,6 +10,7 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 
 interface Broker {
   id: string;
@@ -95,6 +96,12 @@ const BrokerManagement = () => {
     
     if (!formData.name.trim() || !formData.email.trim()) {
       toast.error("Nome e email são obrigatórios.");
+      return;
+    }
+
+    // Validate WhatsApp if provided
+    if (formData.whatsapp && !isValidBrazilianWhatsApp(formData.whatsapp)) {
+      toast.error("WhatsApp inválido. Use o formato completo com código do Brasil (+55).");
       return;
     }
 
@@ -292,12 +299,10 @@ const BrokerManagement = () => {
                 <label className="block text-sm font-medium text-foreground/80 mb-2">
                   WhatsApp
                 </label>
-                <input
-                  type="tel"
+                <WhatsAppInput
                   value={formData.whatsapp}
-                  onChange={(e) => setFormData({ ...formData, whatsapp: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
-                  placeholder="(00) 00000-0000"
+                  onChange={(value) => setFormData({ ...formData, whatsapp: value })}
+                  className="w-full"
                 />
               </div>
 
