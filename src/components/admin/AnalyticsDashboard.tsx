@@ -7,7 +7,10 @@ import {
   MousePointerClick,
   RefreshCw,
   Eye,
-  Calendar
+  Calendar,
+  Target,
+  Award,
+  Megaphone
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,6 +29,8 @@ import {
   LineChart,
   Line,
 } from "recharts";
+import { getOriginDisplayLabel, getOriginType, OriginType } from "@/types/crm";
+import { cn } from "@/lib/utils";
 
 interface PageView {
   id: string;
@@ -41,6 +46,7 @@ interface PageView {
 interface Lead {
   id: string;
   source: string;
+  lead_origin: string | null;
   created_at: string;
 }
 
@@ -50,11 +56,17 @@ interface DailyStats {
   leads: number;
 }
 
+interface OriginStats {
+  name: string;
+  displayName: string;
+  leads: number;
+  type: OriginType;
+}
+
 interface SourceStats {
   name: string;
-  views: number;
   leads: number;
-  conversionRate: number;
+  percentage: number;
 }
 
 interface PageStats {
@@ -63,7 +75,16 @@ interface PageStats {
   percentage: number;
 }
 
-const COLORS = ["hsl(var(--primary))", "hsl(var(--accent))", "#22c55e", "#3b82f6", "#f59e0b", "#ef4444"];
+// Cores por tipo de origem
+const ORIGIN_COLORS: Record<OriginType, string> = {
+  paid: "#9333ea",
+  organic: "#22c55e", 
+  referral: "#3b82f6",
+  manual: "#f59e0b",
+  unknown: "#64748b"
+};
+
+const PIE_COLORS = ["hsl(var(--primary))", "#22c55e", "#3b82f6", "#f59e0b", "#9333ea", "#ef4444"];
 
 const AnalyticsDashboard = () => {
   const [pageViews, setPageViews] = useState<PageView[]>([]);
@@ -90,7 +111,7 @@ const AnalyticsDashboard = () => {
           .order("created_at", { ascending: false }) as any),
         (supabase
           .from("leads" as any)
-          .select("id, source, created_at")
+          .select("id, source, lead_origin, created_at")
           .gte("created_at", startDate)
           .lte("created_at", endDate)
           .order("created_at", { ascending: false }) as any),
@@ -130,31 +151,45 @@ const AnalyticsDashboard = () => {
     });
   }
 
-  // Calculate source stats
-  const sourceMap = new Map<string, { views: number; leads: number }>();
-  
-  pageViews.forEach((pv) => {
-    const source = pv.utm_source || getSourceFromReferrer(pv.referrer) || "Direto";
-    const current = sourceMap.get(source) || { views: 0, leads: 0 };
-    sourceMap.set(source, { ...current, views: current.views + 1 });
+  // Calculate lead origin stats (from lead_origin field)
+  const originMap = new Map<string, number>();
+  leads.forEach((lead) => {
+    const origin = lead.lead_origin || "unknown";
+    originMap.set(origin, (originMap.get(origin) || 0) + 1);
   });
 
+  const originStats: OriginStats[] = Array.from(originMap.entries())
+    .map(([name, count]) => ({
+      name,
+      displayName: getOriginDisplayLabel(name === "unknown" ? null : name),
+      leads: count,
+      type: getOriginType(name === "unknown" ? null : name),
+    }))
+    .sort((a, b) => b.leads - a.leads)
+    .slice(0, 8);
+
+  // Calculate "Cadastrado por" stats (from source field)
+  const sourceMap = new Map<string, number>();
   leads.forEach((lead) => {
-    // Match leads to source based on their source field
-    const source = lead.source === "enove" ? "Direto" : lead.source;
-    const current = sourceMap.get(source) || { views: 0, leads: 0 };
-    sourceMap.set(source, { ...current, leads: current.leads + 1 });
+    const source = lead.source === "enove" ? "Enove" : lead.source;
+    sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
   });
 
   const sourceStats: SourceStats[] = Array.from(sourceMap.entries())
-    .map(([name, stats]) => ({
-      name: formatSourceName(name),
-      views: stats.views,
-      leads: stats.leads,
-      conversionRate: stats.views > 0 ? (stats.leads / stats.views) * 100 : 0,
+    .map(([name, count]) => ({
+      name,
+      leads: count,
+      percentage: leads.length > 0 ? (count / leads.length) * 100 : 0,
     }))
-    .sort((a, b) => b.views - a.views)
-    .slice(0, 6);
+    .sort((a, b) => b.leads - a.leads);
+
+  // Enove vs Corretores split
+  const enoveLeads = sourceStats.find(s => s.name === "Enove")?.leads || 0;
+  const brokerLeads = leads.length - enoveLeads;
+  const distributionData = [
+    { name: "Enove", value: enoveLeads },
+    { name: "Corretores", value: brokerLeads },
+  ].filter(d => d.value > 0);
 
   // Calculate page stats
   const pageMap = new Map<string, number>();
@@ -175,6 +210,12 @@ const AnalyticsDashboard = () => {
 
   // Conversion rate
   const conversionRate = totalViews > 0 ? (leads.length / totalViews) * 100 : 0;
+
+  // Best channel (highest leads)
+  const bestChannel = originStats.length > 0 ? originStats[0] : null;
+
+  // Top broker (excluding Enove)
+  const topBroker = sourceStats.find(s => s.name !== "Enove");
 
   return (
     <div className="space-y-6">
@@ -206,8 +247,8 @@ const AnalyticsDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {/* Stats Cards - 6 columns */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard
           icon={Eye}
           label="Visualizações"
@@ -216,44 +257,182 @@ const AnalyticsDashboard = () => {
         />
         <StatCard
           icon={Users}
-          label="Sessões Únicas"
+          label="Sessões"
           value={uniqueSessions}
           isLoading={isLoading}
         />
         <StatCard
           icon={MousePointerClick}
-          label="Leads Captados"
+          label="Leads"
           value={leads.length}
           isLoading={isLoading}
         />
         <StatCard
           icon={TrendingUp}
-          label="Taxa de Conversão"
+          label="Conversão"
           value={`${conversionRate.toFixed(1)}%`}
           isLoading={isLoading}
         />
+        <StatCard
+          icon={Target}
+          label="Melhor Canal"
+          value={bestChannel?.displayName || "-"}
+          isLoading={isLoading}
+          highlight
+        />
+        <StatCard
+          icon={Award}
+          label="Top Corretor"
+          value={topBroker?.name || "-"}
+          isLoading={isLoading}
+          highlight
+        />
       </div>
 
-      {/* Charts Grid */}
+      {/* Daily Chart - Full width */}
+      <div className="card-luxury p-4 sm:p-6">
+        <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-primary" />
+          Visitas e Leads por Dia
+        </h3>
+        <div className="h-[250px] sm:h-[300px]">
+          {isLoading ? (
+            <LoadingChart />
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={dailyStats}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="date" 
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={{ stroke: "hsl(var(--border))" }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis 
+                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                  tickLine={{ stroke: "hsl(var(--border))" }}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    fontSize: "12px"
+                  }}
+                  labelStyle={{ color: "hsl(var(--foreground))" }}
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="views" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, fill: "hsl(var(--primary))" }}
+                  name="Visitas"
+                />
+                <Line 
+                  type="monotone" 
+                  dataKey="leads" 
+                  stroke="#22c55e" 
+                  strokeWidth={2}
+                  dot={{ fill: "#22c55e", strokeWidth: 0, r: 3 }}
+                  activeDot={{ r: 5, fill: "#22c55e" }}
+                  name="Leads"
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Middle Row: Cadastrado Por + Origem Marketing */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Daily Views Chart */}
+        {/* Cadastrado Por - Horizontal Bar Chart */}
         <div className="card-luxury p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-primary" />
-            Visitas por Dia
+            <Users className="w-4 h-4 text-primary" />
+            Cadastrado Por
           </h3>
-          <div className="h-[250px] sm:h-[300px]">
+          <div className="h-[280px]">
             {isLoading ? (
               <LoadingChart />
-            ) : (
+            ) : sourceStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={dailyStats}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <BarChart 
+                  data={sourceStats.slice(0, 6)} 
+                  layout="vertical" 
+                  margin={{ left: 10, right: 30 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
                   <XAxis 
-                    dataKey="date" 
+                    type="number" 
                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                     tickLine={{ stroke: "hsl(var(--border))" }}
-                    interval="preserveStartEnd"
+                  />
+                  <YAxis 
+                    type="category" 
+                    dataKey="name"
+                    tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }}
+                    tickLine={false}
+                    width={80}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: "hsl(var(--card))",
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      fontSize: "12px"
+                    }}
+                    formatter={(value: number, name: string, props: any) => [
+                      `${value} leads (${props.payload.percentage.toFixed(0)}%)`,
+                      "Leads"
+                    ]}
+                  />
+                  <Bar 
+                    dataKey="leads" 
+                    fill="hsl(var(--primary))"
+                    radius={[0, 4, 4, 0]}
+                    barSize={24}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Nenhum dado disponível
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Origem Marketing - Vertical Bar Chart */}
+        <div className="card-luxury p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
+            <Megaphone className="w-4 h-4 text-primary" />
+            Origem de Marketing
+          </h3>
+          <div className="h-[280px]">
+            {isLoading ? (
+              <LoadingChart />
+            ) : originStats.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={originStats.slice(0, 6).map(o => ({
+                    ...o,
+                    shortName: o.displayName.length > 15 
+                      ? o.displayName.substring(0, 12) + "..." 
+                      : o.displayName
+                  }))} 
+                  margin={{ bottom: 60 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis 
+                    dataKey="shortName"
+                    tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }}
+                    tickLine={{ stroke: "hsl(var(--border))" }}
+                    interval={0}
+                    angle={-35}
+                    textAnchor="end"
+                    height={60}
                   />
                   <YAxis 
                     tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
@@ -266,59 +445,66 @@ const AnalyticsDashboard = () => {
                       borderRadius: "8px",
                       fontSize: "12px"
                     }}
-                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    formatter={(value: number) => [`${value} leads`, "Leads"]}
+                    labelFormatter={(label, payload) => {
+                      const item = payload?.[0]?.payload;
+                      return item?.displayName || label;
+                    }}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="views" 
-                    stroke="hsl(var(--primary))" 
-                    strokeWidth={2}
-                    dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, fill: "hsl(var(--primary))" }}
-                    name="Visitas"
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="leads" 
-                    stroke="#22c55e" 
-                    strokeWidth={2}
-                    dot={{ fill: "#22c55e", strokeWidth: 0, r: 3 }}
-                    activeDot={{ r: 5, fill: "#22c55e" }}
-                    name="Leads"
-                  />
-                </LineChart>
+                  <Bar 
+                    dataKey="leads"
+                    radius={[4, 4, 0, 0]}
+                    barSize={32}
+                  >
+                    {originStats.slice(0, 6).map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={ORIGIN_COLORS[entry.type]} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
+            ) : (
+              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">
+                Nenhum dado disponível
+              </div>
             )}
           </div>
+          {/* Legend */}
+          <div className="flex flex-wrap gap-3 mt-3 justify-center">
+            <LegendItem color={ORIGIN_COLORS.paid} label="Pago" />
+            <LegendItem color={ORIGIN_COLORS.organic} label="Orgânico" />
+            <LegendItem color={ORIGIN_COLORS.referral} label="Referral" />
+            <LegendItem color={ORIGIN_COLORS.manual} label="Manual" />
+            <LegendItem color={ORIGIN_COLORS.unknown} label="Outros" />
+          </div>
         </div>
+      </div>
 
-        {/* Traffic Sources Pie Chart */}
+      {/* Bottom Row: Distribution Pie + Pages + Origin Table */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        {/* Distribution Pie */}
         <div className="card-luxury p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
             <BarChart3 className="w-4 h-4 text-primary" />
-            Origem do Tráfego
+            Distribuição de Cadastros
           </h3>
-          <div className="h-[250px] sm:h-[300px]">
+          <div className="h-[200px]">
             {isLoading ? (
               <LoadingChart />
-            ) : sourceStats.length > 0 ? (
+            ) : distributionData.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={sourceStats}
+                    data={distributionData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={40}
-                    outerRadius={80}
-                    paddingAngle={2}
-                    dataKey="views"
+                    innerRadius={45}
+                    outerRadius={75}
+                    paddingAngle={3}
+                    dataKey="value"
                     nameKey="name"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={false}
                   >
-                    {sourceStats.map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    <Cell fill="hsl(var(--primary))" />
+                    <Cell fill="#22c55e" />
                   </Pie>
                   <Tooltip 
                     contentStyle={{ 
@@ -327,7 +513,13 @@ const AnalyticsDashboard = () => {
                       borderRadius: "8px",
                       fontSize: "12px"
                     }}
-                    formatter={(value: number) => [`${value} visitas`, "Visitas"]}
+                    formatter={(value: number) => [`${value} leads`, "Leads"]}
+                  />
+                  <Legend 
+                    verticalAlign="bottom"
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: "12px" }}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -337,11 +529,19 @@ const AnalyticsDashboard = () => {
               </div>
             )}
           </div>
+          {/* Stats below */}
+          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-primary">{enoveLeads}</p>
+              <p className="text-xs text-muted-foreground">Enove</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-green-600">{brokerLeads}</p>
+              <p className="text-xs text-muted-foreground">Corretores</p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Pages */}
         <div className="card-luxury p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-foreground mb-4">
@@ -354,8 +554,11 @@ const AnalyticsDashboard = () => {
               {pageStats.map((page, index) => (
                 <div key={page.path} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className="text-xs font-medium text-muted-foreground w-5">
-                      {index + 1}.
+                    <span className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                      index === 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                    )}>
+                      {index + 1}
                     </span>
                     <span className="text-sm text-foreground truncate">
                       {page.path}
@@ -379,29 +582,37 @@ const AnalyticsDashboard = () => {
           )}
         </div>
 
-        {/* Conversion by Source */}
+        {/* Origin Table */}
         <div className="card-luxury p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-foreground mb-4">
-            Conversão por Origem
+            Leads por Origem
           </h3>
           {isLoading ? (
             <LoadingList />
-          ) : sourceStats.length > 0 ? (
-            <div className="space-y-3">
-              <div className="grid grid-cols-4 gap-2 text-xs text-muted-foreground font-medium pb-2 border-b border-border">
-                <span>Origem</span>
-                <span className="text-right">Visitas</span>
-                <span className="text-right">Leads</span>
-                <span className="text-right">Conv.</span>
-              </div>
-              {sourceStats.map((source) => (
-                <div key={source.name} className="grid grid-cols-4 gap-2 text-sm">
-                  <span className="text-foreground truncate">{source.name}</span>
-                  <span className="text-right text-muted-foreground">{source.views}</span>
-                  <span className="text-right text-foreground font-medium">{source.leads}</span>
-                  <span className="text-right text-primary font-medium">
-                    {source.conversionRate.toFixed(1)}%
-                  </span>
+          ) : originStats.length > 0 ? (
+            <div className="space-y-2">
+              {originStats.slice(0, 6).map((origin) => (
+                <div key={origin.name} className="flex items-center justify-between py-1.5">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div 
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ backgroundColor: ORIGIN_COLORS[origin.type] }}
+                    />
+                    <span className="text-sm text-foreground truncate">
+                      {origin.displayName}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded text-xs font-medium",
+                      getOriginBadgeClass(origin.type)
+                    )}>
+                      {getOriginTypeLabel(origin.type)}
+                    </span>
+                    <span className="text-sm font-bold text-foreground w-8 text-right">
+                      {origin.leads}
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -421,27 +632,51 @@ const StatCard = ({
   icon: Icon, 
   label, 
   value, 
-  isLoading 
+  isLoading,
+  highlight = false
 }: { 
   icon: React.ElementType; 
   label: string; 
   value: string | number;
   isLoading: boolean;
+  highlight?: boolean;
 }) => (
-  <div className="card-luxury p-4 sm:p-6">
-    <div className="flex items-center gap-3 sm:gap-4">
-      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+  <div className={cn(
+    "card-luxury p-3 sm:p-4",
+    highlight && "ring-1 ring-primary/20"
+  )}>
+    <div className="flex items-center gap-2 sm:gap-3">
+      <div className={cn(
+        "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0",
+        highlight ? "bg-primary/20" : "bg-primary/10"
+      )}>
+        <Icon className={cn(
+          "w-4 h-4 sm:w-5 sm:h-5",
+          highlight ? "text-primary" : "text-primary"
+        )} />
       </div>
-      <div className="min-w-0">
-        <p className="text-xs sm:text-sm text-muted-foreground">{label}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs text-muted-foreground truncate">{label}</p>
         {isLoading ? (
-          <div className="h-6 sm:h-8 w-16 bg-muted animate-pulse rounded mt-1" />
+          <div className="h-5 sm:h-6 w-12 bg-muted animate-pulse rounded mt-0.5" />
         ) : (
-          <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+          <p className={cn(
+            "text-base sm:text-lg font-bold text-foreground truncate",
+            highlight && "text-primary"
+          )}>{value}</p>
         )}
       </div>
     </div>
+  </div>
+);
+
+const LegendItem = ({ color, label }: { color: string; label: string }) => (
+  <div className="flex items-center gap-1.5">
+    <div 
+      className="w-2.5 h-2.5 rounded-full"
+      style={{ backgroundColor: color }}
+    />
+    <span className="text-xs text-muted-foreground">{label}</span>
   </div>
 );
 
@@ -460,48 +695,36 @@ const LoadingList = () => (
 );
 
 // Helper functions
-const getSourceFromReferrer = (referrer: string | null): string | null => {
-  if (!referrer) return null;
-  
-  try {
-    const url = new URL(referrer);
-    const hostname = url.hostname.toLowerCase();
-    
-    if (hostname.includes("google")) return "google";
-    if (hostname.includes("facebook") || hostname.includes("fb.")) return "facebook";
-    if (hostname.includes("instagram")) return "instagram";
-    if (hostname.includes("bing")) return "bing";
-    if (hostname.includes("yahoo")) return "yahoo";
-    if (hostname.includes("linkedin")) return "linkedin";
-    
-    return hostname;
-  } catch {
-    return null;
-  }
-};
-
-const formatSourceName = (source: string): string => {
-  const sourceNames: Record<string, string> = {
-    google: "Google",
-    facebook: "Facebook",
-    instagram: "Instagram",
-    bing: "Bing",
-    yahoo: "Yahoo",
-    linkedin: "LinkedIn",
-    direct: "Direto",
-    direto: "Direto",
-  };
-  
-  return sourceNames[source.toLowerCase()] || source;
-};
-
 const formatPagePath = (path: string): string => {
   if (path === "/" || path === "") return "Página Inicial";
   if (path === "/estanciavelha") return "Landing Enove";
-  
-  // Remove leading slash and format
-  const formatted = path.replace(/^\//, "");
-  return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+  if (path.startsWith("/c/")) {
+    const slug = path.replace("/c/", "");
+    return `Corretor: ${slug}`;
+  }
+  return path;
+};
+
+const getOriginTypeLabel = (type: OriginType): string => {
+  const labels: Record<OriginType, string> = {
+    paid: "Pago",
+    organic: "Org.",
+    referral: "Ref.",
+    manual: "Man.",
+    unknown: "-"
+  };
+  return labels[type];
+};
+
+const getOriginBadgeClass = (type: OriginType): string => {
+  const classes: Record<OriginType, string> = {
+    paid: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
+    organic: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
+    referral: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
+    manual: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+    unknown: "bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300"
+  };
+  return classes[type];
 };
 
 export default AnalyticsDashboard;
