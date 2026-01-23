@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify({
         phone: recipientPhone,
-        message: message,
+        body: message,
       }),
     });
 
