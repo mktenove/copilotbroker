@@ -1,7 +1,9 @@
-import { Phone, Users, RefreshCw, MapPin, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { Phone, Users, RefreshCw, MapPin, Trash2, UserX } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
+import { InactivationPicker } from "@/components/crm/InactivationPicker";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,10 +37,13 @@ interface LeadsTableProps {
   searchTerm: string;
   showSource?: boolean;
   showStatus?: boolean;
+  onLeadClick?: (lead: Lead) => void;
   onDelete?: (leadId: string) => Promise<void>;
+  onInactivate?: (leadId: string, reason: string) => Promise<void>;
 }
 
-const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onDelete }: LeadsTableProps) => {
+const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onLeadClick, onDelete, onInactivate }: LeadsTableProps) => {
+  const [inactivatingLead, setInactivatingLead] = useState<Lead | null>(null);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -108,12 +113,27 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
     );
   }
 
+  const handleInactivateConfirm = async (reason: string) => {
+    if (onInactivate && inactivatingLead) {
+      await onInactivate(inactivatingLead.id, reason);
+    }
+    setInactivatingLead(null);
+  };
+
   return (
     <>
       {/* Mobile: Cards */}
       <div className="md:hidden space-y-4 p-4">
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} showSource={showSource} showStatus={showStatus} onDelete={onDelete} />
+          <LeadCard 
+            key={lead.id} 
+            lead={lead} 
+            showSource={showSource} 
+            showStatus={showStatus} 
+            onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
+            onDelete={onDelete}
+            onInactivate={onInactivate}
+          />
         ))}
       </div>
 
@@ -137,83 +157,118 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {leads.map((lead) => (
-              <tr key={lead.id} className="hover:bg-muted/30 transition-colors">
-                <td className="px-6 py-4">
-                  <span className="font-medium text-foreground">{lead.name}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-foreground">{lead.whatsapp}</span>
-                </td>
-                {showStatus && (
-                  <td className="px-6 py-4">
-                    {getStatusLabel(lead)}
-                  </td>
-                )}
-                {showSource && (
-                  <td className="px-6 py-4">
-                    {getSourceLabel(lead)}
-                  </td>
-                )}
-                <td className="px-6 py-4">
-                  {getOriginLabel(lead)}
-                </td>
-                <td className="px-6 py-4">
-                  {lead.broker?.name ? (
-                    <span className="font-medium text-foreground">{lead.broker.name}</span>
-                  ) : (
-                    <span className="text-muted-foreground">—</span>
+            {leads.map((lead) => {
+              const isInactive = lead.status === "inactive";
+              return (
+                <tr 
+                  key={lead.id} 
+                  className={cn(
+                    "hover:bg-muted/30 transition-colors",
+                    onLeadClick && "cursor-pointer"
                   )}
-                </td>
-                <td className="px-6 py-4">
-                  <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                    >
-                      <Phone className="w-4 h-4" />
-                      WhatsApp
-                    </a>
-                    {onDelete && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <button
-                            className="inline-flex items-center gap-1 px-3 py-2 bg-destructive/10 text-destructive text-sm rounded-lg hover:bg-destructive/20 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDelete(lead.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Excluir
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
+                  onClick={() => onLeadClick?.(lead)}
+                >
+                  <td className="px-6 py-4">
+                    <span className="font-medium text-foreground">{lead.name}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-foreground">{lead.whatsapp}</span>
+                  </td>
+                  {showStatus && (
+                    <td className="px-6 py-4">
+                      {getStatusLabel(lead)}
+                    </td>
+                  )}
+                  {showSource && (
+                    <td className="px-6 py-4">
+                      {getSourceLabel(lead)}
+                    </td>
+                  )}
+                  <td className="px-6 py-4">
+                    {getOriginLabel(lead)}
+                  </td>
+                  <td className="px-6 py-4">
+                    {lead.broker?.name ? (
+                      <span className="font-medium text-foreground">{lead.broker.name}</span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
                     )}
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
+                  </td>
+                  <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white text-sm rounded-lg hover:bg-emerald-700 transition-colors"
+                      >
+                        <Phone className="w-4 h-4" />
+                        WhatsApp
+                      </a>
+                      
+                      {/* Botão Inativar */}
+                      {onInactivate && !isInactive && (
+                        <button
+                          onClick={() => setInactivatingLead(lead)}
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-muted text-muted-foreground text-sm rounded-lg hover:bg-muted/80 transition-colors"
+                          title="Inativar lead"
+                        >
+                          <UserX className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      {/* Botão Excluir */}
+                      {onDelete && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <button
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-destructive/10 text-destructive text-sm rounded-lg hover:bg-destructive/20 transition-colors"
+                              title="Excluir lead"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDelete(lead.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+
+      {/* Inactivation Picker */}
+      {inactivatingLead && (
+        <InactivationPicker
+          leadId={inactivatingLead.id}
+          leadName={inactivatingLead.name}
+          isOpen={!!inactivatingLead}
+          onClose={() => setInactivatingLead(null)}
+          onConfirm={handleInactivateConfirm}
+        />
+      )}
     </>
   );
 };
