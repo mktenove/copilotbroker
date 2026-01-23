@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { Phone, User, Calendar, Clock, MessageCircle } from "lucide-react";
+import { Phone, User, Calendar, Clock, MessageCircle, MapPin } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CRMLead, STATUS_CONFIG } from "@/types/crm";
+import { CRMLead, STATUS_CONFIG, LEAD_ORIGINS } from "@/types/crm";
 import { cn } from "@/lib/utils";
 
 interface KanbanCardProps {
@@ -84,16 +84,28 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
       </div>
 
       {/* Badges */}
-      <div className="flex flex-wrap items-center gap-2 mb-3 pl-2">
+      <div className="flex flex-wrap items-center gap-1.5 mb-3 pl-2">
+        {/* Cadastrado por badge */}
         <span className={cn(
-          "px-2.5 py-1 text-xs font-medium rounded-full",
+          "px-2 py-0.5 text-xs font-medium rounded-full",
           "bg-primary/15 text-primary border border-primary/20"
         )}>
           {lead.source === "enove" ? "Enove" : lead.source}
         </span>
         
+        {/* Origem badge (novo campo) */}
+        {lead.lead_origin && (
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full
+            bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 
+            border border-blue-200 dark:border-blue-800 flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {LEAD_ORIGINS.find(o => o.key === lead.lead_origin)?.label || lead.lead_origin}
+          </span>
+        )}
+        
+        {/* Broker badge */}
         {lead.broker && (
-          <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground flex items-center gap-1">
+          <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground flex items-center gap-1">
             <User className="w-3 h-3" />
             <span className="truncate max-w-[80px]">{lead.broker.name}</span>
           </span>

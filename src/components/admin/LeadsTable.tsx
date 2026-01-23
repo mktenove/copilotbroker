@@ -1,4 +1,5 @@
-import { Phone, Users, RefreshCw } from "lucide-react";
+import { Phone, Users, RefreshCw, MapPin } from "lucide-react";
+import { LEAD_ORIGINS } from "@/types/crm";
 import LeadCard from "./LeadCard";
 
 interface Lead {
@@ -7,6 +8,7 @@ interface Lead {
   whatsapp: string;
   created_at: string;
   source: string;
+  lead_origin?: string | null;
   broker_id: string | null;
   broker?: {
     name: string;
@@ -39,6 +41,17 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
     return (
       <span className="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full">
         {lead.source}
+      </span>
+    );
+  };
+
+  const getOriginLabel = (lead: Lead) => {
+    if (!lead.lead_origin) return <span className="text-muted-foreground">—</span>;
+    const origin = LEAD_ORIGINS.find(o => o.key === lead.lead_origin);
+    return (
+      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full flex items-center gap-1 w-fit">
+        <MapPin className="w-3 h-3" />
+        {origin?.label || lead.lead_origin}
       </span>
     );
   };
@@ -80,8 +93,9 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">WhatsApp</th>
               {showSource && (
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Cadastrado por</th>
               )}
+              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Corretor</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Data de Cadastro</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
@@ -101,6 +115,9 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
                     {getSourceLabel(lead)}
                   </td>
                 )}
+                <td className="px-6 py-4">
+                  {getOriginLabel(lead)}
+                </td>
                 <td className="px-6 py-4">
                   {lead.broker?.name ? (
                     <span className="font-medium text-foreground">{lead.broker.name}</span>

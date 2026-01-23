@@ -1,11 +1,14 @@
 import { Download } from "lucide-react";
 
+import { LEAD_ORIGINS } from "@/types/crm";
+
 interface Lead {
   id: string;
   name: string;
   whatsapp: string;
   created_at: string;
   source: string;
+  lead_origin?: string | null;
   broker_id: string | null;
   broker?: {
     name: string;
@@ -32,13 +35,19 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
   const exportToCSV = () => {
     if (leads.length === 0) return;
 
-    const headers = ["Nome", "WhatsApp", "Origem", "Data de Cadastro"];
+    const getOriginLabel = (origin: string | null | undefined) => {
+      if (!origin) return "";
+      const found = LEAD_ORIGINS.find(o => o.key === origin);
+      return found?.label || origin;
+    };
+
+    const headers = ["Nome", "WhatsApp", "Cadastrado por", "Origem", "Corretor", "Data de Cadastro"];
     const rows = leads.map((lead) => [
       lead.name,
       lead.whatsapp,
-      lead.source === "enove" || !lead.broker_id
-        ? "Enove"
-        : lead.broker?.name || lead.source,
+      lead.source === "enove" ? "Enove" : lead.source,
+      getOriginLabel(lead.lead_origin),
+      lead.broker?.name || "",
       formatDate(lead.created_at),
     ]);
 
