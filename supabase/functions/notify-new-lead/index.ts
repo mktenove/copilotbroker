@@ -105,8 +105,8 @@ Deno.serve(async (req) => {
         "token": uazapiToken,
       },
       body: JSON.stringify({
-        phone: recipientPhone,
-        body: message,
+        number: recipientPhone,
+        text: message,
       }),
     });
 
