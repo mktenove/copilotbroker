@@ -179,6 +179,28 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
     );
   }, [updateLead]);
 
+  const deleteLead = useCallback(async (leadId: string) => {
+    try {
+      // Deletar dados relacionados primeiro
+      await supabase.from("lead_documents").delete().eq("lead_id", leadId);
+      await supabase.from("lead_interactions").delete().eq("lead_id", leadId);
+      await supabase.from("lead_attribution").delete().eq("lead_id", leadId);
+      
+      // Deletar o lead
+      const { error } = await supabase.from("leads").delete().eq("id", leadId);
+      
+      if (error) throw error;
+      
+      setLeads(prev => prev.filter(lead => lead.id !== leadId));
+      toast.success("Lead excluído com sucesso!");
+      return true;
+    } catch (error) {
+      console.error("Erro ao excluir lead:", error);
+      toast.error("Erro ao excluir lead.");
+      return false;
+    }
+  }, []);
+
   const getLeadsByStatus = useCallback((status: LeadStatus) => {
     return leads.filter(lead => lead.status === status);
   }, [leads]);
@@ -190,6 +212,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
     updateLeadStatus,
     updateLead,
     inactivateLead,
+    deleteLead,
     getLeadsByStatus
   };
 }
