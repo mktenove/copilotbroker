@@ -125,6 +125,26 @@ const Admin = () => {
     }
   };
 
+  const handleDeleteLead = async (leadId: string) => {
+    try {
+      // Deletar dados relacionados primeiro
+      await (supabase.from("lead_documents" as any).delete().eq("lead_id", leadId) as any);
+      await (supabase.from("lead_interactions" as any).delete().eq("lead_id", leadId) as any);
+      await (supabase.from("lead_attribution" as any).delete().eq("lead_id", leadId) as any);
+      
+      // Deletar o lead
+      const { error } = await (supabase.from("leads" as any).delete().eq("id", leadId) as any);
+      
+      if (error) throw error;
+      
+      setLeads(prev => prev.filter(lead => lead.id !== leadId));
+      toast.success("Lead excluído com sucesso!");
+    } catch (error) {
+      console.error("Erro ao excluir lead:", error);
+      toast.error("Erro ao excluir lead.");
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     toast.success("Logout realizado com sucesso!");
@@ -366,6 +386,7 @@ const Admin = () => {
                 searchTerm={searchTerm}
                 showSource={true}
                 showStatus={true}
+                onDelete={handleDeleteLead}
               />
             </div>
           </>
