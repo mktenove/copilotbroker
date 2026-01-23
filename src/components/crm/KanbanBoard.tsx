@@ -109,6 +109,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
     }
   };
 
+  const handleUpdateOrigin = async (leadId: string, origin: string) => {
+    await updateLead(leadId, { lead_origin: origin });
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -167,6 +171,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
                 status={status}
                 leads={filteredLeads.filter(l => l.status === status)}
                 onCardClick={handleCardClick}
+                onUpdateOrigin={handleUpdateOrigin}
               />
             ))}
           </div>
