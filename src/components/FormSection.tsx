@@ -147,7 +147,7 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       }
 
       // Enviar para o webhook
-      await fetch("https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205", {
+      fetch("https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -159,8 +159,19 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
           source: brokerSlug || "enove",
         }),
       }).catch((webhookError) => {
-        // Não bloquear o fluxo se o webhook falhar
         console.error("Erro ao enviar webhook:", webhookError);
+      });
+
+      // Notificar via WhatsApp (UAZAPI)
+      supabase.functions.invoke("notify-new-lead", {
+        body: {
+          leadName: formData.name.trim(),
+          leadWhatsapp: formData.whatsapp.trim(),
+          brokerId: brokerId || selectedBrokerId || null,
+          source: brokerSlug || "Site Enove",
+        },
+      }).catch((notifyError) => {
+        console.error("Erro ao enviar notificação WhatsApp:", notifyError);
       });
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
