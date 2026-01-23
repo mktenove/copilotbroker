@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin } from "lucide-react";
-import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS, LEAD_ORIGINS } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS, LEAD_ORIGINS, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { useLeadDocuments } from "@/hooks/use-lead-documents";
 import { supabase } from "@/integrations/supabase/client";
@@ -311,9 +311,14 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                   Cadastrado por: {lead.source === "enove" ? "Enove" : lead.source}
                 </div>
                 {lead.lead_origin && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    Origem: {LEAD_ORIGINS.find(o => o.key === lead.lead_origin)?.label || lead.lead_origin}
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span className={cn(
+                      "px-2 py-0.5 text-xs font-medium rounded-full border",
+                      ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+                    )}>
+                      {getOriginDisplayLabel(lead.lead_origin)}
+                    </span>
                   </div>
                 )}
               </div>

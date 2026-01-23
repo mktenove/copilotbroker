@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import Footer from "@/components/Footer";
-import { usePageTracking, trackLeadAttribution } from "@/hooks/use-page-tracking";
+import { usePageTracking, trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
 
 const Home = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -56,6 +56,7 @@ const Home = () => {
         .insert({
           name: formData.name.trim(),
           whatsapp: formData.whatsapp,
+          lead_origin: getLeadOriginFromUTM(), // Auto-preencher origem via UTM
         })
         .select("id")
         .single();

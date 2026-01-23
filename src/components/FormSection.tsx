@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trackLeadAttribution } from "@/hooks/use-page-tracking";
+import { trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
 
 interface FormSectionProps {
   brokerId?: string | null;
@@ -105,10 +105,12 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
         whatsapp: string;
         broker_id?: string;
         source: string;
+        lead_origin?: string | null;
       } = {
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
         source: brokerSlug || "enove",
+        lead_origin: getLeadOriginFromUTM(), // Auto-preencher origem via UTM
       };
 
       // Se tiver brokerId da URL (landing do corretor), usar ele

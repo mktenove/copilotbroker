@@ -1,5 +1,6 @@
 import { Phone, Users, RefreshCw, MapPin } from "lucide-react";
-import { LEAD_ORIGINS } from "@/types/crm";
+import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
+import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
 
 interface Lead {
@@ -47,11 +48,14 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
 
   const getOriginLabel = (lead: Lead) => {
     if (!lead.lead_origin) return <span className="text-muted-foreground">—</span>;
-    const origin = LEAD_ORIGINS.find(o => o.key === lead.lead_origin);
+    
     return (
-      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full flex items-center gap-1 w-fit">
-        <MapPin className="w-3 h-3" />
-        {origin?.label || lead.lead_origin}
+      <span className={cn(
+        "px-2 py-1 text-xs rounded-full flex items-center gap-1 w-fit border",
+        ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+      )}>
+        <MapPin className="w-3 h-3 shrink-0" />
+        <span className="max-w-[150px] truncate">{getOriginDisplayLabel(lead.lead_origin)}</span>
       </span>
     );
   };

@@ -49,6 +49,107 @@ export const getStoredUTMParams = (): UTMParams => {
   return getUTMParams();
 };
 
+// Helper: Capitalize first letter
+const capitalizeFirst = (str: string): string => {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+};
+
+// Helper: Format source name to friendly display
+const formatSourceName = (source: string): string => {
+  const mapping: Record<string, string> = {
+    'fb': 'Facebook',
+    'ig': 'Instagram',
+    'facebook': 'Facebook',
+    'instagram': 'Instagram',
+    'google': 'Google',
+    'tiktok': 'TikTok',
+    'linkedin': 'LinkedIn',
+    'youtube': 'YouTube',
+    'twitter': 'Twitter/X',
+    'x': 'Twitter/X',
+    'bing': 'Bing',
+    'meta': 'Meta',
+    'email': 'Email',
+    'whatsapp': 'WhatsApp',
+  };
+  return mapping[source.toLowerCase()] || capitalizeFirst(source);
+};
+
+// Helper: Extract domain from referrer
+const extractDomain = (referrer: string): string | null => {
+  try {
+    const url = new URL(referrer);
+    return url.hostname.replace('www.', '');
+  } catch {
+    return null;
+  }
+};
+
+// Helper: Format domain name to friendly display
+const formatDomainName = (domain: string): string => {
+  const mapping: Record<string, string> = {
+    'google.com': 'Google',
+    'google.com.br': 'Google',
+    'facebook.com': 'Facebook',
+    'instagram.com': 'Instagram',
+    'linkedin.com': 'LinkedIn',
+    'tiktok.com': 'TikTok',
+    'youtube.com': 'YouTube',
+    't.co': 'Twitter/X',
+    'l.facebook.com': 'Facebook',
+    'lm.facebook.com': 'Facebook',
+  };
+  return mapping[domain] || domain;
+};
+
+// Get lead origin from UTM params - returns descriptive string
+export const getLeadOriginFromUTM = (): string | null => {
+  const utmParams = getStoredUTMParams();
+  const referrer = document.referrer?.toLowerCase() || '';
+  
+  const source = utmParams.utm_source;
+  const medium = utmParams.utm_medium;
+  const campaign = utmParams.utm_campaign;
+  
+  // Se tiver UTM source, criar string descritiva
+  if (source) {
+    const parts: string[] = [];
+    
+    // Formatar nome da source
+    parts.push(formatSourceName(source));
+    
+    // Adicionar medium se existir (cpc, organic, etc)
+    if (medium) {
+      parts.push(`(${medium})`);
+    }
+    
+    // Adicionar campaign se existir
+    if (campaign) {
+      parts.push(`- ${campaign}`);
+    }
+    
+    return parts.join(' ');
+    // Exemplos de saída:
+    // "Facebook (cpc) - lancamento_jan25"
+    // "Google (organic)"
+    // "Instagram (paid_social) - remarketing"
+  }
+  
+  // Se não tiver UTM, tentar detectar pelo referrer
+  if (referrer) {
+    const domain = extractDomain(referrer);
+    if (domain) {
+      const formattedDomain = formatDomainName(domain);
+      // Não retornar se for o próprio domínio do site
+      if (!referrer.includes('lovable.app') && !referrer.includes('onovocondominio')) {
+        return `Referral: ${formattedDomain}`;
+      }
+    }
+  }
+  
+  return null; // Origem não detectável - corretor preenche manualmente
+};
+
 // Track a page view
 const trackPageView = async (pagePath: string) => {
   try {
