@@ -26,7 +26,7 @@ const ORIGIN_GROUPS = [
   {
     label: "Mídia Paga",
     icon: "💰",
-    origins: ["meta_ads", "google_ads", "tiktok_ads", "linkedin_ads", "kwai_ads"],
+    origins: ["meta_ads", "google_ads", "tiktok_ads", "linkedin_ads"],
   },
   {
     label: "Orgânico",
