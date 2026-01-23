@@ -99,18 +99,23 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
     setIsSubmitting(true);
     
     try {
+      // Gerar UUID no cliente para evitar necessidade de SELECT após INSERT (RLS)
+      const leadId = crypto.randomUUID();
+      
       // Preparar dados do lead
       const leadData: {
+        id: string;
         name: string;
         whatsapp: string;
         broker_id?: string;
         source: string;
         lead_origin?: string | null;
       } = {
+        id: leadId,
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
         source: brokerSlug || "enove",
-        lead_origin: getLeadOriginFromUTM(), // Auto-preencher origem via UTM
+        lead_origin: getLeadOriginFromUTM(),
       };
 
       // Se tiver brokerId da URL (landing do corretor), usar ele
@@ -121,29 +126,25 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
         leadData.broker_id = selectedBrokerId;
       }
 
-      // Salvar no banco de dados
-      const { data: insertedLead, error } = await supabase
+      // Salvar no banco de dados (sem .select() para evitar erro de RLS)
+      const { error } = await supabase
         .from("leads")
-        .insert(leadData)
-        .select("id")
-        .single();
+        .insert(leadData);
 
       if (error) throw error;
 
-      // Track lead attribution
-      if (insertedLead?.id) {
-        await trackLeadAttribution(insertedLead.id);
-        
-        // GA4 conversion event
-        if (typeof window.gtag === 'function') {
-          window.gtag('event', 'generate_lead', {
-            event_category: 'Lead',
-            event_label: brokerSlug || 'enove',
-            value: 1,
-            lead_source: brokerSlug || 'enove',
-            broker_id: brokerId || selectedBrokerId || 'none'
-          });
-        }
+      // Track lead attribution com o ID pré-gerado
+      await trackLeadAttribution(leadId);
+      
+      // GA4 conversion event
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'generate_lead', {
+          event_category: 'Lead',
+          event_label: brokerSlug || 'enove',
+          value: 1,
+          lead_source: brokerSlug || 'enove',
+          broker_id: brokerId || selectedBrokerId || 'none'
+        });
       }
 
       // Enviar para o webhook
@@ -165,7 +166,7 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       // Notificar via WhatsApp (UAZAPI)
       supabase.functions.invoke("notify-new-lead", {
         body: {
-          leadId: insertedLead?.id || null,
+          leadId: leadId,
           leadName: formData.name.trim(),
           leadWhatsapp: formData.whatsapp.trim(),
           brokerId: brokerId || selectedBrokerId || null,
