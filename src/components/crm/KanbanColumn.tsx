@@ -10,9 +10,10 @@ interface KanbanColumnProps {
   onCardClick: (lead: CRMLead) => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
+  onDelete?: (leadId: string) => Promise<void>;
 }
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
 
@@ -51,6 +52,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
               onClick={() => onCardClick(lead)}
               onUpdateOrigin={onUpdateOrigin}
               onInactivate={onInactivate}
+              onDelete={onDelete}
             />
           ))}
         </SortableContext>

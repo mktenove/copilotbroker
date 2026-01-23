@@ -40,7 +40,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
 
-  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, getLeadsByStatus } = useKanbanLeads({
+  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus } = useKanbanLeads({
     brokerId,
     isAdmin
   });
@@ -128,6 +128,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
     }
   };
 
+  const handleDeleteLead = async (leadId: string) => {
+    await deleteLead(leadId);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -188,6 +192,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
                 onCardClick={handleCardClick}
                 onUpdateOrigin={handleUpdateOrigin}
                 onInactivate={handleInactivateLead}
+                onDelete={isAdmin ? handleDeleteLead : undefined}
               />
             ))}
           </div>

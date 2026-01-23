@@ -1,20 +1,32 @@
 import { useMemo, useState } from "react";
-import { User, Calendar, Clock, MessageCircle, MapPin, Plus, UserX } from "lucide-react";
+import { User, Calendar, Clock, MessageCircle, MapPin, Plus, UserX, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { OriginQuickPicker } from "./OriginQuickPicker";
 import { InactivationPicker } from "./InactivationPicker";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface KanbanCardProps {
   lead: CRMLead;
   onClick: () => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
+  onDelete?: (leadId: string) => Promise<void>;
 }
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete }: KanbanCardProps) {
   const [isOriginPickerOpen, setIsOriginPickerOpen] = useState(false);
   const [isInactivationPickerOpen, setIsInactivationPickerOpen] = useState(false);
   
@@ -124,6 +136,41 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate }: Kanb
             >
               <UserX className="w-4 h-4" />
             </button>
+            {/* Delete Button */}
+            {onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "p-1.5 rounded-md opacity-0 group-hover:opacity-100",
+                      "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                      "transition-all duration-150"
+                    )}
+                    title="Excluir lead"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(lead.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
           </div>
         </div>
 
