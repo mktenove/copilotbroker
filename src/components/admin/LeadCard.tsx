@@ -1,4 +1,5 @@
-import { Phone, Calendar, MapPin, UserCheck } from "lucide-react";
+import { Phone, Calendar, MapPin, UserCheck, User } from "lucide-react";
+import { LEAD_ORIGINS } from "@/types/crm";
 
 interface Lead {
   id: string;
@@ -6,6 +7,7 @@ interface Lead {
   whatsapp: string;
   created_at: string;
   source: string;
+  lead_origin?: string | null;
   broker_id: string | null;
   broker?: {
     name: string;
@@ -40,12 +42,26 @@ const LeadCard = ({ lead, showSource = true }: LeadCardProps) => {
     );
   };
 
+  const getOriginLabel = () => {
+    if (!lead.lead_origin) return null;
+    const origin = LEAD_ORIGINS.find(o => o.key === lead.lead_origin);
+    return (
+      <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full flex items-center gap-1 w-fit">
+        <MapPin className="w-3 h-3" />
+        {origin?.label || lead.lead_origin}
+      </span>
+    );
+  };
+
   return (
     <div className="card-luxury p-4 space-y-3">
       {/* Header com nome */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-semibold text-foreground text-lg leading-tight">{lead.name}</h3>
-        {showSource && getSourceLabel()}
+        <div className="flex flex-wrap gap-1">
+          {showSource && getSourceLabel()}
+          {getOriginLabel()}
+        </div>
       </div>
 
       {/* Informações */}

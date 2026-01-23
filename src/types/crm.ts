@@ -17,6 +17,7 @@ export interface CRMLead {
   cpf: string | null;
   notes: string | null;
   source: string;
+  lead_origin: string | null;
   status: LeadStatus;
   created_at: string;
   updated_at: string;
@@ -30,6 +31,17 @@ export interface CRMLead {
     slug: string;
   } | null;
 }
+
+export const LEAD_ORIGINS = [
+  { key: 'meta', label: 'Meta' },
+  { key: 'meta_ads', label: 'Meta ADS' },
+  { key: 'google', label: 'Google' },
+  { key: 'google_ads', label: 'Google Ads' },
+  { key: 'oferta_ativa', label: 'Oferta Ativa' },
+  { key: 'plantao_enove', label: 'Plantão Enove' },
+  { key: 'indicacao', label: 'Indicação' },
+  { key: 'outro', label: 'Outro (personalizado)' },
+] as const;
 
 export interface LeadInteraction {
   id: string;

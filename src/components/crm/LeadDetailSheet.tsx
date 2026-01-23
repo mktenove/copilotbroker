@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X } from "lucide-react";
-import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS } from "@/types/crm";
+import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin } from "lucide-react";
+import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS, LEAD_ORIGINS } from "@/types/crm";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { useLeadDocuments } from "@/hooks/use-lead-documents";
 import { supabase } from "@/integrations/supabase/client";
@@ -38,7 +38,7 @@ interface LeadDetailSheetProps {
 
 export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChange }: LeadDetailSheetProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editedLead, setEditedLead] = useState<Partial<CRMLead>>({});
+  const [editedLead, setEditedLead] = useState<Partial<CRMLead> & { custom_origin?: string }>({});
   const [newNote, setNewNote] = useState("");
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string>("whatsapp");
@@ -68,12 +68,16 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
   useEffect(() => {
     if (lead) {
+      // Verifica se lead_origin é um valor personalizado
+      const isCustomOrigin = lead.lead_origin && !LEAD_ORIGINS.some(o => o.key === lead.lead_origin);
       setEditedLead({
         name: lead.name,
         whatsapp: lead.whatsapp,
         email: lead.email,
         cpf: lead.cpf,
         source: lead.source,
+        lead_origin: isCustomOrigin ? 'outro' : (lead.lead_origin || ''),
+        custom_origin: isCustomOrigin ? lead.lead_origin || '' : '',
         notes: lead.notes
       });
     }
@@ -85,7 +89,13 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
   const cleanPhone = lead.whatsapp.replace(/\D/g, "");
 
   const handleSaveEdit = async () => {
-    await onUpdate(lead.id, editedLead);
+    // Se a origem for "outro", usa o valor personalizado
+    const originToSave = editedLead.lead_origin === 'outro' 
+      ? editedLead.custom_origin 
+      : editedLead.lead_origin;
+    
+    const { custom_origin, ...dataToSave } = editedLead;
+    await onUpdate(lead.id, { ...dataToSave, lead_origin: originToSave || null });
     setIsEditing(false);
     toast.success("Lead atualizado com sucesso!");
   };
@@ -231,12 +241,39 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                   />
                 </div>
                 <div>
-                  <Label htmlFor="source">Origem</Label>
-                  <Input
-                    id="source"
-                    value={editedLead.source || ""}
-                    onChange={(e) => setEditedLead(prev => ({ ...prev, source: e.target.value }))}
-                  />
+                  <Label htmlFor="lead_origin">Origem do Lead</Label>
+                  <Select 
+                    value={editedLead.lead_origin || ""} 
+                    onValueChange={(val) => {
+                      setEditedLead(prev => ({ 
+                        ...prev, 
+                        lead_origin: val,
+                        custom_origin: val === 'outro' ? prev.custom_origin || '' : ''
+                      }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a origem..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {LEAD_ORIGINS.map(origin => (
+                        <SelectItem key={origin.key} value={origin.key}>
+                          {origin.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {editedLead.lead_origin === 'outro' && (
+                    <Input
+                      className="mt-2"
+                      placeholder="Digite a origem personalizada..."
+                      value={editedLead.custom_origin || ""}
+                      onChange={(e) => setEditedLead(prev => ({ 
+                        ...prev, 
+                        custom_origin: e.target.value 
+                      }))}
+                    />
+                  )}
                 </div>
                 <Button onClick={handleSaveEdit} className="w-full">
                   Salvar Alterações
@@ -270,9 +307,15 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                   Entrada: {new Date(lead.created_at).toLocaleDateString("pt-BR")}
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <FileText className="w-4 h-4" />
-                  Origem: {lead.source}
+                  <User className="w-4 h-4" />
+                  Cadastrado por: {lead.source === "enove" ? "Enove" : lead.source}
                 </div>
+                {lead.lead_origin && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="w-4 h-4" />
+                    Origem: {LEAD_ORIGINS.find(o => o.key === lead.lead_origin)?.label || lead.lead_origin}
+                  </div>
+                )}
               </div>
             )}
           </div>
