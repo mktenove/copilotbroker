@@ -6,6 +6,7 @@ import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import logoEnove from "@/assets/logo-enove.png";
 
 const BrokerSignup = () => {
@@ -28,13 +29,7 @@ const BrokerSignup = () => {
     slug: "",
   });
 
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
+  // formatWhatsApp removed - now using WhatsAppInput component
 
   const generateSlug = (name: string) => {
     return name
@@ -110,8 +105,8 @@ const BrokerSignup = () => {
       return;
     }
     
-    if (profileData.whatsapp.replace(/\D/g, "").length < 10) {
-      toast.error("Insira um número de WhatsApp válido.");
+    if (!isValidBrazilianWhatsApp(profileData.whatsapp)) {
+      toast.error("Insira um número de WhatsApp completo com código do Brasil (+55).");
       return;
     }
     
@@ -269,14 +264,11 @@ const BrokerSignup = () => {
 
             <div className="space-y-2">
               <Label htmlFor="whatsapp">WhatsApp</Label>
-              <Input
+              <WhatsAppInput
                 id="whatsapp"
-                type="tel"
-                placeholder="(00) 00000-0000"
                 value={profileData.whatsapp}
-                onChange={(e) => setProfileData({ ...profileData, whatsapp: formatWhatsApp(e.target.value) })}
+                onChange={(value) => setProfileData({ ...profileData, whatsapp: value })}
                 disabled={isLoading}
-                maxLength={16}
                 required
               />
             </div>
