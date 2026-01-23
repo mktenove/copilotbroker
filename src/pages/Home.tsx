@@ -80,6 +80,7 @@ const Home = () => {
         // Notificar via WhatsApp (UAZAPI)
         supabase.functions.invoke("notify-new-lead", {
           body: {
+            leadId: insertedLead.id,
             leadName: formData.name.trim(),
             leadWhatsapp: formData.whatsapp,
             brokerId: null,

@@ -1,5 +1,5 @@
 import { LeadInteraction, STATUS_CONFIG, getInactivationReasonLabel } from "@/types/crm";
-import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin, UserX } from "lucide-react";
+import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin, UserX, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeadTimelineProps {
@@ -15,7 +15,8 @@ const INTERACTION_ICONS: Record<string, React.ElementType> = {
   contact_attempt: Clock,
   registration: CheckCircle,
   origin_change: MapPin,
-  inactivation: UserX
+  inactivation: UserX,
+  notification: Bell
 };
 
 const INTERACTION_LABELS: Record<string, string> = {
@@ -27,7 +28,8 @@ const INTERACTION_LABELS: Record<string, string> = {
   contact_attempt: "Tentativa de Contato",
   registration: "Cadastro no Ábaco",
   origin_change: "Origem Alterada",
-  inactivation: "Lead Inativado"
+  inactivation: "Lead Inativado",
+  notification: "Notificação Enviada"
 };
 
 export function LeadTimeline({ interactions }: LeadTimelineProps) {
@@ -61,12 +63,16 @@ export function LeadTimeline({ interactions }: LeadTimelineProps) {
                 "bg-background border-2",
                 interaction.interaction_type === "inactivation" 
                   ? "border-destructive" 
+                  : interaction.interaction_type === "notification"
+                  ? "border-emerald-500"
                   : "border-primary"
               )}>
                 <Icon className={cn(
                   "w-3 h-3",
                   interaction.interaction_type === "inactivation" 
                     ? "text-destructive" 
+                    : interaction.interaction_type === "notification"
+                    ? "text-emerald-500"
                     : "text-primary"
                 )} />
               </div>
@@ -76,6 +82,8 @@ export function LeadTimeline({ interactions }: LeadTimelineProps) {
                 "rounded-lg p-3",
                 interaction.interaction_type === "inactivation"
                   ? "bg-destructive/10 border border-destructive/20"
+                  : interaction.interaction_type === "notification"
+                  ? "bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800"
                   : "bg-muted/50"
               )}>
                 <div className="flex items-center justify-between mb-1">

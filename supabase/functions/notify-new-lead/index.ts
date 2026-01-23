@@ -10,24 +10,25 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    const { leadName, leadWhatsapp, brokerId, source } = await req.json();
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
-    console.log("Notificação de novo lead:", { leadName, leadWhatsapp, brokerId, source });
+  try {
+    const { leadId, leadName, leadWhatsapp, brokerId, source } = await req.json();
+
+    console.log("Notificação de novo lead:", { leadId, leadName, leadWhatsapp, brokerId, source });
 
     // Buscar dados do corretor se houver broker_id
     let recipientPhone = Deno.env.get("ENOVE_WHATSAPP");
     let recipientName = "Enove";
+    let recipientBrokerId: string | null = null;
 
     if (brokerId) {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
       const { data: broker, error } = await supabase
         .from("brokers")
-        .select("name, whatsapp")
+        .select("id, name, whatsapp")
         .eq("id", brokerId)
         .single();
 
@@ -36,9 +37,9 @@ Deno.serve(async (req) => {
       }
 
       if (broker?.whatsapp) {
-        // Limpar número do corretor (remover caracteres não numéricos)
         recipientPhone = broker.whatsapp.replace(/\D/g, "");
         recipientName = broker.name;
+        recipientBrokerId = broker.id;
         console.log(`Notificando corretor: ${recipientName} (${recipientPhone})`);
       } else {
         console.log("Corretor sem WhatsApp cadastrado, enviando para Enove");
@@ -47,6 +48,18 @@ Deno.serve(async (req) => {
 
     if (!recipientPhone) {
       console.error("Nenhum número de telefone disponível para enviar notificação");
+      
+      // Log failure if we have leadId
+      if (leadId) {
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          broker_id: recipientBrokerId,
+          interaction_type: "notification",
+          channel: "whatsapp",
+          notes: `❌ Falha: Nenhum número de telefone disponível para enviar notificação`,
+        });
+      }
+
       return new Response(
         JSON.stringify({ success: false, error: "No recipient phone available" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
@@ -66,6 +79,17 @@ Deno.serve(async (req) => {
 
     if (!uazapiUrl || !uazapiToken) {
       console.error("UAZAPI não configurado corretamente");
+      
+      if (leadId) {
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          broker_id: recipientBrokerId,
+          interaction_type: "notification",
+          channel: "whatsapp",
+          notes: `❌ Falha: UAZAPI não configurado corretamente`,
+        });
+      }
+
       return new Response(
         JSON.stringify({ success: false, error: "UAZAPI not configured" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
@@ -88,6 +112,21 @@ Deno.serve(async (req) => {
 
     const result = await response.json();
     console.log("Resposta UAZAPI:", result);
+
+    // Log the notification attempt
+    if (leadId) {
+      const logNotes = response.ok
+        ? `✅ Notificação enviada para ${recipientName} (${recipientPhone})`
+        : `❌ Falha ao enviar para ${recipientName}: ${JSON.stringify(result)}`;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        broker_id: recipientBrokerId,
+        interaction_type: "notification",
+        channel: "whatsapp",
+        notes: logNotes,
+      });
+    }
 
     if (!response.ok) {
       console.error("Erro UAZAPI:", result);
