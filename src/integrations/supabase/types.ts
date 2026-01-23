@@ -333,6 +333,7 @@ export type Database = {
         | "registration"
         | "origin_change"
         | "inactivation"
+        | "notification"
       lead_status:
         | "new"
         | "info_sent"
@@ -478,6 +479,7 @@ export const Constants = {
         "registration",
         "origin_change",
         "inactivation",
+        "notification",
       ],
       lead_status: [
         "new",

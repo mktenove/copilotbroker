@@ -165,6 +165,7 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       // Notificar via WhatsApp (UAZAPI)
       supabase.functions.invoke("notify-new-lead", {
         body: {
+          leadId: insertedLead?.id || null,
           leadName: formData.name.trim(),
           leadWhatsapp: formData.whatsapp.trim(),
           brokerId: brokerId || selectedBrokerId || null,

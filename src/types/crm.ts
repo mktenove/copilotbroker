@@ -9,7 +9,8 @@ export type InteractionType =
   | 'contact_attempt'
   | 'registration'
   | 'origin_change'
-  | 'inactivation';
+  | 'inactivation'
+  | 'notification';
 
 export interface CRMLead {
   id: string;
