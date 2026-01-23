@@ -32,16 +32,81 @@ export interface CRMLead {
   } | null;
 }
 
+// Origens pré-definidas para seleção manual (quando não há UTM)
 export const LEAD_ORIGINS = [
-  { key: 'meta', label: 'Meta' },
+  // Mídias pagas
   { key: 'meta_ads', label: 'Meta ADS' },
-  { key: 'google', label: 'Google' },
   { key: 'google_ads', label: 'Google Ads' },
+  { key: 'tiktok_ads', label: 'TikTok Ads' },
+  { key: 'linkedin_ads', label: 'LinkedIn Ads' },
+  // Orgânico
+  { key: 'meta_organico', label: 'Meta Orgânico' },
+  { key: 'google_organico', label: 'Google Orgânico' },
+  // Outros canais
+  { key: 'indicacao', label: 'Indicação' },
   { key: 'oferta_ativa', label: 'Oferta Ativa' },
   { key: 'plantao_enove', label: 'Plantão Enove' },
-  { key: 'indicacao', label: 'Indicação' },
+  { key: 'whatsapp_direto', label: 'WhatsApp Direto' },
+  { key: 'outdoor_ooh', label: 'Outdoor/Mídia OOH' },
+  { key: 'evento', label: 'Evento' },
+  { key: 'radio_tv', label: 'Rádio/TV' },
+  // Personalizado
   { key: 'outro', label: 'Outro (personalizado)' },
 ] as const;
+
+// Tipo de origem para badges coloridos
+export type OriginType = 'paid' | 'organic' | 'referral' | 'manual' | 'unknown';
+
+// Detectar tipo de origem para estilização
+export const getOriginType = (origin: string | null): OriginType => {
+  if (!origin) return 'unknown';
+  
+  const lower = origin.toLowerCase();
+  
+  // Tráfego pago
+  if (lower.includes('cpc') || lower.includes('paid') || lower.includes('ads') || 
+      lower.includes('cpm') || lower.includes('sponsored') || lower.includes('ppc')) {
+    return 'paid';
+  }
+  
+  // Orgânico
+  if (lower.includes('organic') || lower.includes('orgânico') || lower.includes('organico')) {
+    return 'organic';
+  }
+  
+  // Referral
+  if (lower.startsWith('referral:')) {
+    return 'referral';
+  }
+  
+  // Origens manuais pré-definidas
+  if (LEAD_ORIGINS.some(o => o.key === origin)) {
+    return 'manual';
+  }
+  
+  return 'unknown';
+};
+
+// Cores por tipo de origem
+export const ORIGIN_TYPE_COLORS: Record<OriginType, string> = {
+  paid: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
+  organic: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
+  referral: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
+  manual: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  unknown: 'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800',
+};
+
+// Exibir label da origem
+export const getOriginDisplayLabel = (origin: string | null): string => {
+  if (!origin) return 'Não identificada';
+  
+  // Verificar se é uma das origens pré-definidas
+  const predefined = LEAD_ORIGINS.find(o => o.key === origin);
+  if (predefined) return predefined.label;
+  
+  // Caso contrário, é uma origem dinâmica do analytics - exibir como está
+  return origin;
+};
 
 export interface LeadInteraction {
   id: string;

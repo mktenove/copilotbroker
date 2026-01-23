@@ -1,6 +1,5 @@
 import { Download } from "lucide-react";
-
-import { LEAD_ORIGINS } from "@/types/crm";
+import { getOriginDisplayLabel } from "@/types/crm";
 
 interface Lead {
   id: string;
@@ -35,18 +34,12 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
   const exportToCSV = () => {
     if (leads.length === 0) return;
 
-    const getOriginLabel = (origin: string | null | undefined) => {
-      if (!origin) return "";
-      const found = LEAD_ORIGINS.find(o => o.key === origin);
-      return found?.label || origin;
-    };
-
     const headers = ["Nome", "WhatsApp", "Cadastrado por", "Origem", "Corretor", "Data de Cadastro"];
     const rows = leads.map((lead) => [
       lead.name,
       lead.whatsapp,
       lead.source === "enove" ? "Enove" : lead.source,
-      getOriginLabel(lead.lead_origin),
+      getOriginDisplayLabel(lead.lead_origin || null),
       lead.broker?.name || "",
       formatDate(lead.created_at),
     ]);

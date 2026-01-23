@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Phone, User, Calendar, Clock, MessageCircle, MapPin } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CRMLead, STATUS_CONFIG, LEAD_ORIGINS } from "@/types/crm";
+import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { cn } from "@/lib/utils";
 
 interface KanbanCardProps {
@@ -93,13 +93,14 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
           {lead.source === "enove" ? "Enove" : lead.source}
         </span>
         
-        {/* Origem badge (novo campo) */}
+        {/* Origem badge - dinâmico com cores por tipo */}
         {lead.lead_origin && (
-          <span className="px-2 py-0.5 text-xs font-medium rounded-full
-            bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 
-            border border-blue-200 dark:border-blue-800 flex items-center gap-1">
-            <MapPin className="w-3 h-3" />
-            {LEAD_ORIGINS.find(o => o.key === lead.lead_origin)?.label || lead.lead_origin}
+          <span className={cn(
+            "px-2 py-0.5 text-xs font-medium rounded-full border flex items-center gap-1 max-w-[150px]",
+            ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+          )}>
+            <MapPin className="w-3 h-3 shrink-0" />
+            <span className="truncate">{getOriginDisplayLabel(lead.lead_origin)}</span>
           </span>
         )}
         
