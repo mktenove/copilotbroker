@@ -110,7 +110,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
   };
 
   const handleUpdateOrigin = async (leadId: string, origin: string) => {
-    await updateLead(leadId, { lead_origin: origin });
+    const lead = leads.find(l => l.id === leadId);
+    await updateLead(leadId, { lead_origin: origin }, { 
+      logOriginChange: true, 
+      oldOrigin: lead?.lead_origin 
+    });
   };
 
   return (

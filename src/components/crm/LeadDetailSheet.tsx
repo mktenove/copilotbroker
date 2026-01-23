@@ -95,6 +95,17 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
       : editedLead.lead_origin;
     
     const { custom_origin, ...dataToSave } = editedLead;
+    
+    // Verifica se a origem mudou para registrar no histórico
+    const originChanged = originToSave !== lead.lead_origin;
+    
+    if (originChanged) {
+      await addInteraction("origin_change", {
+        notes: `Origem alterada de "${lead.lead_origin || 'Não definida'}" para "${originToSave || 'Não definida'}"`,
+        createdBy: userId || undefined
+      });
+    }
+    
     await onUpdate(lead.id, { ...dataToSave, lead_origin: originToSave || null });
     setIsEditing(false);
     toast.success("Lead atualizado com sucesso!");

@@ -7,7 +7,8 @@ export type InteractionType =
   | 'document_received'
   | 'info_sent'
   | 'contact_attempt'
-  | 'registration';
+  | 'registration'
+  | 'origin_change';
 
 export interface CRMLead {
   id: string;

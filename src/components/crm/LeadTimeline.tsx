@@ -1,5 +1,5 @@
 import { LeadInteraction, STATUS_CONFIG } from "@/types/crm";
-import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight } from "lucide-react";
+import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeadTimelineProps {
@@ -13,7 +13,8 @@ const INTERACTION_ICONS: Record<string, React.ElementType> = {
   document_received: CheckCircle,
   info_sent: Send,
   contact_attempt: Clock,
-  registration: CheckCircle
+  registration: CheckCircle,
+  origin_change: MapPin
 };
 
 const INTERACTION_LABELS: Record<string, string> = {
@@ -23,7 +24,8 @@ const INTERACTION_LABELS: Record<string, string> = {
   document_received: "Documento Recebido",
   info_sent: "Informações Enviadas",
   contact_attempt: "Tentativa de Contato",
-  registration: "Cadastro no Ábaco"
+  registration: "Cadastro no Ábaco",
+  origin_change: "Origem Alterada"
 };
 
 export function LeadTimeline({ interactions }: LeadTimelineProps) {
