@@ -1,7 +1,18 @@
-import { Phone, Users, RefreshCw, MapPin } from "lucide-react";
+import { Phone, Users, RefreshCw, MapPin, Trash2 } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Lead {
   id: string;
@@ -24,9 +35,10 @@ interface LeadsTableProps {
   searchTerm: string;
   showSource?: boolean;
   showStatus?: boolean;
+  onDelete?: (leadId: string) => Promise<void>;
 }
 
-const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true }: LeadsTableProps) => {
+const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onDelete }: LeadsTableProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -101,7 +113,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
       {/* Mobile: Cards */}
       <div className="md:hidden space-y-4 p-4">
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} showSource={showSource} showStatus={showStatus} />
+          <LeadCard key={lead.id} lead={lead} showSource={showSource} showStatus={showStatus} onDelete={onDelete} />
         ))}
       </div>
 
@@ -157,15 +169,45 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                   <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
                 </td>
                 <td className="px-6 py-4">
-                  <a
-                    href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
-                  >
-                    <Phone className="w-4 h-4" />
-                    WhatsApp
-                  </a>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                      WhatsApp
+                    </a>
+                    {onDelete && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            className="inline-flex items-center gap-1 px-3 py-2 bg-destructive/10 text-destructive text-sm rounded-lg hover:bg-destructive/20 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => onDelete(lead.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

@@ -1,6 +1,17 @@
-import { Phone, Calendar, MapPin, UserCheck } from "lucide-react";
+import { Phone, Calendar, MapPin, UserCheck, Trash2 } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Lead {
   id: string;
@@ -21,9 +32,10 @@ interface LeadCardProps {
   lead: Lead;
   showSource?: boolean;
   showStatus?: boolean;
+  onDelete?: (leadId: string) => Promise<void>;
 }
 
-const LeadCard = ({ lead, showSource = true, showStatus = true }: LeadCardProps) => {
+const LeadCard = ({ lead, showSource = true, showStatus = true, onDelete }: LeadCardProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -112,16 +124,46 @@ const LeadCard = ({ lead, showSource = true, showStatus = true }: LeadCardProps)
         </div>
       </div>
 
-      {/* Botão WhatsApp */}
-      <a
-        href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="flex items-center justify-center gap-2 w-full px-4 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
-      >
-        <Phone className="w-4 h-4" />
-        Chamar no WhatsApp
-      </a>
+      {/* Botões de ação */}
+      <div className="flex gap-2">
+        <a
+          href={`https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+        >
+          <Phone className="w-4 h-4" />
+          WhatsApp
+        </a>
+        {onDelete && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <button
+                className="flex items-center justify-center px-4 py-3 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete(lead.id)}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  Excluir
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
+      </div>
     </div>
   );
 };
