@@ -1,13 +1,17 @@
 import { Download } from "lucide-react";
-import { getOriginDisplayLabel } from "@/types/crm";
+import { getOriginDisplayLabel, STATUS_CONFIG, LeadStatus } from "@/types/crm";
 
 interface Lead {
   id: string;
   name: string;
   whatsapp: string;
+  email?: string | null;
   created_at: string;
   source: string;
+  status?: LeadStatus;
   lead_origin?: string | null;
+  last_interaction_at?: string | null;
+  registered_at?: string | null;
   broker_id: string | null;
   broker?: {
     name: string;
@@ -21,7 +25,8 @@ interface ExportButtonProps {
 }
 
 const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return "";
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
       month: "2-digit",
@@ -31,17 +36,38 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
     });
   };
 
+  const getStatusLabel = (status?: LeadStatus) => {
+    if (!status) return "";
+    return STATUS_CONFIG[status]?.label || status;
+  };
+
   const exportToCSV = () => {
     if (leads.length === 0) return;
 
-    const headers = ["Nome", "WhatsApp", "Cadastrado por", "Origem", "Corretor", "Data de Cadastro"];
+    const headers = [
+      "Nome",
+      "WhatsApp",
+      "Email",
+      "Status",
+      "Cadastrado por",
+      "Origem",
+      "Corretor",
+      "Data de Cadastro",
+      "Última Interação",
+      "Data de Registro"
+    ];
+    
     const rows = leads.map((lead) => [
       lead.name,
       lead.whatsapp,
+      lead.email || "",
+      getStatusLabel(lead.status),
       lead.source === "enove" ? "Enove" : lead.source,
       getOriginDisplayLabel(lead.lead_origin || null),
       lead.broker?.name || "",
       formatDate(lead.created_at),
+      formatDate(lead.last_interaction_at),
+      formatDate(lead.registered_at),
     ]);
 
     const csvContent = [
@@ -67,7 +93,7 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
       className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Download className="w-4 h-4" />
-      Exportar CSV
+      Exportar CSV ({leads.length})
     </button>
   );
 };

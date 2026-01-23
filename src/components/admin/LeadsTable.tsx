@@ -1,5 +1,5 @@
 import { Phone, Users, RefreshCw, MapPin } from "lucide-react";
-import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
+import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
 
@@ -9,6 +9,7 @@ interface Lead {
   whatsapp: string;
   created_at: string;
   source: string;
+  status?: LeadStatus;
   lead_origin?: string | null;
   broker_id: string | null;
   broker?: {
@@ -22,9 +23,10 @@ interface LeadsTableProps {
   isLoading: boolean;
   searchTerm: string;
   showSource?: boolean;
+  showStatus?: boolean;
 }
 
-const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTableProps) => {
+const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true }: LeadsTableProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -60,6 +62,20 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
     );
   };
 
+  const getStatusLabel = (lead: Lead) => {
+    if (!lead.status) return <span className="text-muted-foreground">—</span>;
+    const config = STATUS_CONFIG[lead.status];
+    return (
+      <span className={cn(
+        "px-2 py-1 text-xs rounded-full",
+        config.bgColor,
+        config.color
+      )}>
+        {config.label}
+      </span>
+    );
+  };
+
   if (isLoading) {
     return (
       <div className="p-12 text-center">
@@ -85,7 +101,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
       {/* Mobile: Cards */}
       <div className="md:hidden space-y-4 p-4">
         {leads.map((lead) => (
-          <LeadCard key={lead.id} lead={lead} showSource={showSource} />
+          <LeadCard key={lead.id} lead={lead} showSource={showSource} showStatus={showStatus} />
         ))}
       </div>
 
@@ -96,6 +112,9 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
             <tr>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
               <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">WhatsApp</th>
+              {showStatus && (
+                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
+              )}
               {showSource && (
                 <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Cadastrado por</th>
               )}
@@ -114,6 +133,11 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true }: LeadsTa
                 <td className="px-6 py-4">
                   <span className="text-foreground">{lead.whatsapp}</span>
                 </td>
+                {showStatus && (
+                  <td className="px-6 py-4">
+                    {getStatusLabel(lead)}
+                  </td>
+                )}
                 {showSource && (
                   <td className="px-6 py-4">
                     {getSourceLabel(lead)}
