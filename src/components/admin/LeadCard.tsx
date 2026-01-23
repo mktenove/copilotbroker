@@ -1,5 +1,5 @@
 import { Phone, Calendar, MapPin, UserCheck } from "lucide-react";
-import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
+import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 
 interface Lead {
@@ -8,6 +8,7 @@ interface Lead {
   whatsapp: string;
   created_at: string;
   source: string;
+  status?: LeadStatus;
   lead_origin?: string | null;
   broker_id: string | null;
   broker?: {
@@ -19,9 +20,10 @@ interface Lead {
 interface LeadCardProps {
   lead: Lead;
   showSource?: boolean;
+  showStatus?: boolean;
 }
 
-const LeadCard = ({ lead, showSource = true }: LeadCardProps) => {
+const LeadCard = ({ lead, showSource = true, showStatus = true }: LeadCardProps) => {
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -57,12 +59,27 @@ const LeadCard = ({ lead, showSource = true }: LeadCardProps) => {
     );
   };
 
+  const getStatusLabel = () => {
+    if (!lead.status) return null;
+    const config = STATUS_CONFIG[lead.status];
+    return (
+      <span className={cn(
+        "px-2 py-1 text-xs rounded-full",
+        config.bgColor,
+        config.color
+      )}>
+        {config.label}
+      </span>
+    );
+  };
+
   return (
     <div className="card-luxury p-4 space-y-3">
       {/* Header com nome */}
       <div className="flex items-start justify-between gap-3">
         <h3 className="font-semibold text-foreground text-lg leading-tight">{lead.name}</h3>
         <div className="flex flex-wrap gap-1">
+          {showStatus && getStatusLabel()}
           {showSource && getSourceLabel()}
           {getOriginLabel()}
         </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -7,17 +7,24 @@ import logoEnove from "@/assets/logo-enove.png";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
+import LeadsAdvancedFilters, { LeadFilters } from "@/components/admin/LeadsAdvancedFilters";
 import BrokerManagement from "@/components/admin/BrokerManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { KanbanBoard } from "@/components/crm";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { LeadStatus } from "@/types/crm";
 
 interface Lead {
   id: string;
   name: string;
   whatsapp: string;
+  email?: string | null;
   created_at: string;
   source: string;
+  status: LeadStatus;
+  lead_origin?: string | null;
+  last_interaction_at?: string | null;
+  registered_at?: string | null;
   broker_id: string | null;
   broker?: {
     name: string;
@@ -31,12 +38,21 @@ interface Broker {
   slug: string;
 }
 
+const initialFilters: LeadFilters = {
+  statusFilter: [],
+  brokerFilter: "all",
+  originFilter: [],
+  dateFrom: undefined,
+  dateTo: undefined,
+  includeInactive: false,
+};
+
 const Admin = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "analytics">("crm");
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
@@ -115,20 +131,54 @@ const Admin = () => {
     navigate("/auth");
   };
 
-  const filteredLeads = leads.filter((lead) => {
-    const matchesSearch =
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.whatsapp.includes(searchTerm);
+  const filteredLeads = useMemo(() => {
+    return leads.filter((lead) => {
+      // Search filter
+      const matchesSearch =
+        searchTerm === "" ||
+        lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.whatsapp.includes(searchTerm);
 
-    let matchesSource = true;
-    if (sourceFilter === "enove") {
-      matchesSource = lead.source === "enove" || !lead.broker_id;
-    } else if (sourceFilter !== "all") {
-      matchesSource = lead.broker_id === sourceFilter;
-    }
+      // Status filter
+      const matchesStatus =
+        filters.statusFilter.length === 0 ||
+        filters.statusFilter.includes(lead.status);
 
-    return matchesSearch && matchesSource;
-  });
+      // Broker filter
+      let matchesBroker = true;
+      if (filters.brokerFilter === "enove") {
+        matchesBroker = lead.source === "enove" || !lead.broker_id;
+      } else if (filters.brokerFilter !== "all") {
+        matchesBroker = lead.broker_id === filters.brokerFilter;
+      }
+
+      // Origin filter
+      const matchesOrigin =
+        filters.originFilter.length === 0 ||
+        filters.originFilter.includes(lead.lead_origin || "unknown");
+
+      // Date filters
+      const leadDate = new Date(lead.created_at);
+      const matchesDateFrom = !filters.dateFrom || leadDate >= filters.dateFrom;
+      const matchesDateTo = !filters.dateTo || leadDate <= new Date(filters.dateTo.getTime() + 86400000); // Include whole day
+
+      // Include inactive filter
+      const matchesActive = filters.includeInactive || lead.status !== "inactive";
+
+      return matchesSearch && matchesStatus && matchesBroker && matchesOrigin && matchesDateFrom && matchesDateTo && matchesActive;
+    });
+  }, [leads, searchTerm, filters]);
+
+  const activeFiltersCount = useMemo(() => {
+    let count = 0;
+    if (filters.statusFilter.length > 0) count += filters.statusFilter.length;
+    if (filters.brokerFilter !== "all") count += 1;
+    if (filters.originFilter.length > 0) count += filters.originFilter.length;
+    if (filters.dateFrom) count += 1;
+    if (filters.dateTo) count += 1;
+    if (filters.includeInactive) count += 1;
+    return count;
+  }, [filters]);
 
   const todayLeads = leads.filter(
     (l) => new Date(l.created_at).toDateString() === new Date().toDateString()
@@ -282,7 +332,7 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* Search, Filter and Export */}
+            {/* Search and Filters */}
             <div className="flex flex-col gap-3 mb-6">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
@@ -294,21 +344,21 @@ const Admin = () => {
                   className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
                 />
               </div>
+              
+              {/* Advanced Filters */}
+              <LeadsAdvancedFilters
+                filters={filters}
+                onFiltersChange={setFilters}
+                brokers={brokers}
+                activeFiltersCount={activeFiltersCount}
+              />
+
+              {/* Actions */}
               <div className="flex flex-wrap gap-2 sm:gap-3">
-                <select
-                  value={sourceFilter}
-                  onChange={(e) => setSourceFilter(e.target.value)}
-                  className="flex-1 min-w-[140px] px-3 py-3 bg-background border border-border rounded-lg text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
-                >
-                  <option value="all">Todos</option>
-                  <option value="enove">Enove</option>
-                  {brokers.map((broker) => (
-                    <option key={broker.id} value={broker.id}>
-                      {broker.name}
-                    </option>
-                  ))}
-                </select>
-                <ExportButton leads={filteredLeads} filename={`leads-${sourceFilter}`} />
+                <ExportButton 
+                  leads={filteredLeads} 
+                  filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
+                />
                 <button
                   onClick={fetchLeads}
                   disabled={isLoading}
@@ -327,6 +377,7 @@ const Admin = () => {
                 isLoading={isLoading}
                 searchTerm={searchTerm}
                 showSource={true}
+                showStatus={true}
               />
             </div>
           </>
