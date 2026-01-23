@@ -10,9 +10,9 @@ import ExportButton from "@/components/admin/ExportButton";
 import LeadsAdvancedFilters, { LeadFilters } from "@/components/admin/LeadsAdvancedFilters";
 import BrokerManagement from "@/components/admin/BrokerManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
-import { KanbanBoard } from "@/components/crm";
+import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
-import { LeadStatus } from "@/types/crm";
+import { LeadStatus, CRMLead } from "@/types/crm";
 
 interface Lead {
   id: string;
@@ -54,6 +54,7 @@ const Admin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "analytics">("crm");
+  const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
 
@@ -142,6 +143,145 @@ const Admin = () => {
     } catch (error) {
       console.error("Erro ao excluir lead:", error);
       toast.error("Erro ao excluir lead.");
+    }
+  };
+
+  const handleInactivateLead = async (leadId: string, reason: string) => {
+    try {
+      const lead = leads.find(l => l.id === leadId);
+      if (!lead) return;
+
+      // Atualizar lead no banco
+      const { error: updateError } = await (supabase
+        .from("leads" as any)
+        .update({
+          status: "inactive",
+          inactivation_reason: reason,
+          inactivated_at: new Date().toISOString(),
+        })
+        .eq("id", leadId) as any);
+
+      if (updateError) throw updateError;
+
+      // Registrar interação
+      await (supabase.from("lead_interactions" as any).insert({
+        lead_id: leadId,
+        interaction_type: "inactivation",
+        old_status: lead.status,
+        new_status: "inactive",
+        notes: `Lead inativado. Motivo: ${reason}`,
+      }) as any);
+
+      // Atualizar estado local
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, status: "inactive" as LeadStatus } : l
+      ));
+      
+      toast.success("Lead inativado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao inativar lead:", error);
+      toast.error("Erro ao inativar lead.");
+    }
+  };
+
+  const handleLeadClick = (lead: Lead) => {
+    // Converter Lead para CRMLead para o sheet
+    const crmLead: CRMLead = {
+      id: lead.id,
+      name: lead.name,
+      whatsapp: lead.whatsapp,
+      email: lead.email || null,
+      cpf: null,
+      notes: null,
+      source: lead.source,
+      lead_origin: lead.lead_origin || null,
+      status: lead.status,
+      created_at: lead.created_at,
+      updated_at: lead.created_at,
+      last_interaction_at: lead.last_interaction_at || null,
+      registered_at: lead.registered_at || null,
+      registered_by: null,
+      inactivation_reason: null,
+      inactivated_at: null,
+      inactivated_by: null,
+      broker_id: lead.broker_id,
+      broker: lead.broker ? { 
+        id: lead.broker_id || "", 
+        name: lead.broker.name, 
+        slug: lead.broker.slug 
+      } : null,
+    };
+    setSelectedLead(crmLead);
+  };
+
+  const handleUpdateLead = async (leadId: string, updates: Partial<CRMLead>) => {
+    try {
+      const { error } = await (supabase
+        .from("leads" as any)
+        .update(updates)
+        .eq("id", leadId) as any);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, ...updates } : l
+      ));
+      
+      // Atualizar lead selecionado
+      if (selectedLead?.id === leadId) {
+        setSelectedLead(prev => prev ? { ...prev, ...updates } : null);
+      }
+      
+      toast.success("Lead atualizado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao atualizar lead:", error);
+      toast.error("Erro ao atualizar lead.");
+    }
+  };
+
+  const handleStatusChange = async (leadId: string, oldStatus: LeadStatus, newStatus: LeadStatus) => {
+    try {
+      const updates: Partial<Lead> = { 
+        status: newStatus,
+        last_interaction_at: new Date().toISOString(),
+      };
+      
+      if (newStatus === "registered") {
+        updates.registered_at = new Date().toISOString();
+      }
+
+      const { error: updateError } = await (supabase
+        .from("leads" as any)
+        .update(updates)
+        .eq("id", leadId) as any);
+
+      if (updateError) throw updateError;
+
+      // Registrar interação
+      await (supabase.from("lead_interactions" as any).insert({
+        lead_id: leadId,
+        interaction_type: "statusChange",
+        old_status: oldStatus,
+        new_status: newStatus,
+      }) as any);
+
+      // Atualizar estado local
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, ...updates } : l
+      ));
+      
+      // Atualizar lead selecionado
+      if (selectedLead?.id === leadId) {
+        setSelectedLead(prev => prev ? { 
+          ...prev, 
+          ...updates,
+          broker: prev.broker ? { ...prev.broker } : null 
+        } as CRMLead : null);
+      }
+    } catch (error) {
+      console.error("Erro ao alterar status:", error);
+      toast.error("Erro ao alterar status.");
     }
   };
 
@@ -386,7 +526,9 @@ const Admin = () => {
                 searchTerm={searchTerm}
                 showSource={true}
                 showStatus={true}
+                onLeadClick={handleLeadClick}
                 onDelete={handleDeleteLead}
+                onInactivate={handleInactivateLead}
               />
             </div>
           </>
@@ -396,6 +538,15 @@ const Admin = () => {
           <AnalyticsDashboard />
         )}
       </main>
+
+      {/* Lead Detail Sheet */}
+      <LeadDetailSheet
+        lead={selectedLead}
+        isOpen={!!selectedLead}
+        onClose={() => setSelectedLead(null)}
+        onUpdate={handleUpdateLead}
+        onStatusChange={handleStatusChange}
+      />
     </div>
   );
 };
