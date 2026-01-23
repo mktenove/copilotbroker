@@ -76,6 +76,18 @@ const Home = () => {
             lead_source: 'home'
           });
         }
+
+        // Notificar via WhatsApp (UAZAPI)
+        supabase.functions.invoke("notify-new-lead", {
+          body: {
+            leadName: formData.name.trim(),
+            leadWhatsapp: formData.whatsapp,
+            brokerId: null,
+            source: "Home Page",
+          },
+        }).catch((notifyError) => {
+          console.error("Erro ao enviar notificação WhatsApp:", notifyError);
+        });
       }
 
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
