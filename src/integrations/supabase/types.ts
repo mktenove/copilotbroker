@@ -190,6 +190,9 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          inactivated_at: string | null
+          inactivated_by: string | null
+          inactivation_reason: string | null
           last_interaction_at: string | null
           lead_origin: string | null
           name: string
@@ -207,6 +210,9 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          inactivated_at?: string | null
+          inactivated_by?: string | null
+          inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
           name: string
@@ -224,6 +230,9 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          inactivated_at?: string | null
+          inactivated_by?: string | null
+          inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
           name?: string
@@ -323,12 +332,14 @@ export type Database = {
         | "contact_attempt"
         | "registration"
         | "origin_change"
+        | "inactivation"
       lead_status:
         | "new"
         | "info_sent"
         | "awaiting_docs"
         | "docs_received"
         | "registered"
+        | "inactive"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -466,6 +477,7 @@ export const Constants = {
         "contact_attempt",
         "registration",
         "origin_change",
+        "inactivation",
       ],
       lead_status: [
         "new",
@@ -473,6 +485,7 @@ export const Constants = {
         "awaiting_docs",
         "docs_received",
         "registered",
+        "inactive",
       ],
     },
   },

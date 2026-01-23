@@ -12,6 +12,7 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import { Search, RefreshCw, Filter } from "lucide-react";
+import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
@@ -39,7 +40,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
 
-  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, getLeadsByStatus } = useKanbanLeads({
+  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, getLeadsByStatus } = useKanbanLeads({
     brokerId,
     isAdmin
   });
@@ -117,6 +118,16 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
     });
   };
 
+  const handleInactivateLead = async (leadId: string, reason: string) => {
+    const lead = leads.find(l => l.id === leadId);
+    if (lead) {
+      const success = await inactivateLead(leadId, reason, lead.status);
+      if (success) {
+        toast.success("Lead inativado com sucesso!");
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
@@ -176,6 +187,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
                 leads={filteredLeads.filter(l => l.status === status)}
                 onCardClick={handleCardClick}
                 onUpdateOrigin={handleUpdateOrigin}
+                onInactivate={handleInactivateLead}
               />
             ))}
           </div>

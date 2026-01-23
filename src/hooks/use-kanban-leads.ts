@@ -21,6 +21,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
           *,
           broker:brokers(id, name, slug)
         `)
+        .neq("status", "inactive")
         .order("last_interaction_at", { ascending: false });
 
       if (!isAdmin && brokerId) {
@@ -92,7 +93,13 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
   const updateLead = useCallback(async (
     leadId: string, 
     updates: Partial<CRMLead>,
-    options?: { logOriginChange?: boolean; oldOrigin?: string | null }
+    options?: { 
+      logOriginChange?: boolean; 
+      oldOrigin?: string | null;
+      logInactivation?: boolean;
+      oldStatus?: LeadStatus;
+      inactivationReason?: string;
+    }
   ) => {
     try {
       const { error } = await supabase
@@ -119,11 +126,30 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
           });
       }
 
-      setLeads(prev => prev.map(lead => 
-        lead.id === leadId 
-          ? { ...lead, ...updates, updated_at: new Date().toISOString() }
-          : lead
-      ));
+      // Log inactivation if applicable
+      if (options?.logInactivation && updates.status === "inactive") {
+        await supabase
+          .from("lead_interactions")
+          .insert({
+            lead_id: leadId,
+            interaction_type: "inactivation",
+            old_status: options.oldStatus,
+            new_status: "inactive",
+            notes: `Lead inativado. Motivo: ${options.inactivationReason || 'Não especificado'}`,
+          });
+      }
+
+      setLeads(prev => {
+        // If lead was inactivated, remove from local state
+        if (updates.status === "inactive") {
+          return prev.filter(lead => lead.id !== leadId);
+        }
+        return prev.map(lead => 
+          lead.id === leadId 
+            ? { ...lead, ...updates, updated_at: new Date().toISOString() }
+            : lead
+        );
+      });
 
       return true;
     } catch (error) {
@@ -132,6 +158,26 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
       return false;
     }
   }, []);
+
+  const inactivateLead = useCallback(async (
+    leadId: string,
+    reason: string,
+    oldStatus: LeadStatus
+  ) => {
+    return updateLead(
+      leadId,
+      {
+        status: "inactive" as LeadStatus,
+        inactivation_reason: reason,
+        inactivated_at: new Date().toISOString(),
+      },
+      {
+        logInactivation: true,
+        oldStatus,
+        inactivationReason: reason
+      }
+    );
+  }, [updateLead]);
 
   const getLeadsByStatus = useCallback((status: LeadStatus) => {
     return leads.filter(lead => lead.status === status);
@@ -143,6 +189,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
     fetchLeads,
     updateLeadStatus,
     updateLead,
+    inactivateLead,
     getLeadsByStatus
   };
 }
