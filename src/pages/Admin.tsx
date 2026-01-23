@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Phone, Search, RefreshCw, UserCog, BarChart3, Kanban } from "lucide-react";
+import { LogOut, Users, Calendar, Phone, RefreshCw, UserCog, BarChart3, Kanban } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
@@ -332,42 +332,30 @@ const Admin = () => {
               </div>
             </div>
 
-            {/* Search and Filters */}
-            <div className="flex flex-col gap-3 mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome ou WhatsApp..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                />
-              </div>
-              
-              {/* Advanced Filters */}
-              <LeadsAdvancedFilters
-                filters={filters}
-                onFiltersChange={setFilters}
-                brokers={brokers}
-                activeFiltersCount={activeFiltersCount}
-              />
+            {/* Filters + Search */}
+            <LeadsAdvancedFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              brokers={brokers}
+              activeFiltersCount={activeFiltersCount}
+              searchTerm={searchTerm}
+              onSearchChange={setSearchTerm}
+            />
 
-              {/* Actions */}
-              <div className="flex flex-wrap gap-2 sm:gap-3">
-                <ExportButton 
-                  leads={filteredLeads} 
-                  filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
-                />
-                <button
-                  onClick={fetchLeads}
-                  disabled={isLoading}
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                  <span className="hidden sm:inline">Atualizar</span>
-                </button>
-              </div>
+            {/* Actions */}
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+              <ExportButton 
+                leads={filteredLeads} 
+                filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
+              />
+              <button
+                onClick={fetchLeads}
+                disabled={isLoading}
+                className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+                <span className="hidden sm:inline">Atualizar</span>
+              </button>
             </div>
 
             {/* Leads Table */}
