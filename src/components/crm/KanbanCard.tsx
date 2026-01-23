@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Phone, User, Calendar, Clock, Edit2 } from "lucide-react";
+import { Phone, User, Calendar, Clock, MessageCircle } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG } from "@/types/crm";
@@ -57,64 +57,76 @@ export function KanbanCard({ lead, onClick }: KanbanCardProps) {
       {...listeners}
       onClick={onClick}
       className={cn(
-        "bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing",
-        "hover:shadow-md hover:border-primary/30 transition-all",
-        isDragging && "opacity-50 shadow-lg rotate-2",
-        isStale && "ring-2 ring-red-200"
+        "relative bg-card border border-border rounded-xl p-4 cursor-grab active:cursor-grabbing",
+        "hover:shadow-lg hover:border-primary/40 hover:-translate-y-1",
+        "transition-all duration-200 ease-out",
+        "group overflow-hidden",
+        isDragging && "opacity-60 shadow-xl rotate-3 scale-105",
+        isStale && "ring-2 ring-red-300 dark:ring-red-400/50"
       )}
     >
+      {/* Status indicator bar */}
+      <div className={cn(
+        "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl",
+        statusConfig?.bgColor || "bg-muted"
+      )} />
+
       {/* Header */}
-      <div className="flex items-start justify-between gap-2 mb-2">
-        <h4 className="font-medium text-foreground text-sm leading-tight line-clamp-2">
+      <div className="flex items-start justify-between gap-2 mb-3 pl-2">
+        <h4 className="font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
           {lead.name}
         </h4>
         {isStale && (
-          <span className="shrink-0 px-1.5 py-0.5 text-[10px] font-medium bg-red-100 text-red-600 rounded">
+          <span className="shrink-0 px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
             !
           </span>
         )}
       </div>
 
-      {/* Phone with WhatsApp link */}
+      {/* Badges */}
+      <div className="flex flex-wrap items-center gap-2 mb-3 pl-2">
+        <span className={cn(
+          "px-2.5 py-1 text-xs font-medium rounded-full",
+          "bg-primary/15 text-primary border border-primary/20"
+        )}>
+          {lead.source === "enove" ? "Enove" : lead.source}
+        </span>
+        
+        {lead.broker && (
+          <span className="px-2.5 py-1 text-xs font-medium rounded-full bg-muted text-muted-foreground flex items-center gap-1">
+            <User className="w-3 h-3" />
+            <span className="truncate max-w-[80px]">{lead.broker.name}</span>
+          </span>
+        )}
+      </div>
+
+      {/* WhatsApp Button - Prominent */}
       <a
         href={`https://wa.me/55${cleanPhone}`}
         target="_blank"
         rel="noopener noreferrer"
         onClick={(e) => e.stopPropagation()}
-        className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-green-600 transition-colors mb-2"
+        className={cn(
+          "flex items-center justify-center gap-2 w-full py-2.5 px-3 mb-3 ml-2 mr-2",
+          "bg-green-500 hover:bg-green-600 text-white rounded-lg",
+          "font-medium text-sm transition-all duration-150",
+          "hover:scale-[1.02] active:scale-[0.98]",
+          "shadow-sm hover:shadow-md",
+          "w-[calc(100%-0.5rem)]"
+        )}
       >
-        <Phone className="w-3 h-3" />
-        <span>{lead.whatsapp}</span>
+        <MessageCircle className="w-4 h-4" />
+        <span>Chamar no WhatsApp</span>
       </a>
 
-      {/* Source badge */}
-      <div className="flex items-center gap-2 mb-2">
-        <span className={cn(
-          "px-2 py-0.5 text-[10px] font-medium rounded-full",
-          lead.source === "enove" 
-            ? "bg-primary/10 text-primary" 
-            : "bg-accent text-accent-foreground"
-        )}>
-          {lead.source === "enove" ? "Enove" : lead.source}
-        </span>
-      </div>
-
-      {/* Broker info (for admin view) */}
-      {lead.broker && (
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-2">
-          <User className="w-3 h-3" />
-          <span className="truncate">{lead.broker.name}</span>
-        </div>
-      )}
-
       {/* Footer with time info */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/50">
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <Clock className="w-3 h-3" />
+      <div className="flex items-center justify-between pt-3 mt-1 border-t border-border/30 pl-2">
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+          <Clock className="w-3.5 h-3.5" />
           <span>{timeSinceInteraction}</span>
         </div>
-        <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-          <Calendar className="w-3 h-3" />
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+          <Calendar className="w-3.5 h-3.5" />
           <span>{new Date(lead.created_at).toLocaleDateString("pt-BR")}</span>
         </div>
       </div>
