@@ -154,42 +154,36 @@ export interface LeadDocument {
   created_at: string;
 }
 
-export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string; icon: string }> = {
+export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   new: {
     label: 'Novos Leads',
-    color: 'text-primary',
-    bgColor: 'bg-primary/10 border-primary/30',
-    icon: '✨'
+    color: 'text-blue-600',
+    bgColor: 'bg-blue-50 border-blue-200'
   },
   info_sent: {
     label: 'Informações Enviadas',
-    color: 'text-amber-600 dark:text-amber-400',
-    bgColor: 'bg-amber-500/10 border-amber-500/30',
-    icon: '📤'
+    color: 'text-amber-600',
+    bgColor: 'bg-amber-50 border-amber-200'
   },
   awaiting_docs: {
     label: 'Aguardando Dados',
-    color: 'text-orange-600 dark:text-orange-400',
-    bgColor: 'bg-orange-500/10 border-orange-500/30',
-    icon: '📋'
+    color: 'text-orange-600',
+    bgColor: 'bg-orange-50 border-orange-200'
   },
   docs_received: {
     label: 'Dados Recebidos',
-    color: 'text-emerald-600 dark:text-emerald-400',
-    bgColor: 'bg-emerald-500/10 border-emerald-500/30',
-    icon: '✅'
+    color: 'text-emerald-600',
+    bgColor: 'bg-emerald-50 border-emerald-200'
   },
   registered: {
-    label: 'Cadastrado',
-    color: 'text-foreground',
-    bgColor: 'bg-charcoal/10 dark:bg-cream/10 border-charcoal/20 dark:border-cream/20',
-    icon: '🏆'
+    label: 'Cadastrado no Ábaco',
+    color: 'text-slate-600',
+    bgColor: 'bg-slate-100 border-slate-300'
   },
   inactive: {
     label: 'Inativos',
-    color: 'text-muted-foreground',
-    bgColor: 'bg-muted border-border',
-    icon: '💤'
+    color: 'text-red-600',
+    bgColor: 'bg-red-50 border-red-200'
   }
 };
 

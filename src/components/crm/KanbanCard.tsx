@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { User, Clock, MessageCircle, MapPin, Plus, UserX, Trash2 } from "lucide-react";
+import { User, Calendar, Clock, MessageCircle, MapPin, Plus, UserX, Trash2 } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
@@ -46,24 +46,17 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
 
   const statusConfig = STATUS_CONFIG[lead.status];
 
-  // Get initials from name
-  const initials = useMemo(() => {
-    const parts = lead.name.trim().split(/\s+/);
-    if (parts.length === 1) return parts[0].charAt(0).toUpperCase();
-    return (parts[0].charAt(0) + parts[parts.length - 1].charAt(0)).toUpperCase();
-  }, [lead.name]);
-
   const timeSinceInteraction = useMemo(() => {
     const date = lead.last_interaction_at ? new Date(lead.last_interaction_at) : new Date(lead.created_at);
     const now = new Date();
     const diffHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
     if (diffHours < 1) return "Agora";
-    if (diffHours < 24) return `${diffHours}h`;
+    if (diffHours < 24) return `${diffHours}h atrás`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "1d";
-    if (diffDays < 7) return `${diffDays}d`;
-    return `${Math.floor(diffDays / 7)}sem`;
+    if (diffDays === 1) return "1 dia atrás";
+    if (diffDays < 7) return `${diffDays} dias atrás`;
+    return new Date(lead.created_at).toLocaleDateString("pt-BR");
   }, [lead.last_interaction_at, lead.created_at]);
 
   const isStale = useMemo(() => {
@@ -106,52 +99,83 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         {...listeners}
         onClick={onClick}
         className={cn(
-          "card-premium cursor-grab active:cursor-grabbing group relative overflow-hidden",
-          isDragging && "opacity-70 shadow-2xl rotate-2 scale-105 z-50",
-          isStale && "ring-1 ring-primary/50"
+          "relative bg-card border border-border rounded-xl p-4 cursor-grab active:cursor-grabbing",
+          "hover:shadow-lg hover:border-primary/40 hover:-translate-y-1",
+          "transition-all duration-200 ease-out",
+          "group overflow-hidden",
+          isDragging && "opacity-60 shadow-xl rotate-3 scale-105",
+          isStale && "ring-2 ring-red-300 dark:ring-red-400/50"
         )}
       >
-        {/* Premium status indicator - top gradient bar */}
+        {/* Status indicator bar */}
         <div className={cn(
-          "absolute top-0 left-0 right-0 h-1 rounded-t-2xl",
-          "bg-gradient-to-r from-primary/60 via-primary to-primary/60"
+          "absolute left-0 top-0 bottom-0 w-1 rounded-l-xl",
+          statusConfig?.bgColor || "bg-muted"
         )} />
 
-        {/* Header: Avatar + Name + Actions */}
-        <div className="flex items-start gap-3 mb-3 pt-1">
-          {/* Avatar with initials */}
-          <div className="avatar-gold shrink-0">
-            {initials}
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <h4 className="font-serif font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
-              {lead.name}
-            </h4>
-            
-            {/* Source badge */}
-            <span className="inline-block mt-1 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-              via {lead.source === "enove" ? "Enove" : lead.source}
-            </span>
-          </div>
-
-          {/* Time + Stale indicator */}
-          <div className="flex flex-col items-end gap-1 shrink-0">
-            <div className={cn(
-              "flex items-center gap-1 text-xs",
-              isStale ? "text-primary font-semibold" : "text-muted-foreground"
-            )}>
-              <Clock className="w-3 h-3" />
-              <span>{timeSinceInteraction}</span>
-            </div>
+        {/* Header */}
+        <div className="flex items-start justify-between gap-2 mb-3 pl-2">
+          <h4 className="font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-primary transition-colors">
+            {lead.name}
+          </h4>
+          <div className="flex items-center gap-1 shrink-0">
             {isStale && (
-              <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="px-2 py-1 text-xs font-bold bg-red-500 text-white rounded-full animate-pulse">
+                !
+              </span>
+            )}
+            {/* Inactivate Button */}
+            <button
+              onClick={handleInactivateClick}
+              className={cn(
+                "p-1.5 rounded-md opacity-0 group-hover:opacity-100",
+                "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                "transition-all duration-150"
+              )}
+              title="Inativar lead"
+            >
+              <UserX className="w-4 h-4" />
+            </button>
+            {/* Delete Button */}
+            {onDelete && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "p-1.5 rounded-md opacity-0 group-hover:opacity-100",
+                      "text-muted-foreground hover:text-destructive hover:bg-destructive/10",
+                      "transition-all duration-150"
+                    )}
+                    title="Excluir lead"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> e todos os dados relacionados serão excluídos permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => onDelete(lead.id)}
+                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    >
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </div>
 
-        {/* Origin badge */}
-        <div className="mb-3">
+        {/* Origem - Seção destacada */}
+        <div className="pl-2 mb-3">
           {lead.lead_origin ? (
             <button
               onClick={handleOriginClick}
@@ -161,7 +185,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                 ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
               )}
             >
-              <MapPin className="w-3 h-3 shrink-0" />
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{getOriginDisplayLabel(lead.lead_origin)}</span>
             </button>
           ) : (
@@ -169,91 +193,68 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               onClick={handleOriginClick}
               className={cn(
                 "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-dashed",
-                "text-xs text-muted-foreground hover:text-primary hover:border-primary/50",
-                "transition-colors bg-muted/30 hover:bg-primary/5"
+                "text-xs text-muted-foreground hover:text-foreground hover:border-primary/50",
+                "transition-colors w-full justify-center bg-muted/30 hover:bg-muted/50"
               )}
             >
-              <Plus className="w-3 h-3" />
+              <Plus className="w-3.5 h-3.5" />
               <span>Adicionar origem</span>
             </button>
           )}
         </div>
 
-        {/* Broker info */}
-        {lead.broker && (
-          <div className="flex items-center gap-1.5 mb-3 text-xs text-muted-foreground">
-            <User className="w-3 h-3" />
-            <span className="truncate">{lead.broker.name}</span>
-          </div>
-        )}
+        {/* Badges - Source e Broker */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3 pl-2">
+          {/* Cadastrado por badge */}
+          <span className={cn(
+            "px-2 py-0.5 text-xs font-medium rounded-full",
+            "bg-primary/15 text-primary border border-primary/20"
+          )}>
+            {lead.source === "enove" ? "Enove" : lead.source}
+          </span>
+          
+          {/* Broker badge */}
+          {lead.broker && (
+            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-muted text-muted-foreground flex items-center gap-1">
+              <User className="w-3 h-3" />
+              <span className="truncate max-w-[80px]">{lead.broker.name}</span>
+            </span>
+          )}
+        </div>
 
-        {/* WhatsApp Button - Premium style */}
+        {/* WhatsApp Button - Prominent */}
         <a
           href={`https://wa.me/55${cleanPhone}`}
           target="_blank"
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
-          className="btn-whatsapp-premium mb-2"
+          className={cn(
+            "flex items-center justify-center gap-2 w-full py-2.5 px-3 mb-3 ml-2 mr-2",
+            "bg-green-500 hover:bg-green-600 text-white rounded-lg",
+            "font-medium text-sm transition-all duration-150",
+            "hover:scale-[1.02] active:scale-[0.98]",
+            "shadow-sm hover:shadow-md",
+            "w-[calc(100%-0.5rem)]"
+          )}
         >
           <MessageCircle className="w-4 h-4" />
-          <span>WhatsApp</span>
+          <span>Chamar no WhatsApp</span>
         </a>
 
-        {/* Action buttons overlay - appears on hover */}
-        <div className={cn(
-          "absolute bottom-2 right-2 flex items-center gap-1",
-          "opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-        )}>
-          <button
-            onClick={handleInactivateClick}
-            className={cn(
-              "p-1.5 rounded-lg bg-card/90 backdrop-blur-sm border border-border/50",
-              "text-muted-foreground hover:text-destructive hover:border-destructive/30",
-              "transition-colors"
-            )}
-            title="Inativar lead"
-          >
-            <UserX className="w-3.5 h-3.5" />
-          </button>
-          
-          {onDelete && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <button
-                  onClick={(e) => e.stopPropagation()}
-                  className={cn(
-                    "p-1.5 rounded-lg bg-card/90 backdrop-blur-sm border border-border/50",
-                    "text-muted-foreground hover:text-destructive hover:border-destructive/30",
-                    "transition-colors"
-                  )}
-                  title="Excluir lead"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </AlertDialogTrigger>
-              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Excluir lead?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    Esta ação não pode ser desfeita. O lead <strong>{lead.name}</strong> será excluído permanentemente.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={() => onDelete(lead.id)}
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  >
-                    Excluir
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
+        {/* Footer with time info */}
+        <div className="flex items-center justify-between pt-3 mt-1 border-t border-border/30 pl-2">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+            <Clock className="w-3.5 h-3.5" />
+            <span>{timeSinceInteraction}</span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>{new Date(lead.created_at).toLocaleDateString("pt-BR")}</span>
+          </div>
         </div>
       </div>
 
-      {/* Pickers */}
+      {/* Origin Quick Picker */}
       <OriginQuickPicker
         leadId={lead.id}
         leadName={lead.name}
@@ -263,6 +264,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         onSelect={handleOriginSelect}
       />
 
+      {/* Inactivation Picker */}
       <InactivationPicker
         leadId={lead.id}
         leadName={lead.name}

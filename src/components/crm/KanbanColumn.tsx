@@ -18,20 +18,19 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="kanban-column-premium">
-      {/* Premium Column Header */}
-      <div className="column-header-premium">
-        <div className="flex items-center gap-2">
-          <span className="text-lg" role="img" aria-label={config.label}>
-            {config.icon}
-          </span>
-          <h3 className={cn("font-serif font-semibold text-sm", config.color)}>
-            {config.label}
-          </h3>
-        </div>
+    <div className="flex flex-col min-w-[280px] max-w-[320px] shrink-0">
+      {/* Column Header */}
+      <div className={cn(
+        "flex items-center justify-between px-3 py-2 rounded-t-lg border",
+        config.bgColor
+      )}>
+        <h3 className={cn("font-medium text-sm", config.color)}>
+          {config.label}
+        </h3>
         <span className={cn(
-          "px-2.5 py-1 text-xs font-bold rounded-full",
-          "bg-primary/15 text-primary"
+          "px-2 py-0.5 text-xs font-semibold rounded-full",
+          config.color,
+          "bg-white/60"
         )}>
           {leads.length}
         </span>
@@ -41,9 +40,8 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 p-3 space-y-3 min-h-[300px] max-h-[calc(100vh-280px)] overflow-y-auto",
-          "scrollbar-thin scrollbar-thumb-primary/20 scrollbar-track-transparent",
-          isOver && "bg-primary/5 ring-2 ring-primary/20 ring-inset"
+          "flex-1 p-2 space-y-2 bg-muted/30 rounded-b-lg border border-t-0 min-h-[300px] max-h-[calc(100vh-280px)] overflow-y-auto",
+          isOver && "bg-primary/5 ring-2 ring-primary/30"
         )}
       >
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
@@ -60,9 +58,8 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         </SortableContext>
 
         {leads.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-32 text-center">
-            <span className="text-2xl mb-2 opacity-50">{config.icon}</span>
-            <span className="text-sm text-muted-foreground">Nenhum lead</span>
+          <div className="flex items-center justify-center h-24 text-sm text-muted-foreground">
+            Nenhum lead
           </div>
         )}
       </div>
