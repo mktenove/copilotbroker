@@ -26,12 +26,11 @@ export const useUserRole = () => {
           return;
         }
 
-        // Verificar role do usuário usando query genérica
-        const { data: roleData, error: roleError } = await (supabase
+        // Verificar roles do usuário (pode ter múltiplas)
+        const { data: rolesData, error: roleError } = await (supabase
           .from("user_roles" as any)
           .select("role")
-          .eq("user_id", session.user.id)
-          .maybeSingle() as any);
+          .eq("user_id", session.user.id) as any);
 
         if (roleError) {
           console.error("Erro ao buscar role:", roleError);
@@ -39,7 +38,14 @@ export const useUserRole = () => {
           return;
         }
 
-        const role = (roleData?.role as AppRole) || null;
+        // Priorizar admin sobre broker se tiver ambas as roles
+        const roles = (rolesData || []).map((r: { role: string }) => r.role);
+        let role: AppRole = null;
+        if (roles.includes("admin")) {
+          role = "admin";
+        } else if (roles.includes("broker")) {
+          role = "broker";
+        }
 
         // Se for corretor, buscar o broker_id
         let brokerId = null;
