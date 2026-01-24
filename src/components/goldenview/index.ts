@@ -1,0 +1,11 @@
+export { default as GVHeader } from "./GVHeader";
+export { default as GVHeroSection } from "./GVHeroSection";
+export { default as GVPartnersSection } from "./GVPartnersSection";
+export { default as GVFeaturesSection } from "./GVFeaturesSection";
+export { default as GVTargetAudienceSection } from "./GVTargetAudienceSection";
+export { default as GVUrgencySection } from "./GVUrgencySection";
+export { default as GVBenefitsSection } from "./GVBenefitsSection";
+export { default as GVCallToActionSection } from "./GVCallToActionSection";
+export { default as GVFormSection } from "./GVFormSection";
+export { default as GVFooter } from "./GVFooter";
+export { default as GVFloatingCTA } from "./GVFloatingCTA";
