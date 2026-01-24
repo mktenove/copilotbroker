@@ -24,7 +24,7 @@ interface Broker {
 }
 
 const ProjectBrokerLandingPage = () => {
-  const { projectSlug, brokerSlug } = useParams<{ projectSlug: string; brokerSlug: string }>();
+  const { citySlug, projectSlug, brokerSlug } = useParams<{ citySlug: string; projectSlug: string; brokerSlug: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<Broker | null>(null);
@@ -35,16 +35,17 @@ const ProjectBrokerLandingPage = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!projectSlug || !brokerSlug) {
+      if (!citySlug || !projectSlug || !brokerSlug) {
         navigate("/");
         return;
       }
 
       try {
-        // Fetch project
+        // Fetch project using city_slug + slug
         const { data: projectData, error: projectError } = await supabase
           .from("projects")
           .select("*")
+          .eq("city_slug", citySlug)
           .eq("slug", projectSlug)
           .eq("is_active", true)
           .maybeSingle();
@@ -68,7 +69,7 @@ const ProjectBrokerLandingPage = () => {
 
         if (!brokerData) {
           // Corretor não encontrado, redireciona para landing do projeto
-          navigate(`/${projectSlug}`);
+          navigate(`/${citySlug}/${projectSlug}`);
           return;
         }
 
@@ -83,7 +84,7 @@ const ProjectBrokerLandingPage = () => {
 
         if (!association) {
           // Corretor não está associado ao projeto
-          navigate(`/${projectSlug}`);
+          navigate(`/${citySlug}/${projectSlug}`);
           return;
         }
 
@@ -98,7 +99,7 @@ const ProjectBrokerLandingPage = () => {
     };
 
     fetchData();
-  }, [projectSlug, brokerSlug, navigate]);
+  }, [citySlug, projectSlug, brokerSlug, navigate]);
 
   // Update page meta
   useEffect(() => {

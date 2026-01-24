@@ -360,6 +360,7 @@ export type Database = {
       projects: {
         Row: {
           city: string
+          city_slug: string | null
           created_at: string
           description: string | null
           features: Json | null
@@ -375,6 +376,7 @@ export type Database = {
         }
         Insert: {
           city: string
+          city_slug?: string | null
           created_at?: string
           description?: string | null
           features?: Json | null
@@ -390,6 +392,7 @@ export type Database = {
         }
         Update: {
           city?: string
+          city_slug?: string | null
           created_at?: string
           description?: string | null
           features?: Json | null

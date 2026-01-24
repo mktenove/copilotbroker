@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import Home from "./pages/Home";
 import EstanciaVelha from "./pages/EstanciaVelha";
@@ -29,21 +29,28 @@ const App = () => (
         <BrowserRouter>
         <Routes>
             <Route path="/" element={<Home />} />
-            {/* Legacy routes for estanciavelha - keep for backward compatibility */}
+            
+            {/* GoldenView - custom landing page with unique visual identity */}
+            <Route path="/portao/goldenview" element={<GoldenViewLandingPage />} />
+            <Route path="/portao/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
+            
+            {/* Legacy redirects for backward compatibility */}
+            <Route path="/goldenview" element={<Navigate to="/portao/goldenview" replace />} />
+            <Route path="/goldenview/:brokerSlug" element={<Navigate to="/portao/goldenview" replace />} />
             <Route path="/estanciavelha" element={<EstanciaVelha />} />
             <Route path="/estanciavelha/:brokerSlug" element={<BrokerLandingPage />} />
-            {/* GoldenView - custom landing page with unique visual identity */}
-            <Route path="/goldenview" element={<GoldenViewLandingPage />} />
-            <Route path="/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
+            
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/corretor/admin" element={<BrokerAdmin />} />
             <Route path="/termos" element={<Termos />} />
-            {/* Dynamic project routes - MUST BE AFTER specific routes */}
-            <Route path="/:projectSlug" element={<ProjectLandingPage />} />
-            <Route path="/:projectSlug/:brokerSlug" element={<ProjectBrokerLandingPage />} />
+            
+            {/* Dynamic city/project routes - MUST BE AFTER specific routes */}
+            <Route path="/:citySlug/:projectSlug" element={<ProjectLandingPage />} />
+            <Route path="/:citySlug/:projectSlug/:brokerSlug" element={<ProjectBrokerLandingPage />} />
+            
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
