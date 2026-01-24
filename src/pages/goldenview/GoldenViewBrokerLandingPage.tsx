@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import usePageTracking from "@/hooks/use-page-tracking";
 import {
@@ -105,20 +106,6 @@ const GoldenViewBrokerLandingPage = () => {
     fetchData();
   }, [brokerSlug, navigate]);
 
-  // Update page metadata
-  useEffect(() => {
-    if (project && broker) {
-      document.title = `GoldenView | ${broker.name} - Enove Imobiliária`;
-      
-      const metaDescription = document.querySelector('meta[name="description"]');
-      if (metaDescription) {
-        metaDescription.setAttribute(
-          "content",
-          `Pré-lançamento exclusivo: condomínio fechado de terrenos de alto padrão em Portão. Atendimento personalizado com ${broker.name}.`
-        );
-      }
-    }
-  }, [project, broker]);
 
   if (isLoading) {
     return (
@@ -132,8 +119,56 @@ const GoldenViewBrokerLandingPage = () => {
     return null;
   }
 
+  const canonicalUrl = `https://onovocondominio.lovable.app/portao/goldenview/${broker.slug}`;
+  const ogImageUrl = "https://onovocondominio.lovable.app/goldenview-og.jpg";
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "name": `GoldenView Residencial - ${broker.name}`,
+    "description": `Condomínio fechado de alto padrão em Portão - RS. Atendimento personalizado com ${broker.name}.`,
+    "url": canonicalUrl,
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Portão",
+      "addressRegion": "RS",
+      "addressCountry": "BR"
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground">
+      <Helmet>
+        <title>GoldenView | {broker.name} - Condomínio em Portão</title>
+        <meta name="title" content={`GoldenView | ${broker.name} - Condomínio em Portão`} />
+        <meta name="description" content={`Pré-lançamento exclusivo: condomínio fechado de alto padrão em Portão. Atendimento personalizado com ${broker.name}. Vista panorâmica e segurança 24h.`} />
+        <meta name="keywords" content="condomínio fechado Portão, terrenos alto padrão Portão RS, GoldenView Residencial, Construsinos, Maricler" />
+        <meta name="robots" content="index, follow" />
+        <link rel="canonical" href={canonicalUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="Enove Imobiliária" />
+        <meta property="og:title" content={`GoldenView | ${broker.name}`} />
+        <meta property="og:description" content={`Pré-lançamento em Portão. Atendimento personalizado com ${broker.name}.`} />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={`GoldenView | ${broker.name}`} />
+        <meta name="twitter:description" content="Pré-lançamento exclusivo em Portão." />
+        <meta name="twitter:image" content={ogImageUrl} />
+
+        {/* Schema.org JSON-LD */}
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
+      </Helmet>
+
       {/* Skip to main content link for accessibility */}
       <a
         href="#cadastro"
