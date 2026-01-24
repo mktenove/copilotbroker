@@ -1,4 +1,4 @@
-import { X, ChevronDown, CalendarIcon, MapPin, Search } from "lucide-react";
+import { X, ChevronDown, CalendarIcon, MapPin, Search, Building2 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -26,6 +26,12 @@ interface Broker {
   slug: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 export interface LeadFilters {
   statusFilter: LeadStatus[];
   brokerFilter: string;
@@ -33,12 +39,14 @@ export interface LeadFilters {
   dateFrom: Date | undefined;
   dateTo: Date | undefined;
   includeInactive: boolean;
+  projectFilter: string;
 }
 
 interface LeadsAdvancedFiltersProps {
   filters: LeadFilters;
   onFiltersChange: (filters: LeadFilters) => void;
   brokers: Broker[];
+  projects?: Project[];
   activeFiltersCount: number;
   searchTerm: string;
   onSearchChange: (value: string) => void;
@@ -50,6 +58,7 @@ const LeadsAdvancedFilters = ({
   filters,
   onFiltersChange,
   brokers,
+  projects = [],
   activeFiltersCount,
   searchTerm,
   onSearchChange,
@@ -80,6 +89,7 @@ const LeadsAdvancedFilters = ({
       dateFrom: undefined,
       dateTo: undefined,
       includeInactive: false,
+      projectFilter: "all",
     });
   };
 
@@ -107,7 +117,30 @@ const LeadsAdvancedFilters = ({
 
       {/* Filters Panel - Always Visible */}
       <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+          {/* Project Filter */}
+          {projects.length > 0 && (
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-foreground">Projeto</label>
+              <Select
+                value={filters.projectFilter}
+                onValueChange={(value) => updateFilter("projectFilter", value)}
+              >
+                <SelectTrigger>
+                  <Building2 className="w-4 h-4 mr-2" />
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os projetos</SelectItem>
+                  {projects.map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           {/* Status Filter */}
           <div className="space-y-2">
             <label className="text-sm font-medium text-foreground">Status (Fase)</label>

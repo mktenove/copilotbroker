@@ -3,6 +3,14 @@ import { Link } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
 
 interface GVFormSectionProps {
@@ -10,16 +18,29 @@ interface GVFormSectionProps {
   brokerId?: string | null;
   brokerSlug?: string | null;
   webhookUrl?: string | null;
+  allowBrokerSelection?: boolean;
 }
 
 const DEFAULT_WEBHOOK = "https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205";
 
-const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSectionProps) => {
+const GVFormSection = ({ 
+  projectId, 
+  brokerId, 
+  brokerSlug, 
+  webhookUrl,
+  allowBrokerSelection = true 
+}: GVFormSectionProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+
+  // Broker selection states
+  const [showBrokerSelect, setShowBrokerSelect] = useState(false);
+  const [brokers, setBrokers] = useState<{ id: string; name: string }[]>([]);
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const [loadingBrokers, setLoadingBrokers] = useState(false);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -37,6 +58,42 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
 
     return () => observer.disconnect();
   }, []);
+
+  const fetchBrokers = async () => {
+    if (brokers.length > 0) return;
+    
+    setLoadingBrokers(true);
+    try {
+      // Fetch brokers associated with this project
+      const { data, error } = await supabase
+        .from("broker_projects")
+        .select(`
+          broker:brokers(id, name)
+        `)
+        .eq("project_id", projectId)
+        .eq("is_active", true);
+      
+      if (error) throw error;
+      
+      const activeBrokers = data
+        ?.map(bp => bp.broker)
+        .filter((b): b is { id: string; name: string } => b !== null)
+        .sort((a, b) => a.name.localeCompare(b.name)) || [];
+      
+      setBrokers(activeBrokers);
+    } catch (error) {
+      console.error("Erro ao buscar corretores:", error);
+    } finally {
+      setLoadingBrokers(false);
+    }
+  };
+
+  const handleToggleBrokerSelect = () => {
+    if (!showBrokerSelect) {
+      fetchBrokers();
+    }
+    setShowBrokerSelect(!showBrokerSelect);
+  };
 
   const formatWhatsApp = (value: string) => {
     const numbers = value.replace(/\D/g, "");
@@ -86,8 +143,11 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
         lead_origin: getLeadOriginFromUTM(),
       };
 
+      // Use broker from URL or selected broker
       if (brokerId) {
         leadData.broker_id = brokerId;
+      } else if (selectedBrokerId) {
+        leadData.broker_id = selectedBrokerId;
       }
 
       const { error } = await supabase.from("leads").insert(leadData);
@@ -103,7 +163,7 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
           event_label: brokerSlug || "goldenview",
           value: 1,
           lead_source: brokerSlug || "goldenview",
-          broker_id: brokerId || "none",
+          broker_id: brokerId || selectedBrokerId || "none",
           project: "goldenview"
         });
       }
@@ -116,7 +176,7 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
         body: JSON.stringify({
           nome_completo: formData.name.trim(),
           whatsapp: formData.whatsapp.trim(),
-          broker_id: brokerId || null,
+          broker_id: brokerId || selectedBrokerId || null,
           project_id: projectId,
           source: brokerSlug ? `goldenview/${brokerSlug}` : "goldenview",
         }),
@@ -128,7 +188,7 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
           leadId,
           leadName: formData.name.trim(),
           leadWhatsapp: formData.whatsapp.trim(),
-          brokerId: brokerId || null,
+          brokerId: brokerId || selectedBrokerId || null,
           projectId,
           source: brokerSlug ? `GoldenView/${brokerSlug}` : "GoldenView",
         },
@@ -137,6 +197,8 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });
       setAcceptedTerms(false);
+      setSelectedBrokerId("");
+      setShowBrokerSelect(false);
     } catch (error) {
       console.error("Erro ao salvar lead:", error);
       toast.error("Ocorreu um erro ao salvar. Tente novamente.");
@@ -205,6 +267,53 @@ const GVFormSection = ({ projectId, brokerId, brokerSlug, webhookUrl }: GVFormSe
                 maxLength={16}
               />
             </div>
+
+            {/* Optional broker selection */}
+            {allowBrokerSelection && !brokerId && (
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={handleToggleBrokerSelect}
+                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showBrokerSelect ? (
+                    <ChevronUp className="h-4 w-4" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4" />
+                  )}
+                  Já sou atendido por um corretor Enove
+                </button>
+                
+                {showBrokerSelect && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <Select
+                      value={selectedBrokerId || "none"}
+                      onValueChange={(value) => setSelectedBrokerId(value === "none" ? "" : value)}
+                    >
+                      <SelectTrigger className="w-full bg-background border-border text-muted-foreground">
+                        <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-popover border-border">
+                        <SelectItem value="none">
+                          Nenhum / Não encontrei meu corretor
+                        </SelectItem>
+                        {loadingBrokers ? (
+                          <SelectItem value="loading" disabled>
+                            Carregando...
+                          </SelectItem>
+                        ) : (
+                          brokers.map((broker) => (
+                            <SelectItem key={broker.id} value={broker.id}>
+                              {broker.name}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Terms Checkbox */}
             <div className="flex items-start gap-3">

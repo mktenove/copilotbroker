@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -11,13 +11,14 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Search, RefreshCw, Filter } from "lucide-react";
+import { Search, RefreshCw, Filter, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { LeadDetailSheet } from "./LeadDetailSheet";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -25,6 +26,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+
+interface Project {
+  id: string;
+  name: string;
+  slug: string;
+  city_slug: string;
+}
 
 interface KanbanBoardProps {
   brokerId?: string | null;
@@ -37,13 +45,34 @@ const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered
 export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanBoardProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
+  const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [projects, setProjects] = useState<Project[]>([]);
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
 
   const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus } = useKanbanLeads({
     brokerId,
-    isAdmin
+    isAdmin,
+    projectId: selectedProject === "all" ? null : selectedProject
   });
+
+  // Fetch projects for admin filter
+  useEffect(() => {
+    if (isAdmin) {
+      const fetchProjects = async () => {
+        const { data } = await supabase
+          .from("projects")
+          .select("id, name, slug, city_slug")
+          .eq("is_active", true)
+          .order("name");
+        
+        if (data) {
+          setProjects(data);
+        }
+      };
+      fetchProjects();
+    }
+  }, [isAdmin]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -147,11 +176,30 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
           />
         </div>
 
+        {/* Project Filter */}
+        {isAdmin && projects.length > 0 && (
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger className="w-full sm:w-[180px]">
+              <Building2 className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Projeto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os projetos</SelectItem>
+              {projects.map(project => (
+                <SelectItem key={project.id} value={project.id}>
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
+        {/* Broker Filter */}
         {isAdmin && brokers.length > 0 && (
           <Select value={selectedBroker} onValueChange={setSelectedBroker}>
-            <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <Filter className="w-4 h-4 mr-2" />
-              <SelectValue placeholder="Filtrar corretor" />
+              <SelectValue placeholder="Corretor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os corretores</SelectItem>

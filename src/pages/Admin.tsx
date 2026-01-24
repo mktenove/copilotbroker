@@ -27,6 +27,7 @@ interface Lead {
   last_interaction_at?: string | null;
   registered_at?: string | null;
   broker_id: string | null;
+  project_id: string | null;
   broker?: {
     name: string;
     slug: string;
@@ -39,6 +40,12 @@ interface Broker {
   slug: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 const initialFilters: LeadFilters = {
   statusFilter: [],
   brokerFilter: "all",
@@ -46,11 +53,13 @@ const initialFilters: LeadFilters = {
   dateFrom: undefined,
   dateTo: undefined,
   includeInactive: false,
+  projectFilter: "all",
 };
 
 const Admin = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
@@ -88,6 +97,7 @@ const Admin = () => {
     if (role === "admin") {
       fetchLeads();
       fetchBrokers();
+      fetchProjects();
     }
   }, [role]);
 
@@ -124,6 +134,21 @@ const Admin = () => {
       setBrokers((data || []) as Broker[]);
     } catch (error) {
       console.error("Erro ao buscar corretores:", error);
+    }
+  };
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, slug")
+        .eq("is_active", true)
+        .order("name");
+      
+      if (error) throw error;
+      setProjects((data || []) as Project[]);
+    } catch (error) {
+      console.error("Erro ao buscar projetos:", error);
     }
   };
 
@@ -319,6 +344,11 @@ const Admin = () => {
         filters.originFilter.length === 0 ||
         filters.originFilter.includes(lead.lead_origin || "unknown");
 
+      // Project filter
+      const matchesProject =
+        filters.projectFilter === "all" ||
+        lead.project_id === filters.projectFilter;
+
       // Date filters
       const leadDate = new Date(lead.created_at);
       const matchesDateFrom = !filters.dateFrom || leadDate >= filters.dateFrom;
@@ -327,7 +357,7 @@ const Admin = () => {
       // Include inactive filter
       const matchesActive = filters.includeInactive || lead.status !== "inactive";
 
-      return matchesSearch && matchesStatus && matchesBroker && matchesOrigin && matchesDateFrom && matchesDateTo && matchesActive;
+      return matchesSearch && matchesStatus && matchesBroker && matchesOrigin && matchesProject && matchesDateFrom && matchesDateTo && matchesActive;
     });
   }, [leads, searchTerm, filters]);
 
@@ -336,6 +366,7 @@ const Admin = () => {
     if (filters.statusFilter.length > 0) count += filters.statusFilter.length;
     if (filters.brokerFilter !== "all") count += 1;
     if (filters.originFilter.length > 0) count += filters.originFilter.length;
+    if (filters.projectFilter !== "all") count += 1;
     if (filters.dateFrom) count += 1;
     if (filters.dateTo) count += 1;
     if (filters.includeInactive) count += 1;
@@ -510,6 +541,7 @@ const Admin = () => {
               filters={filters}
               onFiltersChange={setFilters}
               brokers={brokers}
+              projects={projects}
               activeFiltersCount={activeFiltersCount}
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
