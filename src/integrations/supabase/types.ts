@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      broker_projects: {
+        Row: {
+          broker_id: string
+          created_at: string
+          id: string
+          is_active: boolean
+          project_id: string
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          project_id: string
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_projects_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_projects_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brokers: {
         Row: {
           created_at: string
@@ -56,6 +95,7 @@ export type Database = {
           id: string
           landing_page: string | null
           lead_id: string | null
+          project_id: string | null
           referrer: string | null
           utm_campaign: string | null
           utm_medium: string | null
@@ -66,6 +106,7 @@ export type Database = {
           id?: string
           landing_page?: string | null
           lead_id?: string | null
+          project_id?: string | null
           referrer?: string | null
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -76,6 +117,7 @@ export type Database = {
           id?: string
           landing_page?: string | null
           lead_id?: string | null
+          project_id?: string | null
           referrer?: string | null
           utm_campaign?: string | null
           utm_medium?: string | null
@@ -87,6 +129,13 @@ export type Database = {
             columns: ["lead_id"]
             isOneToOne: false
             referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lead_attribution_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -197,6 +246,7 @@ export type Database = {
           lead_origin: string | null
           name: string
           notes: string | null
+          project_id: string | null
           registered_at: string | null
           registered_by: string | null
           source: string
@@ -217,6 +267,7 @@ export type Database = {
           lead_origin?: string | null
           name: string
           notes?: string | null
+          project_id?: string | null
           registered_at?: string | null
           registered_by?: string | null
           source?: string
@@ -237,6 +288,7 @@ export type Database = {
           lead_origin?: string | null
           name?: string
           notes?: string | null
+          project_id?: string | null
           registered_at?: string | null
           registered_by?: string | null
           source?: string
@@ -252,6 +304,13 @@ export type Database = {
             referencedRelation: "brokers"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
         ]
       }
       page_views: {
@@ -259,6 +318,7 @@ export type Database = {
           created_at: string
           id: string
           page_path: string
+          project_id: string | null
           referrer: string | null
           session_id: string | null
           utm_campaign: string | null
@@ -269,6 +329,7 @@ export type Database = {
           created_at?: string
           id?: string
           page_path: string
+          project_id?: string | null
           referrer?: string | null
           session_id?: string | null
           utm_campaign?: string | null
@@ -279,11 +340,68 @@ export type Database = {
           created_at?: string
           id?: string
           page_path?: string
+          project_id?: string | null
           referrer?: string | null
           session_id?: string | null
           utm_campaign?: string | null
           utm_medium?: string | null
           utm_source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "page_views_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      projects: {
+        Row: {
+          city: string
+          created_at: string
+          description: string | null
+          features: Json | null
+          hero_subtitle: string | null
+          hero_title: string | null
+          id: string
+          is_active: boolean
+          name: string
+          slug: string
+          status: string
+          updated_at: string
+          webhook_url: string | null
+        }
+        Insert: {
+          city: string
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          slug: string
+          status?: string
+          updated_at?: string
+          webhook_url?: string | null
+        }
+        Update: {
+          city?: string
+          created_at?: string
+          description?: string | null
+          features?: Json | null
+          hero_subtitle?: string | null
+          hero_title?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          slug?: string
+          status?: string
+          updated_at?: string
+          webhook_url?: string | null
         }
         Relationships: []
       }
