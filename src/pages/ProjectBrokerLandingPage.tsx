@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Project } from "@/types/project";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
@@ -22,74 +23,97 @@ interface Broker {
   is_active: boolean;
 }
 
-const BrokerLandingPage = () => {
-  const { brokerSlug } = useParams<{ brokerSlug: string }>();
+const ProjectBrokerLandingPage = () => {
+  const { projectSlug, brokerSlug } = useParams<{ projectSlug: string; brokerSlug: string }>();
   const navigate = useNavigate();
+  const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<Broker | null>(null);
-  const [projectId, setProjectId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Track page view with project ID
-  usePageTracking(projectId || undefined);
+  // Track page view with project ID once loaded
+  usePageTracking(project?.id);
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!brokerSlug) {
-        navigate("/estanciavelha");
+      if (!projectSlug || !brokerSlug) {
+        navigate("/");
         return;
       }
 
       try {
-        // Fetch project ID for estanciavelha
-        const { data: projectData } = await supabase
+        // Fetch project
+        const { data: projectData, error: projectError } = await supabase
           .from("projects")
-          .select("id")
-          .eq("slug", "estanciavelha")
-          .maybeSingle();
-        
-        if (projectData) {
-          setProjectId((projectData as any).id);
-        }
-
-        // Fetch broker
-        const { data, error } = await (supabase
-          .from("brokers" as any)
-          .select("id, name, slug, whatsapp, is_active")
-          .eq("slug", brokerSlug)
+          .select("*")
+          .eq("slug", projectSlug)
           .eq("is_active", true)
-          .maybeSingle() as any);
+          .maybeSingle();
 
-        if (error) throw error;
+        if (projectError) throw projectError;
 
-        if (!data) {
-          // Corretor não encontrado, redireciona para a landing principal
-          navigate("/estanciavelha");
+        if (!projectData) {
+          navigate("/");
           return;
         }
 
-        setBroker(data as Broker);
+        // Fetch broker and verify they're associated with this project
+        const { data: brokerData, error: brokerError } = await supabase
+          .from("brokers")
+          .select("id, name, slug, whatsapp, is_active")
+          .eq("slug", brokerSlug)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (brokerError) throw brokerError;
+
+        if (!brokerData) {
+          // Corretor não encontrado, redireciona para landing do projeto
+          navigate(`/${projectSlug}`);
+          return;
+        }
+
+        // Check if broker is associated with this project
+        const { data: association } = await supabase
+          .from("broker_projects")
+          .select("id")
+          .eq("broker_id", brokerData.id)
+          .eq("project_id", (projectData as any).id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!association) {
+          // Corretor não está associado ao projeto
+          navigate(`/${projectSlug}`);
+          return;
+        }
+
+        setProject(projectData as unknown as Project);
+        setBroker(brokerData as Broker);
       } catch (error) {
-        console.error("Erro ao buscar corretor:", error);
-        navigate("/estanciavelha");
+        console.error("Erro ao buscar dados:", error);
+        navigate("/");
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [brokerSlug, navigate]);
+  }, [projectSlug, brokerSlug, navigate]);
 
-  // Update page meta for this specific landing page
+  // Update page meta
   useEffect(() => {
-    if (broker) {
-      document.title = `Condomínio Alto Padrão Estância Velha | ${broker.name}`;
+    if (project && broker) {
+      document.title = `${project.name} | ${broker.name}`;
       
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
-        metaDescription.setAttribute("content", `Pré-lançamento exclusivo com ${broker.name}: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Cadastre-se para acesso antecipado.`);
+        metaDescription.setAttribute(
+          "content",
+          `Pré-lançamento exclusivo com ${broker.name}: ${project.name} em ${project.city}. Cadastre-se para acesso antecipado.`
+        );
       }
     }
-  }, [broker]);
+  }, [project, broker]);
 
   if (isLoading) {
     return (
@@ -102,7 +126,7 @@ const BrokerLandingPage = () => {
     );
   }
 
-  if (!broker) {
+  if (!project || !broker) {
     return null; // Will redirect
   }
 
@@ -125,10 +149,11 @@ const BrokerLandingPage = () => {
           <UrgencySection />
           <BenefitsSection />
           <FormSection 
-            projectId={projectId}
-            projectSlug="estanciavelha"
-            brokerId={broker.id} 
-            brokerSlug={broker.slug} 
+            projectId={project.id}
+            projectSlug={project.slug}
+            brokerId={broker.id}
+            brokerSlug={broker.slug}
+            webhookUrl={project.webhook_url}
           />
           <DisclaimerSection />
         </main>
@@ -139,4 +164,4 @@ const BrokerLandingPage = () => {
   );
 };
 
-export default BrokerLandingPage;
+export default ProjectBrokerLandingPage;

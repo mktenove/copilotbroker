@@ -151,7 +151,7 @@ export const getLeadOriginFromUTM = (): string | null => {
 };
 
 // Track a page view
-const trackPageView = async (pagePath: string) => {
+const trackPageView = async (pagePath: string, projectId?: string) => {
   try {
     const utmParams = getUTMParams();
     const sessionId = getSessionId();
@@ -164,6 +164,7 @@ const trackPageView = async (pagePath: string) => {
     const client = supabase as any;
     await client.from("page_views").insert({
       page_path: pagePath,
+      project_id: projectId || null,
       utm_source: utmParams.utm_source,
       utm_medium: utmParams.utm_medium,
       utm_campaign: utmParams.utm_campaign,
@@ -177,16 +178,16 @@ const trackPageView = async (pagePath: string) => {
 };
 
 // Custom hook to track page views
-export const usePageTracking = () => {
+export const usePageTracking = (projectId?: string) => {
   const location = useLocation();
 
   useEffect(() => {
-    trackPageView(location.pathname);
-  }, [location.pathname]);
+    trackPageView(location.pathname, projectId);
+  }, [location.pathname, projectId]);
 };
 
 // Function to track lead attribution when a form is submitted
-export const trackLeadAttribution = async (leadId: string) => {
+export const trackLeadAttribution = async (leadId: string, projectId?: string) => {
   try {
     const utmParams = getStoredUTMParams();
     const referrer = document.referrer || null;
@@ -196,6 +197,7 @@ export const trackLeadAttribution = async (leadId: string) => {
     const client = supabase as any;
     await client.from("lead_attribution").insert({
       lead_id: leadId,
+      project_id: projectId || null,
       utm_source: utmParams.utm_source,
       utm_medium: utmParams.utm_medium,
       utm_campaign: utmParams.utm_campaign,

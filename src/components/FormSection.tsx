@@ -14,12 +14,24 @@ import {
 import { trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
 
 interface FormSectionProps {
+  projectId?: string | null;
+  projectSlug?: string | null;
   brokerId?: string | null;
   brokerSlug?: string | null;
   allowBrokerSelection?: boolean;
+  webhookUrl?: string | null;
 }
 
-const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: FormSectionProps) => {
+const DEFAULT_WEBHOOK = "https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205";
+
+const FormSection = ({ 
+  projectId, 
+  projectSlug, 
+  brokerId, 
+  brokerSlug, 
+  allowBrokerSelection = false,
+  webhookUrl 
+}: FormSectionProps) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
@@ -108,15 +120,21 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
         name: string;
         whatsapp: string;
         broker_id?: string;
+        project_id?: string;
         source: string;
         lead_origin?: string | null;
       } = {
         id: leadId,
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
-        source: brokerSlug || "enove",
+        source: brokerSlug || projectSlug || "enove",
         lead_origin: getLeadOriginFromUTM(),
       };
+
+      // Add project_id if available
+      if (projectId) {
+        leadData.project_id = projectId;
+      }
 
       // Se tiver brokerId da URL (landing do corretor), usar ele
       // Senão, se o usuário selecionou manualmente um corretor, usar esse
@@ -134,7 +152,7 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
       if (error) throw error;
 
       // Track lead attribution com o ID pré-gerado
-      await trackLeadAttribution(leadId);
+      await trackLeadAttribution(leadId, projectId || undefined);
       
       // GA4 conversion event
       if (typeof window.gtag === 'function') {
@@ -147,8 +165,9 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
         });
       }
 
-      // Enviar para o webhook
-      fetch("https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205", {
+      // Enviar para o webhook (usar webhook específico do projeto se disponível)
+      const targetWebhook = webhookUrl || DEFAULT_WEBHOOK;
+      fetch(targetWebhook, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -157,7 +176,8 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
           nome_completo: formData.name.trim(),
           whatsapp: formData.whatsapp.trim(),
           broker_id: brokerId || selectedBrokerId || null,
-          source: brokerSlug || "enove",
+          project_id: projectId || null,
+          source: brokerSlug || projectSlug || "enove",
         }),
       }).catch((webhookError) => {
         console.error("Erro ao enviar webhook:", webhookError);
@@ -170,7 +190,8 @@ const FormSection = ({ brokerId, brokerSlug, allowBrokerSelection = false }: For
           leadName: formData.name.trim(),
           leadWhatsapp: formData.whatsapp.trim(),
           brokerId: brokerId || selectedBrokerId || null,
-          source: brokerSlug || "Site Enove",
+          projectId: projectId || null,
+          source: brokerSlug || projectSlug || "Site Enove",
         },
       }).catch((notifyError) => {
         console.error("Erro ao enviar notificação WhatsApp:", notifyError);

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { Project } from "@/types/project";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
@@ -14,82 +15,65 @@ import FloatingCTA from "@/components/FloatingCTA";
 import { RefreshCw } from "lucide-react";
 import { usePageTracking } from "@/hooks/use-page-tracking";
 
-interface Broker {
-  id: string;
-  name: string;
-  slug: string;
-  whatsapp: string | null;
-  is_active: boolean;
-}
-
-const BrokerLandingPage = () => {
-  const { brokerSlug } = useParams<{ brokerSlug: string }>();
+const ProjectLandingPage = () => {
+  const { projectSlug } = useParams<{ projectSlug: string }>();
   const navigate = useNavigate();
-  const [broker, setBroker] = useState<Broker | null>(null);
-  const [projectId, setProjectId] = useState<string | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Track page view with project ID
-  usePageTracking(projectId || undefined);
+  // Track page view with project ID once loaded
+  usePageTracking(project?.id);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!brokerSlug) {
-        navigate("/estanciavelha");
+    const fetchProject = async () => {
+      if (!projectSlug) {
+        navigate("/");
         return;
       }
 
       try {
-        // Fetch project ID for estanciavelha
-        const { data: projectData } = await supabase
+        const { data, error } = await supabase
           .from("projects")
-          .select("id")
-          .eq("slug", "estanciavelha")
-          .maybeSingle();
-        
-        if (projectData) {
-          setProjectId((projectData as any).id);
-        }
-
-        // Fetch broker
-        const { data, error } = await (supabase
-          .from("brokers" as any)
-          .select("id, name, slug, whatsapp, is_active")
-          .eq("slug", brokerSlug)
+          .select("*")
+          .eq("slug", projectSlug)
           .eq("is_active", true)
-          .maybeSingle() as any);
+          .maybeSingle();
 
         if (error) throw error;
 
         if (!data) {
-          // Corretor não encontrado, redireciona para a landing principal
-          navigate("/estanciavelha");
+          // Projeto não encontrado, redireciona para home
+          navigate("/");
           return;
         }
 
-        setBroker(data as Broker);
+        setProject(data as unknown as Project);
       } catch (error) {
-        console.error("Erro ao buscar corretor:", error);
-        navigate("/estanciavelha");
+        console.error("Erro ao buscar projeto:", error);
+        navigate("/");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchData();
-  }, [brokerSlug, navigate]);
+    fetchProject();
+  }, [projectSlug, navigate]);
 
-  // Update page meta for this specific landing page
+  // Update page meta for this specific project
   useEffect(() => {
-    if (broker) {
-      document.title = `Condomínio Alto Padrão Estância Velha | ${broker.name}`;
+    if (project) {
+      document.title = `${project.name} | ${project.city}`;
       
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
-        metaDescription.setAttribute("content", `Pré-lançamento exclusivo com ${broker.name}: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Cadastre-se para acesso antecipado.`);
+        metaDescription.setAttribute(
+          "content",
+          project.description || 
+          `Pré-lançamento exclusivo: ${project.name} em ${project.city}. Cadastre-se para acesso antecipado.`
+        );
       }
     }
-  }, [broker]);
+  }, [project]);
 
   if (isLoading) {
     return (
@@ -102,7 +86,7 @@ const BrokerLandingPage = () => {
     );
   }
 
-  if (!broker) {
+  if (!project) {
     return null; // Will redirect
   }
 
@@ -125,10 +109,10 @@ const BrokerLandingPage = () => {
           <UrgencySection />
           <BenefitsSection />
           <FormSection 
-            projectId={projectId}
-            projectSlug="estanciavelha"
-            brokerId={broker.id} 
-            brokerSlug={broker.slug} 
+            projectId={project.id}
+            projectSlug={project.slug}
+            allowBrokerSelection={true}
+            webhookUrl={project.webhook_url}
           />
           <DisclaimerSection />
         </main>
@@ -139,4 +123,4 @@ const BrokerLandingPage = () => {
   );
 };
 
-export default BrokerLandingPage;
+export default ProjectLandingPage;

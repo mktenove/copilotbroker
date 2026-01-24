@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
@@ -10,10 +10,29 @@ import DisclaimerSection from "@/components/DisclaimerSection";
 import Footer from "@/components/Footer";
 import FloatingCTA from "@/components/FloatingCTA";
 import { usePageTracking } from "@/hooks/use-page-tracking";
+import { supabase } from "@/integrations/supabase/client";
 
 const EstanciaVelha = () => {
-  // Track page view
-  usePageTracking();
+  const [projectId, setProjectId] = useState<string | null>(null);
+
+  // Fetch project ID for estanciavelha
+  useEffect(() => {
+    const fetchProjectId = async () => {
+      const { data } = await supabase
+        .from("projects")
+        .select("id")
+        .eq("slug", "estanciavelha")
+        .maybeSingle();
+      
+      if (data) {
+        setProjectId((data as any).id);
+      }
+    };
+    fetchProjectId();
+  }, []);
+
+  // Track page view with project ID
+  usePageTracking(projectId || undefined);
 
   // Update page meta for this specific landing page
   useEffect(() => {
@@ -43,7 +62,11 @@ const EstanciaVelha = () => {
           <FeaturesSection />
           <UrgencySection />
           <BenefitsSection />
-          <FormSection allowBrokerSelection={true} />
+          <FormSection 
+            projectId={projectId}
+            projectSlug="estanciavelha"
+            allowBrokerSelection={true} 
+          />
           <DisclaimerSection />
         </main>
         <Footer />
