@@ -2,13 +2,14 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Phone, RefreshCw, UserCog, BarChart3, Kanban } from "lucide-react";
+import { LogOut, Users, Calendar, Phone, RefreshCw, UserCog, BarChart3, Kanban, Building2 } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
 import LeadsAdvancedFilters, { LeadFilters } from "@/components/admin/LeadsAdvancedFilters";
 import BrokerManagement from "@/components/admin/BrokerManagement";
+import ProjectManagement from "@/components/admin/ProjectManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -53,7 +54,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
-  const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "analytics">("crm");
+  const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "projects" | "analytics">("crm");
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
@@ -205,6 +206,7 @@ const Admin = () => {
       inactivated_at: null,
       inactivated_by: null,
       broker_id: lead.broker_id,
+      project_id: null,
       broker: lead.broker ? { 
         id: lead.broker_id || "", 
         name: lead.broker.name, 
@@ -422,6 +424,17 @@ const Admin = () => {
               <span>Corretores</span>
             </button>
             <button
+              onClick={() => setActiveTab("projects")}
+              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === "projects"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Building2 className="w-4 h-4 inline-block mr-1 sm:mr-2" />
+              <span>Empreendimentos</span>
+            </button>
+            <button
               onClick={() => setActiveTab("analytics")}
               className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === "analytics"
@@ -534,6 +547,8 @@ const Admin = () => {
           </>
         ) : activeTab === "brokers" ? (
           <BrokerManagement />
+        ) : activeTab === "projects" ? (
+          <ProjectManagement />
         ) : (
           <AnalyticsDashboard />
         )}

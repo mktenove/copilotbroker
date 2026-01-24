@@ -31,10 +31,17 @@ export interface CRMLead {
   inactivated_at: string | null;
   inactivated_by: string | null;
   broker_id: string | null;
+  project_id: string | null;
   broker?: {
     id: string;
     name: string;
     slug: string;
+  } | null;
+  project?: {
+    id: string;
+    name: string;
+    slug: string;
+    city: string;
   } | null;
 }
 
