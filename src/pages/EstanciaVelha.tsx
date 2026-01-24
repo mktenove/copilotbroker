@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Helmet } from "react-helmet-async";
 import Header from "@/components/Header";
 import HeroSection from "@/components/HeroSection";
 import AboutSection from "@/components/AboutSection";
@@ -34,18 +35,72 @@ const EstanciaVelha = () => {
   // Track page view with project ID
   usePageTracking(projectId || undefined);
 
-  // Update page meta for this specific landing page
-  useEffect(() => {
-    document.title = "Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²";
-    
-    const metaDescription = document.querySelector('meta[name="description"]');
-    if (metaDescription) {
-      metaDescription.setAttribute("content", "Pré-lançamento exclusivo: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão. Cadastre-se para acesso antecipado.");
+  const canonicalUrl = "https://onovocondominio.lovable.app/estanciavelha";
+  const ogImageUrl = "https://onovocondominio.lovable.app/og-image.jpg";
+
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "RealEstateAgent",
+    "name": "Enove Imobiliária",
+    "description": "Comercialização exclusiva do novo condomínio de alto padrão em Estância Velha - RS",
+    "url": canonicalUrl,
+    "telephone": "+55-51-0000-0000",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Estância Velha",
+      "addressRegion": "RS",
+      "addressCountry": "BR"
+    },
+    "areaServed": {
+      "@type": "City",
+      "name": "Estância Velha"
+    },
+    "makesOffer": {
+      "@type": "Offer",
+      "itemOffered": {
+        "@type": "Product",
+        "name": "Lotes em Condomínio Fechado",
+        "description": "350 lotes exclusivos a partir de 500m² em condomínio fechado de alto padrão"
+      }
     }
-  }, []);
+  };
 
   return (
     <>
+      {/* Skip to main content - Accessibility */}
+      <Helmet>
+        <title>Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²</title>
+        <meta name="title" content="Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²" />
+        <meta name="description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão." />
+        <meta name="keywords" content="condomínio fechado Estância Velha, terrenos Vale dos Sinos, lotes alto padrão RS, Ábaco Incorporadora, Enove Imobiliária, lançamento imobiliário 2025" />
+        <meta name="robots" content="index, follow, max-image-preview:large" />
+        <link rel="canonical" href={canonicalUrl} />
+
+        {/* Open Graph */}
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={canonicalUrl} />
+        <meta property="og:site_name" content="Enove Imobiliária" />
+        <meta property="og:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
+        <meta property="og:description" content="Cadastre-se para acesso antecipado ao maior lançamento imobiliário de Estância Velha. 350 lotes exclusivos a partir de 500m²." />
+        <meta property="og:locale" content="pt_BR" />
+        <meta property="og:image" content={ogImageUrl} />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
+        <meta property="og:image:alt" content="Condomínio de alto padrão em Estância Velha - Vista aérea" />
+
+        {/* Twitter */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:url" content={canonicalUrl} />
+        <meta name="twitter:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
+        <meta name="twitter:description" content="Cadastre-se para acesso antecipado. 350 lotes exclusivos a partir de 500m²." />
+        <meta name="twitter:image" content={ogImageUrl} />
+
+        {/* Schema.org JSON-LD */}
+        <script type="application/ld+json">
+          {JSON.stringify(structuredData)}
+        </script>
+      </Helmet>
+
       {/* Skip to main content - Accessibility */}
       <a 
         href="#sobre" 
