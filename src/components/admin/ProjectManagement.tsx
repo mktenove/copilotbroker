@@ -54,6 +54,7 @@ interface ProjectFormData {
   name: string;
   slug: string;
   city: string;
+  city_slug: string;
   description: string;
   status: ProjectStatus;
   hero_title: string;
@@ -65,6 +66,7 @@ const initialFormData: ProjectFormData = {
   name: "",
   slug: "",
   city: "",
+  city_slug: "",
   description: "",
   status: "pre_launch",
   hero_title: "",
@@ -85,6 +87,7 @@ export default function ProjectManagement() {
         name: project.name,
         slug: project.slug,
         city: project.city,
+        city_slug: project.city_slug || "",
         description: project.description || "",
         status: project.status,
         hero_title: project.hero_title || "",
@@ -101,7 +104,7 @@ export default function ProjectManagement() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.slug || !formData.city) {
+    if (!formData.name || !formData.slug || !formData.city || !formData.city_slug) {
       return;
     }
 
@@ -109,6 +112,7 @@ export default function ProjectManagement() {
       name: formData.name.trim(),
       slug: formData.slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
       city: formData.city.trim(),
+      city_slug: formData.city_slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
       description: formData.description.trim() || null,
       status: formData.status,
       hero_title: formData.hero_title.trim() || null,
@@ -175,19 +179,6 @@ export default function ProjectManagement() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="slug">Slug (URL) *</Label>
-                      <Input
-                        id="slug"
-                        value={formData.slug}
-                        onChange={(e) => handleSlugChange(e.target.value)}
-                        placeholder="portao"
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        URL: /{formData.slug || "slug"}
-                      </p>
-                    </div>
-                    <div className="space-y-2">
                       <Label htmlFor="city">Cidade *</Label>
                       <Input
                         id="city"
@@ -197,28 +188,57 @@ export default function ProjectManagement() {
                         required
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="city_slug">Slug da Cidade (URL) *</Label>
+                      <Input
+                        id="city_slug"
+                        value={formData.city_slug}
+                        onChange={(e) => setFormData(prev => ({ 
+                          ...prev, 
+                          city_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") 
+                        }))}
+                        placeholder="portao"
+                        required
+                      />
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="status">Status</Label>
-                    <Select
-                      value={formData.status}
-                      onValueChange={(value: ProjectStatus) => 
-                        setFormData(prev => ({ ...prev, status: value }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(PROJECT_STATUS_CONFIG).map(([key, config]) => (
-                          <SelectItem key={key} value={key}>
-                            {config.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="slug">Slug do Projeto (URL) *</Label>
+                      <Input
+                        id="slug"
+                        value={formData.slug}
+                        onChange={(e) => handleSlugChange(e.target.value)}
+                        placeholder="goldenview"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={formData.status}
+                        onValueChange={(value: ProjectStatus) => 
+                          setFormData(prev => ({ ...prev, status: value }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(PROJECT_STATUS_CONFIG).map(([key, config]) => (
+                            <SelectItem key={key} value={key}>
+                              {config.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
+
+                  <p className="text-xs text-muted-foreground">
+                    URL: /{formData.city_slug || "cidade"}/{formData.slug || "projeto"}
+                  </p>
 
                   <div className="space-y-2">
                     <Label htmlFor="description">Descrição</Label>
@@ -361,7 +381,7 @@ export default function ProjectManagement() {
                         asChild
                       >
                         <a 
-                          href={`/${project.slug}`} 
+                          href={`/${project.city_slug}/${project.slug}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                         >

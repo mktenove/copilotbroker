@@ -38,6 +38,7 @@ const GoldenViewLandingPage = () => {
         const { data, error } = await supabase
           .from("projects")
           .select("id, name, slug, webhook_url")
+          .eq("city_slug", "portao")
           .eq("slug", "goldenview")
           .eq("is_active", true)
           .maybeSingle();

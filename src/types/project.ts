@@ -3,6 +3,7 @@ export interface Project {
   name: string;
   slug: string;
   city: string;
+  city_slug: string;
   description: string | null;
   status: ProjectStatus;
   is_active: boolean;

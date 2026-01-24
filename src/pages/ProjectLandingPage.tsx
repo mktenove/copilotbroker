@@ -16,7 +16,7 @@ import { RefreshCw } from "lucide-react";
 import { usePageTracking } from "@/hooks/use-page-tracking";
 
 const ProjectLandingPage = () => {
-  const { projectSlug } = useParams<{ projectSlug: string }>();
+  const { citySlug, projectSlug } = useParams<{ citySlug: string; projectSlug: string }>();
   const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,7 +26,7 @@ const ProjectLandingPage = () => {
 
   useEffect(() => {
     const fetchProject = async () => {
-      if (!projectSlug) {
+      if (!citySlug || !projectSlug) {
         navigate("/");
         return;
       }
@@ -35,6 +35,7 @@ const ProjectLandingPage = () => {
         const { data, error } = await supabase
           .from("projects")
           .select("*")
+          .eq("city_slug", citySlug)
           .eq("slug", projectSlug)
           .eq("is_active", true)
           .maybeSingle();
@@ -57,7 +58,7 @@ const ProjectLandingPage = () => {
     };
 
     fetchProject();
-  }, [projectSlug, navigate]);
+  }, [citySlug, projectSlug, navigate]);
 
   // Update page meta for this specific project
   useEffect(() => {

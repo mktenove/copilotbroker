@@ -43,15 +43,16 @@ const GoldenViewBrokerLandingPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       if (!brokerSlug) {
-        navigate("/goldenview");
+        navigate("/portao/goldenview");
         return;
       }
 
       try {
-        // Fetch project
+        // Fetch project using city_slug + slug
         const { data: projectData, error: projectError } = await supabase
           .from("projects")
           .select("id, name, slug, webhook_url")
+          .eq("city_slug", "portao")
           .eq("slug", "goldenview")
           .eq("is_active", true)
           .maybeSingle();
@@ -72,7 +73,7 @@ const GoldenViewBrokerLandingPage = () => {
 
         if (brokerError || !brokerData) {
           console.error("Broker not found:", brokerSlug);
-          navigate("/goldenview");
+          navigate("/portao/goldenview");
           return;
         }
 
@@ -87,7 +88,7 @@ const GoldenViewBrokerLandingPage = () => {
 
         if (assocError || !association) {
           console.error("Broker not associated with GoldenView project");
-          navigate("/goldenview");
+          navigate("/portao/goldenview");
           return;
         }
 
@@ -95,7 +96,7 @@ const GoldenViewBrokerLandingPage = () => {
         setBroker(brokerData);
       } catch (err) {
         console.error("Error:", err);
-        navigate("/goldenview");
+        navigate("/portao/goldenview");
       } finally {
         setIsLoading(false);
       }
