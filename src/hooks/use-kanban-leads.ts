@@ -6,9 +6,10 @@ import { toast } from "sonner";
 interface UseKanbanLeadsOptions {
   brokerId?: string | null;
   isAdmin?: boolean;
+  projectId?: string | null;
 }
 
-export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOptions) {
+export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanbanLeadsOptions) {
   const [leads, setLeads] = useState<CRMLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -19,13 +20,18 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
         .from("leads")
         .select(`
           *,
-          broker:brokers(id, name, slug)
+          broker:brokers(id, name, slug),
+          project:projects(id, name, slug, city_slug)
         `)
         .neq("status", "inactive")
         .order("last_interaction_at", { ascending: false });
 
       if (!isAdmin && brokerId) {
         query = query.eq("broker_id", brokerId);
+      }
+
+      if (projectId) {
+        query = query.eq("project_id", projectId);
       }
 
       const { data, error } = await query;
@@ -38,7 +44,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false }: UseKanbanLeadsOpti
     } finally {
       setIsLoading(false);
     }
-  }, [brokerId, isAdmin]);
+  }, [brokerId, isAdmin, projectId]);
 
   useEffect(() => {
     fetchLeads();
