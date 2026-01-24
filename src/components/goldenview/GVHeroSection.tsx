@@ -70,7 +70,7 @@ const GVHeroSection = () => {
           </p>
 
           <p className="text-sm sm:text-base text-white/70 mb-8 max-w-2xl mx-auto">
-            Um condomínio fechado de terrenos de alto padrão, criado para um público seleto — e assinado por duas das empresas mais respeitadas da região:
+            Um condomínio fechado de terrenos de alto padrão, criado para um público seleto e assinado por duas das empresas mais respeitadas da região:
           </p>
 
           {/* Partners */}
