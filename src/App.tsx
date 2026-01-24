@@ -9,6 +9,8 @@ import EstanciaVelha from "./pages/EstanciaVelha";
 import BrokerLandingPage from "./pages/BrokerLandingPage";
 import ProjectLandingPage from "./pages/ProjectLandingPage";
 import ProjectBrokerLandingPage from "./pages/ProjectBrokerLandingPage";
+import GoldenViewLandingPage from "./pages/goldenview/GoldenViewLandingPage";
+import GoldenViewBrokerLandingPage from "./pages/goldenview/GoldenViewBrokerLandingPage";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import BrokerAdmin from "./pages/BrokerAdmin";
@@ -25,11 +27,14 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <Routes>
+        <Routes>
             <Route path="/" element={<Home />} />
             {/* Legacy routes for estanciavelha - keep for backward compatibility */}
             <Route path="/estanciavelha" element={<EstanciaVelha />} />
             <Route path="/estanciavelha/:brokerSlug" element={<BrokerLandingPage />} />
+            {/* GoldenView - custom landing page with unique visual identity */}
+            <Route path="/goldenview" element={<GoldenViewLandingPage />} />
+            <Route path="/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
