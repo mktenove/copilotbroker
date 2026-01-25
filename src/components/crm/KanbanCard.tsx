@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { User, Clock, MessageCircle, MapPin, Plus, UserX, Trash2 } from "lucide-react";
+import { User, Clock, MessageCircle, MapPin, Plus, UserX, Trash2, Mail, Phone, Eye, MessageSquare } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
@@ -62,10 +62,33 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
     if (diffHours < 1) return "Agora";
     if (diffHours < 24) return `${diffHours}h`;
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays === 1) return "1d";
-    if (diffDays < 7) return `${diffDays}d`;
+    if (diffDays === 1) return "1 dia";
+    if (diffDays < 7) return `${diffDays} dias`;
     return new Date(lead.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   }, [lead.last_interaction_at, lead.created_at]);
+
+  const createdAtFormatted = useMemo(() => {
+    const date = new Date(lead.created_at);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return "Hoje";
+    if (diffDays === 1) return "Ontem";
+    if (diffDays < 7) return `Há ${diffDays} dias`;
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+  }, [lead.created_at]);
+
+  const formatPhone = (phone: string) => {
+    const clean = phone.replace(/\D/g, "");
+    if (clean.length === 11) {
+      return `(${clean.slice(0, 2)}) ${clean.slice(2, 7)}-${clean.slice(7)}`;
+    }
+    if (clean.length === 10) {
+      return `(${clean.slice(0, 2)}) ${clean.slice(2, 6)}-${clean.slice(6)}`;
+    }
+    return phone;
+  };
 
   const isStale = useMemo(() => {
     const date = lead.last_interaction_at ? new Date(lead.last_interaction_at) : new Date(lead.created_at);
@@ -124,46 +147,53 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         )} />
 
         <div className="p-3 pl-4">
-          {/* Row 1: Tags (Origin + Broker) */}
-          <div className="flex flex-wrap items-center gap-1.5 mb-2">
-            {/* Origin Tag */}
-            {lead.lead_origin ? (
-              <button
-                onClick={handleOriginClick}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
-                  "hover:opacity-80 transition-opacity border",
-                  ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
-                )}
-              >
-                {getOriginDisplayLabel(lead.lead_origin)}
-              </button>
-            ) : (
-              <button
-                onClick={handleOriginClick}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
-                  "text-slate-400 hover:text-slate-200 border border-dashed border-slate-600",
-                  "hover:border-slate-400 transition-colors"
-                )}
-              >
-                <Plus className="w-2.5 h-2.5" />
-                Origem
-              </button>
-            )}
-            
-            {/* Broker/Source Tag */}
-            <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600">
-              <User className="w-2.5 h-2.5" />
-              {lead.broker?.name || (lead.source === "enove" ? "Enove" : lead.source)}
-            </span>
-
-            {/* Stale indicator */}
-            {isStale && (
-              <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
-                !
+          {/* Row 1: Tags + Date */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* Origin Tag */}
+              {lead.lead_origin ? (
+                <button
+                  onClick={handleOriginClick}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
+                    "hover:opacity-80 transition-opacity border",
+                    ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+                  )}
+                >
+                  {getOriginDisplayLabel(lead.lead_origin)}
+                </button>
+              ) : (
+                <button
+                  onClick={handleOriginClick}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
+                    "text-slate-400 hover:text-slate-200 border border-dashed border-slate-600",
+                    "hover:border-slate-400 transition-colors"
+                  )}
+                >
+                  <Plus className="w-2.5 h-2.5" />
+                  Origem
+                </button>
+              )}
+              
+              {/* Broker/Source Tag */}
+              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600">
+                <User className="w-2.5 h-2.5" />
+                {lead.broker?.name || (lead.source === "enove" ? "Enove" : lead.source)}
               </span>
-            )}
+
+              {/* Stale indicator */}
+              {isStale && (
+                <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                  !
+                </span>
+              )}
+            </div>
+
+            {/* Date */}
+            <span className="text-[10px] text-slate-500 shrink-0">
+              {createdAtFormatted}
+            </span>
           </div>
 
           {/* Row 2: Lead Name */}
@@ -171,8 +201,25 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             {lead.name}
           </h4>
 
-          {/* Row 3: WhatsApp Button (compact) + Actions */}
-          <div className="flex items-center gap-2 mb-2">
+          {/* Row 3: Contact Info */}
+          <div className="space-y-1 mb-3">
+            {/* WhatsApp */}
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <Phone className="w-3.5 h-3.5 text-slate-500" />
+              <span>{formatPhone(lead.whatsapp)}</span>
+            </div>
+            
+            {/* Email */}
+            {lead.email && (
+              <div className="flex items-center gap-2 text-xs text-slate-400">
+                <Mail className="w-3.5 h-3.5 text-slate-500" />
+                <span className="truncate">{lead.email}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Row 4: WhatsApp Button + Actions */}
+          <div className="flex items-center gap-2 mb-3">
             <a
               href={`https://wa.me/55${cleanPhone}`}
               target="_blank"
@@ -190,8 +237,8 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               <span>WhatsApp</span>
             </a>
 
-            {/* Action buttons - visible on hover */}
-            <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Action buttons */}
+            <div className="flex items-center gap-1 ml-auto">
               <button
                 onClick={handleInactivateClick}
                 className={cn(
@@ -241,11 +288,14 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             </div>
           </div>
 
-          {/* Row 4: Footer with time */}
+          {/* Row 5: Footer with time and project */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-            <div className="flex items-center gap-1 text-[10px] text-slate-400">
-              <Clock className="w-3 h-3" />
-              <span>{timeSinceInteraction}</span>
+            <div className="flex items-center gap-3">
+              {/* Last interaction */}
+              <div className="flex items-center gap-1 text-[10px] text-slate-400" title="Última interação">
+                <Clock className="w-3 h-3" />
+                <span>{timeSinceInteraction}</span>
+              </div>
             </div>
             
             {lead.project && (

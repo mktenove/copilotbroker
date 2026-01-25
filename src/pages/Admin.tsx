@@ -2,8 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Phone, RefreshCw, UserCog, BarChart3, Kanban, Building2 } from "lucide-react";
-import logoEnove from "@/assets/logo-enove.png";
+import { Users, Calendar, Phone, RefreshCw, UserCog } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
@@ -11,8 +10,8 @@ import LeadsAdvancedFilters, { LeadFilters } from "@/components/admin/LeadsAdvan
 import BrokerManagement from "@/components/admin/BrokerManagement";
 import ProjectManagement from "@/components/admin/ProjectManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
+import { AdminLayout } from "@/components/admin/AdminLayout";
 import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LeadStatus, CRMLead } from "@/types/crm";
 
 interface Lead {
@@ -67,6 +66,9 @@ const Admin = () => {
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
+
+  // CRM search term (separate from leads table search)
+  const [crmSearchTerm, setCrmSearchTerm] = useState("");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -318,6 +320,11 @@ const Admin = () => {
     navigate("/auth");
   };
 
+  const handleAddLead = () => {
+    // Future: Open a modal to add a new lead manually
+    toast.info("Funcionalidade em desenvolvimento");
+  };
+
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
       // Search filter
@@ -392,199 +399,120 @@ const Admin = () => {
     return null;
   }
 
+  const currentSearchTerm = activeTab === "crm" ? crmSearchTerm : searchTerm;
+  const handleSearchChange = activeTab === "crm" ? setCrmSearchTerm : setSearchTerm;
+
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="container px-4 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <img src={logoEnove} alt="Enove Imobiliária" className="h-8 sm:h-10" />
-            <div>
-              <h1 className="text-base sm:text-lg font-serif font-bold text-foreground">Painel Admin</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Enove Imobiliária</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <ThemeToggle />
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sair</span>
-            </button>
-          </div>
+    <AdminLayout
+      activeTab={activeTab}
+      onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+      onLogout={handleLogout}
+      searchTerm={currentSearchTerm}
+      onSearchChange={handleSearchChange}
+      onAddLead={handleAddLead}
+    >
+      {activeTab === "crm" ? (
+        <div className="h-[calc(100vh-140px)]">
+          <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} />
         </div>
-      </header>
-
-      {/* Tabs */}
-      <div className="border-b border-border bg-card">
-        <div className="container px-4">
-          <nav className="flex gap-1 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab("crm")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "crm"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Kanban className="w-4 h-4 inline-block mr-1 sm:mr-2" />
-              <span>CRM</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("leads")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "leads"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Users className="w-4 h-4 inline-block mr-1 sm:mr-2" />
-              <span>Leads</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("brokers")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "brokers"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <UserCog className="w-4 h-4 inline-block mr-1 sm:mr-2" />
-              <span>Corretores</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("projects")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "projects"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Building2 className="w-4 h-4 inline-block mr-1 sm:mr-2" />
-              <span>Empreendimentos</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`px-4 sm:px-6 py-3 sm:py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === "analytics"
-                  ? "border-primary text-primary"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <BarChart3 className="w-4 h-4 inline-block mr-1 sm:mr-2" />
-              <span>Analytics</span>
-            </button>
-          </nav>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <main className="container px-4 py-6 sm:py-8">
-        {activeTab === "crm" ? (
-          <div className="h-[calc(100vh-200px)]">
-            <KanbanBoard isAdmin={true} brokers={brokers} />
-          </div>
-        ) : activeTab === "leads" ? (
-          <>
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-              <div className="card-luxury p-4 sm:p-6">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
-                  </div>
+      ) : activeTab === "leads" ? (
+        <>
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
+            <div className="card-luxury p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                 </div>
-              </div>
-              <div className="card-luxury p-4 sm:p-6">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card-luxury p-4 sm:p-6">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                    <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Enove</p>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">{enoveLeads.length}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="card-luxury p-4 sm:p-6">
-                <div className="flex items-center gap-3 sm:gap-4">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/50 flex items-center justify-center shrink-0">
-                    <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs sm:text-sm text-muted-foreground">Corretores</p>
-                    <p className="text-xl sm:text-2xl font-bold text-foreground">{brokerLeads.length}</p>
-                  </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
                 </div>
               </div>
             </div>
+            <div className="card-luxury p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card-luxury p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Enove</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{enoveLeads.length}</p>
+                </div>
+              </div>
+            </div>
+            <div className="card-luxury p-4 sm:p-6">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/50 flex items-center justify-center shrink-0">
+                  <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-muted-foreground">Corretores</p>
+                  <p className="text-xl sm:text-2xl font-bold text-foreground">{brokerLeads.length}</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-            {/* Filters + Search */}
-            <LeadsAdvancedFilters
-              filters={filters}
-              onFiltersChange={setFilters}
-              brokers={brokers}
-              projects={projects}
-              activeFiltersCount={activeFiltersCount}
-              searchTerm={searchTerm}
-              onSearchChange={setSearchTerm}
+          {/* Filters + Search */}
+          <LeadsAdvancedFilters
+            filters={filters}
+            onFiltersChange={setFilters}
+            brokers={brokers}
+            projects={projects}
+            activeFiltersCount={activeFiltersCount}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+          />
+
+          {/* Actions */}
+          <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+            <ExportButton 
+              leads={filteredLeads} 
+              filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
             />
+            <button
+              onClick={fetchLeads}
+              disabled={isLoading}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+              <span className="hidden sm:inline">Atualizar</span>
+            </button>
+          </div>
 
-            {/* Actions */}
-            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-              <ExportButton 
-                leads={filteredLeads} 
-                filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
-              />
-              <button
-                onClick={fetchLeads}
-                disabled={isLoading}
-                className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                <span className="hidden sm:inline">Atualizar</span>
-              </button>
-            </div>
-
-            {/* Leads Table */}
-            <div className="card-luxury overflow-hidden">
-              <LeadsTable
-                leads={filteredLeads}
-                isLoading={isLoading}
-                searchTerm={searchTerm}
-                showSource={true}
-                showStatus={true}
-                onLeadClick={handleLeadClick}
-                onDelete={handleDeleteLead}
-                onInactivate={handleInactivateLead}
-              />
-            </div>
-          </>
-        ) : activeTab === "brokers" ? (
-          <BrokerManagement />
-        ) : activeTab === "projects" ? (
-          <ProjectManagement />
-        ) : (
-          <AnalyticsDashboard />
-        )}
-      </main>
+          {/* Leads Table */}
+          <div className="card-luxury overflow-hidden">
+            <LeadsTable
+              leads={filteredLeads}
+              isLoading={isLoading}
+              searchTerm={searchTerm}
+              showSource={true}
+              showStatus={true}
+              onLeadClick={handleLeadClick}
+              onDelete={handleDeleteLead}
+              onInactivate={handleInactivateLead}
+            />
+          </div>
+        </>
+      ) : activeTab === "brokers" ? (
+        <BrokerManagement />
+      ) : activeTab === "projects" ? (
+        <ProjectManagement />
+      ) : (
+        <AnalyticsDashboard />
+      )}
 
       {/* Lead Detail Sheet */}
       <LeadDetailSheet
@@ -594,7 +522,7 @@ const Admin = () => {
         onUpdate={handleUpdateLead}
         onStatusChange={handleStatusChange}
       />
-    </div>
+    </AdminLayout>
   );
 };
 
