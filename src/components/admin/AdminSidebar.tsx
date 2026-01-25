@@ -1,13 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   LayoutDashboard, 
   Users, 
   Building2, 
   BarChart3, 
-  Bell, 
   Settings,
   Plus,
-  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -18,6 +16,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { NotificationPanel } from "./NotificationPanel";
+import { SettingsPanel } from "./SettingsPanel";
+import { supabase } from "@/integrations/supabase/client";
 
 interface AdminSidebarProps {
   activeTab: string;
@@ -35,8 +36,19 @@ const NAV_ITEMS = [
 ];
 
 export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {
-  const [notifications] = useState(3); // Mock notification count
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [userInitial, setUserInitial] = useState("A");
 
+  // Fetch user initial
+  useEffect(() => {
+    const fetchUserInitial = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) {
+        setUserInitial(user.email.charAt(0).toUpperCase());
+      }
+    };
+    fetchUserInitial();
+  }, []);
   return (
     <TooltipProvider delayDuration={100}>
       <aside className="fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
@@ -109,14 +121,9 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
           {/* Notifications */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
-                <Bell className="w-5 h-5" />
-                {notifications > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
-                    {notifications}
-                  </span>
-                )}
-              </button>
+              <span>
+                <NotificationPanel />
+              </span>
             </TooltipTrigger>
             <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
               Notificações
@@ -126,7 +133,10 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
           {/* Settings */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
+              <button 
+                onClick={() => setIsSettingsOpen(true)}
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors"
+              >
                 <Settings className="w-5 h-5" />
               </button>
             </TooltipTrigger>
@@ -143,8 +153,8 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-primary/50 transition-colors"
               >
                 <Avatar className="w-full h-full">
-                  <AvatarFallback className="bg-enove-yellow text-black text-sm font-medium">
-                    A
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm font-medium">
+                    {userInitial}
                   </AvatarFallback>
                 </Avatar>
               </button>
@@ -154,6 +164,12 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
             </TooltipContent>
           </Tooltip>
         </div>
+
+        {/* Settings Panel */}
+        <SettingsPanel 
+          isOpen={isSettingsOpen} 
+          onClose={() => setIsSettingsOpen(false)} 
+        />
       </aside>
     </TooltipProvider>
   );
