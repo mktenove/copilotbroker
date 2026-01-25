@@ -11,7 +11,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Building2, Users } from "lucide-react";
+import { RefreshCw, Building2, Users, Search } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
@@ -40,11 +40,12 @@ interface KanbanBoardProps {
   isAdmin?: boolean;
   brokers?: { id: string; name: string; slug: string }[];
   searchTerm?: string;
+  onSearchChange?: (value: string) => void;
 }
 
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
-export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "" }: KanbanBoardProps) {
+export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -218,6 +219,24 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
             </SelectContent>
           </Select>
         )}
+
+        {/* Campo de Busca */}
+        <div className="relative ml-auto">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Buscar lead..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            className={cn(
+              "w-48 pl-9 pr-3 py-2 rounded-lg text-sm",
+              "bg-[#1e1e22] border border-[#2a2a2e]",
+              "text-slate-200 placeholder:text-slate-500",
+              "focus:outline-none focus:ring-2 focus:ring-primary/50",
+              "transition-all duration-200"
+            )}
+          />
+        </div>
       </div>
 
       {/* Kanban Board */}
