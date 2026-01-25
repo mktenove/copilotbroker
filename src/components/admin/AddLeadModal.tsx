@@ -243,14 +243,14 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
               />
             </div>
 
-            {/* Projeto */}
+            {/* Empreendimento */}
             <div className="space-y-2">
               <Label className="text-slate-300">
-                Projeto <span className="text-red-400">*</span>
+                Empreendimento <span className="text-red-400">*</span>
               </Label>
               <Select value={projectId} onValueChange={setProjectId}>
                 <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
-                  <SelectValue placeholder="Selecione o projeto" />
+                  <SelectValue placeholder="Selecione o empreendimento" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                   {projects.map((project) => (
