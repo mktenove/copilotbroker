@@ -32,7 +32,7 @@ const ORIGIN_COLORS: Record<string, string> = {
   paid: "bg-purple-500/20 text-purple-300 border-purple-500/40",
   organic: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
   referral: "bg-blue-500/20 text-blue-300 border-blue-500/40",
-  manual: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  manual: "bg-enove-yellow/20 text-enove-yellow border-enove-yellow/40",
   unknown: "bg-slate-500/20 text-slate-400 border-slate-500/40",
 };
 
@@ -49,8 +49,8 @@ const STATUS_PROGRESS: Record<string, number> = {
 // Progress bar colors by status
 const PROGRESS_COLORS: Record<string, string> = {
   new: "bg-blue-500",
-  info_sent: "bg-amber-500",
-  awaiting_docs: "bg-orange-500",
+  info_sent: "bg-enove-yellow",
+  awaiting_docs: "bg-enove-yellow",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
   inactive: "bg-red-500"

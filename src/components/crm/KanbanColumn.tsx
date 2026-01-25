@@ -23,8 +23,8 @@ interface KanbanColumnProps {
 // Status square colors for TaskWhiz style headers
 const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   new: "bg-blue-500",
-  info_sent: "bg-amber-500",
-  awaiting_docs: "bg-orange-500",
+  info_sent: "bg-enove-yellow",
+  awaiting_docs: "bg-enove-yellow",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
   inactive: "bg-red-500"
