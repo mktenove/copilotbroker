@@ -35,7 +35,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col min-w-[300px] max-w-[320px] shrink-0">
+    <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0">
       {/* Column Header - TaskWhiz minimalist style with square indicator */}
       <div className="flex items-center gap-2.5 px-2 py-3 mb-2">
         {/* Status square (not dot) */}
@@ -66,11 +66,11 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         {/* Column menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#252545] transition-colors">
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
               <MoreHorizontal className="w-4 h-4" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="bg-[#252545] border-[#3a3a5c]">
+          <DropdownMenuContent align="end" className="bg-[#1e1e22] border-[#2a2a2e]">
             <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
               Ordenar por data
             </DropdownMenuItem>
@@ -85,8 +85,8 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 p-2 space-y-2.5 rounded-xl min-h-[400px] max-h-[calc(100vh-240px)] overflow-y-auto",
-          "bg-[#1e1e38]/30",
+          "flex-1 p-2 space-y-2.5 rounded-xl min-h-[300px] md:min-h-[400px] max-h-[calc(100vh-280px)] md:max-h-[calc(100vh-240px)] overflow-y-auto",
+          "bg-[#18181b]/50",
           "scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent",
           isOver && "bg-primary/10 ring-2 ring-primary/40"
         )}

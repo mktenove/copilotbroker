@@ -156,9 +156,9 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         {...listeners}
         onClick={onClick}
         className={cn(
-          // Base card styles - TaskWhiz dark theme without side bar
+          // Base card styles - neutral dark theme
           "relative rounded-xl cursor-grab active:cursor-grabbing",
-          "bg-[#252545] border border-[#3a3a5c]",
+          "bg-[#1e1e22] border border-[#2a2a2e]",
           "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
           "transition-all duration-200 ease-out",
           "group overflow-hidden",
@@ -242,7 +242,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             </div>
           </div>
 
-          {/* Row 5: WhatsApp Button + Actions */}
+          {/* Row 5: WhatsApp Button + Actions - touch friendly */}
           <div className="flex items-center gap-2 mb-3">
             <a
               href={`https://wa.me/55${cleanPhone}`}
@@ -250,29 +250,30 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               rel="noopener noreferrer"
               onClick={(e) => e.stopPropagation()}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5",
+                "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
                 "bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-lg",
                 "font-medium text-xs transition-all duration-150",
                 "hover:scale-[1.02] active:scale-[0.98]",
                 "shadow-sm"
               )}
             >
-              <MessageCircle className="w-3.5 h-3.5" />
+              <MessageCircle className="w-4 h-4 md:w-3.5 md:h-3.5" />
               <span>WhatsApp</span>
             </a>
 
-            {/* Action buttons */}
+            {/* Action buttons - touch friendly */}
             <div className="flex items-center gap-1 ml-auto">
               <button
                 onClick={handleInactivateClick}
                 className={cn(
-                  "p-1.5 rounded-md",
+                  "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
+                  "flex items-center justify-center",
                   "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
                   "transition-colors"
                 )}
                 title="Inativar lead"
               >
-                <UserX className="w-3.5 h-3.5" />
+                <UserX className="w-4 h-4 md:w-3.5 md:h-3.5" />
               </button>
               
               {onDelete && (
@@ -281,13 +282,14 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                     <button
                       onClick={(e) => e.stopPropagation()}
                       className={cn(
-                        "p-1.5 rounded-md",
+                        "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
+                        "flex items-center justify-center",
                         "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
                         "transition-colors"
                       )}
                       title="Excluir lead"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
                     </button>
                   </AlertDialogTrigger>
                   <AlertDialogContent onClick={(e) => e.stopPropagation()}>
@@ -316,7 +318,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
             <div className="flex items-center gap-3">
               {/* Broker avatar */}
-              <Avatar className="w-6 h-6 border border-[#3a3a5c]">
+              <Avatar className="w-6 h-6 border border-[#2a2a2e]">
                 <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 text-white text-[10px] font-medium">
                   {lead.broker?.name?.charAt(0) || (lead.source === "enove" ? "E" : "?")}
                 </AvatarFallback>
