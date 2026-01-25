@@ -41,7 +41,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
     <TooltipProvider delayDuration={100}>
       <aside className="fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
         {/* Logo area */}
-        <div className="flex items-center justify-center h-16 border-b border-[#2a2a2e]">
+        <div className="flex items-center justify-center h-20 border-b border-[#2a2a2e]">
           <img 
             src={logoEnove} 
             alt="Enove" 
@@ -53,15 +53,15 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
         <div className="flex items-center justify-center py-4">
           <Tooltip>
             <TooltipTrigger asChild>
-                <button
-                  onClick={onAddLead}
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center",
-                    "bg-amber-400 hover:bg-amber-300 text-black",
-                    "shadow-lg shadow-amber-400/30 hover:shadow-amber-400/50",
-                    "transition-all duration-200 hover:scale-105"
-                  )}
-                >
+              <button
+                onClick={onAddLead}
+                className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  "bg-yellow-400 hover:bg-yellow-300 text-black",
+                  "shadow-lg shadow-yellow-400/30 hover:shadow-yellow-400/50",
+                  "transition-all duration-200 hover:scale-105"
+                )}
+              >
                 <Plus className="w-5 h-5" />
               </button>
             </TooltipTrigger>
