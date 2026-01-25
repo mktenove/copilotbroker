@@ -50,7 +50,6 @@ const VIEW_TABS = [
   { id: "kanban", label: "Kanban", icon: Kanban },
   { id: "list", label: "List View", icon: List },
   { id: "table", label: "Table", icon: Table2 },
-  { id: "empreendimentos", label: "Empreendimentos", icon: Building2 },
   { id: "custom", label: "Custom", icon: Settings2 },
 ];
 
@@ -175,78 +174,106 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar - Single row with refresh, tabs, and filter */}
-      <div className="flex items-center justify-between gap-4 mb-4 md:mb-6 px-1">
-        {/* Left side: Refresh + Tabs */}
-        <div className="flex items-center gap-1 border-b border-[#2a2a2e] overflow-x-auto">
-          {/* Refresh Button - First */}
+      {/* Toolbar with underline tabs */}
+      <div className="flex flex-col gap-4 mb-4 md:mb-6 px-1">
+        {/* View Mode Tabs - Underline style */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1 border-b border-[#2a2a2e] overflow-x-auto">
+            {VIEW_TABS.map((tab) => {
+              const isActive = viewMode === tab.id || (tab.id === "kanban" && viewMode === "kanban");
+              const Icon = tab.icon;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => tab.id !== "custom" && setViewMode(tab.id as ViewMode)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 md:px-4 py-2.5 text-sm font-medium transition-all relative whitespace-nowrap",
+                    isActive 
+                      ? "text-primary" 
+                      : "text-slate-500 hover:text-slate-300",
+                    tab.id === "custom" && "opacity-50 cursor-not-allowed"
+                  )}
+                  disabled={tab.id === "custom"}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{tab.label}</span>
+                  
+                  {/* Active underline */}
+                  {isActive && (
+                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Refresh button - visible on mobile */}
           <button
             onClick={fetchLeads}
             disabled={isLoading}
             className={cn(
-              "flex items-center justify-center w-9 h-9 shrink-0",
-              "text-slate-400 hover:text-slate-200 transition-all"
+              "flex md:hidden items-center justify-center w-9 h-9 rounded-lg",
+              "bg-[#1e1e22] border border-[#2a2a2e] text-slate-400",
+              "hover:bg-[#252528] hover:text-slate-200 transition-all"
             )}
           >
             <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
           </button>
-
-          {/* Navigation Tabs */}
-          {VIEW_TABS.map((tab) => {
-            const isActive = viewMode === tab.id || (tab.id === "kanban" && viewMode === "kanban");
-            const Icon = tab.icon;
-            const isEmpreendimentos = tab.id === "empreendimentos";
-            const isDisabled = tab.id === "custom";
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (isEmpreendimentos) {
-                    window.location.href = "/admin?tab=projects";
-                  } else if (!isDisabled) {
-                    setViewMode(tab.id as ViewMode);
-                  }
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3 md:px-4 py-2.5 text-sm font-medium transition-all relative whitespace-nowrap",
-                  isActive 
-                    ? "text-primary" 
-                    : "text-slate-500 hover:text-slate-300",
-                  isDisabled && "opacity-50 cursor-not-allowed"
-                )}
-                disabled={isDisabled}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                
-                {/* Active underline */}
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
-                )}
-              </button>
-            );
-          })}
         </div>
 
-        {/* Right side: Broker Filter */}
-        {isAdmin && brokers.length > 0 && (
-          <Select value={selectedBroker} onValueChange={setSelectedBroker}>
-            <SelectTrigger className="w-[130px] h-9 bg-[#1e1e22] border-[#2a2a2e] text-slate-200 text-sm rounded-lg shrink-0">
-              <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
-              <SelectValue placeholder="Filtrar" />
-            </SelectTrigger>
-            <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-              <SelectItem value="all" className="text-slate-200">Todos</SelectItem>
-              <SelectItem value="enove" className="text-slate-200">Enove</SelectItem>
-              {brokers.map(broker => (
-                <SelectItem key={broker.id} value={broker.id} className="text-slate-200">
-                  {broker.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* Filters - responsive */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-1">
+          {/* Project Filter */}
+          {isAdmin && projects.length > 0 && (
+            <Select value={selectedProject} onValueChange={setSelectedProject}>
+              <SelectTrigger className="w-[140px] md:w-[160px] h-9 bg-[#1e1e22] border-[#2a2a2e] text-slate-200 text-sm rounded-lg shrink-0">
+                <Building2 className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                <SelectValue placeholder="Projeto" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                <SelectItem value="all" className="text-slate-200">Todos</SelectItem>
+                {projects.map(project => (
+                  <SelectItem key={project.id} value={project.id} className="text-slate-200">
+                    {project.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Broker Filter */}
+          {isAdmin && brokers.length > 0 && (
+            <Select value={selectedBroker} onValueChange={setSelectedBroker}>
+              <SelectTrigger className="w-[140px] md:w-[160px] h-9 bg-[#1e1e22] border-[#2a2a2e] text-slate-200 text-sm rounded-lg shrink-0">
+                <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                <SelectValue placeholder="Corretor" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                <SelectItem value="all" className="text-slate-200">Todos</SelectItem>
+                <SelectItem value="enove" className="text-slate-200">Enove</SelectItem>
+                {brokers.map(broker => (
+                  <SelectItem key={broker.id} value={broker.id} className="text-slate-200">
+                    {broker.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+
+          {/* Refresh button - desktop */}
+          <button
+            onClick={fetchLeads}
+            disabled={isLoading}
+            className={cn(
+              "hidden md:flex items-center justify-center w-9 h-9 rounded-lg shrink-0",
+              "bg-[#1e1e22] border border-[#2a2a2e] text-slate-400",
+              "hover:bg-[#252528] hover:text-slate-200 transition-all"
+            )}
+          >
+            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+          </button>
+        </div>
       </div>
 
       {/* Kanban Board */}
