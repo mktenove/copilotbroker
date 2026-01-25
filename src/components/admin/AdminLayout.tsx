@@ -1,6 +1,7 @@
 import { ReactNode } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
+import { MobileBottomNav } from "./MobileBottomNav";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -24,8 +25,8 @@ export function AdminLayout({
   brokers,
 }: AdminLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#13132a]">
-      {/* Sidebar - fixed left */}
+    <div className="min-h-screen bg-[#0f0f12]">
+      {/* Sidebar - fixed left, hidden on mobile */}
       <AdminSidebar
         activeTab={activeTab}
         onTabChange={onTabChange}
@@ -33,15 +34,22 @@ export function AdminLayout({
         onAddLead={onAddLead}
       />
 
-      {/* Main content - offset by sidebar width */}
-      <div className="ml-16 min-h-screen flex flex-col">
+      {/* Mobile Bottom Navigation */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        onAddLead={onAddLead}
+      />
+
+      {/* Main content - offset by sidebar width on desktop */}
+      <div className="md:ml-16 min-h-screen flex flex-col pb-20 md:pb-0">
         <AdminHeader
           activeTab={activeTab}
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
           brokers={brokers}
         />
-        <main className="flex-1 overflow-auto p-4 md:p-6">
+        <main className="flex-1 overflow-auto p-3 md:p-6">
           {children}
         </main>
       </div>

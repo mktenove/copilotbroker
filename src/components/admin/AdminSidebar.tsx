@@ -39,9 +39,9 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
 
   return (
     <TooltipProvider delayDuration={100}>
-      <aside className="fixed left-0 top-0 bottom-0 z-40 flex flex-col w-16 bg-[#1a1a2e] border-r border-[#3a3a5c]">
+      <aside className="fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
         {/* Logo area */}
-        <div className="flex items-center justify-center h-16 border-b border-[#3a3a5c]">
+        <div className="flex items-center justify-center h-16 border-b border-[#2a2a2e]">
           <img 
             src={logoEnove} 
             alt="Enove" 
@@ -65,7 +65,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 <Plus className="w-5 h-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
               Adicionar Lead
             </TooltipContent>
           </Tooltip>
@@ -86,7 +86,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                       isActive 
                         ? "bg-primary/20 text-primary" 
-                        : "text-slate-400 hover:text-slate-200 hover:bg-[#252545]"
+                        : "text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22]"
                     )}
                   >
                     {/* Active indicator bar */}
@@ -96,7 +96,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     <Icon className="w-5 h-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+                <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
                   {item.label}
                 </TooltipContent>
               </Tooltip>
@@ -105,11 +105,11 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
         </nav>
 
         {/* Bottom Section */}
-        <div className="flex flex-col items-center gap-2 py-4 border-t border-[#3a3a5c]">
+        <div className="flex flex-col items-center gap-2 py-4 border-t border-[#2a2a2e]">
           {/* Notifications */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-[#252545] transition-colors">
+              <button className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
                 <Bell className="w-5 h-5" />
                 {notifications > 0 && (
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
@@ -118,7 +118,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 )}
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
               Notificações
             </TooltipContent>
           </Tooltip>
@@ -126,11 +126,11 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
           {/* Settings */}
           <Tooltip>
             <TooltipTrigger asChild>
-              <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-[#252545] transition-colors">
+              <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
                 <Settings className="w-5 h-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
               Configurações
             </TooltipContent>
           </Tooltip>
@@ -149,7 +149,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 </Avatar>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
               Sair
             </TooltipContent>
           </Tooltip>
