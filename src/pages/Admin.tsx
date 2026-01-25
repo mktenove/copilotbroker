@@ -410,6 +410,7 @@ const Admin = () => {
       searchTerm={currentSearchTerm}
       onSearchChange={handleSearchChange}
       onAddLead={handleAddLead}
+      brokers={brokers}
     >
       {activeTab === "crm" ? (
         <div className="h-[calc(100vh-140px)]">

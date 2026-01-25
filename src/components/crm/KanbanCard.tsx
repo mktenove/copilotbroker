@@ -2,10 +2,11 @@ import { useMemo, useState } from "react";
 import { User, Clock, MessageCircle, MapPin, Plus, UserX, Trash2, Mail, Phone, Eye, MessageSquare } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
+import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { OriginQuickPicker } from "./OriginQuickPicker";
 import { InactivationPicker } from "./InactivationPicker";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,8 +27,27 @@ interface KanbanCardProps {
   onDelete?: (leadId: string) => Promise<void>;
 }
 
-// Dark theme colors for status sidebar
-const STATUS_SIDEBAR_COLORS: Record<string, string> = {
+// Vibrant dark theme colors for origin types
+const ORIGIN_COLORS: Record<string, string> = {
+  paid: "bg-purple-500/20 text-purple-300 border-purple-500/40",
+  organic: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40",
+  referral: "bg-blue-500/20 text-blue-300 border-blue-500/40",
+  manual: "bg-amber-500/20 text-amber-300 border-amber-500/40",
+  unknown: "bg-slate-500/20 text-slate-400 border-slate-500/40",
+};
+
+// Progress percentage by status
+const STATUS_PROGRESS: Record<string, number> = {
+  new: 10,
+  info_sent: 35,
+  awaiting_docs: 55,
+  docs_received: 80,
+  registered: 100,
+  inactive: 0
+};
+
+// Progress bar colors by status
+const PROGRESS_COLORS: Record<string, string> = {
   new: "bg-blue-500",
   info_sent: "bg-amber-500",
   awaiting_docs: "bg-orange-500",
@@ -98,6 +118,8 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
   }, [lead.last_interaction_at, lead.created_at]);
 
   const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+  const originType = getOriginType(lead.lead_origin);
+  const progress = STATUS_PROGRESS[lead.status] || 0;
 
   const handleOriginClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -121,6 +143,10 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
     }
   };
 
+  // Mock counters - in production these would come from the lead data
+  const interactionCount = 3;
+  const noteCount = 2;
+
   return (
     <>
       <div
@@ -130,34 +156,28 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         {...listeners}
         onClick={onClick}
         className={cn(
-          // Base card styles - TaskWhiz dark theme
+          // Base card styles - TaskWhiz dark theme without side bar
           "relative rounded-xl cursor-grab active:cursor-grabbing",
           "bg-[#252545] border border-[#3a3a5c]",
-          "hover:border-primary/60 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+          "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
           "transition-all duration-200 ease-out",
           "group overflow-hidden",
-          isDragging && "opacity-70 shadow-2xl rotate-2 scale-105 z-50",
-          isStale && "ring-2 ring-red-400/60"
+          isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
+          isStale && "ring-2 ring-red-400/50"
         )}
       >
-        {/* Status indicator sidebar - 3px */}
-        <div className={cn(
-          "absolute left-0 top-0 bottom-0 w-[3px] rounded-l-xl",
-          STATUS_SIDEBAR_COLORS[lead.status] || "bg-slate-500"
-        )} />
-
-        <div className="p-3 pl-4">
+        <div className="p-3">
           {/* Row 1: Tags + Date */}
-          <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* Origin Tag */}
+              {/* Origin Tag - vibrant colors */}
               {lead.lead_origin ? (
                 <button
                   onClick={handleOriginClick}
                   className={cn(
                     "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
                     "hover:opacity-80 transition-opacity border",
-                    ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
+                    ORIGIN_COLORS[originType]
                   )}
                 >
                   {getOriginDisplayLabel(lead.lead_origin)}
@@ -167,7 +187,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                   onClick={handleOriginClick}
                   className={cn(
                     "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
-                    "text-slate-400 hover:text-slate-200 border border-dashed border-slate-600",
+                    "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
                     "hover:border-slate-400 transition-colors"
                   )}
                 >
@@ -175,12 +195,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                   Origem
                 </button>
               )}
-              
-              {/* Broker/Source Tag */}
-              <span className="flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600">
-                <User className="w-2.5 h-2.5" />
-                {lead.broker?.name || (lead.source === "enove" ? "Enove" : lead.source)}
-              </span>
 
               {/* Stale indicator */}
               {isStale && (
@@ -197,7 +211,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
           </div>
 
           {/* Row 2: Lead Name */}
-          <h4 className="font-semibold text-white text-sm leading-snug line-clamp-2 mb-2 group-hover:text-primary transition-colors">
+          <h4 className="font-semibold text-white text-sm leading-snug line-clamp-1 mb-2 group-hover:text-primary transition-colors">
             {lead.name}
           </h4>
 
@@ -205,20 +219,30 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
           <div className="space-y-1 mb-3">
             {/* WhatsApp */}
             <div className="flex items-center gap-2 text-xs text-slate-400">
-              <Phone className="w-3.5 h-3.5 text-slate-500" />
+              <Phone className="w-3 h-3 text-slate-500" />
               <span>{formatPhone(lead.whatsapp)}</span>
             </div>
             
             {/* Email */}
             {lead.email && (
               <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Mail className="w-3.5 h-3.5 text-slate-500" />
+                <Mail className="w-3 h-3 text-slate-500" />
                 <span className="truncate">{lead.email}</span>
               </div>
             )}
           </div>
 
-          {/* Row 4: WhatsApp Button + Actions */}
+          {/* Row 4: Progress Bar */}
+          <div className="mb-3">
+            <div className="h-1 w-full bg-slate-700/50 rounded-full overflow-hidden">
+              <div 
+                className={cn("h-full rounded-full transition-all duration-500", PROGRESS_COLORS[lead.status])}
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Row 5: WhatsApp Button + Actions */}
           <div className="flex items-center gap-2 mb-3">
             <a
               href={`https://wa.me/55${cleanPhone}`}
@@ -243,7 +267,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                 onClick={handleInactivateClick}
                 className={cn(
                   "p-1.5 rounded-md",
-                  "text-slate-400 hover:text-red-400 hover:bg-red-500/10",
+                  "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
                   "transition-colors"
                 )}
                 title="Inativar lead"
@@ -258,7 +282,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                       onClick={(e) => e.stopPropagation()}
                       className={cn(
                         "p-1.5 rounded-md",
-                        "text-slate-400 hover:text-red-400 hover:bg-red-500/10",
+                        "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
                         "transition-colors"
                       )}
                       title="Excluir lead"
@@ -288,11 +312,30 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             </div>
           </div>
 
-          {/* Row 5: Footer with time and project */}
+          {/* Row 6: Footer with avatar, counters, time and project */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
             <div className="flex items-center gap-3">
-              {/* Last interaction */}
-              <div className="flex items-center gap-1 text-[10px] text-slate-400" title="Última interação">
+              {/* Broker avatar */}
+              <Avatar className="w-6 h-6 border border-[#3a3a5c]">
+                <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 text-white text-[10px] font-medium">
+                  {lead.broker?.name?.charAt(0) || (lead.source === "enove" ? "E" : "?")}
+                </AvatarFallback>
+              </Avatar>
+
+              {/* Counters */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Interações">
+                  <Eye className="w-3 h-3" />
+                  <span>{interactionCount}</span>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Notas">
+                  <MessageSquare className="w-3 h-3" />
+                  <span>{noteCount}</span>
+                </div>
+              </div>
+
+              {/* Last interaction time */}
+              <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Última interação">
                 <Clock className="w-3 h-3" />
                 <span>{timeSinceInteraction}</span>
               </div>
@@ -301,7 +344,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             {lead.project && (
               <div className="flex items-center gap-1 text-[10px] text-slate-500">
                 <MapPin className="w-3 h-3" />
-                <span className="truncate max-w-[80px]">{lead.project.name}</span>
+                <span className="truncate max-w-[60px]">{lead.project.name}</span>
               </div>
             )}
           </div>

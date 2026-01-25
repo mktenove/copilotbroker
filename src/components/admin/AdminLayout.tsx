@@ -1,5 +1,4 @@
 import { ReactNode } from "react";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
 
@@ -11,6 +10,7 @@ interface AdminLayoutProps {
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
   onAddLead?: () => void;
+  brokers?: { id: string; name: string; slug: string }[];
 }
 
 export function AdminLayout({
@@ -21,27 +21,30 @@ export function AdminLayout({
   searchTerm,
   onSearchChange,
   onAddLead,
+  brokers,
 }: AdminLayoutProps) {
   return (
-    <SidebarProvider defaultOpen={true}>
-      <div className="min-h-screen flex w-full bg-background">
-        <AdminSidebar
+    <div className="min-h-screen bg-[#13132a]">
+      {/* Sidebar - fixed left */}
+      <AdminSidebar
+        activeTab={activeTab}
+        onTabChange={onTabChange}
+        onLogout={onLogout}
+        onAddLead={onAddLead}
+      />
+
+      {/* Main content - offset by sidebar width */}
+      <div className="ml-16 min-h-screen flex flex-col">
+        <AdminHeader
           activeTab={activeTab}
-          onTabChange={onTabChange}
-          onLogout={onLogout}
+          searchTerm={searchTerm}
+          onSearchChange={onSearchChange}
+          brokers={brokers}
         />
-        <SidebarInset className="flex-1 flex flex-col">
-          <AdminHeader
-            activeTab={activeTab}
-            searchTerm={searchTerm}
-            onSearchChange={onSearchChange}
-            onAddLead={onAddLead}
-          />
-          <main className="flex-1 overflow-auto p-4 md:p-6">
-            {children}
-          </main>
-        </SidebarInset>
+        <main className="flex-1 overflow-auto p-4 md:p-6">
+          {children}
+        </main>
       </div>
-    </SidebarProvider>
+    </div>
   );
 }
