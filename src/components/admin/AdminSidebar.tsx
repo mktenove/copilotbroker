@@ -53,7 +53,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
     <TooltipProvider delayDuration={100}>
       <aside className="fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
         {/* Logo area - aligned with header breadcrumb row */}
-        <div className="flex items-center justify-center py-3">
+        <div className="flex items-center justify-center pt-4 pb-3">
           <img 
             src={logoEnove} 
             alt="Enove" 
