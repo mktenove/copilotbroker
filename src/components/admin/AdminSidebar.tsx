@@ -10,7 +10,7 @@ import {
   LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoEnove from "@/assets/logo-enove.png";
+import logoEnove from "@/assets/logo-enove-mini.png";
 import {
   Tooltip,
   TooltipContent,
@@ -53,15 +53,15 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
         <div className="flex items-center justify-center py-4">
           <Tooltip>
             <TooltipTrigger asChild>
-              <button
-                onClick={onAddLead}
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center",
-                  "bg-emerald-500 hover:bg-emerald-400 text-white",
-                  "shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50",
-                  "transition-all duration-200 hover:scale-105"
-                )}
-              >
+                <button
+                  onClick={onAddLead}
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center",
+                    "bg-amber-400 hover:bg-amber-300 text-black",
+                    "shadow-lg shadow-amber-400/30 hover:shadow-amber-400/50",
+                    "transition-all duration-200 hover:scale-105"
+                  )}
+                >
                 <Plus className="w-5 h-5" />
               </button>
             </TooltipTrigger>

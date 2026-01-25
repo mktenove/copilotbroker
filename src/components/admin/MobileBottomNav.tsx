@@ -35,8 +35,8 @@ export function MobileBottomNav({ activeTab, onTabChange, onAddLead }: MobileBot
                 className={cn(
                   "relative flex items-center justify-center",
                   "w-14 h-14 -mt-6 rounded-full",
-                  "bg-emerald-500 hover:bg-emerald-400",
-                  "text-white shadow-lg shadow-emerald-500/30",
+                  "bg-amber-400 hover:bg-amber-300",
+                  "text-black shadow-lg shadow-amber-400/30",
                   "transition-all duration-200 active:scale-95"
                 )}
               >
