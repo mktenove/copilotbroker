@@ -7,7 +7,7 @@ const Header = () => {
 
   return (
     <header 
-      className="fixed top-0 left-0 right-0 z-40 bg-background/80 backdrop-blur-md border-b border-border/30"
+      className="fixed top-0 left-0 right-0 z-40 bg-charcoal/95 backdrop-blur-md border-b border-white/10"
       role="banner"
     >
       <nav 
