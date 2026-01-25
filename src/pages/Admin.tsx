@@ -11,6 +11,7 @@ import BrokerManagement from "@/components/admin/BrokerManagement";
 import ProjectManagement from "@/components/admin/ProjectManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { AddLeadModal } from "@/components/admin/AddLeadModal";
 import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
 import { LeadStatus, CRMLead } from "@/types/crm";
 
@@ -64,6 +65,7 @@ const Admin = () => {
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
   const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "projects" | "analytics">("crm");
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
 
@@ -321,8 +323,11 @@ const Admin = () => {
   };
 
   const handleAddLead = () => {
-    // Future: Open a modal to add a new lead manually
-    toast.info("Funcionalidade em desenvolvimento");
+    setIsAddLeadOpen(true);
+  };
+
+  const handleAddLeadSuccess = () => {
+    fetchLeads();
   };
 
   const filteredLeads = useMemo(() => {
@@ -522,6 +527,13 @@ const Admin = () => {
         onClose={() => setSelectedLead(null)}
         onUpdate={handleUpdateLead}
         onStatusChange={handleStatusChange}
+      />
+
+      {/* Add Lead Modal */}
+      <AddLeadModal
+        isOpen={isAddLeadOpen}
+        onClose={() => setIsAddLeadOpen(false)}
+        onSuccess={handleAddLeadSuccess}
       />
     </AdminLayout>
   );
