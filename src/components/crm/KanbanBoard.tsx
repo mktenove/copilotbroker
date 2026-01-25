@@ -11,7 +11,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Search, RefreshCw, Filter, Building2 } from "lucide-react";
+import { RefreshCw, Filter, Building2, Kanban, List, Table2 } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
@@ -39,12 +39,15 @@ interface KanbanBoardProps {
   brokerId?: string | null;
   isAdmin?: boolean;
   brokers?: { id: string; name: string; slug: string }[];
+  searchTerm?: string;
 }
+
+type ViewMode = "kanban" | "list" | "table";
 
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
-export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanBoardProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "" }: KanbanBoardProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -166,22 +169,48 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
     <div className="flex flex-col h-full bg-[#1a1a2e] rounded-2xl p-4">
       {/* Toolbar - TaskWhiz style */}
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        {/* Search - pill style */}
-        <div className="relative flex-1">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Buscar leads..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+        {/* View Mode Tabs */}
+        <div className="flex items-center gap-1 p-1 bg-[#252545] border border-[#3a3a5c] rounded-full">
+          <button
+            onClick={() => setViewMode("kanban")}
             className={cn(
-              "w-full pl-10 pr-4 py-2.5 rounded-full text-sm",
-              "bg-[#252545] border border-[#3a3a5c] text-slate-200 placeholder:text-slate-500",
-              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
-              "transition-all"
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              viewMode === "kanban" 
+                ? "bg-primary text-primary-foreground" 
+                : "text-slate-400 hover:text-slate-200"
             )}
-          />
+          >
+            <Kanban className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Kanban</span>
+          </button>
+          <button
+            onClick={() => setViewMode("list")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              viewMode === "list" 
+                ? "bg-primary text-primary-foreground" 
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <List className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Lista</span>
+          </button>
+          <button
+            onClick={() => setViewMode("table")}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+              viewMode === "table" 
+                ? "bg-primary text-primary-foreground" 
+                : "text-slate-400 hover:text-slate-200"
+            )}
+          >
+            <Table2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Tabela</span>
+          </button>
         </div>
+
+        {/* Spacer */}
+        <div className="flex-1" />
 
         {/* Project Filter */}
         {isAdmin && projects.length > 0 && (

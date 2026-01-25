@@ -1,8 +1,15 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { Plus, MoreHorizontal } from "lucide-react";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { KanbanCard } from "./KanbanCard";
 import { cn } from "@/lib/utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface KanbanColumnProps {
   status: LeadStatus;
@@ -28,7 +35,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col min-w-[300px] max-w-[320px] shrink-0">
+    <div className="flex flex-col min-w-[320px] max-w-[340px] shrink-0">
       {/* Column Header - TaskWhiz minimalist style */}
       <div className="flex items-center gap-2 px-3 py-3 mb-3">
         {/* Status dot */}
@@ -44,11 +51,31 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         
         {/* Lead counter - pill style */}
         <span className={cn(
-          "ml-auto px-2 py-0.5 text-xs font-semibold rounded-full",
+          "px-2 py-0.5 text-xs font-semibold rounded-full",
           "bg-slate-700/80 text-slate-300"
         )}>
           {leads.length}
         </span>
+
+        {/* Spacer */}
+        <div className="flex-1" />
+
+        {/* Column menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors">
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="bg-[#252545] border-[#3a3a5c]">
+            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
+              Ordenar por data
+            </DropdownMenuItem>
+            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
+              Ordenar por nome
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {/* Column Content */}
@@ -61,6 +88,19 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
           isOver && "bg-primary/10 ring-2 ring-primary/40"
         )}
       >
+        {/* Add lead button at top */}
+        <button
+          className={cn(
+            "w-full flex items-center justify-center gap-2 py-3 rounded-lg",
+            "border-2 border-dashed border-slate-700/50 text-slate-500",
+            "hover:border-primary/40 hover:text-primary/80 hover:bg-primary/5",
+            "transition-all duration-200"
+          )}
+        >
+          <Plus className="w-4 h-4" />
+          <span className="text-sm font-medium">Adicionar</span>
+        </button>
+
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((lead) => (
             <KanbanCard
@@ -75,7 +115,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         </SortableContext>
 
         {leads.length === 0 && (
-          <div className="flex items-center justify-center h-32 text-sm text-slate-500 border-2 border-dashed border-slate-700/50 rounded-xl">
+          <div className="flex items-center justify-center h-24 text-sm text-slate-500 border-2 border-dashed border-slate-700/50 rounded-xl">
             Nenhum lead
           </div>
         )}
