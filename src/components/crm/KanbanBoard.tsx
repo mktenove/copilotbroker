@@ -190,7 +190,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
               <SelectValue placeholder="Empreendimento" />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="all">Todos Empreendimentos</SelectItem>
+              <SelectItem value="all">Empreendimentos</SelectItem>
               {projects.map(project => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}
@@ -208,7 +208,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="all">Todos Corretores</SelectItem>
+              <SelectItem value="all">Corretores</SelectItem>
               <SelectItem value="enove">Enove (Direto)</SelectItem>
               {brokers.map(broker => (
                 <SelectItem key={broker.id} value={broker.id}>
