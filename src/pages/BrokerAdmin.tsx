@@ -8,7 +8,6 @@ import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
 import { KanbanBoard } from "@/components/crm";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Lead {
   id: string;
@@ -183,7 +182,6 @@ const BrokerAdmin = () => {
                 <List className="w-4 h-4" />
               </button>
             </div>
-            <ThemeToggle />
             <button
               onClick={handleLogout}
               className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
