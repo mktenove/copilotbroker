@@ -44,6 +44,9 @@
     --charcoal: 20 14% 15%;
     --charcoal-light: 20 15% 25%;
     
+    /* Enove official yellow #FFFF00 */
+    --enove-yellow: 60 100% 50%;
+    
     /* Gradients */
     --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--gold)) 100%);
     --gradient-dark: linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--card)) 100%);
@@ -99,6 +102,9 @@
     --cream: 45 30% 96%;
     --charcoal: 20 14% 4%;
     --charcoal-light: 20 15% 12%;
+    
+    /* Enove official yellow #FFFF00 */
+    --enove-yellow: 60 100% 50%;
     
     /* Gradients */
     --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--gold)) 100%);

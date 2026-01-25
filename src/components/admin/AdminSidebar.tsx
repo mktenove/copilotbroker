@@ -41,24 +41,24 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
     <TooltipProvider delayDuration={100}>
       <aside className="fixed left-0 top-0 bottom-0 z-40 hidden md:flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
         {/* Logo area */}
-        <div className="flex items-center justify-center h-20 border-b border-[#2a2a2e]">
+        <div className="flex items-center justify-center h-24 border-b border-[#2a2a2e]">
           <img 
             src={logoEnove} 
             alt="Enove" 
-            className="h-8 w-8 object-contain"
+            className="h-10 w-10 object-contain"
           />
         </div>
 
         {/* FAB - Floating Action Button */}
-        <div className="flex items-center justify-center py-4">
+        <div className="flex items-center justify-center py-5">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
                 onClick={onAddLead}
                 className={cn(
                   "w-10 h-10 rounded-full flex items-center justify-center",
-                  "bg-yellow-400 hover:bg-yellow-300 text-black",
-                  "shadow-lg shadow-yellow-400/30 hover:shadow-yellow-400/50",
+                  "bg-enove-yellow hover:brightness-110 text-black",
+                  "shadow-lg shadow-[hsl(60_100%_50%/0.3)] hover:shadow-[hsl(60_100%_50%/0.5)]",
                   "transition-all duration-200 hover:scale-105"
                 )}
               >
@@ -143,7 +143,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-primary/50 transition-colors"
               >
                 <Avatar className="w-full h-full">
-                  <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white text-sm font-medium">
+                  <AvatarFallback className="bg-enove-yellow text-black text-sm font-medium">
                     A
                   </AvatarFallback>
                 </Avatar>
