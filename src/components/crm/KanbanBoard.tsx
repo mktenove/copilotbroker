@@ -11,7 +11,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Filter, Building2, Kanban, List, Table2, Settings2 } from "lucide-react";
+import { RefreshCw, Building2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
@@ -42,20 +42,9 @@ interface KanbanBoardProps {
   searchTerm?: string;
 }
 
-type ViewMode = "kanban" | "list" | "table";
-
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
-const VIEW_TABS = [
-  { id: "kanban", label: "Kanban", icon: Kanban },
-  { id: "list", label: "List View", icon: List },
-  { id: "table", label: "Table", icon: Table2 },
-  { id: "empreendimentos", label: "Empreendimentos", icon: Building2 },
-  { id: "custom", label: "Custom", icon: Settings2 },
-];
-
 export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "" }: KanbanBoardProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("kanban");
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [projects, setProjects] = useState<Project[]>([]);
@@ -97,7 +86,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     })
   );
 
-  // Filter leads based on search and broker
+  // Filter leads based on search, broker, and project
   const filteredLeads = leads.filter(lead => {
     const matchesSearch = 
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -108,7 +97,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
       lead.broker_id === selectedBroker ||
       (selectedBroker === "enove" && !lead.broker_id);
 
-    return matchesSearch && matchesBroker;
+    const matchesProject =
+      selectedProject === "all" ||
+      lead.project_id === selectedProject;
+
+    return matchesSearch && matchesBroker && matchesProject;
   });
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -175,72 +168,50 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
 
   return (
     <div className="flex flex-col h-full">
-      {/* Toolbar - Single row with refresh, tabs, and filter */}
-      <div className="flex items-center justify-between gap-4 mb-4 md:mb-6 px-1">
-        {/* Left side: Refresh + Tabs */}
-        <div className="flex items-center gap-1 border-b border-[#2a2a2e] overflow-x-auto">
-          {/* Refresh Button - First */}
-          <button
-            onClick={fetchLeads}
-            disabled={isLoading}
-            className={cn(
-              "flex items-center justify-center w-9 h-9 shrink-0",
-              "text-slate-400 hover:text-slate-200 transition-all"
-            )}
-          >
-            <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-          </button>
+      {/* Toolbar - Filters */}
+      <div className="flex items-center gap-3 mb-4 md:mb-6 px-1">
+        {/* Refresh Button */}
+        <button
+          onClick={fetchLeads}
+          disabled={isLoading}
+          className={cn(
+            "flex items-center justify-center w-9 h-9 shrink-0 rounded-lg",
+            "text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+          )}
+        >
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+        </button>
 
-          {/* Navigation Tabs */}
-          {VIEW_TABS.map((tab) => {
-            const isActive = viewMode === tab.id || (tab.id === "kanban" && viewMode === "kanban");
-            const Icon = tab.icon;
-            const isEmpreendimentos = tab.id === "empreendimentos";
-            const isDisabled = tab.id === "custom";
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  if (isEmpreendimentos) {
-                    window.location.href = "/admin?tab=projects";
-                  } else if (!isDisabled) {
-                    setViewMode(tab.id as ViewMode);
-                  }
-                }}
-                className={cn(
-                  "flex items-center gap-2 px-3 md:px-4 py-2.5 text-sm font-medium transition-all relative whitespace-nowrap",
-                  isActive 
-                    ? "text-primary" 
-                    : "text-slate-500 hover:text-slate-300",
-                  isDisabled && "opacity-50 cursor-not-allowed"
-                )}
-                disabled={isDisabled}
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                
-                {/* Active underline */}
-                {isActive && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full" />
-                )}
-              </button>
-            );
-          })}
-        </div>
+        {/* Filtro de Empreendimentos */}
+        {isAdmin && projects.length > 0 && (
+          <Select value={selectedProject} onValueChange={setSelectedProject}>
+            <SelectTrigger className="w-[180px] h-9 bg-background border-border text-foreground text-sm rounded-lg">
+              <Building2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Empreendimento" />
+            </SelectTrigger>
+            <SelectContent className="bg-popover border-border">
+              <SelectItem value="all" className="text-foreground">Todos Empreendimentos</SelectItem>
+              {projects.map(project => (
+                <SelectItem key={project.id} value={project.id} className="text-foreground">
+                  {project.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-        {/* Right side: Broker Filter */}
+        {/* Filtro de Corretor */}
         {isAdmin && brokers.length > 0 && (
           <Select value={selectedBroker} onValueChange={setSelectedBroker}>
-            <SelectTrigger className="w-[130px] h-9 bg-[#1e1e22] border-[#2a2a2e] text-slate-200 text-sm rounded-lg shrink-0">
-              <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
-              <SelectValue placeholder="Filtrar" />
+            <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground text-sm rounded-lg">
+              <Users className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Corretor" />
             </SelectTrigger>
-            <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-              <SelectItem value="all" className="text-slate-200">Todos</SelectItem>
-              <SelectItem value="enove" className="text-slate-200">Enove</SelectItem>
+            <SelectContent className="bg-popover border-border">
+              <SelectItem value="all" className="text-foreground">Todos Corretores</SelectItem>
+              <SelectItem value="enove" className="text-foreground">Enove (Direto)</SelectItem>
               {brokers.map(broker => (
-                <SelectItem key={broker.id} value={broker.id} className="text-slate-200">
+                <SelectItem key={broker.id} value={broker.id} className="text-foreground">
                   {broker.name}
                 </SelectItem>
               ))}
