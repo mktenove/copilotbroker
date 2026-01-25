@@ -270,3 +270,28 @@
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--gold) / 0.5);
 }
+
+/* Subtle scrollbars for Kanban and admin areas */
+.scrollbar-subtle::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 2px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* Firefox support for subtle scrollbars */
+.scrollbar-subtle {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+}

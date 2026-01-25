@@ -418,9 +418,7 @@ const Admin = () => {
       brokers={brokers}
     >
       {activeTab === "crm" ? (
-        <div className="h-[calc(100vh-140px)]">
-          <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} />
-        </div>
+        <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} onSearchChange={setCrmSearchTerm} />
       ) : activeTab === "leads" ? (
         <>
           {/* Stats */}

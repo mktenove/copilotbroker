@@ -168,7 +168,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       {/* Toolbar - Filters */}
       <div className="flex items-center gap-3 mb-4 md:mb-6 px-1">
         {/* Refresh Button */}
@@ -240,7 +240,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
       </div>
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto pb-4 -mx-3 px-3 md:mx-0 md:px-0">
+      <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden scrollbar-subtle pb-4 -mx-3 px-3 md:mx-0 md:px-0">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCorners}
