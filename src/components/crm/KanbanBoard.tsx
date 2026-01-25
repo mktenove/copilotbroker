@@ -185,14 +185,14 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         {/* Filtro de Empreendimentos */}
         {isAdmin && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-[180px] h-9 bg-background border-border text-foreground text-sm rounded-lg">
-              <Building2 className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+            <SelectTrigger className="w-auto h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-2 px-2">
+              <Building2 className="w-4 h-4 text-slate-500" />
               <SelectValue placeholder="Empreendimento" />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="all" className="text-foreground">Todos Empreendimentos</SelectItem>
+              <SelectItem value="all">Todos Empreendimentos</SelectItem>
               {projects.map(project => (
-                <SelectItem key={project.id} value={project.id} className="text-foreground">
+                <SelectItem key={project.id} value={project.id}>
                   {project.name}
                 </SelectItem>
               ))}
@@ -203,15 +203,15 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         {/* Filtro de Corretor */}
         {isAdmin && brokers.length > 0 && (
           <Select value={selectedBroker} onValueChange={setSelectedBroker}>
-            <SelectTrigger className="w-[160px] h-9 bg-background border-border text-foreground text-sm rounded-lg">
-              <Users className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+            <SelectTrigger className="w-auto h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-2 px-2">
+              <Users className="w-4 h-4 text-slate-500" />
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="all" className="text-foreground">Todos Corretores</SelectItem>
-              <SelectItem value="enove" className="text-foreground">Enove (Direto)</SelectItem>
+              <SelectItem value="all">Todos Corretores</SelectItem>
+              <SelectItem value="enove">Enove (Direto)</SelectItem>
               {brokers.map(broker => (
-                <SelectItem key={broker.id} value={broker.id} className="text-foreground">
+                <SelectItem key={broker.id} value={broker.id}>
                   {broker.name}
                 </SelectItem>
               ))}
