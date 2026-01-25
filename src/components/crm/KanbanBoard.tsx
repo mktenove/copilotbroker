@@ -19,6 +19,7 @@ import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { LeadDetailSheet } from "./LeadDetailSheet";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -162,31 +163,37 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Toolbar */}
-      <div className="flex flex-col sm:flex-row gap-3 mb-4">
+    <div className="flex flex-col h-full bg-[#1a1a2e] rounded-2xl p-4">
+      {/* Toolbar - TaskWhiz style */}
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        {/* Search - pill style */}
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
             type="text"
-            placeholder="Buscar por nome ou telefone..."
+            placeholder="Buscar leads..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className={cn(
+              "w-full pl-10 pr-4 py-2.5 rounded-full text-sm",
+              "bg-[#252545] border border-[#3a3a5c] text-slate-200 placeholder:text-slate-500",
+              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
+              "transition-all"
+            )}
           />
         </div>
 
         {/* Project Filter */}
         {isAdmin && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Building2 className="w-4 h-4 mr-2" />
+            <SelectTrigger className="w-full sm:w-[180px] bg-[#252545] border-[#3a3a5c] text-slate-200 rounded-full">
+              <Building2 className="w-4 h-4 mr-2 text-slate-400" />
               <SelectValue placeholder="Projeto" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os projetos</SelectItem>
+            <SelectContent className="bg-[#252545] border-[#3a3a5c]">
+              <SelectItem value="all" className="text-slate-200">Todos os projetos</SelectItem>
               {projects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
+                <SelectItem key={project.id} value={project.id} className="text-slate-200">
                   {project.name}
                 </SelectItem>
               ))}
@@ -197,15 +204,15 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
         {/* Broker Filter */}
         {isAdmin && brokers.length > 0 && (
           <Select value={selectedBroker} onValueChange={setSelectedBroker}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <Filter className="w-4 h-4 mr-2" />
+            <SelectTrigger className="w-full sm:w-[180px] bg-[#252545] border-[#3a3a5c] text-slate-200 rounded-full">
+              <Filter className="w-4 h-4 mr-2 text-slate-400" />
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os corretores</SelectItem>
-              <SelectItem value="enove">Enove (direto)</SelectItem>
+            <SelectContent className="bg-[#252545] border-[#3a3a5c]">
+              <SelectItem value="all" className="text-slate-200">Todos os corretores</SelectItem>
+              <SelectItem value="enove" className="text-slate-200">Enove (direto)</SelectItem>
               {brokers.map(broker => (
-                <SelectItem key={broker.id} value={broker.id}>
+                <SelectItem key={broker.id} value={broker.id} className="text-slate-200">
                   {broker.name}
                 </SelectItem>
               ))}
@@ -213,12 +220,17 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
           </Select>
         )}
 
+        {/* Refresh button */}
         <button
           onClick={fetchLeads}
           disabled={isLoading}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm shrink-0"
+          className={cn(
+            "flex items-center justify-center gap-2 px-4 py-2.5 rounded-full text-sm shrink-0",
+            "bg-[#252545] border border-[#3a3a5c] text-slate-200",
+            "hover:bg-[#303055] hover:border-primary/40 transition-all"
+          )}
         >
-          <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
           <span className="hidden sm:inline">Atualizar</span>
         </button>
       </div>
@@ -231,7 +243,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [] }: KanbanB
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="flex gap-4 min-w-max">
+          <div className="flex gap-5 min-w-max">
             {STATUSES.map(status => (
               <KanbanColumn
                 key={status}
