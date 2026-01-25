@@ -1,73 +1,121 @@
-import { Search, Plus, ChevronRight } from "lucide-react";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface AdminHeaderProps {
   activeTab: string;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
-  onAddLead?: () => void;
+  brokers?: { id: string; name: string; slug: string }[];
 }
 
-const TAB_LABELS: Record<string, string> = {
-  crm: "CRM",
-  leads: "Leads",
-  brokers: "Corretores",
-  projects: "Empreendimentos",
-  analytics: "Analytics",
+const TAB_LABELS: Record<string, { title: string; subtitle?: string }> = {
+  crm: { title: "CRM", subtitle: "Gerencie seus leads e pipeline de vendas" },
+  leads: { title: "Leads", subtitle: "Visualize e exporte todos os leads" },
+  brokers: { title: "Corretores", subtitle: "Cadastre e gerencie corretores parceiros" },
+  projects: { title: "Empreendimentos", subtitle: "Configure seus empreendimentos ativos" },
+  analytics: { title: "Analytics", subtitle: "Acompanhe métricas e performance" },
 };
 
-export function AdminHeader({ activeTab, searchTerm, onSearchChange, onAddLead }: AdminHeaderProps) {
+// Mock team members for avatar stack
+const TEAM_AVATARS = [
+  { id: "1", name: "Ana", color: "from-pink-500 to-rose-500" },
+  { id: "2", name: "Bruno", color: "from-blue-500 to-cyan-500" },
+  { id: "3", name: "Carlos", color: "from-amber-500 to-orange-500" },
+  { id: "4", name: "Diana", color: "from-emerald-500 to-green-500" },
+];
+
+export function AdminHeader({ 
+  activeTab, 
+  searchTerm, 
+  onSearchChange,
+  brokers = []
+}: AdminHeaderProps) {
+  const currentTab = TAB_LABELS[activeTab] || TAB_LABELS.crm;
+  
+  const displayTeam = brokers.length > 0 
+    ? brokers.slice(0, 4).map(b => ({ id: b.id, name: b.name, color: "from-slate-500 to-slate-600" }))
+    : TEAM_AVATARS;
+  
+  const extraCount = (brokers.length > 0 ? brokers.length : 5) - 4;
+
   return (
-    <header className="sticky top-0 z-40 flex h-16 items-center gap-4 border-b border-border bg-card px-4 md:px-6">
-      {/* Sidebar Trigger */}
-      <SidebarTrigger className="text-muted-foreground hover:text-foreground" />
+    <header className="sticky top-0 z-30 bg-[#1a1a2e]/95 backdrop-blur-sm border-b border-[#3a3a5c]">
+      {/* Breadcrumb row */}
+      <div className="flex items-center justify-between px-6 py-2 border-b border-[#3a3a5c]/50">
+        <nav className="flex items-center gap-2 text-xs text-slate-500">
+          <span>Admin</span>
+          <span>›</span>
+          <span className="text-slate-300">{currentTab.title}</span>
+        </nav>
+        
+        <ThemeToggle />
+      </div>
 
-      {/* Breadcrumb */}
-      <nav className="flex items-center gap-2 text-sm">
-        <span className="text-muted-foreground font-medium">Admin</span>
-        <ChevronRight className="w-4 h-4 text-muted-foreground/50" />
-        <span className="font-semibold text-foreground">{TAB_LABELS[activeTab] || activeTab}</span>
-      </nav>
-
-      {/* Spacer */}
-      <div className="flex-1" />
-
-      {/* Search Bar - only on CRM/Leads */}
-      {(activeTab === "crm" || activeTab === "leads") && onSearchChange && (
-        <div className="relative hidden md:block">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Buscar leads..."
-            value={searchTerm || ""}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className={cn(
-              "w-64 pl-9 pr-4 py-2 rounded-full text-sm",
-              "bg-muted/50 border border-border text-foreground placeholder:text-muted-foreground",
-              "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
-              "transition-all"
+      {/* Title row */}
+      <div className="flex items-center justify-between px-6 py-4">
+        <div className="flex items-center gap-6">
+          {/* Title */}
+          <div>
+            <h1 className="text-2xl font-bold text-white tracking-tight">{currentTab.title}</h1>
+            {currentTab.subtitle && (
+              <p className="text-sm text-slate-400 mt-0.5">{currentTab.subtitle}</p>
             )}
-          />
+          </div>
+
+          {/* Team avatars stack */}
+          <div className="hidden md:flex items-center">
+            <div className="flex -space-x-2">
+              {displayTeam.map((member, idx) => (
+                <Avatar 
+                  key={member.id} 
+                  className={cn(
+                    "w-8 h-8 border-2 border-[#1a1a2e] ring-0",
+                    "hover:scale-110 hover:z-10 transition-transform cursor-pointer"
+                  )}
+                  style={{ zIndex: displayTeam.length - idx }}
+                >
+                  <AvatarFallback className={cn("text-white text-xs font-medium bg-gradient-to-br", member.color)}>
+                    {member.name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+              ))}
+              {extraCount > 0 && (
+                <div 
+                  className={cn(
+                    "w-8 h-8 rounded-full border-2 border-[#1a1a2e]",
+                    "bg-[#3a3a5c] flex items-center justify-center",
+                    "text-xs font-medium text-slate-300"
+                  )}
+                >
+                  +{extraCount}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* Add Lead Button */}
-      {onAddLead && (
-        <Button
-          onClick={onAddLead}
-          size="sm"
-          className="gap-2 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/25"
-        >
-          <Plus className="w-4 h-4" />
-          <span className="hidden sm:inline">Novo Lead</span>
-        </Button>
-      )}
-
-      {/* Theme Toggle */}
-      <ThemeToggle />
+        {/* Search - only on CRM/Leads */}
+        {(activeTab === "crm" || activeTab === "leads") && onSearchChange && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              type="text"
+              placeholder="Buscar leads..."
+              value={searchTerm || ""}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className={cn(
+                "w-64 pl-10 pr-4 py-2 rounded-full text-sm",
+                "bg-[#252545] border border-[#3a3a5c]",
+                "text-slate-200 placeholder:text-slate-500",
+                "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
+                "transition-all duration-200"
+              )}
+            />
+          </div>
+        )}
+      </div>
     </header>
   );
 }

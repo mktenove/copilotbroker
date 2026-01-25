@@ -1,125 +1,160 @@
-import { Kanban, Users, UserCog, Building2, BarChart3, LogOut, Settings, ChevronLeft } from "lucide-react";
+import { useState } from "react";
+import { 
+  LayoutDashboard, 
+  Users, 
+  Building2, 
+  BarChart3, 
+  Bell, 
+  Settings,
+  Plus,
+  LogOut
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove.png";
 import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarFooter,
-  SidebarHeader,
-  useSidebar,
-} from "@/components/ui/sidebar";
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface AdminSidebarProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onLogout: () => void;
+  onAddLead?: () => void;
 }
 
-const mainNavItems = [
-  { id: "crm", label: "CRM", icon: Kanban },
+const NAV_ITEMS = [
+  { id: "crm", label: "CRM", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
-  { id: "brokers", label: "Corretores", icon: UserCog },
+  { id: "brokers", label: "Corretores", icon: Users },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
-export function AdminSidebar({ activeTab, onTabChange, onLogout }: AdminSidebarProps) {
-  const { state } = useSidebar();
-  const isCollapsed = state === "collapsed";
+export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {
+  const [notifications] = useState(3); // Mock notification count
 
   return (
-    <Sidebar 
-      collapsible="icon"
-      className="border-r-0"
-      style={{ 
-        "--sidebar-background": "232 30% 12%",
-        "--sidebar-foreground": "210 20% 85%",
-        "--sidebar-border": "232 25% 18%",
-        "--sidebar-accent": "232 25% 18%",
-        "--sidebar-accent-foreground": "48 96% 53%",
-      } as React.CSSProperties}
-    >
-      {/* Header with Logo */}
-      <SidebarHeader className="p-4 border-b border-[hsl(232,25%,18%)]">
-        <div className="flex items-center gap-3">
+    <TooltipProvider delayDuration={100}>
+      <aside className="fixed left-0 top-0 bottom-0 z-40 flex flex-col w-16 bg-[#1a1a2e] border-r border-[#3a3a5c]">
+        {/* Logo area */}
+        <div className="flex items-center justify-center h-16 border-b border-[#3a3a5c]">
           <img 
             src={logoEnove} 
             alt="Enove" 
-            className={cn(
-              "transition-all duration-300",
-              isCollapsed ? "h-8 w-8 object-contain" : "h-10"
-            )} 
+            className="h-8 w-8 object-contain"
           />
-          {!isCollapsed && (
-            <div className="flex flex-col">
-              <span className="font-serif font-bold text-white text-sm">Enove</span>
-              <span className="text-[10px] text-slate-400 uppercase tracking-wider">Imobiliária</span>
-            </div>
-          )}
         </div>
-      </SidebarHeader>
 
-      {/* Main Navigation */}
-      <SidebarContent className="px-2 py-4">
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {mainNavItems.map((item) => {
-                const isActive = activeTab === item.id;
-                return (
-                  <SidebarMenuItem key={item.id}>
-                    <SidebarMenuButton
-                      onClick={() => onTabChange(item.id)}
-                      tooltip={item.label}
-                      className={cn(
-                        "relative h-11 px-3 rounded-lg transition-all duration-200",
-                        "hover:bg-[hsl(232,25%,20%)]",
-                        isActive && "bg-primary/10 text-primary"
-                      )}
-                    >
-                      {/* Active indicator bar */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 bg-primary rounded-r-full" />
-                      )}
-                      <item.icon className={cn(
-                        "w-5 h-5 shrink-0",
-                        isActive ? "text-primary" : "text-slate-400"
-                      )} />
-                      <span className={cn(
-                        "text-sm font-medium",
-                        isActive ? "text-primary" : "text-slate-300"
-                      )}>
-                        {item.label}
-                      </span>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-      </SidebarContent>
+        {/* FAB - Floating Action Button */}
+        <div className="flex items-center justify-center py-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={onAddLead}
+                className={cn(
+                  "w-10 h-10 rounded-full flex items-center justify-center",
+                  "bg-emerald-500 hover:bg-emerald-400 text-white",
+                  "shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50",
+                  "transition-all duration-200 hover:scale-105"
+                )}
+              >
+                <Plus className="w-5 h-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+              Adicionar Lead
+            </TooltipContent>
+          </Tooltip>
+        </div>
 
-      {/* Footer */}
-      <SidebarFooter className="p-2 border-t border-[hsl(232,25%,18%)]">
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              onClick={onLogout}
-              tooltip="Sair"
-              className="h-11 px-3 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all"
-            >
-              <LogOut className="w-5 h-5 shrink-0" />
-              <span className="text-sm font-medium">Sair</span>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
-      </SidebarFooter>
-    </Sidebar>
+        {/* Main Navigation */}
+        <nav className="flex-1 flex flex-col items-center gap-1 py-4">
+          {NAV_ITEMS.map((item) => {
+            const isActive = activeTab === item.id;
+            const Icon = item.icon;
+            
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onTabChange(item.id)}
+                    className={cn(
+                      "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                      isActive 
+                        ? "bg-primary/20 text-primary" 
+                        : "text-slate-400 hover:text-slate-200 hover:bg-[#252545]"
+                    )}
+                  >
+                    {/* Active indicator bar */}
+                    {isActive && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+                    )}
+                    <Icon className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+                  {item.label}
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+        </nav>
+
+        {/* Bottom Section */}
+        <div className="flex flex-col items-center gap-2 py-4 border-t border-[#3a3a5c]">
+          {/* Notifications */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="relative w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-[#252545] transition-colors">
+                <Bell className="w-5 h-5" />
+                {notifications > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+                    {notifications}
+                  </span>
+                )}
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+              Notificações
+            </TooltipContent>
+          </Tooltip>
+
+          {/* Settings */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-400 hover:text-slate-200 hover:bg-[#252545] transition-colors">
+                <Settings className="w-5 h-5" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+              Configurações
+            </TooltipContent>
+          </Tooltip>
+
+          {/* User Avatar / Logout */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button 
+                onClick={onLogout}
+                className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-primary/50 transition-colors"
+              >
+                <Avatar className="w-full h-full">
+                  <AvatarFallback className="bg-gradient-to-br from-amber-500 to-orange-600 text-white text-sm font-medium">
+                    A
+                  </AvatarFallback>
+                </Avatar>
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="bg-[#252545] border-[#3a3a5c] text-slate-200">
+              Sair
+            </TooltipContent>
+          </Tooltip>
+        </div>
+      </aside>
+    </TooltipProvider>
   );
 }

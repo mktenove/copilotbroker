@@ -20,8 +20,8 @@ interface KanbanColumnProps {
   onDelete?: (leadId: string) => Promise<void>;
 }
 
-// Status dot colors for TaskWhiz style headers
-const STATUS_DOT_COLORS: Record<LeadStatus, string> = {
+// Status square colors for TaskWhiz style headers
+const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   new: "bg-blue-500",
   info_sent: "bg-amber-500",
   awaiting_docs: "bg-orange-500",
@@ -35,35 +35,38 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col min-w-[320px] max-w-[340px] shrink-0">
-      {/* Column Header - TaskWhiz minimalist style */}
-      <div className="flex items-center gap-2 px-3 py-3 mb-3">
-        {/* Status dot */}
+    <div className="flex flex-col min-w-[300px] max-w-[320px] shrink-0">
+      {/* Column Header - TaskWhiz minimalist style with square indicator */}
+      <div className="flex items-center gap-2.5 px-2 py-3 mb-2">
+        {/* Status square (not dot) */}
         <div className={cn(
-          "w-2.5 h-2.5 rounded-full shrink-0",
-          STATUS_DOT_COLORS[status]
+          "w-2 h-2 rounded-sm shrink-0",
+          STATUS_SQUARE_COLORS[status]
         )} />
         
-        {/* Column title */}
-        <h3 className="font-medium text-sm text-slate-200 truncate">
-          {config.label}
+        {/* Column title with count in parentheses */}
+        <h3 className="font-medium text-sm text-slate-300">
+          {config.label} <span className="text-slate-500">({leads.length})</span>
         </h3>
-        
-        {/* Lead counter - pill style */}
-        <span className={cn(
-          "px-2 py-0.5 text-xs font-semibold rounded-full",
-          "bg-slate-700/80 text-slate-300"
-        )}>
-          {leads.length}
-        </span>
 
         {/* Spacer */}
         <div className="flex-1" />
 
+        {/* Add button - icon only */}
+        <button
+          className={cn(
+            "w-7 h-7 rounded-lg flex items-center justify-center",
+            "text-slate-500 hover:text-primary hover:bg-primary/10",
+            "transition-all duration-200"
+          )}
+        >
+          <Plus className="w-4 h-4" />
+        </button>
+
         {/* Column menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-1 rounded-md text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors">
+            <button className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#252545] transition-colors">
               <MoreHorizontal className="w-4 h-4" />
             </button>
           </DropdownMenuTrigger>
@@ -78,29 +81,16 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         </DropdownMenu>
       </div>
 
-      {/* Column Content */}
+      {/* Column Content - more transparent background */}
       <div
         ref={setNodeRef}
         className={cn(
-          "flex-1 p-2 space-y-3 rounded-xl min-h-[400px] max-h-[calc(100vh-280px)] overflow-y-auto",
-          "bg-[#1e1e38]/50",
+          "flex-1 p-2 space-y-2.5 rounded-xl min-h-[400px] max-h-[calc(100vh-240px)] overflow-y-auto",
+          "bg-[#1e1e38]/30",
           "scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent",
           isOver && "bg-primary/10 ring-2 ring-primary/40"
         )}
       >
-        {/* Add lead button at top */}
-        <button
-          className={cn(
-            "w-full flex items-center justify-center gap-2 py-3 rounded-lg",
-            "border-2 border-dashed border-slate-700/50 text-slate-500",
-            "hover:border-primary/40 hover:text-primary/80 hover:bg-primary/5",
-            "transition-all duration-200"
-          )}
-        >
-          <Plus className="w-4 h-4" />
-          <span className="text-sm font-medium">Adicionar</span>
-        </button>
-
         <SortableContext items={leads.map(l => l.id)} strategy={verticalListSortingStrategy}>
           {leads.map((lead) => (
             <KanbanCard
@@ -115,8 +105,11 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         </SortableContext>
 
         {leads.length === 0 && (
-          <div className="flex items-center justify-center h-24 text-sm text-slate-500 border-2 border-dashed border-slate-700/50 rounded-xl">
-            Nenhum lead
+          <div className="flex flex-col items-center justify-center h-32 text-center">
+            <div className="text-slate-600 text-sm">Nenhum lead</div>
+            <button className="mt-2 text-xs text-primary/70 hover:text-primary transition-colors">
+              + Adicionar
+            </button>
           </div>
         )}
       </div>
