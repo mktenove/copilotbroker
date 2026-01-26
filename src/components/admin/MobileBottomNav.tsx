@@ -1,21 +1,40 @@
-import { LayoutDashboard, Users, Building2, BarChart3, Plus } from "lucide-react";
+import { LayoutDashboard, Users, BarChart3, Plus, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface MobileBottomNavProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
   onAddLead?: () => void;
+  onNotificationsClick?: () => void;
 }
 
-const NAV_ITEMS = [
-  { id: "crm", label: "CRM", icon: LayoutDashboard },
-  { id: "leads", label: "Leads", icon: Users },
-  { id: "add", label: "Adicionar", icon: Plus, isFab: true },
-  { id: "brokers", label: "Corretores", icon: Users },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-];
+export function MobileBottomNav({ 
+  activeTab, 
+  onTabChange, 
+  onAddLead,
+  onNotificationsClick 
+}: MobileBottomNavProps) {
+  const { unreadCount } = useNotifications();
 
-export function MobileBottomNav({ activeTab, onTabChange, onAddLead }: MobileBottomNavProps) {
+  const navItems = [
+    { id: "notifications", icon: Bell, badge: unreadCount },
+    { id: "crm", icon: LayoutDashboard },
+    { id: "add", icon: Plus, isFab: true },
+    { id: "leads", icon: Users },
+    { id: "analytics", icon: BarChart3 },
+  ];
+
+  const handleClick = (id: string) => {
+    if (id === "notifications" && onNotificationsClick) {
+      onNotificationsClick();
+    } else if (id === "add" && onAddLead) {
+      onAddLead();
+    } else {
+      onTabChange(id);
+    }
+  };
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
       {/* Background with blur */}
@@ -23,7 +42,7 @@ export function MobileBottomNav({ activeTab, onTabChange, onAddLead }: MobileBot
       
       {/* Safe area padding for iOS */}
       <div className="relative flex items-center justify-around px-2 py-2 pb-safe">
-        {NAV_ITEMS.map((item) => {
+        {navItems.map((item) => {
           const Icon = item.icon;
           
           // FAB button (center)
@@ -31,11 +50,11 @@ export function MobileBottomNav({ activeTab, onTabChange, onAddLead }: MobileBot
             return (
               <button
                 key={item.id}
-                onClick={onAddLead}
+                onClick={() => handleClick(item.id)}
                 className={cn(
                   "relative flex items-center justify-center",
                   "w-14 h-14 -mt-6 rounded-full",
-                  "bg-enove-yellow hover:brightness-110",
+                  "bg-[#FFFF00] hover:brightness-110",
                   "text-black shadow-lg shadow-[hsl(60_100%_50%/0.3)]",
                   "transition-all duration-200 active:scale-95"
                 )}
@@ -50,21 +69,27 @@ export function MobileBottomNav({ activeTab, onTabChange, onAddLead }: MobileBot
           return (
             <button
               key={item.id}
-              onClick={() => onTabChange(item.id)}
+              onClick={() => handleClick(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[60px]",
-                "transition-colors duration-200",
+                "flex items-center justify-center p-3 min-w-[48px]",
+                "transition-colors duration-200 relative",
                 isActive 
-                  ? "text-primary" 
+                  ? "text-[#FFFF00]" 
                   : "text-slate-500 active:text-slate-300"
               )}
             >
-              <Icon className="w-5 h-5" />
-              <span className="text-[10px] font-medium">{item.label}</span>
-              
-              {/* Active indicator dot */}
+              <div className="relative">
+                <Icon className="w-6 h-6" />
+                {/* Facebook-style notification badge */}
+                {(item.badge ?? 0) > 0 && (
+                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-md shadow-red-500/50">
+                    {item.badge > 99 ? "99+" : item.badge}
+                  </span>
+                )}
+              </div>
+
               {isActive && (
-                <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
+                <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-[#FFFF00]" />
               )}
             </button>
           );
