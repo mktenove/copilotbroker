@@ -1,8 +1,8 @@
-import { useMemo, useState } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone } from "lucide-react";
+import { useMemo } from "react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { OriginCombobox } from "./OriginCombobox";
 import { InactivationCombobox } from "./InactivationCombobox";
@@ -25,7 +25,23 @@ interface KanbanCardProps {
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
+  onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
 }
+
+// Status order for advancement
+const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered'];
+
+const getNextStatus = (currentStatus: LeadStatus): LeadStatus | null => {
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  if (currentIndex === -1 || currentIndex >= STATUS_ORDER.length - 1) return null;
+  return STATUS_ORDER[currentIndex + 1];
+};
+
+const getNextStatusLabel = (currentStatus: LeadStatus): string | null => {
+  const nextStatus = getNextStatus(currentStatus);
+  if (!nextStatus) return null;
+  return STATUS_CONFIG[nextStatus]?.label || null;
+};
 
 // Vibrant dark theme colors for origin types
 const ORIGIN_COLORS: Record<string, string> = {
@@ -56,7 +72,9 @@ const PROGRESS_COLORS: Record<string, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus }: KanbanCardProps) {
+  const nextStatus = getNextStatus(lead.status);
+  const nextStatusLabel = getNextStatusLabel(lead.status);
   
   const {
     attributes,
@@ -279,6 +297,25 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              )}
+
+              {/* Advance Status Button */}
+              {onAdvanceStatus && nextStatus && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onAdvanceStatus(lead.id, lead.status);
+                  }}
+                  className={cn(
+                    "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
+                    "flex items-center justify-center",
+                    "text-slate-500 hover:text-primary hover:bg-primary/10",
+                    "transition-colors"
+                  )}
+                  title={`Avançar para: ${nextStatusLabel}`}
+                >
+                  <ChevronRight className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                </button>
               )}
             </div>
           </div>
