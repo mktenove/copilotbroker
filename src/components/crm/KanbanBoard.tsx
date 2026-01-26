@@ -196,14 +196,28 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
 
   return (
     <div className="flex flex-col min-h-[700px]">
+      {/* Mobile: Botão Atualizar grande */}
+      <button
+        onClick={fetchLeads}
+        disabled={isLoading}
+        className={cn(
+          "md:hidden flex items-center justify-center gap-2 w-full py-3 mb-4 rounded-lg",
+          "bg-primary text-primary-foreground font-medium",
+          "hover:bg-primary/90 transition-all disabled:opacity-50"
+        )}
+      >
+        <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
+        Atualizar
+      </button>
+
       {/* Toolbar - Filters */}
-      <div className="flex items-center gap-3 mb-4 md:mb-6 px-1">
-        {/* Refresh Button */}
+      <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 px-1">
+        {/* Desktop: Refresh Button compacto */}
         <button
           onClick={fetchLeads}
           disabled={isLoading}
           className={cn(
-            "flex items-center justify-center w-9 h-9 shrink-0 rounded-lg",
+            "hidden md:flex items-center justify-center w-9 h-9 shrink-0 rounded-lg",
             "text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
           )}
         >
@@ -213,12 +227,12 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         {/* Filtro de Empreendimentos - admin ou corretor com múltiplos projetos */}
         {(isAdmin || projects.length > 1) && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-auto h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-2 px-2">
-              <Building2 className="w-4 h-4 text-slate-500" />
-              <SelectValue placeholder="Empreendimento" />
+            <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
+              <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
+              <SelectValue placeholder="Empreend." className="truncate" />
             </SelectTrigger>
             <SelectContent className="bg-popover border-border">
-              <SelectItem value="all">Empreendimento</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               {projects.map(project => (
                 <SelectItem key={project.id} value={project.id}>
                   {project.name}
@@ -248,15 +262,15 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         )}
 
         {/* Campo de Busca */}
-        <div className="relative ml-auto">
+        <div className="relative ml-auto flex-1 md:flex-none">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
-            placeholder="Buscar lead..."
+            placeholder="Buscar..."
             value={searchTerm}
             onChange={(e) => onSearchChange?.(e.target.value)}
             className={cn(
-              "w-48 pl-9 pr-3 py-2 rounded-lg text-sm",
+              "w-full md:w-48 pl-9 pr-3 py-2 rounded-lg text-sm",
               "bg-[#1e1e22] border border-[#2a2a2e]",
               "text-slate-200 placeholder:text-slate-500",
               "focus:outline-none focus:ring-2 focus:ring-primary/50",
