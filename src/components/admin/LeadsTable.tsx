@@ -95,18 +95,18 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
 
   if (isLoading) {
     return (
-      <div className="p-12 text-center">
+      <div className="p-12 text-center bg-[#0f0f12]">
         <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Carregando leads...</p>
+        <p className="text-slate-400">Carregando leads...</p>
       </div>
     );
   }
 
   if (leads.length === 0) {
     return (
-      <div className="p-12 text-center">
-        <Users className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-        <p className="text-muted-foreground">
+      <div className="p-12 text-center bg-[#0f0f12]">
+        <Users className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+        <p className="text-slate-400">
           {searchTerm ? "Nenhum lead encontrado." : "Nenhum lead cadastrado ainda."}
         </p>
       </div>
@@ -123,7 +123,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
   return (
     <>
       {/* Mobile: Cards */}
-      <div className="md:hidden space-y-4 p-4">
+      <div className="md:hidden space-y-3 p-4 bg-[#0f0f12]">
         {leads.map((lead) => (
           <LeadCard 
             key={lead.id} 
@@ -138,41 +138,41 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
       </div>
 
       {/* Desktop: Table */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden md:block overflow-x-auto bg-[#0f0f12]">
         <table className="w-full">
-          <thead className="bg-muted/50">
+          <thead className="bg-[#1e1e22] border-b border-[#2a2a2e]">
             <tr>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">WhatsApp</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Nome</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">WhatsApp</th>
               {showStatus && (
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Status</th>
               )}
               {showSource && (
-                <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Cadastrado por</th>
+                <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Cadastrado por</th>
               )}
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Origem</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Corretor</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Data de Cadastro</th>
-              <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Origem</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Corretor</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Data de Cadastro</th>
+              <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Ações</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-border">
+          <tbody className="divide-y divide-[#2a2a2e]">
             {leads.map((lead) => {
               const isInactive = lead.status === "inactive";
               return (
                 <tr 
                   key={lead.id} 
                   className={cn(
-                    "hover:bg-muted/30 transition-colors",
+                    "hover:bg-[#1e1e22] transition-colors",
                     onLeadClick && "cursor-pointer"
                   )}
                   onClick={() => onLeadClick?.(lead)}
                 >
                   <td className="px-6 py-4">
-                    <span className="font-medium text-foreground">{lead.name}</span>
+                    <span className="font-medium text-white">{lead.name}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-foreground">{lead.whatsapp}</span>
+                    <span className="text-slate-300">{lead.whatsapp}</span>
                   </td>
                   {showStatus && (
                     <td className="px-6 py-4">
@@ -189,13 +189,13 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                   </td>
                   <td className="px-6 py-4">
                     {lead.broker?.name ? (
-                      <span className="font-medium text-foreground">{lead.broker.name}</span>
+                      <span className="font-medium text-slate-200">{lead.broker.name}</span>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-slate-500">—</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-muted-foreground text-sm">{formatDate(lead.created_at)}</span>
+                    <span className="text-slate-400 text-sm">{formatDate(lead.created_at)}</span>
                   </td>
                   <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center gap-2">
@@ -213,7 +213,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                       {onInactivate && !isInactive && (
                         <button
                           onClick={() => setInactivatingLead(lead)}
-                          className="inline-flex items-center gap-1 px-3 py-2 bg-muted text-muted-foreground text-sm rounded-lg hover:bg-muted/80 transition-colors"
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-[#2a2a2e] text-slate-400 text-sm rounded-lg hover:bg-[#3a3a3e] hover:text-slate-200 transition-colors"
                           title="Inativar lead"
                         >
                           <UserX className="w-4 h-4" />
@@ -225,7 +225,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <button
-                              className="inline-flex items-center gap-1 px-3 py-2 bg-destructive/10 text-destructive text-sm rounded-lg hover:bg-destructive/20 transition-colors"
+                              className="inline-flex items-center gap-1 px-3 py-2 bg-red-500/10 text-red-400 text-sm rounded-lg hover:bg-red-500/20 transition-colors"
                               title="Excluir lead"
                             >
                               <Trash2 className="w-4 h-4" />

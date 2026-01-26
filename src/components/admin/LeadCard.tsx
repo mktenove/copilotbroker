@@ -104,14 +104,14 @@ const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelet
     <>
       <div 
         className={cn(
-          "card-luxury p-4 space-y-3",
-          onClick && "cursor-pointer hover:ring-1 hover:ring-primary/50 transition-all"
+          "bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 space-y-3 transition-all",
+          onClick && "cursor-pointer hover:border-slate-600"
         )}
         onClick={onClick}
       >
         {/* Header com nome */}
         <div className="flex items-start justify-between gap-3">
-          <h3 className="font-semibold text-foreground text-lg leading-tight">{lead.name}</h3>
+          <h3 className="font-semibold text-white text-lg leading-tight">{lead.name}</h3>
           <div className="flex flex-wrap gap-1">
             {showStatus && getStatusLabel()}
             {showSource && getSourceLabel()}
@@ -122,26 +122,26 @@ const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelet
         {/* Informações */}
         <div className="space-y-2 text-sm">
           {/* WhatsApp */}
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Phone className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 text-slate-400">
+            <Phone className="w-4 h-4 shrink-0 text-slate-500" />
             <span>{lead.whatsapp}</span>
           </div>
 
           {/* Corretor atribuído */}
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <UserCheck className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 text-slate-400">
+            <UserCheck className="w-4 h-4 shrink-0 text-slate-500" />
             <span>
               {lead.broker?.name ? (
-                <span className="text-foreground font-medium">{lead.broker.name}</span>
+                <span className="text-slate-200 font-medium">{lead.broker.name}</span>
               ) : (
-                <span className="text-muted-foreground">Não atribuído</span>
+                <span className="text-slate-500">Não atribuído</span>
               )}
             </span>
           </div>
 
           {/* Data */}
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Calendar className="w-4 h-4 shrink-0" />
+          <div className="flex items-center gap-2 text-slate-400">
+            <Calendar className="w-4 h-4 shrink-0 text-slate-500" />
             <span>{formatDate(lead.created_at)}</span>
           </div>
         </div>
@@ -162,7 +162,7 @@ const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelet
           {onInactivate && !isInactive && (
             <button
               onClick={() => setIsInactivationOpen(true)}
-              className="flex items-center justify-center px-4 py-3 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+              className="flex items-center justify-center px-4 py-3 bg-[#2a2a2e] text-slate-400 rounded-lg hover:bg-[#3a3a3e] hover:text-slate-200 transition-colors"
               title="Inativar lead"
             >
               <UserX className="w-4 h-4" />
@@ -174,7 +174,7 @@ const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelet
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <button
-                  className="flex items-center justify-center px-4 py-3 bg-destructive/10 text-destructive rounded-lg hover:bg-destructive/20 transition-colors"
+                  className="flex items-center justify-center px-4 py-3 bg-red-500/10 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors"
                   title="Excluir lead"
                 >
                   <Trash2 className="w-4 h-4" />
