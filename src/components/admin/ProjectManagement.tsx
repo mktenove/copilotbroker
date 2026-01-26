@@ -41,10 +41,10 @@ import {
 function ProjectStatsCard({ projectId }: { projectId: string }) {
   const { stats, isLoading } = useProjectStats(projectId);
   
-  if (isLoading) return <span className="text-muted-foreground">...</span>;
+  if (isLoading) return <span className="text-slate-500">...</span>;
   
   return (
-    <span className="text-sm text-muted-foreground">
+    <span className="text-sm text-slate-400">
       {stats.totalLeads} leads ({stats.todayLeads} hoje)
     </span>
   );
@@ -142,18 +142,23 @@ export default function ProjectManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">Empreendimentos</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold text-white">Empreendimentos</h2>
+          <p className="text-slate-400">
             Gerencie os empreendimentos e suas landing pages
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="icon" onClick={() => fetchProjects(true)}>
+          <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={() => fetchProjects(true)}
+            className="bg-[#1e1e22] border-[#2a2a2e] hover:bg-[#2a2a2e] text-slate-400"
+          >
             <RefreshCw className="h-4 w-4" />
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button onClick={() => handleOpenDialog()}>
+              <Button onClick={() => handleOpenDialog()} className="bg-[#FFFF00] text-black hover:brightness-110">
                 <Plus className="h-4 w-4 mr-2" />
                 Novo Empreendimento
               </Button>
@@ -302,68 +307,67 @@ export default function ProjectManagement() {
 
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
-          <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+          <RefreshCw className="h-6 w-6 animate-spin text-[#FFFF00]" />
         </div>
       ) : projects.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Nenhum empreendimento cadastrado</p>
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl">
+          <div className="flex flex-col items-center justify-center py-12">
+            <Building2 className="h-12 w-12 text-slate-500 mb-4" />
+            <p className="text-slate-400">Nenhum empreendimento cadastrado</p>
             <Button 
               variant="outline" 
-              className="mt-4"
+              className="mt-4 bg-[#1e1e22] border-[#2a2a2e] hover:bg-[#2a2a2e] text-white"
               onClick={() => handleOpenDialog()}
             >
               <Plus className="h-4 w-4 mr-2" />
               Criar primeiro empreendimento
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => {
             const statusConfig = PROJECT_STATUS_CONFIG[project.status];
             return (
-              <Card 
+              <div 
                 key={project.id} 
-                className={`relative ${!project.is_active ? 'opacity-60' : ''}`}
+                className={`relative bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden ${!project.is_active ? 'opacity-60' : ''}`}
               >
-                <CardHeader className="pb-3">
+                <div className="p-4 pb-3">
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <CardTitle className="text-lg">{project.name}</CardTitle>
-                      <CardDescription className="flex items-center gap-1">
+                      <h3 className="text-lg font-semibold text-white">{project.name}</h3>
+                      <p className="flex items-center gap-1 text-slate-400 text-sm">
                         <MapPin className="h-3 w-3" />
                         {project.city}
-                      </CardDescription>
+                      </p>
                     </div>
-                    <Badge 
-                      variant="outline" 
-                      className={`${statusConfig.bgColor} ${statusConfig.color} border`}
+                    <span 
+                      className={`px-2 py-0.5 text-xs rounded-full border ${statusConfig.bgColor} ${statusConfig.color}`}
                     >
                       {statusConfig.label}
-                    </Badge>
+                    </span>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                </div>
+                <div className="px-4 pb-4 space-y-4">
                   {project.description && (
-                    <p className="text-sm text-muted-foreground line-clamp-2">
+                    <p className="text-sm text-slate-400 line-clamp-2">
                       {project.description}
                     </p>
                   )}
 
                   <div className="flex items-center gap-2 text-sm">
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <Users className="h-4 w-4 text-slate-500" />
                     <ProjectStatsCard projectId={project.id} />
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2e]">
                     <div className="flex items-center gap-2">
                       <Switch
                         checked={project.is_active}
                         onCheckedChange={(checked) => toggleProjectStatus(project.id, checked)}
                       />
-                      <span className="text-sm text-muted-foreground">
+                      <span className="text-sm text-slate-400">
                         {project.is_active ? "Ativo" : "Inativo"}
                       </span>
                     </div>
@@ -372,6 +376,7 @@ export default function ProjectManagement() {
                         variant="ghost"
                         size="icon"
                         onClick={() => handleOpenDialog(project)}
+                        className="hover:bg-[#2a2a2e] text-slate-400"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -379,6 +384,7 @@ export default function ProjectManagement() {
                         variant="ghost"
                         size="icon"
                         asChild
+                        className="hover:bg-[#2a2a2e] text-slate-400"
                       >
                         <a 
                           href={`/${project.city_slug}/${project.slug}`} 
@@ -390,8 +396,8 @@ export default function ProjectManagement() {
                       </Button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>

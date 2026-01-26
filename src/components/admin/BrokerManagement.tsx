@@ -336,8 +336,8 @@ const BrokerManagement = () => {
   if (isLoading) {
     return (
       <div className="p-12 text-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
-        <p className="text-muted-foreground">Carregando corretores...</p>
+        <RefreshCw className="w-8 h-8 animate-spin text-[#FFFF00] mx-auto mb-4" />
+        <p className="text-slate-400">Carregando corretores...</p>
       </div>
     );
   }
@@ -346,12 +346,12 @@ const BrokerManagement = () => {
     <div className="space-y-6">
       {/* Header com botão de adicionar */}
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-foreground">Corretores</h2>
+        <h2 className="text-xl font-semibold text-white">Corretores</h2>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <button
               onClick={() => handleOpenDialog()}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-[#FFFF00] text-black font-medium rounded-lg hover:brightness-110 transition-all"
             >
               <Plus className="w-4 h-4" />
               Novo Corretor
@@ -365,39 +365,39 @@ const BrokerManagement = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Nome Completo
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50"
                   placeholder="Nome do corretor"
                 />
                 {!editingBroker && formData.name && (
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-slate-500">
                     URL: /estanciavelha/{generateSlug(formData.name)}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 disabled:opacity-50"
                   placeholder="email@exemplo.com"
                   disabled={!!editingBroker}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   WhatsApp
                 </label>
                 <WhatsAppInput
@@ -409,40 +409,40 @@ const BrokerManagement = () => {
 
               {/* Seleção de Empreendimentos */}
               <div>
-                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                <label className="block text-sm font-medium text-slate-300 mb-2">
                   Empreendimentos
                 </label>
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3">
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-[#2a2a2e] rounded-lg p-3 bg-[#0f0f12]">
                   {projects.length > 0 ? (
                     projects.map(project => (
-                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded">
+                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-[#1e1e22] p-1 rounded">
                         <Checkbox
                           checked={selectedProjects.includes(project.id)}
                           onCheckedChange={() => toggleProject(project.id)}
                         />
-                        <span className="text-sm">{project.name}</span>
-                        <span className="text-xs text-muted-foreground">({project.city})</span>
+                        <span className="text-sm text-white">{project.name}</span>
+                        <span className="text-xs text-slate-500">({project.city})</span>
                       </label>
                     ))
                   ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum projeto disponível</p>
+                    <p className="text-sm text-slate-500">Nenhum projeto disponível</p>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
+                <p className="text-xs text-slate-500 mt-1">
                   Selecione os empreendimentos que este corretor pode vender
                 </p>
               </div>
 
               {!editingBroker && (
                 <div>
-                  <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  <label className="block text-sm font-medium text-slate-300 mb-2">
                     Senha
                   </label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50"
                     placeholder="Mínimo 6 caracteres"
                   />
                 </div>
@@ -452,7 +452,7 @@ const BrokerManagement = () => {
                 <DialogClose asChild>
                   <button
                     type="button"
-                    className="flex-1 px-4 py-3 border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
+                    className="flex-1 px-4 py-3 border border-[#2a2a2e] rounded-lg text-white hover:bg-[#1e1e22] transition-colors"
                   >
                     Cancelar
                   </button>
@@ -460,7 +460,7 @@ const BrokerManagement = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-[#FFFF00] text-black font-medium rounded-lg hover:brightness-110 transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? "Salvando..." : "Salvar"}
                 </button>
@@ -472,42 +472,42 @@ const BrokerManagement = () => {
 
       {/* Lista de corretores */}
       {brokers.length === 0 ? (
-        <div className="card-luxury p-12 text-center">
-          <p className="text-muted-foreground">Nenhum corretor cadastrado ainda.</p>
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-12 text-center">
+          <p className="text-slate-400">Nenhum corretor cadastrado ainda.</p>
         </div>
       ) : (
-        <div className="card-luxury overflow-hidden">
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-muted/50">
+              <thead className="bg-[#1e1e22] border-b border-[#2a2a2e]">
                 <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Projetos</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Link</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Nome</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Email</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Projetos</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Status</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Link</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-border">
+              <tbody className="divide-y divide-[#2a2a2e]">
                 {brokers.map((broker) => (
-                  <tr key={broker.id} className="hover:bg-muted/30 transition-colors">
+                  <tr key={broker.id} className="hover:bg-[#1e1e22] transition-colors">
                     <td className="px-6 py-4">
-                      <span className="font-medium text-foreground">{broker.name}</span>
+                      <span className="font-medium text-white">{broker.name}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-muted-foreground">{broker.email}</span>
+                      <span className="text-slate-400">{broker.email}</span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
                         {broker.projects && broker.projects.length > 0 ? (
                           broker.projects.map(project => (
-                            <Badge key={project.id} variant="outline" className="text-xs">
+                            <span key={project.id} className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
                               {project.name}
-                            </Badge>
+                            </span>
                           ))
                         ) : (
-                          <span className="text-xs text-muted-foreground">Nenhum</span>
+                          <span className="text-xs text-slate-500">Nenhum</span>
                         )}
                       </div>
                     </td>
@@ -516,8 +516,8 @@ const BrokerManagement = () => {
                         onClick={() => toggleBrokerStatus(broker)}
                         className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                           broker.is_active
-                            ? "bg-primary/10 text-primary hover:bg-primary/20"
-                            : "bg-destructive/10 text-destructive hover:bg-destructive/20"
+                            ? "bg-[#FFFF00]/10 text-[#FFFF00] hover:bg-[#FFFF00]/20"
+                            : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
                         }`}
                       >
                         {broker.is_active ? "Ativo" : "Inativo"}
@@ -525,26 +525,26 @@ const BrokerManagement = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
-                        <code className="text-xs bg-muted px-2 py-1 rounded">/estanciavelha/{broker.slug}</code>
+                        <code className="text-xs bg-[#0f0f12] px-2 py-1 rounded text-slate-300">/estanciavelha/{broker.slug}</code>
                         <button
                           onClick={() => copyLink(broker.slug)}
-                          className="p-1 hover:bg-muted rounded transition-colors"
+                          className="p-1 hover:bg-[#2a2a2e] rounded transition-colors"
                           title="Copiar link"
                         >
                           {copiedSlug === broker.slug ? (
-                            <Check className="w-4 h-4 text-primary" />
+                            <Check className="w-4 h-4 text-[#FFFF00]" />
                           ) : (
-                            <Copy className="w-4 h-4 text-muted-foreground" />
+                            <Copy className="w-4 h-4 text-slate-500" />
                           )}
                         </button>
                         <a
                           href={`/estanciavelha/${broker.slug}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-1 hover:bg-muted rounded transition-colors"
+                          className="p-1 hover:bg-[#2a2a2e] rounded transition-colors"
                           title="Abrir página"
                         >
-                          <ExternalLink className="w-4 h-4 text-muted-foreground" />
+                          <ExternalLink className="w-4 h-4 text-slate-500" />
                         </a>
                       </div>
                     </td>
@@ -552,17 +552,17 @@ const BrokerManagement = () => {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleOpenDialog(broker)}
-                          className="p-2 hover:bg-muted rounded-lg transition-colors"
+                          className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
                           title="Editar"
                         >
-                          <Edit2 className="w-4 h-4 text-muted-foreground" />
+                          <Edit2 className="w-4 h-4 text-slate-500" />
                         </button>
                         <button
                           onClick={() => deleteBroker(broker)}
-                          className="p-2 hover:bg-destructive/10 rounded-lg transition-colors"
+                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
                           title="Excluir"
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Trash2 className="w-4 h-4 text-red-400" />
                         </button>
                       </div>
                     </td>

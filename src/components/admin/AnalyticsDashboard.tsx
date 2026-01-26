@@ -379,13 +379,13 @@ const AnalyticsDashboard = () => {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <h2 className="text-lg sm:text-xl font-serif font-bold text-foreground">
+        <h2 className="text-lg sm:text-xl font-serif font-bold text-white">
           Dashboard de Analytics
         </h2>
         <div className="flex flex-wrap items-center gap-3">
           {/* Project Filter */}
           <Select value={selectedProject} onValueChange={setSelectedProject}>
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="w-[160px] bg-[#1e1e22] border-[#2a2a2e] text-white">
               <Building2 className="w-4 h-4 mr-2" />
               <SelectValue placeholder="Projeto" />
             </SelectTrigger>
@@ -402,7 +402,7 @@ const AnalyticsDashboard = () => {
           <select
             value={dateRange}
             onChange={(e) => setDateRange(Number(e.target.value))}
-            className="px-3 py-2 bg-background border border-border rounded-lg text-sm text-foreground"
+            className="px-3 py-2 bg-[#1e1e22] border border-[#2a2a2e] rounded-lg text-sm text-white"
           >
             <option value={7}>Últimos 7 dias</option>
             <option value={14}>Últimos 14 dias</option>
@@ -413,7 +413,7 @@ const AnalyticsDashboard = () => {
           <button
             onClick={fetchData}
             disabled={isLoading}
-            className="flex items-center gap-2 px-3 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-2 px-3 py-2 bg-[#1e1e22] text-[#FFFF00] border border-[#2a2a2e] rounded-lg hover:bg-[#2a2a2e] transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Atualizar</span>
@@ -432,9 +432,9 @@ const AnalyticsDashboard = () => {
       </div>
 
       {/* Daily Chart - Full width */}
-      <div className="card-luxury p-4 sm:p-6">
-        <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-          <Calendar className="w-4 h-4 text-primary" />
+      <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+        <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+          <Calendar className="w-4 h-4 text-[#FFFF00]" />
           Visitas e Leads por Dia
         </h3>
         <div className="h-[250px] sm:h-[300px]">
@@ -474,9 +474,9 @@ const AnalyticsDashboard = () => {
       {/* Funnel + Broker Performance */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Funnel */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <ArrowDownRight className="w-4 h-4 text-primary" />
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <ArrowDownRight className="w-4 h-4 text-[#FFFF00]" />
             Funil de Conversão
           </h3>
           <div className="h-[280px]">
@@ -498,25 +498,25 @@ const AnalyticsDashboard = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
             )}
           </div>
           {/* Inactivation rate */}
-          <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+          <div className="mt-4 pt-4 border-t border-[#2a2a2e] flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <UserX className="w-4 h-4 text-destructive" />
-              <span className="text-sm text-muted-foreground">Taxa de Inativação</span>
+              <UserX className="w-4 h-4 text-red-400" />
+              <span className="text-sm text-slate-400">Taxa de Inativação</span>
             </div>
-            <span className={cn("text-sm font-bold", inactivationRate > 30 ? "text-destructive" : "text-muted-foreground")}>
+            <span className={cn("text-sm font-bold", inactivationRate > 30 ? "text-red-400" : "text-slate-400")}>
               {inactivationRate.toFixed(1)}% ({inactivatedLeads} leads)
             </span>
           </div>
         </div>
 
         {/* Broker Performance */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <Award className="w-4 h-4 text-primary" />
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <Award className="w-4 h-4 text-[#FFFF00]" />
             Performance dos Corretores
           </h3>
           {isLoading ? (
@@ -524,38 +524,38 @@ const AnalyticsDashboard = () => {
           ) : brokerPerformance.length > 0 ? (
             <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
               {brokerPerformance.slice(0, 8).map((broker, index) => (
-                <div key={broker.id} className="p-3 bg-muted/30 rounded-lg">
+                <div key={broker.id} className="p-3 bg-[#0f0f12] rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className={cn(
                         "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                        index === 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"
+                        index === 0 ? "bg-[#FFFF00]/20 text-[#FFFF00]" : "bg-[#2a2a2e] text-slate-500"
                       )}>
                         {index + 1}
                       </span>
-                      <span className="text-sm font-medium text-foreground truncate max-w-[120px]">{broker.name}</span>
+                      <span className="text-sm font-medium text-white truncate max-w-[120px]">{broker.name}</span>
                     </div>
-                    <span className="text-sm font-bold text-primary">{broker.conversionRate.toFixed(0)}%</span>
+                    <span className="text-sm font-bold text-[#FFFF00]">{broker.conversionRate.toFixed(0)}%</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2 text-xs">
                     <div>
-                      <span className="text-muted-foreground">Leads</span>
-                      <p className="font-medium text-foreground">{broker.totalLeads}</p>
+                      <span className="text-slate-500">Leads</span>
+                      <p className="font-medium text-white">{broker.totalLeads}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Registros</span>
-                      <p className="font-medium text-green-600">{broker.registered}</p>
+                      <span className="text-slate-500">Registros</span>
+                      <p className="font-medium text-green-500">{broker.registered}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3" />Resp.</span>
-                      <p className="font-medium text-foreground">{broker.avgResponseHours > 0 ? `${broker.avgResponseHours.toFixed(0)}h` : "-"}</p>
+                      <span className="text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />Resp.</span>
+                      <p className="font-medium text-white">{broker.avgResponseHours > 0 ? `${broker.avgResponseHours.toFixed(0)}h` : "-"}</p>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+            <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
           )}
         </div>
       </div>
@@ -563,9 +563,9 @@ const AnalyticsDashboard = () => {
       {/* Middle Row: Cadastrado Por + Origem Marketing */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Cadastrado Por - Horizontal Bar Chart */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-primary" />
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <Users className="w-4 h-4 text-[#FFFF00]" />
             Cadastrado Por
           </h3>
           <div className="h-[280px]">
@@ -574,23 +574,23 @@ const AnalyticsDashboard = () => {
             ) : sourceStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={sourceStats.slice(0, 6)} layout="vertical" margin={{ left: 10, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={{ stroke: "hsl(var(--border))" }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} tickLine={false} width={80} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number, name: string, props: any) => [`${value} leads (${props.payload.percentage.toFixed(0)}%)`, "Leads"]} />
-                  <Bar dataKey="leads" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} barSize={24} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} />
+                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#fff" }} tickLine={false} width={80} />
+                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number, name: string, props: any) => [`${value} leads (${props.payload.percentage.toFixed(0)}%)`, "Leads"]} />
+                  <Bar dataKey="leads" fill="#FFFF00" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
             )}
           </div>
         </div>
 
         {/* Origem Marketing */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <Megaphone className="w-4 h-4 text-primary" />
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <Megaphone className="w-4 h-4 text-[#FFFF00]" />
             Origem de Marketing
           </h3>
           <div className="h-[280px]">
@@ -599,10 +599,10 @@ const AnalyticsDashboard = () => {
             ) : originStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={originStats.slice(0, 6).map(o => ({ ...o, shortName: o.displayName.length > 15 ? o.displayName.substring(0, 12) + "..." : o.displayName }))} margin={{ bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="shortName" tick={{ fontSize: 9, fill: "hsl(var(--muted-foreground))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval={0} angle={-35} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={{ stroke: "hsl(var(--border))" }} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} labelFormatter={(label, payload) => payload?.[0]?.payload?.displayName || label} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" vertical={false} />
+                  <XAxis dataKey="shortName" tick={{ fontSize: 9, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} interval={0} angle={-35} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} />
+                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} labelFormatter={(label, payload) => payload?.[0]?.payload?.displayName || label} />
                   <Bar dataKey="leads" radius={[4, 4, 0, 0]} barSize={32}>
                     {originStats.slice(0, 6).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={ORIGIN_COLORS[entry.type]} />
@@ -611,7 +611,7 @@ const AnalyticsDashboard = () => {
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
             )}
           </div>
           <div className="flex flex-wrap gap-3 mt-3 justify-center">
@@ -627,9 +627,9 @@ const AnalyticsDashboard = () => {
       {/* Bottom Row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
         {/* Distribution Pie */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-primary" />
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <BarChart3 className="w-4 h-4 text-[#FFFF00]" />
             Distribuição de Cadastros
           </h3>
           <div className="h-[200px]">
@@ -639,32 +639,32 @@ const AnalyticsDashboard = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie data={distributionData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value" nameKey="name">
-                    <Cell fill="hsl(var(--primary))" />
+                    <Cell fill="#FFFF00" />
                     <Cell fill="#22c55e" />
                   </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} />
+                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} />
                   <Legend verticalAlign="bottom" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full flex items-center justify-center text-muted-foreground text-sm">Nenhum dado disponível</div>
+              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-border">
+          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#2a2a2e]">
             <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{enoveLeads}</p>
-              <p className="text-xs text-muted-foreground">Enove</p>
+              <p className="text-2xl font-bold text-[#FFFF00]">{enoveLeads}</p>
+              <p className="text-xs text-slate-500">Enove</p>
             </div>
             <div className="text-center">
-              <p className="text-2xl font-bold text-green-600">{brokerLeads}</p>
-              <p className="text-xs text-muted-foreground">Corretores</p>
+              <p className="text-2xl font-bold text-green-500">{brokerLeads}</p>
+              <p className="text-xs text-slate-500">Corretores</p>
             </div>
           </div>
         </div>
 
         {/* Top Pages */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4">Páginas Mais Acessadas</h3>
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4">Páginas Mais Acessadas</h3>
           {isLoading ? (
             <LoadingList />
           ) : pageStats.length > 0 ? (
@@ -672,24 +672,24 @@ const AnalyticsDashboard = () => {
               {pageStats.map((page, index) => (
                 <div key={page.path} className="flex items-center justify-between">
                   <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0", index === 0 ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground")}>{index + 1}</span>
-                    <span className="text-sm text-foreground truncate">{page.path}</span>
+                    <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0", index === 0 ? "bg-[#FFFF00]/20 text-[#FFFF00]" : "bg-[#2a2a2e] text-slate-500")}>{index + 1}</span>
+                    <span className="text-sm text-white truncate">{page.path}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-medium text-foreground">{page.views}</span>
-                    <span className="text-xs text-muted-foreground">({page.percentage.toFixed(0)}%)</span>
+                    <span className="text-sm font-medium text-white">{page.views}</span>
+                    <span className="text-xs text-slate-500">({page.percentage.toFixed(0)}%)</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-muted-foreground text-sm">Nenhum dado disponível</div>
+            <div className="text-slate-500 text-sm">Nenhum dado disponível</div>
           )}
         </div>
 
         {/* Origin Table */}
-        <div className="card-luxury p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-foreground mb-4">Leads por Origem</h3>
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4">Leads por Origem</h3>
           {isLoading ? (
             <LoadingList />
           ) : originStats.length > 0 ? (
@@ -698,17 +698,17 @@ const AnalyticsDashboard = () => {
                 <div key={origin.name} className="flex items-center justify-between py-1.5">
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ORIGIN_COLORS[origin.type] }} />
-                    <span className="text-sm text-foreground truncate">{origin.displayName}</span>
+                    <span className="text-sm text-white truncate">{origin.displayName}</span>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={cn("px-2 py-0.5 rounded text-xs font-medium", getOriginBadgeClass(origin.type))}>{getOriginTypeLabel(origin.type)}</span>
-                    <span className="text-sm font-bold text-foreground w-8 text-right">{origin.leads}</span>
+                    <span className="text-sm font-bold text-white w-8 text-right">{origin.leads}</span>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-muted-foreground text-sm">Nenhum dado disponível</div>
+            <div className="text-slate-500 text-sm">Nenhum dado disponível</div>
           )}
         </div>
       </div>
@@ -718,17 +718,17 @@ const AnalyticsDashboard = () => {
 
 // Helper components
 const StatCard = ({ icon: Icon, label, value, isLoading, highlight = false }: { icon: React.ElementType; label: string; value: string | number; isLoading: boolean; highlight?: boolean }) => (
-  <div className={cn("card-luxury p-3 sm:p-4", highlight && "ring-1 ring-primary/20")}>
+  <div className={cn("bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-3 sm:p-4", highlight && "ring-1 ring-[#FFFF00]/20")}>
     <div className="flex items-center gap-2 sm:gap-3">
-      <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0", highlight ? "bg-primary/20" : "bg-primary/10")}>
-        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
+      <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0", highlight ? "bg-[#FFFF00]/20" : "bg-[#FFFF00]/10")}>
+        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-[#FFFF00]" />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-xs text-muted-foreground truncate">{label}</p>
+        <p className="text-xs text-slate-500 truncate">{label}</p>
         {isLoading ? (
-          <div className="h-5 sm:h-6 w-12 bg-muted animate-pulse rounded mt-0.5" />
+          <div className="h-5 sm:h-6 w-12 bg-[#2a2a2e] animate-pulse rounded mt-0.5" />
         ) : (
-          <p className={cn("text-base sm:text-lg font-bold text-foreground truncate", highlight && "text-primary")}>{value}</p>
+          <p className={cn("text-base sm:text-lg font-bold text-white truncate", highlight && "text-[#FFFF00]")}>{value}</p>
         )}
       </div>
     </div>
@@ -738,20 +738,20 @@ const StatCard = ({ icon: Icon, label, value, isLoading, highlight = false }: { 
 const LegendItem = ({ color, label }: { color: string; label: string }) => (
   <div className="flex items-center gap-1.5">
     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-    <span className="text-xs text-muted-foreground">{label}</span>
+    <span className="text-xs text-slate-500">{label}</span>
   </div>
 );
 
 const LoadingChart = () => (
   <div className="h-full w-full flex items-center justify-center">
-    <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+    <RefreshCw className="w-6 h-6 animate-spin text-[#FFFF00]" />
   </div>
 );
 
 const LoadingList = () => (
   <div className="space-y-3">
     {[1, 2, 3, 4, 5].map((i) => (
-      <div key={i} className="h-6 bg-muted animate-pulse rounded" />
+      <div key={i} className="h-6 bg-[#2a2a2e] animate-pulse rounded" />
     ))}
   </div>
 );
