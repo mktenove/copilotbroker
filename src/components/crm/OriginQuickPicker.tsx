@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { MapPin, Plus, Check } from "lucide-react";
-import { LEAD_ORIGINS, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
+import { LEAD_ORIGINS, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,26 +21,54 @@ interface OriginQuickPickerProps {
   onSelect: (origin: string) => Promise<void>;
 }
 
-// Agrupar origens por categoria
+// Cores vibrantes para dark theme
+const PICKER_COLORS: Record<string, { bg: string; icon: string }> = {
+  paid: {
+    bg: "bg-purple-600/90 hover:bg-purple-500 text-white border-purple-500/50",
+    icon: "💰",
+  },
+  organic: {
+    bg: "bg-emerald-600/90 hover:bg-emerald-500 text-white border-emerald-500/50",
+    icon: "🌱",
+  },
+  referral: {
+    bg: "bg-blue-600/90 hover:bg-blue-500 text-white border-blue-500/50",
+    icon: "👥",
+  },
+  manual: {
+    bg: "bg-amber-600/90 hover:bg-amber-500 text-white border-amber-500/50",
+    icon: "📝",
+  },
+  unknown: {
+    bg: "bg-slate-600/90 hover:bg-slate-500 text-white border-slate-500/50",
+    icon: "📍",
+  },
+};
+
+// Agrupar origens por categoria com cores específicas
 const ORIGIN_GROUPS = [
   {
     label: "Mídia Paga",
     icon: "💰",
+    type: "paid",
     origins: ["meta_ads", "google_ads", "tiktok_ads", "linkedin_ads"],
   },
   {
     label: "Orgânico",
     icon: "🌱",
+    type: "organic",
     origins: ["meta_organico", "google_organico", "tiktok_organico"],
   },
   {
     label: "Canais Diretos",
     icon: "📱",
+    type: "manual",
     origins: ["whatsapp_direto", "indicacao", "oferta_ativa"],
   },
   {
     label: "Eventos & Presencial",
     icon: "🏢",
+    type: "manual",
     origins: ["plantao_enove", "evento", "feirão"],
   },
 ];
@@ -74,41 +102,33 @@ export function OriginQuickPicker({
     return found?.label || key;
   };
 
-  const getOriginIcon = (key: string) => {
-    const type = getOriginType(key);
-    switch (type) {
-      case "paid":
-        return "💰";
-      case "organic":
-        return "🌱";
-      case "referral":
-        return "👥";
-      case "manual":
-        return "📝";
-      default:
-        return "📍";
-    }
-  };
-
-  const OriginButton = ({ originKey }: { originKey: string }) => {
+  const OriginButton = ({
+    originKey,
+    groupType,
+  }: {
+    originKey: string;
+    groupType: string;
+  }) => {
     const isSelected = currentOrigin === originKey;
-    const typeColors = ORIGIN_TYPE_COLORS[getOriginType(originKey)];
-    
+    const type = getOriginType(originKey);
+    // Usar o tipo do grupo para cores consistentes dentro de cada seção
+    const colors = PICKER_COLORS[groupType] || PICKER_COLORS[type] || PICKER_COLORS.unknown;
+
     return (
       <button
         onClick={() => handleSelect(originKey)}
         disabled={isLoading}
         className={cn(
-          "flex items-center gap-2 px-3 py-3 rounded-xl border text-left transition-all",
-          "hover:scale-[1.02] active:scale-[0.98]",
+          "flex items-center gap-3 px-4 py-3 rounded-lg border text-left",
+          "transition-all duration-150 min-h-[52px]",
+          "hover:scale-[1.01] active:scale-[0.99]",
           "disabled:opacity-50 disabled:cursor-not-allowed",
-          isSelected
-            ? "bg-primary/10 border-primary text-primary"
-            : cn("bg-card hover:bg-muted/50 border-border", typeColors)
+          colors.bg,
+          isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
         )}
       >
-        <span className="text-lg">{getOriginIcon(originKey)}</span>
-        <span className="font-medium text-sm truncate flex-1">
+        <span className="text-lg">{colors.icon}</span>
+        <span className="font-medium text-sm flex-1 truncate">
           {getOriginLabel(originKey)}
         </span>
         {isSelected && <Check className="w-4 h-4 shrink-0" />}
@@ -118,34 +138,38 @@ export function OriginQuickPicker({
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[85vh]">
-        <DrawerHeader className="pb-2">
-          <DrawerTitle className="flex items-center gap-2">
+      <DrawerContent className="max-h-[85vh] bg-background">
+        <DrawerHeader className="pb-3 border-b border-slate-700/50">
+          <DrawerTitle className="flex items-center gap-2 text-foreground">
             <MapPin className="w-5 h-5 text-primary" />
             Selecionar Origem
           </DrawerTitle>
-          <DrawerDescription className="truncate">
+          <DrawerDescription className="truncate text-muted-foreground">
             {leadName}
           </DrawerDescription>
         </DrawerHeader>
 
-        <div className="px-4 pb-8 space-y-5 overflow-y-auto">
+        <div className="px-4 pb-8 space-y-6 overflow-y-auto pt-4">
           {ORIGIN_GROUPS.map((group) => (
             <div key={group.label}>
-              <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                <span>{group.icon}</span>
-                {group.label}
+              <p className="text-xs font-medium text-slate-500 mb-3 flex items-center gap-2">
+                <span className="text-base">{group.icon}</span>
+                <span>{group.label}</span>
               </p>
               <div className="grid grid-cols-2 gap-2">
                 {group.origins.map((originKey) => (
-                  <OriginButton key={originKey} originKey={originKey} />
+                  <OriginButton
+                    key={originKey}
+                    originKey={originKey}
+                    groupType={group.type}
+                  />
                 ))}
               </div>
             </div>
           ))}
 
           {/* Input customizado */}
-          <div className="pt-2 border-t">
+          <div className="pt-4 border-t border-slate-700/50">
             {showCustomInput ? (
               <div className="flex gap-2">
                 <Input
@@ -153,7 +177,7 @@ export function OriginQuickPicker({
                   value={customOrigin}
                   onChange={(e) => setCustomOrigin(e.target.value)}
                   autoFocus
-                  className="h-12"
+                  className="h-14 bg-slate-800/50 border-slate-600 text-foreground placeholder:text-slate-500"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleSelect(customOrigin);
                   }}
@@ -161,7 +185,7 @@ export function OriginQuickPicker({
                 <Button
                   onClick={() => handleSelect(customOrigin)}
                   disabled={!customOrigin.trim() || isLoading}
-                  className="h-12 px-6"
+                  className="h-14 px-6"
                 >
                   Salvar
                 </Button>
@@ -169,7 +193,7 @@ export function OriginQuickPicker({
             ) : (
               <Button
                 variant="outline"
-                className="w-full h-12 border-dashed"
+                className="w-full h-14 border-dashed border-slate-600 text-slate-400 hover:text-foreground hover:border-slate-400 hover:bg-slate-800/50"
                 onClick={() => setShowCustomInput(true)}
               >
                 <Plus className="w-4 h-4 mr-2" />
