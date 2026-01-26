@@ -1,12 +1,13 @@
-import { LayoutDashboard, List, Copy, Plus, LogOut } from "lucide-react";
+import { LayoutDashboard, List, Copy, Plus, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface BrokerBottomNavProps {
   viewMode: "kanban" | "list";
   onViewChange: (mode: "kanban" | "list") => void;
   onCopyLink?: () => void;
   onAddLead?: () => void;
-  onLogout: () => void;
+  onNotificationsClick?: () => void;
 }
 
 export function BrokerBottomNav({
@@ -14,19 +15,22 @@ export function BrokerBottomNav({
   onViewChange,
   onCopyLink,
   onAddLead,
-  onLogout,
+  onNotificationsClick,
 }: BrokerBottomNavProps) {
+  const { unreadCount } = useNotifications();
+
   const navItems: Array<{
     id: string;
     label: string;
     icon: typeof LayoutDashboard;
     isFab?: boolean;
+    badge?: number;
   }> = [
+    { id: "notifications", label: "Notificações", icon: Bell, badge: unreadCount },
     { id: "kanban", label: "Kanban", icon: LayoutDashboard },
-    { id: "list", label: "Lista", icon: List },
     { id: "add", label: "Adicionar", icon: Plus, isFab: true },
+    { id: "list", label: "Lista", icon: List },
     { id: "copy", label: "Link", icon: Copy },
-    { id: "logout", label: "Sair", icon: LogOut },
   ] as const;
 
   const handleClick = (id: string) => {
@@ -36,8 +40,8 @@ export function BrokerBottomNav({
       onAddLead();
     } else if (id === "copy" && onCopyLink) {
       onCopyLink();
-    } else if (id === "logout") {
-      onLogout();
+    } else if (id === "notifications" && onNotificationsClick) {
+      onNotificationsClick();
     }
   };
 
@@ -77,16 +81,22 @@ export function BrokerBottomNav({
               key={item.id}
               onClick={() => handleClick(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[60px]",
+                "flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[56px]",
                 "transition-colors duration-200 relative",
                 isActive
                   ? "text-[#FFFF00]"
-                  : item.id === "logout"
-                  ? "text-slate-500 active:text-red-400"
                   : "text-slate-500 active:text-slate-300"
               )}
             >
-              <Icon className="w-5 h-5" />
+              <div className="relative">
+                <Icon className="w-5 h-5" />
+                {/* Notification badge */}
+                {item.badge && item.badge > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
+                    {item.badge > 9 ? "9+" : item.badge}
+                  </span>
+                )}
+              </div>
               <span className="text-[10px] font-medium">{item.label}</span>
 
               {/* Active indicator dot */}
