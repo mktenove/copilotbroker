@@ -37,6 +37,8 @@ interface AddLeadModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess?: () => void;
+  defaultBrokerId?: string;
+  hideBrokerSelect?: boolean;
 }
 
 const ORIGIN_OPTIONS = [
@@ -51,7 +53,7 @@ const ORIGIN_OPTIONS = [
   { value: "outro", label: "Outro" },
 ];
 
-export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) {
+export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hideBrokerSelect }: AddLeadModalProps) {
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -60,7 +62,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
   // Form state
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [brokerId, setBrokerId] = useState<string>("enove");
+  const [brokerId, setBrokerId] = useState<string>(defaultBrokerId || "enove");
   const [origin, setOrigin] = useState<string>("plantao");
   const [customOrigin, setCustomOrigin] = useState("");
   const [projectId, setProjectId] = useState<string>("");
@@ -106,7 +108,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
   const resetForm = () => {
     setName("");
     setWhatsapp("");
-    setBrokerId("enove");
+    setBrokerId(defaultBrokerId || "enove");
     setOrigin("plantao");
     setCustomOrigin("");
     setProjectId(projects.length === 1 ? projects[0].id : "");
@@ -267,31 +269,33 @@ export function AddLeadModal({ isOpen, onClose, onSuccess }: AddLeadModalProps) 
             </div>
 
             {/* Corretor */}
-            <div className="space-y-2">
-              <Label className="text-slate-300">Corretor</Label>
-              <Select value={brokerId} onValueChange={setBrokerId}>
-                <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
-                  <SelectValue placeholder="Selecione o corretor" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                  <SelectItem 
-                    value="enove"
-                    className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
-                  >
-                    Enove (Sem corretor)
-                  </SelectItem>
-                  {brokers.map((broker) => (
+            {!hideBrokerSelect && (
+              <div className="space-y-2">
+                <Label className="text-slate-300">Corretor</Label>
+                <Select value={brokerId} onValueChange={setBrokerId}>
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
+                    <SelectValue placeholder="Selecione o corretor" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                     <SelectItem 
-                      key={broker.id} 
-                      value={broker.id}
+                      value="enove"
                       className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
                     >
-                      {broker.name}
+                      Enove (Sem corretor)
                     </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+                    {brokers.map((broker) => (
+                      <SelectItem 
+                        key={broker.id} 
+                        value={broker.id}
+                        className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
+                      >
+                        {broker.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Origem */}
             <div className="space-y-2">

@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Users, Calendar, Search, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
-
+import { AddLeadModal } from "@/components/admin/AddLeadModal";
 import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
 
@@ -32,6 +32,7 @@ const BrokerAdmin = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [copiedLink, setCopiedLink] = useState(false);
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const navigate = useNavigate();
   const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
 
@@ -127,6 +128,15 @@ const BrokerAdmin = () => {
     window.open(`/estanciavelha/${broker.slug}`, "_blank");
   };
 
+  const handleAddLead = () => {
+    setIsAddLeadOpen(true);
+  };
+
+  const handleAddLeadSuccess = () => {
+    fetchLeads();
+    setIsAddLeadOpen(false);
+  };
+
   const filteredLeads = leads.filter(
     (lead) =>
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -152,6 +162,7 @@ const BrokerAdmin = () => {
   }
 
   return (
+    <>
     <BrokerLayout
       brokerName={broker?.name}
       brokerInitial={brokerInitial}
@@ -160,6 +171,7 @@ const BrokerAdmin = () => {
       onLogout={handleLogout}
       onCopyLink={copyLink}
       onOpenLanding={openLanding}
+      onAddLead={handleAddLead}
       searchTerm={viewMode === "list" ? searchTerm : undefined}
       onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
     >
@@ -262,6 +274,16 @@ const BrokerAdmin = () => {
         </>
       )}
     </BrokerLayout>
+
+    {/* Add Lead Modal */}
+    <AddLeadModal
+      isOpen={isAddLeadOpen}
+      onClose={() => setIsAddLeadOpen(false)}
+      onSuccess={handleAddLeadSuccess}
+      defaultBrokerId={brokerId || undefined}
+      hideBrokerSelect={true}
+    />
+    </>
   );
 };
 

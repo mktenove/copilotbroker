@@ -1,12 +1,14 @@
-import { LogOut, LayoutDashboard, List, ExternalLink } from "lucide-react";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
+import { NotificationPanel } from "@/components/admin/NotificationPanel";
 
 interface BrokerSidebarProps {
   viewMode: "kanban" | "list";
   onViewChange: (mode: "kanban" | "list") => void;
   onLogout: () => void;
   onOpenLanding?: () => void;
+  onAddLead?: () => void;
   brokerInitial?: string;
 }
 
@@ -20,13 +22,25 @@ export function BrokerSidebar({
   onViewChange,
   onLogout,
   onOpenLanding,
+  onAddLead,
   brokerInitial = "C",
 }: BrokerSidebarProps) {
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden md:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
       {/* Logo */}
-      <div className="flex items-center justify-center pt-4 pb-3">
+      <div className="flex items-center justify-center pt-4 pb-2">
         <img src={logoEnoveMini} alt="Enove" className="h-8 w-8 object-contain" />
+      </div>
+
+      {/* Add Lead FAB */}
+      <div className="flex items-center justify-center py-3">
+        <button
+          onClick={onAddLead}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FFFF00] hover:brightness-110 text-black shadow-lg shadow-[hsl(60_100%_50%/0.3)] transition-all duration-200 active:scale-95"
+          title="Adicionar Lead"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation */}
@@ -74,7 +88,10 @@ export function BrokerSidebar({
       </nav>
 
       {/* Bottom section */}
-      <div className="flex flex-col items-center gap-3 px-2 py-4 border-t border-[#2a2a2e]">
+      <div className="flex flex-col items-center gap-2 px-2 py-4 border-t border-[#2a2a2e]">
+        {/* Notifications */}
+        <NotificationPanel />
+
         {/* Broker Avatar */}
         <div className="w-8 h-8 rounded-full bg-[#FFFF00]/10 border border-[#FFFF00]/30 flex items-center justify-center">
           <span className="text-[#FFFF00] text-sm font-medium">{brokerInitial}</span>
