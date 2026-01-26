@@ -295,3 +295,33 @@
   scrollbar-width: thin;
   scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
 }
+
+/* Global subtle scrollbars for admin panel */
+.admin-scrollbar *::-webkit-scrollbar,
+.admin-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.admin-scrollbar *::-webkit-scrollbar-track,
+.admin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.admin-scrollbar *::-webkit-scrollbar-thumb,
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.3);
+  border-radius: 2px;
+}
+
+.admin-scrollbar *::-webkit-scrollbar-thumb:hover,
+.admin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.5);
+}
+
+/* Firefox support for admin scrollbars */
+.admin-scrollbar,
+.admin-scrollbar * {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(100, 116, 139, 0.3) transparent;
+}

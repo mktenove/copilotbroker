@@ -25,7 +25,7 @@ export function AdminLayout({
   brokers,
 }: AdminLayoutProps) {
   return (
-    <div className="min-h-screen bg-[#0f0f12]">
+    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
       {/* Sidebar - fixed left, hidden on mobile */}
       <AdminSidebar
         activeTab={activeTab}
