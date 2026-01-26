@@ -91,7 +91,7 @@ export function BrokerBottomNav({
               <div className="relative">
                 <Icon className="w-6 h-6" />
                 {/* Facebook-style notification badge */}
-                {item.badge && item.badge > 0 && (
+                {(item.badge ?? 0) > 0 && (
                   <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-md shadow-red-500/50">
                     {item.badge > 99 ? "99+" : item.badge}
                   </span>
