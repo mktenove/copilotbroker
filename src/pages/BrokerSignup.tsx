@@ -170,7 +170,7 @@ const BrokerSignup = () => {
           <img 
             src={logoEnove} 
             alt="Enove" 
-            className="h-16 w-auto mb-12"
+            className="h-10 w-auto mb-10"
           />
           
           <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6">
