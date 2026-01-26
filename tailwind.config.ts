@@ -105,21 +105,33 @@ export default {
           from: { opacity: "0", transform: "translateX(30px)" },
           to: { opacity: "1", transform: "translateX(0)" },
         },
+        fadeInDown: {
+          from: { opacity: "0", transform: "translateY(-20px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
         float: {
           "0%, 100%": { transform: "translateX(-50%) translateY(0)" },
           "50%": { transform: "translateX(-50%) translateY(-8px)" },
+        },
+        floatSubtle: {
+          "0%, 100%": { transform: "translate(0, 0) rotate(0deg)" },
+          "50%": { transform: "translate(5px, -5px) rotate(1deg)" },
         },
         shimmer: {
           "0%": { backgroundPosition: "-200% 0" },
           "100%": { backgroundPosition: "200% 0" },
         },
         scaleIn: {
-          from: { opacity: "0", transform: "scale(0.9)" },
+          from: { opacity: "0", transform: "scale(0.95)" },
           to: { opacity: "1", transform: "scale(1)" },
         },
         glow: {
           "0%, 100%": { boxShadow: "0 0 20px hsl(var(--primary) / 0.3)" },
           "50%": { boxShadow: "0 0 40px hsl(var(--primary) / 0.5)" },
+        },
+        glowYellow: {
+          "0%, 100%": { boxShadow: "0 0 20px rgba(255, 255, 0, 0.3)" },
+          "50%": { boxShadow: "0 0 40px rgba(255, 255, 0, 0.5)" },
         },
         slideUp: {
           from: { opacity: "0", transform: "translateY(60px)" },
@@ -133,6 +145,10 @@ export default {
           from: { opacity: "0", transform: "rotate(-5deg) scale(0.95)" },
           to: { opacity: "1", transform: "rotate(0) scale(1)" },
         },
+        expandWidth: {
+          from: { width: "0", opacity: "0" },
+          to: { width: "6rem", opacity: "1" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -141,13 +157,17 @@ export default {
         "fade-in": "fadeIn 0.8s ease-out forwards",
         "fade-in-left": "fadeInLeft 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "fade-in-right": "fadeInRight 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "fade-in-down": "fadeInDown 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         float: "float 3s ease-in-out infinite",
+        "float-subtle": "floatSubtle 6s ease-in-out infinite",
         shimmer: "shimmer 2s linear infinite",
         "scale-in": "scaleIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         glow: "glow 2s ease-in-out infinite",
+        "glow-yellow": "glowYellow 2s ease-in-out infinite",
         "slide-up": "slideUp 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         blur: "blur 0.8s ease-out forwards",
         "rotate-in": "rotateIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "expand-width": "expandWidth 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
       },
     },
   },

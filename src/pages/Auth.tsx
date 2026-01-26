@@ -111,8 +111,8 @@ const Auth = () => {
     <div className="min-h-screen bg-[#0a0a0c] flex">
       {/* Visual Panel - Desktop only */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e]">
-        {/* Geometric pattern */}
-        <div className="absolute inset-0 opacity-10">
+        {/* Geometric pattern - with subtle float animation */}
+        <div className="absolute inset-0 opacity-10 animate-float-subtle">
           <div 
             className="absolute inset-0" 
             style={{
@@ -128,12 +128,16 @@ const Auth = () => {
         
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          <img src={logoEnove} alt="Enove" className="h-16 mb-8" />
-          <h1 className="font-serif text-5xl font-bold text-white text-center mb-4">
+          <img 
+            src={logoEnove} 
+            alt="Enove" 
+            className="h-16 mb-8 opacity-0 animate-fade-in-down" 
+          />
+          <h1 className="font-serif text-5xl font-bold text-white text-center mb-4 opacity-0 animate-fade-in-left delay-200">
             Central de Gestão
           </h1>
-          <div className="w-24 h-1 bg-[#FFFF00] rounded-full mb-6" />
-          <p className="text-slate-400 text-lg text-center max-w-md">
+          <div className="h-1 bg-[#FFFF00] rounded-full mb-6 opacity-0 animate-expand-width delay-400" />
+          <p className="text-slate-400 text-lg text-center max-w-md opacity-0 animate-fade-up delay-500">
             Acesse o painel para gerenciar seus leads e acompanhar suas vendas
           </p>
         </div>
@@ -144,25 +148,29 @@ const Auth = () => {
         <div className="w-full max-w-md">
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
-            <img src={logoEnove} alt="Enove" className="h-12 mx-auto mb-6" />
-            <h1 className="font-serif text-3xl font-bold text-white mb-2">
+            <img 
+              src={logoEnove} 
+              alt="Enove" 
+              className="h-12 mx-auto mb-6 opacity-0 animate-fade-in" 
+            />
+            <h1 className="font-serif text-3xl font-bold text-white mb-2 opacity-0 animate-fade-up delay-100">
               Acesso ao Painel
             </h1>
-            <div className="w-16 h-0.5 bg-[#FFFF00] mx-auto" />
+            <div className="w-16 h-0.5 bg-[#FFFF00] mx-auto opacity-0 animate-expand-width delay-200" />
           </div>
 
           {/* Card */}
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-8 shadow-2xl shadow-black/50">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-8 shadow-2xl shadow-black/50 opacity-0 animate-scale-in delay-300 lg:delay-500">
             {/* Desktop Title */}
             <div className="hidden lg:block mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-2">Bem-vindo</h2>
-              <p className="text-slate-400">Entre com suas credenciais</p>
+              <h2 className="text-2xl font-semibold text-white mb-2 opacity-0 animate-fade-in delay-600">Bem-vindo</h2>
+              <p className="text-slate-400 opacity-0 animate-fade-in delay-700">Entre com suas credenciais</p>
             </div>
             
             {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-5">
               {/* Email Field */}
-              <div>
+              <div className="opacity-0 animate-fade-up delay-[400ms] lg:delay-[800ms]">
                 <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
                   Email
                 </label>
@@ -180,7 +188,7 @@ const Auth = () => {
               </div>
               
               {/* Password Field */}
-              <div>
+              <div className="opacity-0 animate-fade-up delay-[500ms] lg:delay-[900ms]">
                 <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
                   Senha
                 </label>
@@ -198,24 +206,26 @@ const Auth = () => {
               </div>
               
               {/* Login Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full py-4 bg-[#FFFF00] text-black font-bold rounded-xl transition-all hover:shadow-[0_0_30px_rgba(255,255,0,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-              >
-                {isLoading ? (
-                  <span className="flex items-center justify-center gap-2">
-                    <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Entrando...
-                  </span>
-                ) : (
-                  "Entrar"
-                )}
-              </button>
+              <div className="opacity-0 animate-scale-in delay-[600ms] lg:delay-[1000ms]">
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-4 bg-[#FFFF00] text-black font-bold rounded-xl transition-all hover:shadow-[0_0_30px_rgba(255,255,0,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Entrando...
+                    </span>
+                  ) : (
+                    "Entrar"
+                  )}
+                </button>
+              </div>
             </form>
             
             {/* Broker Link */}
-            <div className="mt-6 pt-6 border-t border-[#2a2a2e]">
+            <div className="mt-6 pt-6 border-t border-[#2a2a2e] opacity-0 animate-fade-in delay-[700ms] lg:delay-[1100ms]">
               <p className="text-center text-sm text-slate-400">
                 É corretor?{" "}
                 <Link to="/corretor/cadastro" className="text-[#FFFF00] hover:underline font-medium">

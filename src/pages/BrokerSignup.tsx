@@ -157,8 +157,8 @@ const BrokerSignup = () => {
     <div className="min-h-screen bg-[#0a0a0c] flex flex-col lg:flex-row">
       {/* Left Panel - Visual Branding (Desktop Only) */}
       <div className="hidden lg:flex lg:w-[60%] xl:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e] min-h-screen">
-        {/* Geometric Pattern */}
-        <div className="absolute inset-0">
+        {/* Geometric Pattern - with subtle float animation */}
+        <div className="absolute inset-0 animate-float-subtle">
           <div className="absolute top-20 left-20 w-96 h-96 border border-[#FFFF00]/10 rotate-45" />
           <div className="absolute top-40 left-40 w-72 h-72 border border-[#FFFF00]/5 rotate-45" />
           <div className="absolute bottom-20 right-20 w-80 h-80 border border-[#FFFF00]/10 rotate-12" />
@@ -170,18 +170,18 @@ const BrokerSignup = () => {
           <img 
             src={logoEnove} 
             alt="Enove" 
-           className="h-16 w-auto object-contain mb-10"
+            className="h-16 w-auto object-contain mb-10 opacity-0 animate-fade-in-down"
           />
           
-          <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6">
+          <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6 opacity-0 animate-fade-in-left delay-200">
             Seja um
             <br />
             <span className="text-[#FFFF00]">Corretor Enove</span>
           </h1>
           
-          <div className="w-24 h-1 bg-[#FFFF00] mb-8" />
+          <div className="h-1 bg-[#FFFF00] mb-8 opacity-0 animate-expand-width delay-400" />
           
-          <p className="text-lg xl:text-xl text-slate-400 max-w-md leading-relaxed">
+          <p className="text-lg xl:text-xl text-slate-400 max-w-md leading-relaxed opacity-0 animate-fade-up delay-500">
             Cadastre-se e tenha acesso exclusivo à nossa plataforma de gestão de leads e empreendimentos premium.
           </p>
         </div>
@@ -196,21 +196,21 @@ const BrokerSignup = () => {
               <img 
                 src={logoEnove} 
                 alt="Enove" 
-               className="h-10 w-auto object-contain mx-auto mb-6"
+                className="h-10 w-auto object-contain mx-auto mb-6 opacity-0 animate-fade-in"
               />
             </Link>
-            <h1 className="font-serif text-3xl font-bold text-white mb-3">
+            <h1 className="font-serif text-3xl font-bold text-white mb-3 opacity-0 animate-fade-up delay-100">
               Cadastro de Corretor
             </h1>
-            <div className="w-16 h-0.5 bg-[#FFFF00] mx-auto" />
+            <div className="w-16 h-0.5 bg-[#FFFF00] mx-auto opacity-0 animate-expand-width delay-200" />
           </div>
 
           {/* Desktop Title */}
           <div className="hidden lg:block text-center mb-8">
-            <h2 className="text-2xl font-bold text-white mb-2">
+            <h2 className="text-2xl font-bold text-white mb-2 opacity-0 animate-fade-in delay-600">
               Criar sua conta
             </h2>
-            <p className="text-slate-400">
+            <p className="text-slate-400 opacity-0 animate-fade-in delay-700">
               {step === "auth" 
                 ? "Comece criando suas credenciais" 
                 : "Complete seu perfil de corretor"
@@ -219,7 +219,7 @@ const BrokerSignup = () => {
           </div>
 
           {/* Progress Indicator */}
-          <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="flex items-center justify-center gap-3 mb-8 opacity-0 animate-fade-in delay-300 lg:delay-[800ms]">
             <div className="flex items-center gap-2">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${
                 step === "auth" 
@@ -250,11 +250,11 @@ const BrokerSignup = () => {
           </div>
 
           {/* Form Card */}
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-8 shadow-2xl shadow-black/50">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-8 shadow-2xl shadow-black/50 opacity-0 animate-scale-in delay-[400ms] lg:delay-[900ms]">
             {step === "auth" ? (
               <form onSubmit={handleAuthSubmit} className="space-y-5">
                 {/* Email */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-[500ms] lg:delay-[1000ms]">
                   <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
                     Email
                   </label>
@@ -274,7 +274,7 @@ const BrokerSignup = () => {
                 </div>
 
                 {/* Password */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-[600ms] lg:delay-[1100ms]">
                   <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
                     Senha
                   </label>
@@ -301,7 +301,7 @@ const BrokerSignup = () => {
                 </div>
 
                 {/* Confirm Password */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-[700ms] lg:delay-[1200ms]">
                   <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
                     Confirmar Senha
                   </label>
@@ -327,15 +327,17 @@ const BrokerSignup = () => {
                   </div>
                 </div>
 
-                <button 
-                  type="submit" 
-                  disabled={isLoading}
-                  className="w-full py-4 bg-[#FFFF00] text-black font-bold rounded-xl transition-all hover:shadow-[0_0_30px_rgba(255,255,0,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
-                >
-                  {isLoading ? "Criando conta..." : "Continuar"}
-                </button>
+                <div className="opacity-0 animate-scale-in delay-[800ms] lg:delay-[1300ms]">
+                  <button 
+                    type="submit" 
+                    disabled={isLoading}
+                    className="w-full py-4 bg-[#FFFF00] text-black font-bold rounded-xl transition-all hover:shadow-[0_0_30px_rgba(255,255,0,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none"
+                  >
+                    {isLoading ? "Criando conta..." : "Continuar"}
+                  </button>
+                </div>
 
-                <p className="text-center text-sm text-slate-400">
+                <p className="text-center text-sm text-slate-400 opacity-0 animate-fade-in delay-[900ms] lg:delay-[1400ms]">
                   Já tem uma conta?{" "}
                   <Link to="/auth" className="text-[#FFFF00] hover:underline font-medium">
                     Fazer login
@@ -345,7 +347,7 @@ const BrokerSignup = () => {
             ) : (
               <form onSubmit={handleProfileSubmit} className="space-y-5">
                 {/* Name */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-100">
                   <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-2">
                     Nome Completo
                   </label>
@@ -365,7 +367,7 @@ const BrokerSignup = () => {
                 </div>
 
                 {/* WhatsApp */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-200">
                   <label htmlFor="whatsapp" className="block text-sm font-medium text-slate-300 mb-2">
                     WhatsApp
                   </label>
@@ -383,7 +385,7 @@ const BrokerSignup = () => {
                 </div>
 
                 {/* Slug */}
-                <div>
+                <div className="opacity-0 animate-fade-up delay-300">
                   <label htmlFor="slug" className="block text-sm font-medium text-slate-300 mb-2">
                     Seu Link Personalizado
                   </label>
@@ -410,7 +412,7 @@ const BrokerSignup = () => {
                   </p>
                 </div>
 
-                <div className="flex gap-3 pt-2">
+                <div className="flex gap-3 pt-2 opacity-0 animate-scale-in delay-[400ms]">
                   <button
                     type="button"
                     onClick={() => setStep("auth")}
