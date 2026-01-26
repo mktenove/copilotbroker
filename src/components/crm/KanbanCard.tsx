@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { OriginCombobox } from "./OriginCombobox";
-import { InactivationPicker } from "./InactivationPicker";
+import { InactivationCombobox } from "./InactivationCombobox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   AlertDialog,
@@ -57,7 +57,6 @@ const PROGRESS_COLORS: Record<string, string> = {
 };
 
 export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete }: KanbanCardProps) {
-  const [isInactivationPickerOpen, setIsInactivationPickerOpen] = useState(false);
   
   const {
     attributes,
@@ -114,11 +113,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
   const cleanPhone = lead.whatsapp.replace(/\D/g, "");
   const originType = getOriginType(lead.lead_origin);
   const progress = STATUS_PROGRESS[lead.status] || 0;
-
-  const handleInactivateClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsInactivationPickerOpen(true);
-  };
 
   const handleOriginSelect = async (origin: string) => {
     if (onUpdateOrigin) {
@@ -234,18 +228,22 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
 
             {/* Action buttons - touch friendly */}
             <div className="flex items-center gap-1 ml-auto">
-              <button
-                onClick={handleInactivateClick}
-                className={cn(
-                  "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
-                  "flex items-center justify-center",
-                  "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
-                  "transition-colors"
-                )}
-                title="Inativar lead"
-              >
-                <UserX className="w-4 h-4 md:w-3.5 md:h-3.5" />
-              </button>
+              <InactivationCombobox
+                onConfirm={handleInactivateConfirm}
+                trigger={
+                  <button
+                    className={cn(
+                      "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
+                      "flex items-center justify-center",
+                      "text-slate-500 hover:text-red-400 hover:bg-red-500/10",
+                      "transition-colors"
+                    )}
+                    title="Inativar lead"
+                  >
+                    <UserX className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                  </button>
+                }
+              />
               
               {onDelete && (
                 <AlertDialog>
@@ -335,14 +333,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         </div>
       </div>
 
-      {/* Inactivation Picker */}
-      <InactivationPicker
-        leadId={lead.id}
-        leadName={lead.name}
-        isOpen={isInactivationPickerOpen}
-        onClose={() => setIsInactivationPickerOpen(false)}
-        onConfirm={handleInactivateConfirm}
-      />
     </>
   );
 }
