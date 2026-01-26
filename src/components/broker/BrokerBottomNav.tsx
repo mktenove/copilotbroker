@@ -52,7 +52,7 @@ export function BrokerBottomNav({
 
       {/* Safe area padding for iOS */}
       <div className="relative flex items-center justify-around px-2 py-2 pb-safe">
-        {navItems.map((item) => {
+      {navItems.map((item) => {
           const Icon = item.icon;
 
           // FAB button (center)
@@ -81,7 +81,7 @@ export function BrokerBottomNav({
               key={item.id}
               onClick={() => handleClick(item.id)}
               className={cn(
-                "flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[56px]",
+                "flex items-center justify-center p-3 min-w-[48px]",
                 "transition-colors duration-200 relative",
                 isActive
                   ? "text-[#FFFF00]"
@@ -89,19 +89,18 @@ export function BrokerBottomNav({
               )}
             >
               <div className="relative">
-                <Icon className="w-5 h-5" />
-                {/* Notification badge */}
+                <Icon className="w-6 h-6" />
+                {/* Facebook-style notification badge */}
                 {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center">
-                    {item.badge > 9 ? "9+" : item.badge}
+                  <span className="absolute -top-2 -right-2 min-w-[18px] h-[18px] rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-md shadow-red-500/50">
+                    {item.badge > 99 ? "99+" : item.badge}
                   </span>
                 )}
               </div>
-              <span className="text-[10px] font-medium">{item.label}</span>
 
               {/* Active indicator dot */}
               {isActive && (
-                <div className="absolute bottom-1 w-1 h-1 rounded-full bg-[#FFFF00]" />
+                <div className="absolute bottom-1.5 w-1 h-1 rounded-full bg-[#FFFF00]" />
               )}
             </button>
           );
