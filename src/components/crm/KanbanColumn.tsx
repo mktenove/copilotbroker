@@ -35,7 +35,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
   const config = STATUS_CONFIG[status];
 
   return (
-    <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0 h-full">
+    <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0 min-h-[600px]">
       {/* Column Header - TaskWhiz minimalist style with square indicator */}
       <div className="flex items-center gap-2.5 px-2 py-3 mb-2">
         {/* Status square (not dot) */}

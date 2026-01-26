@@ -168,7 +168,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
   };
 
   return (
-    <div className="flex flex-col h-full min-h-0">
+    <div className="flex flex-col min-h-[700px]">
       {/* Toolbar - Filters */}
       <div className="flex items-center gap-3 mb-4 md:mb-6 px-1">
         {/* Refresh Button */}
