@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Users, Calendar, Search, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
-import ExportButton from "@/components/admin/ExportButton";
+
 import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
 
@@ -240,7 +240,6 @@ const BrokerAdmin = () => {
 
           {/* Actions */}
           <div className="flex gap-2 mb-6">
-            <ExportButton leads={filteredLeads} filename={`meus-leads`} />
             <button
               onClick={fetchLeads}
               disabled={isLoading}
