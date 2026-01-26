@@ -1,10 +1,11 @@
-import { LayoutDashboard, List, Copy, BarChart3, LogOut } from "lucide-react";
+import { LayoutDashboard, List, Copy, Plus, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface BrokerBottomNavProps {
   viewMode: "kanban" | "list";
   onViewChange: (mode: "kanban" | "list") => void;
   onCopyLink?: () => void;
+  onAddLead?: () => void;
   onLogout: () => void;
 }
 
@@ -12,6 +13,7 @@ export function BrokerBottomNav({
   viewMode,
   onViewChange,
   onCopyLink,
+  onAddLead,
   onLogout,
 }: BrokerBottomNavProps) {
   const navItems: Array<{
@@ -19,18 +21,19 @@ export function BrokerBottomNav({
     label: string;
     icon: typeof LayoutDashboard;
     isFab?: boolean;
-    disabled?: boolean;
   }> = [
     { id: "kanban", label: "Kanban", icon: LayoutDashboard },
     { id: "list", label: "Lista", icon: List },
-    { id: "copy", label: "Copiar", icon: Copy, isFab: true },
-    { id: "stats", label: "Stats", icon: BarChart3, disabled: true },
+    { id: "add", label: "Adicionar", icon: Plus, isFab: true },
+    { id: "copy", label: "Link", icon: Copy },
     { id: "logout", label: "Sair", icon: LogOut },
   ] as const;
 
   const handleClick = (id: string) => {
     if (id === "kanban" || id === "list") {
       onViewChange(id);
+    } else if (id === "add" && onAddLead) {
+      onAddLead();
     } else if (id === "copy" && onCopyLink) {
       onCopyLink();
     } else if (id === "logout") {
@@ -68,17 +71,14 @@ export function BrokerBottomNav({
           }
 
           const isActive = viewMode === item.id;
-          const isDisabled = item.disabled;
 
           return (
             <button
               key={item.id}
-              onClick={() => !isDisabled && handleClick(item.id)}
-              disabled={isDisabled}
+              onClick={() => handleClick(item.id)}
               className={cn(
                 "flex flex-col items-center justify-center gap-1 py-2 px-3 min-w-[60px]",
                 "transition-colors duration-200 relative",
-                isDisabled && "opacity-40 cursor-not-allowed",
                 isActive
                   ? "text-[#FFFF00]"
                   : item.id === "logout"

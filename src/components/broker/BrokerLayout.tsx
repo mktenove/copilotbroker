@@ -12,6 +12,7 @@ interface BrokerLayoutProps {
   onLogout: () => void;
   onCopyLink?: () => void;
   onOpenLanding?: () => void;
+  onAddLead?: () => void;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
 }
@@ -25,6 +26,7 @@ export function BrokerLayout({
   onLogout,
   onCopyLink,
   onOpenLanding,
+  onAddLead,
   searchTerm,
   onSearchChange,
 }: BrokerLayoutProps) {
@@ -36,6 +38,7 @@ export function BrokerLayout({
         onViewChange={onViewChange}
         onLogout={onLogout}
         onOpenLanding={onOpenLanding}
+        onAddLead={onAddLead}
         brokerInitial={brokerInitial}
       />
 
@@ -44,6 +47,7 @@ export function BrokerLayout({
         viewMode={viewMode}
         onViewChange={onViewChange}
         onCopyLink={onCopyLink}
+        onAddLead={onAddLead}
         onLogout={onLogout}
       />
 
