@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { User, Clock, MessageCircle, MapPin, Plus, UserX, Trash2, Mail, Phone, Eye, MessageSquare } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -87,16 +87,11 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
     return new Date(lead.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
   }, [lead.last_interaction_at, lead.created_at]);
 
-  const createdAtFormatted = useMemo(() => {
+  const createdAtWithTime = useMemo(() => {
     const date = new Date(lead.created_at);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 0) return "Hoje";
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return `Há ${diffDays} dias`;
-    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "short" });
+    const day = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+    const time = date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    return `${day} ${time}`;
   }, [lead.created_at]);
 
   const formatPhone = (phone: string) => {
@@ -143,9 +138,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
     }
   };
 
-  // Mock counters - in production these would come from the lead data
-  const interactionCount = 3;
-  const noteCount = 2;
 
   return (
     <>
@@ -167,33 +159,18 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         )}
       >
         <div className="p-3">
-          {/* Row 1: Tags + Date */}
+          {/* Row 1: Project Name + Date/Time */}
           <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
-              {/* Origin Tag - vibrant colors */}
-              {lead.lead_origin ? (
-                <button
-                  onClick={handleOriginClick}
-                  className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
-                    "hover:opacity-80 transition-opacity border",
-                    ORIGIN_COLORS[originType]
-                  )}
-                >
-                  {getOriginDisplayLabel(lead.lead_origin)}
-                </button>
+              {/* Project Name Tag */}
+              {lead.project ? (
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-primary/20 text-primary border border-primary/40">
+                  {lead.project.name}
+                </span>
               ) : (
-                <button
-                  onClick={handleOriginClick}
-                  className={cn(
-                    "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
-                    "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
-                    "hover:border-slate-400 transition-colors"
-                  )}
-                >
-                  <Plus className="w-2.5 h-2.5" />
-                  Origem
-                </button>
+                <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 border border-dashed border-slate-600">
+                  Sem projeto
+                </span>
               )}
 
               {/* Stale indicator */}
@@ -204,9 +181,9 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               )}
             </div>
 
-            {/* Date */}
+            {/* Date + Time */}
             <span className="text-[10px] text-slate-500 shrink-0">
-              {createdAtFormatted}
+              {createdAtWithTime}
             </span>
           </div>
 
@@ -314,7 +291,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             </div>
           </div>
 
-          {/* Row 6: Footer with avatar, counters, time and project */}
+          {/* Row 6: Footer with avatar, time and origin */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
             <div className="flex items-center gap-3">
               {/* Broker avatar */}
@@ -324,18 +301,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                 </AvatarFallback>
               </Avatar>
 
-              {/* Counters */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Interações">
-                  <Eye className="w-3 h-3" />
-                  <span>{interactionCount}</span>
-                </div>
-                <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Notas">
-                  <MessageSquare className="w-3 h-3" />
-                  <span>{noteCount}</span>
-                </div>
-              </div>
-
               {/* Last interaction time */}
               <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Última interação">
                 <Clock className="w-3 h-3" />
@@ -343,11 +308,30 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               </div>
             </div>
             
-            {lead.project && (
-              <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                <MapPin className="w-3 h-3" />
-                <span className="truncate max-w-[60px]">{lead.project.name}</span>
-              </div>
+            {/* Origin Button */}
+            {lead.lead_origin ? (
+              <button
+                onClick={handleOriginClick}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
+                  "hover:opacity-80 transition-opacity border",
+                  ORIGIN_COLORS[originType]
+                )}
+              >
+                {getOriginDisplayLabel(lead.lead_origin)}
+              </button>
+            ) : (
+              <button
+                onClick={handleOriginClick}
+                className={cn(
+                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
+                  "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
+                  "hover:border-slate-400 transition-colors"
+                )}
+              >
+                <Plus className="w-2.5 h-2.5" />
+                Origem
+              </button>
             )}
           </div>
         </div>
