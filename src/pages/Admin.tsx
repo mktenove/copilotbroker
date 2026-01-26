@@ -401,6 +401,10 @@ const Admin = () => {
   }
 
   if (role !== "admin") {
+    const doLogout = async () => {
+      await supabase.auth.signOut();
+      navigate("/auth");
+    };
     return (
       <div className="min-h-screen bg-[#0f0f12] flex flex-col items-center justify-center gap-4 p-6">
         <div className="w-16 h-16 rounded-full bg-[#1e1e22] flex items-center justify-center">
@@ -411,12 +415,20 @@ const Admin = () => {
           Você não tem permissão para acessar esta área. 
           Esta página é restrita a administradores.
         </p>
-        <button
-          onClick={() => navigate("/")}
-          className="mt-4 px-6 py-3 bg-[#FFFF00] text-black font-bold rounded-xl hover:shadow-[0_0_20px_rgba(255,255,0,0.3)] transition-all"
-        >
-          Voltar ao Início
-        </button>
+        <div className="flex gap-3 mt-4">
+          <button
+            onClick={() => navigate("/")}
+            className="px-6 py-3 bg-[#1e1e22] text-white font-medium rounded-xl border border-[#2a2a2e] hover:bg-[#2a2a2e] transition-all"
+          >
+            Voltar ao Início
+          </button>
+          <button
+            onClick={doLogout}
+            className="px-6 py-3 bg-[#FFFF00] text-black font-bold rounded-xl hover:shadow-[0_0_20px_rgba(255,255,0,0.3)] transition-all"
+          >
+            Fazer Logout
+          </button>
+        </div>
       </div>
     );
   }
