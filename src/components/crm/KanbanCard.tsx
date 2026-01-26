@@ -4,7 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
-import { OriginQuickPicker } from "./OriginQuickPicker";
+import { OriginCombobox } from "./OriginCombobox";
 import { InactivationPicker } from "./InactivationPicker";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -57,7 +57,6 @@ const PROGRESS_COLORS: Record<string, string> = {
 };
 
 export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete }: KanbanCardProps) {
-  const [isOriginPickerOpen, setIsOriginPickerOpen] = useState(false);
   const [isInactivationPickerOpen, setIsInactivationPickerOpen] = useState(false);
   
   const {
@@ -115,11 +114,6 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
   const cleanPhone = lead.whatsapp.replace(/\D/g, "");
   const originType = getOriginType(lead.lead_origin);
   const progress = STATUS_PROGRESS[lead.status] || 0;
-
-  const handleOriginClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setIsOriginPickerOpen(true);
-  };
 
   const handleInactivateClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -308,44 +302,38 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               </div>
             </div>
             
-            {/* Origin Button */}
-            {lead.lead_origin ? (
-              <button
-                onClick={handleOriginClick}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
-                  "hover:opacity-80 transition-opacity border",
-                  ORIGIN_COLORS[originType]
-                )}
-              >
-                {getOriginDisplayLabel(lead.lead_origin)}
-              </button>
-            ) : (
-              <button
-                onClick={handleOriginClick}
-                className={cn(
-                  "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
-                  "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
-                  "hover:border-slate-400 transition-colors"
-                )}
-              >
-                <Plus className="w-2.5 h-2.5" />
-                Origem
-              </button>
-            )}
+            {/* Origin Combobox */}
+            <OriginCombobox
+              currentOrigin={lead.lead_origin}
+              onSelect={handleOriginSelect}
+              trigger={
+                lead.lead_origin ? (
+                  <button
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
+                      "hover:opacity-80 transition-opacity border",
+                      ORIGIN_COLORS[originType]
+                    )}
+                  >
+                    {getOriginDisplayLabel(lead.lead_origin)}
+                  </button>
+                ) : (
+                  <button
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
+                      "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
+                      "hover:border-slate-400 transition-colors"
+                    )}
+                  >
+                    <Plus className="w-2.5 h-2.5" />
+                    Origem
+                  </button>
+                )
+              }
+            />
           </div>
         </div>
       </div>
-
-      {/* Origin Quick Picker */}
-      <OriginQuickPicker
-        leadId={lead.id}
-        leadName={lead.name}
-        currentOrigin={lead.lead_origin}
-        isOpen={isOriginPickerOpen}
-        onClose={() => setIsOriginPickerOpen(false)}
-        onSelect={handleOriginSelect}
-      />
 
       {/* Inactivation Picker */}
       <InactivationPicker
