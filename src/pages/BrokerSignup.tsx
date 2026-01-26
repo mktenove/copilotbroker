@@ -154,9 +154,9 @@ const BrokerSignup = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] flex">
+    <div className="min-h-screen bg-[#0a0a0c] flex flex-col lg:flex-row">
       {/* Left Panel - Visual Branding (Desktop Only) */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e]">
+      <div className="hidden lg:flex lg:w-[60%] xl:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e] min-h-screen">
         {/* Geometric Pattern */}
         <div className="absolute inset-0">
           <div className="absolute top-20 left-20 w-96 h-96 border border-[#FFFF00]/10 rotate-45" />
@@ -166,14 +166,14 @@ const BrokerSignup = () => {
         </div>
         
         {/* Content */}
-        <div className="relative z-10 flex flex-col justify-center px-16 xl:px-24">
+        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
           <img 
             src={logoEnove} 
             alt="Enove" 
             className="h-16 w-auto mb-12"
           />
           
-          <h1 className="font-serif text-5xl xl:text-6xl font-bold text-white leading-tight mb-6">
+          <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6">
             Seja um
             <br />
             <span className="text-[#FFFF00]">Corretor Enove</span>
@@ -181,14 +181,14 @@ const BrokerSignup = () => {
           
           <div className="w-24 h-1 bg-[#FFFF00] mb-8" />
           
-          <p className="text-xl text-slate-400 max-w-md leading-relaxed">
+          <p className="text-lg xl:text-xl text-slate-400 max-w-md leading-relaxed">
             Cadastre-se e tenha acesso exclusivo à nossa plataforma de gestão de leads e empreendimentos premium.
           </p>
         </div>
       </div>
 
       {/* Right Panel - Signup Form */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6 lg:p-12">
+      <div className="w-full lg:w-[40%] xl:w-2/5 flex items-center justify-center p-6 lg:p-8 xl:p-12 min-h-screen lg:overflow-y-auto">
         <div className="w-full max-w-md">
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
