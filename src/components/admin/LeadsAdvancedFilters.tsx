@@ -105,28 +105,28 @@ const LeadsAdvancedFilters = ({
     <div className="space-y-4 mb-6">
       {/* Search Input */}
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
         <input
           type="text"
           placeholder="Buscar por nome ou WhatsApp..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+          className="w-full pl-10 pr-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 focus:border-[#FFFF00]/50 transition-all"
         />
       </div>
 
       {/* Filters Panel - Always Visible */}
-      <div className="p-4 bg-muted/30 rounded-lg border border-border space-y-4">
+      <div className="p-4 bg-[#1e1e22] rounded-lg border border-[#2a2a2e] space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           {/* Project Filter */}
           {projects.length > 0 && (
             <div className="space-y-2">
-              <label className="text-sm font-medium text-foreground">Projeto</label>
+              <label className="text-sm font-medium text-white">Projeto</label>
               <Select
                 value={filters.projectFilter}
                 onValueChange={(value) => updateFilter("projectFilter", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-[#0f0f12] border-[#2a2a2e] text-white">
                   <Building2 className="w-4 h-4 mr-2" />
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -143,12 +143,12 @@ const LeadsAdvancedFilters = ({
           )}
           {/* Status Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Status (Fase)</label>
+            <label className="text-sm font-medium text-white">Status (Fase)</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-between text-left font-normal"
+                  className="w-full justify-between text-left font-normal bg-[#0f0f12] border-[#2a2a2e] text-white hover:bg-[#1e1e22]"
                 >
                   {filters.statusFilter.length === 0
                     ? "Todos os status"
@@ -185,12 +185,12 @@ const LeadsAdvancedFilters = ({
 
           {/* Broker Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Corretor</label>
+            <label className="text-sm font-medium text-white">Corretor</label>
             <Select
               value={filters.brokerFilter}
               onValueChange={(value) => updateFilter("brokerFilter", value)}
             >
-              <SelectTrigger>
+              <SelectTrigger className="bg-[#0f0f12] border-[#2a2a2e] text-white">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
@@ -207,12 +207,12 @@ const LeadsAdvancedFilters = ({
 
           {/* Origin Filter */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Origem</label>
+            <label className="text-sm font-medium text-white">Origem</label>
             <Popover>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
-                  className="w-full justify-between text-left font-normal"
+                  className="w-full justify-between text-left font-normal bg-[#0f0f12] border-[#2a2a2e] text-white hover:bg-[#1e1e22]"
                 >
                   <span className="flex items-center gap-1 truncate">
                     <MapPin className="w-3 h-3 shrink-0" />
@@ -244,15 +244,15 @@ const LeadsAdvancedFilters = ({
 
           {/* Date Range */}
           <div className="space-y-2">
-            <label className="text-sm font-medium text-foreground">Período</label>
+            <label className="text-sm font-medium text-white">Período</label>
             <div className="flex gap-2">
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
                     className={cn(
-                      "flex-1 justify-start text-left font-normal",
-                      !filters.dateFrom && "text-muted-foreground"
+                      "flex-1 justify-start text-left font-normal bg-[#0f0f12] border-[#2a2a2e] hover:bg-[#1e1e22]",
+                      !filters.dateFrom ? "text-slate-500" : "text-white"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -274,8 +274,8 @@ const LeadsAdvancedFilters = ({
                   <Button
                     variant="outline"
                     className={cn(
-                      "flex-1 justify-start text-left font-normal",
-                      !filters.dateTo && "text-muted-foreground"
+                      "flex-1 justify-start text-left font-normal bg-[#0f0f12] border-[#2a2a2e] hover:bg-[#1e1e22]",
+                      !filters.dateTo ? "text-slate-500" : "text-white"
                     )}
                   >
                     <CalendarIcon className="mr-2 h-4 w-4" />
@@ -297,20 +297,20 @@ const LeadsAdvancedFilters = ({
         </div>
 
         {/* Include Inactive Toggle + Clear Button */}
-        <div className="flex items-center justify-between pt-2 border-t border-border">
+        <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2e]">
           <label className="flex items-center gap-2 cursor-pointer">
             <Checkbox
               checked={filters.includeInactive}
               onCheckedChange={(checked) => updateFilter("includeInactive", !!checked)}
             />
-            <span className="text-sm text-muted-foreground">Incluir leads inativos</span>
+            <span className="text-sm text-slate-400">Incluir leads inativos</span>
           </label>
           {activeFiltersCount > 0 && (
             <Button
               variant="ghost"
               size="sm"
               onClick={clearAllFilters}
-              className="text-muted-foreground hover:text-foreground"
+              className="text-slate-400 hover:text-white hover:bg-[#2a2a2e]"
             >
               <X className="w-4 h-4 mr-1" />
               Limpar filtros ({activeFiltersCount})
@@ -323,68 +323,62 @@ const LeadsAdvancedFilters = ({
       {activeFiltersCount > 0 && (
         <div className="flex flex-wrap gap-2">
           {filters.statusFilter.map((status) => (
-            <Badge
+            <span
               key={status}
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => removeStatusFilter(status)}
             >
               {STATUS_CONFIG[status].label}
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           ))}
           {filters.brokerFilter !== "all" && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => updateFilter("brokerFilter", "all")}
             >
               {filters.brokerFilter === "enove"
                 ? "Enove"
                 : brokers.find((b) => b.id === filters.brokerFilter)?.name || "Corretor"}
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           )}
           {filters.originFilter.map((origin) => (
-            <Badge
+            <span
               key={origin}
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => removeOriginFilter(origin)}
             >
               {getOriginDisplayLabel(origin)}
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           ))}
           {filters.dateFrom && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => updateFilter("dateFrom", undefined)}
             >
               De: {format(filters.dateFrom, "dd/MM/yy")}
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           )}
           {filters.dateTo && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => updateFilter("dateTo", undefined)}
             >
               Até: {format(filters.dateTo, "dd/MM/yy")}
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           )}
           {filters.includeInactive && (
-            <Badge
-              variant="secondary"
-              className="gap-1 cursor-pointer hover:bg-destructive/20"
+            <span
+              className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[#2a2a2e] text-slate-300 cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition-colors"
               onClick={() => updateFilter("includeInactive", false)}
             >
               Inclui inativos
               <X className="w-3 h-3" />
-            </Badge>
+            </span>
           )}
         </div>
       )}

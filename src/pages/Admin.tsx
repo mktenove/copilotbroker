@@ -452,47 +452,47 @@ const Admin = () => {
         <>
           {/* Stats */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-            <div className="card-luxury p-4 sm:p-6">
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                  <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
+                  <p className="text-xs sm:text-sm text-slate-400">Total</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
                 </div>
               </div>
             </div>
-            <div className="card-luxury p-4 sm:p-6">
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                  <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
+                  <p className="text-xs sm:text-sm text-slate-400">Hoje</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{todayLeads.length}</p>
                 </div>
               </div>
             </div>
-            <div className="card-luxury p-4 sm:p-6">
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                  <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                  <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Enove</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">{enoveLeads.length}</p>
+                  <p className="text-xs sm:text-sm text-slate-400">Enove</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{enoveLeads.length}</p>
                 </div>
               </div>
             </div>
-            <div className="card-luxury p-4 sm:p-6">
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-accent/50 flex items-center justify-center shrink-0">
-                  <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-accent-foreground" />
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                  <UserCog className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-muted-foreground">Corretores</p>
-                  <p className="text-xl sm:text-2xl font-bold text-foreground">{brokerLeads.length}</p>
+                  <p className="text-xs sm:text-sm text-slate-400">Corretores</p>
+                  <p className="text-xl sm:text-2xl font-bold text-white">{brokerLeads.length}</p>
                 </div>
               </div>
             </div>
@@ -518,7 +518,7 @@ const Admin = () => {
             <button
               onClick={fetchLeads}
               disabled={isLoading}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1e1e22] text-[#FFFF00] border border-[#2a2a2e] rounded-lg hover:bg-[#2a2a2e] transition-colors disabled:opacity-50"
             >
               <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
               <span className="hidden sm:inline">Atualizar</span>
@@ -526,7 +526,7 @@ const Admin = () => {
           </div>
 
           {/* Leads Table */}
-          <div className="card-luxury overflow-hidden">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
             <LeadsTable
               leads={filteredLeads}
               isLoading={isLoading}
