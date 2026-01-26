@@ -18,6 +18,7 @@ interface KanbanColumnProps {
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
+  onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
 }
 
 // Status square colors for TaskWhiz style headers
@@ -30,7 +31,7 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
 
@@ -99,6 +100,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
               onUpdateOrigin={onUpdateOrigin}
               onInactivate={onInactivate}
               onDelete={onDelete}
+              onAdvanceStatus={onAdvanceStatus}
             />
           ))}
         </SortableContext>

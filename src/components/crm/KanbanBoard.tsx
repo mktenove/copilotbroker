@@ -167,6 +167,18 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     await deleteLead(leadId);
   };
 
+  const handleAdvanceStatus = async (leadId: string, currentStatus: LeadStatus) => {
+    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered'];
+    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+    if (currentIndex === -1 || currentIndex >= STATUS_ORDER.length - 1) return;
+    
+    const nextStatus = STATUS_ORDER[currentIndex + 1];
+    const success = await updateLeadStatus(leadId, currentStatus, nextStatus);
+    if (success) {
+      toast.success(`Lead avançado para "${STATUS_CONFIG[nextStatus].label}"`);
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-[700px]">
       {/* Toolbar - Filters */}
@@ -257,6 +269,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 onUpdateOrigin={handleUpdateOrigin}
                 onInactivate={handleInactivateLead}
                 onDelete={isAdmin ? handleDeleteLead : undefined}
+                onAdvanceStatus={handleAdvanceStatus}
               />
             ))}
           </div>
