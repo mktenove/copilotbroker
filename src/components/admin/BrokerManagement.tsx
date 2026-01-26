@@ -11,6 +11,14 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+
+interface Project {
+  id: string;
+  name: string;
+  city: string;
+}
 
 interface Broker {
   id: string;
@@ -21,6 +29,7 @@ interface Broker {
   whatsapp: string | null;
   is_active: boolean;
   created_at: string;
+  projects?: Project[];
 }
 
 interface BrokerFormData {
@@ -32,6 +41,8 @@ interface BrokerFormData {
 
 const BrokerManagement = () => {
   const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -46,18 +57,52 @@ const BrokerManagement = () => {
 
   useEffect(() => {
     fetchBrokers();
+    fetchProjects();
   }, []);
+
+  const fetchProjects = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("id, name, city")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setProjects((data || []) as Project[]);
+    } catch (error) {
+      console.error("Erro ao buscar projetos:", error);
+    }
+  };
 
   const fetchBrokers = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await (supabase
+      // Fetch brokers
+      const { data: brokersData, error: brokersError } = await (supabase
         .from("brokers" as any)
         .select("*")
         .order("created_at", { ascending: false }) as any);
 
-      if (error) throw error;
-      setBrokers((data || []) as Broker[]);
+      if (brokersError) throw brokersError;
+
+      // Fetch broker_projects to get project associations
+      const { data: brokerProjectsData } = await supabase
+        .from("broker_projects")
+        .select("broker_id, project:projects(id, name, city)")
+        .eq("is_active", true);
+
+      // Map projects to brokers
+      const brokersWithProjects = (brokersData || []).map((broker: Broker) => {
+        const brokerProjects = (brokerProjectsData || [])
+          .filter((bp: any) => bp.broker_id === broker.id)
+          .map((bp: any) => bp.project)
+          .filter((p: Project | null): p is Project => p !== null);
+        
+        return { ...broker, projects: brokerProjects };
+      });
+
+      setBrokers(brokersWithProjects as Broker[]);
     } catch (error) {
       console.error("Erro ao buscar corretores:", error);
       toast.error("Erro ao carregar corretores.");
@@ -75,7 +120,7 @@ const BrokerManagement = () => {
       .replace(/^-+|-+$/g, "");
   };
 
-  const handleOpenDialog = (broker?: Broker) => {
+  const handleOpenDialog = async (broker?: Broker) => {
     if (broker) {
       setEditingBroker(broker);
       setFormData({
@@ -84,11 +129,50 @@ const BrokerManagement = () => {
         whatsapp: broker.whatsapp || "",
         password: "",
       });
+      
+      // Fetch associated projects for this broker
+      const { data } = await supabase
+        .from("broker_projects")
+        .select("project_id")
+        .eq("broker_id", broker.id)
+        .eq("is_active", true);
+      
+      setSelectedProjects(data?.map(bp => bp.project_id) || []);
     } else {
       setEditingBroker(null);
       setFormData({ name: "", email: "", whatsapp: "", password: "" });
+      setSelectedProjects([]);
     }
     setIsDialogOpen(true);
+  };
+
+  const toggleProject = (projectId: string) => {
+    setSelectedProjects(prev => 
+      prev.includes(projectId)
+        ? prev.filter(id => id !== projectId)
+        : [...prev, projectId]
+    );
+  };
+
+  const syncBrokerProjects = async (brokerId: string, projectIds: string[]) => {
+    // Remove all existing associations
+    await supabase
+      .from("broker_projects")
+      .delete()
+      .eq("broker_id", brokerId);
+    
+    // Insert new associations
+    if (projectIds.length > 0) {
+      const { error } = await supabase
+        .from("broker_projects")
+        .insert(projectIds.map(projectId => ({
+          broker_id: brokerId,
+          project_id: projectId,
+          is_active: true
+        })));
+      
+      if (error) throw error;
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,6 +213,10 @@ const BrokerManagement = () => {
           .eq("id", editingBroker.id) as any);
 
         if (error) throw error;
+
+        // Sincronizar projetos
+        await syncBrokerProjects(editingBroker.id, selectedProjects);
+
         toast.success("Corretor atualizado com sucesso!");
       } else {
         // Criar novo usuário no Auth
@@ -169,12 +257,25 @@ const BrokerManagement = () => {
 
         if (roleError) throw roleError;
 
+        // Buscar o broker recém criado para obter o ID
+        const { data: newBroker } = await (supabase
+          .from("brokers" as any)
+          .select("id")
+          .eq("user_id", userId)
+          .single() as any);
+
+        // Sincronizar projetos
+        if (newBroker && selectedProjects.length > 0) {
+          await syncBrokerProjects(newBroker.id, selectedProjects);
+        }
+
         toast.success(`Corretor criado! URL: /estanciavelha/${slug}`);
       }
 
       setIsDialogOpen(false);
       setEditingBroker(null);
       setFormData({ name: "", email: "", whatsapp: "", password: "" });
+      setSelectedProjects([]);
       fetchBrokers();
     } catch (error: any) {
       console.error("Erro ao salvar corretor:", error);
@@ -306,6 +407,32 @@ const BrokerManagement = () => {
                 />
               </div>
 
+              {/* Seleção de Empreendimentos */}
+              <div>
+                <label className="block text-sm font-medium text-foreground/80 mb-2">
+                  Empreendimentos
+                </label>
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3">
+                  {projects.length > 0 ? (
+                    projects.map(project => (
+                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1 rounded">
+                        <Checkbox
+                          checked={selectedProjects.includes(project.id)}
+                          onCheckedChange={() => toggleProject(project.id)}
+                        />
+                        <span className="text-sm">{project.name}</span>
+                        <span className="text-xs text-muted-foreground">({project.city})</span>
+                      </label>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum projeto disponível</p>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Selecione os empreendimentos que este corretor pode vender
+                </p>
+              </div>
+
               {!editingBroker && (
                 <div>
                   <label className="block text-sm font-medium text-foreground/80 mb-2">
@@ -356,6 +483,7 @@ const BrokerManagement = () => {
                 <tr>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Nome</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Email</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Projetos</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Status</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Link</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-muted-foreground">Ações</th>
@@ -369,6 +497,19 @@ const BrokerManagement = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-muted-foreground">{broker.email}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-wrap gap-1">
+                        {broker.projects && broker.projects.length > 0 ? (
+                          broker.projects.map(project => (
+                            <Badge key={project.id} variant="outline" className="text-xs">
+                              {project.name}
+                            </Badge>
+                          ))
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Nenhum</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4">
                       <button
