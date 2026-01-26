@@ -90,7 +90,7 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
     <button
       onClick={exportToCSV}
       disabled={leads.length === 0}
-      className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="flex items-center gap-2 px-4 py-3 bg-[#1e1e22] text-[#FFFF00] border border-[#2a2a2e] rounded-lg hover:bg-[#2a2a2e] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
     >
       <Download className="w-4 h-4" />
       Exportar CSV ({leads.length})
