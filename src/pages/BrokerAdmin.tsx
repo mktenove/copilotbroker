@@ -134,8 +134,8 @@ const BrokerAdmin = () => {
 
   if (isRoleLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#FFFF00]" />
       </div>
     );
   }
@@ -145,26 +145,26 @@ const BrokerAdmin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
       {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
+      <header className="bg-[#141417]/95 backdrop-blur-sm border-b border-[#2a2a2e] sticky top-0 z-50">
         <div className="container px-4 py-3 sm:py-4 flex items-center justify-between">
           <div className="flex items-center gap-3 sm:gap-4">
             <img src={logoEnove} alt="Enove Imobiliária" className="h-8 sm:h-10" />
             <div>
-              <h1 className="text-base sm:text-lg font-serif font-bold text-foreground">Meus Leads</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">{broker?.name || "Carregando..."}</p>
+              <h1 className="text-base sm:text-lg font-serif font-bold text-white">Meus Leads</h1>
+              <p className="text-xs sm:text-sm text-slate-400">{broker?.name || "Carregando..."}</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
             {/* View Mode Toggle */}
-            <div className="flex items-center bg-muted rounded-lg p-1">
+            <div className="flex items-center bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-1">
               <button
                 onClick={() => setViewMode("kanban")}
                 className={`p-2 rounded transition-colors ${
                   viewMode === "kanban" 
-                    ? "bg-background text-primary shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#2a2a2e] text-[#FFFF00] shadow-sm" 
+                    : "text-slate-400 hover:text-white"
                 }`}
                 title="Visualização Kanban"
               >
@@ -174,8 +174,8 @@ const BrokerAdmin = () => {
                 onClick={() => setViewMode("list")}
                 className={`p-2 rounded transition-colors ${
                   viewMode === "list" 
-                    ? "bg-background text-primary shadow-sm" 
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-[#2a2a2e] text-[#FFFF00] shadow-sm" 
+                    : "text-slate-400 hover:text-white"
                 }`}
                 title="Visualização Lista"
               >
@@ -184,7 +184,7 @@ const BrokerAdmin = () => {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span className="hidden sm:inline">Sair</span>
@@ -197,15 +197,15 @@ const BrokerAdmin = () => {
       <main className="container px-4 py-6 sm:py-8">
         {/* Link da landing page */}
         {broker && (
-          <div className="card-luxury p-4 mb-6">
-            <p className="text-sm text-muted-foreground mb-2">Sua landing page</p>
-            <code className="block text-xs sm:text-sm bg-muted px-3 py-2 rounded mb-3 break-all">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 mb-6">
+            <p className="text-sm text-slate-400 mb-2">Sua landing page</p>
+            <code className="block text-xs sm:text-sm bg-[#0f0f12] text-slate-300 px-3 py-2 rounded mb-3 break-all border border-[#2a2a2e]">
               {window.location.origin}/estanciavelha/{broker.slug}
             </code>
             <div className="flex gap-2">
               <button
                 onClick={copyLink}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors text-sm"
               >
                 {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 {copiedLink ? "Copiado!" : "Copiar Link"}
@@ -214,7 +214,7 @@ const BrokerAdmin = () => {
                 href={`/estanciavelha/${broker.slug}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors text-sm"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00] text-black font-medium rounded-lg hover:bg-[#FFFF00]/90 transition-colors text-sm"
               >
                 <ExternalLink className="w-4 h-4" />
                 Abrir
@@ -225,25 +225,25 @@ const BrokerAdmin = () => {
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="card-luxury p-4 sm:p-6">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{leads.length}</p>
+                <p className="text-xs sm:text-sm text-slate-400">Total</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
               </div>
             </div>
           </div>
-          <div className="card-luxury p-4 sm:p-6">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
             <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
               </div>
               <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-muted-foreground">Hoje</p>
-                <p className="text-xl sm:text-2xl font-bold text-foreground">{todayLeads.length}</p>
+                <p className="text-xs sm:text-sm text-slate-400">Hoje</p>
+                <p className="text-xl sm:text-2xl font-bold text-white">{todayLeads.length}</p>
               </div>
             </div>
           </div>
@@ -259,13 +259,13 @@ const BrokerAdmin = () => {
             {/* Search and Export */}
             <div className="flex flex-col gap-3 mb-6">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
                 <input
                   type="text"
                   placeholder="Buscar por nome ou WhatsApp..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  className="w-full pl-10 pr-4 py-3 bg-[#1e1e22] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 focus:border-[#FFFF00]/50 transition-all"
                 />
               </div>
               <div className="flex gap-2">
@@ -273,7 +273,7 @@ const BrokerAdmin = () => {
                 <button
                   onClick={fetchLeads}
                   disabled={isLoading}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors disabled:opacity-50"
                 >
                   <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
                   <span>Atualizar</span>
@@ -282,7 +282,7 @@ const BrokerAdmin = () => {
             </div>
 
             {/* Leads Table */}
-            <div className="card-luxury overflow-hidden">
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
               <LeadsTable
                 leads={filteredLeads}
                 isLoading={isLoading}
