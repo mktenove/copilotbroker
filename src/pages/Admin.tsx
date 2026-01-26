@@ -394,14 +394,31 @@ const Admin = () => {
 
   if (isRoleLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-primary" />
+      <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-[#FFFF00]" />
       </div>
     );
   }
 
   if (role !== "admin") {
-    return null;
+    return (
+      <div className="min-h-screen bg-[#0f0f12] flex flex-col items-center justify-center gap-4 p-6">
+        <div className="w-16 h-16 rounded-full bg-[#1e1e22] flex items-center justify-center">
+          <UserCog className="w-8 h-8 text-slate-500" />
+        </div>
+        <h1 className="text-xl font-bold text-white">Acesso Restrito</h1>
+        <p className="text-slate-400 text-center max-w-md">
+          Você não tem permissão para acessar esta área. 
+          Esta página é restrita a administradores.
+        </p>
+        <button
+          onClick={() => navigate("/")}
+          className="mt-4 px-6 py-3 bg-[#FFFF00] text-black font-bold rounded-xl hover:shadow-[0_0_20px_rgba(255,255,0,0.3)] transition-all"
+        >
+          Voltar ao Início
+        </button>
+      </div>
+    );
   }
 
   const currentSearchTerm = activeTab === "crm" ? crmSearchTerm : searchTerm;
