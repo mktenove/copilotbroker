@@ -1,7 +1,9 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { AdminSidebar } from "./AdminSidebar";
 import { AdminHeader } from "./AdminHeader";
 import { MobileBottomNav } from "./MobileBottomNav";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { NotificationPanel } from "./NotificationPanel";
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -24,6 +26,8 @@ export function AdminLayout({
   onAddLead,
   brokers,
 }: AdminLayoutProps) {
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
       {/* Sidebar - fixed left, hidden on mobile */}
@@ -39,7 +43,20 @@ export function AdminLayout({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onAddLead={onAddLead}
+        onNotificationsClick={() => setIsNotificationsOpen(true)}
       />
+
+      {/* Mobile Notifications Sheet */}
+      <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
+        <SheetContent side="left" className="w-full sm:max-w-md bg-[#0f0f12] border-[#2a2a2e] p-0">
+          <SheetHeader className="p-4 border-b border-[#2a2a2e]">
+            <SheetTitle className="text-white">Notificações</SheetTitle>
+          </SheetHeader>
+          <div className="h-[calc(100vh-60px)] overflow-y-auto admin-scrollbar">
+            <NotificationPanel />
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Main content - offset by sidebar width on desktop */}
       <div className="md:ml-16 min-h-screen flex flex-col pb-20 md:pb-0">
