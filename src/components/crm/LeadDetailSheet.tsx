@@ -68,7 +68,6 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
   useEffect(() => {
     if (lead) {
-      // Verifica se lead_origin é um valor personalizado
       const isCustomOrigin = lead.lead_origin && !LEAD_ORIGINS.some(o => o.key === lead.lead_origin);
       setEditedLead({
         name: lead.name,
@@ -89,14 +88,12 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
   const cleanPhone = lead.whatsapp.replace(/\D/g, "");
 
   const handleSaveEdit = async () => {
-    // Se a origem for "outro", usa o valor personalizado
     const originToSave = editedLead.lead_origin === 'outro' 
       ? editedLead.custom_origin 
       : editedLead.lead_origin;
     
     const { custom_origin, ...dataToSave } = editedLead;
     
-    // Verifica se a origem mudou para registrar no histórico
     const originChanged = originToSave !== lead.lead_origin;
     
     if (originChanged) {
@@ -128,12 +125,10 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
   const handleSelectTemplate = (text: string) => {
     if (selectedTemplates.includes(text)) {
-      // Remove template
       const newTemplates = selectedTemplates.filter(t => t !== text);
       setSelectedTemplates(newTemplates);
       setNewNote(newTemplates.join(". "));
     } else {
-      // Add template
       const newTemplates = [...selectedTemplates, text];
       setSelectedTemplates(newTemplates);
       setNewNote(newTemplates.join(". "));
@@ -188,12 +183,14 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
   return (
     <Sheet open={isOpen} onOpenChange={onClose}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-        <SheetHeader className="mb-4">
-          <div className="flex items-center justify-between">
-            <SheetTitle className="text-xl">{lead.name}</SheetTitle>
+      <SheetContent className="w-full sm:max-w-lg overflow-y-auto bg-[#0f0f12] border-l border-[#2a2a2e]">
+        <SheetHeader className="mb-6">
+          <div className="flex items-center justify-between gap-3">
+            <SheetTitle className="text-xl font-bold text-white truncate">
+              {lead.name}
+            </SheetTitle>
             <span className={cn(
-              "px-2 py-1 text-xs font-medium rounded-full",
+              "px-3 py-1 text-xs font-semibold rounded-full shrink-0",
               statusConfig.color,
               statusConfig.bgColor
             )}>
@@ -202,14 +199,15 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
           </div>
         </SheetHeader>
 
-        <div className="space-y-6">
+        <div className="space-y-4">
           {/* Contact Info */}
-          <div className="space-y-3">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm text-foreground">Dados de Contato</h4>
+              <h4 className="text-sm font-medium text-slate-400">Dados de Contato</h4>
               <Button
                 variant="ghost"
                 size="sm"
+                className="text-slate-400 hover:text-white hover:bg-[#2a2a2e]"
                 onClick={() => setIsEditing(!isEditing)}
               >
                 {isEditing ? "Cancelar" : "Editar"}
@@ -219,40 +217,44 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
             {isEditing ? (
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="name">Nome</Label>
+                  <Label htmlFor="name" className="text-slate-400 text-xs">Nome</Label>
                   <Input
                     id="name"
                     value={editedLead.name || ""}
                     onChange={(e) => setEditedLead(prev => ({ ...prev, name: e.target.value }))}
+                    className="bg-[#1e1e22] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500 focus:border-[#FFFF00]/50"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="whatsapp">WhatsApp</Label>
+                  <Label htmlFor="whatsapp" className="text-slate-400 text-xs">WhatsApp</Label>
                   <Input
                     id="whatsapp"
                     value={editedLead.whatsapp || ""}
                     onChange={(e) => setEditedLead(prev => ({ ...prev, whatsapp: e.target.value }))}
+                    className="bg-[#1e1e22] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500 focus:border-[#FFFF00]/50"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="email">E-mail</Label>
+                  <Label htmlFor="email" className="text-slate-400 text-xs">E-mail</Label>
                   <Input
                     id="email"
                     type="email"
                     value={editedLead.email || ""}
                     onChange={(e) => setEditedLead(prev => ({ ...prev, email: e.target.value }))}
+                    className="bg-[#1e1e22] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500 focus:border-[#FFFF00]/50"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="cpf">CPF</Label>
+                  <Label htmlFor="cpf" className="text-slate-400 text-xs">CPF</Label>
                   <Input
                     id="cpf"
                     value={editedLead.cpf || ""}
                     onChange={(e) => setEditedLead(prev => ({ ...prev, cpf: e.target.value }))}
+                    className="bg-[#1e1e22] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500 focus:border-[#FFFF00]/50"
                   />
                 </div>
                 <div>
-                  <Label htmlFor="lead_origin">Origem do Lead</Label>
+                  <Label htmlFor="lead_origin" className="text-slate-400 text-xs">Origem do Lead</Label>
                   <Select 
                     value={editedLead.lead_origin || ""} 
                     onValueChange={(val) => {
@@ -263,12 +265,16 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                       }));
                     }}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-[#1e1e22] border-[#3a3a3e] text-slate-200">
                       <SelectValue placeholder="Selecione a origem..." />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#1e1e22] border-[#3a3a3e]">
                       {LEAD_ORIGINS.map(origin => (
-                        <SelectItem key={origin.key} value={origin.key}>
+                        <SelectItem 
+                          key={origin.key} 
+                          value={origin.key}
+                          className="text-slate-200 focus:bg-[#2a2a2e] focus:text-white"
+                        >
                           {origin.label}
                         </SelectItem>
                       ))}
@@ -276,7 +282,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                   </Select>
                   {editedLead.lead_origin === 'outro' && (
                     <Input
-                      className="mt-2"
+                      className="mt-2 bg-[#1e1e22] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500"
                       placeholder="Digite a origem personalizada..."
                       value={editedLead.custom_origin || ""}
                       onChange={(e) => setEditedLead(prev => ({ 
@@ -286,44 +292,47 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                     />
                   )}
                 </div>
-                <Button onClick={handleSaveEdit} className="w-full">
+                <Button 
+                  onClick={handleSaveEdit} 
+                  className="w-full bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 font-semibold"
+                >
                   Salvar Alterações
                 </Button>
               </div>
             ) : (
-              <div className="space-y-2 text-sm">
+              <div className="space-y-2.5">
                 <a
                   href={`https://wa.me/55${cleanPhone}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-muted-foreground hover:text-green-600 transition-colors"
+                  className="flex items-center gap-3 text-slate-300 hover:text-emerald-400 transition-colors"
                 >
-                  <Phone className="w-4 h-4" />
-                  {lead.whatsapp}
+                  <Phone className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm">{lead.whatsapp}</span>
                 </a>
                 {lead.email && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    {lead.email}
+                  <div className="flex items-center gap-3 text-slate-300">
+                    <Mail className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm">{lead.email}</span>
                   </div>
                 )}
                 {lead.cpf && (
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <User className="w-4 h-4" />
-                    CPF: {lead.cpf}
+                  <div className="flex items-center gap-3 text-slate-300">
+                    <User className="w-4 h-4 text-slate-500" />
+                    <span className="text-sm">CPF: {lead.cpf}</span>
                   </div>
                 )}
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Calendar className="w-4 h-4" />
-                  Entrada: {new Date(lead.created_at).toLocaleDateString("pt-BR")}
+                <div className="flex items-center gap-3 text-slate-300">
+                  <Calendar className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm">Entrada: {new Date(lead.created_at).toLocaleDateString("pt-BR")}</span>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <User className="w-4 h-4" />
-                  Cadastrado por: {lead.source === "enove" ? "Enove" : lead.source}
+                <div className="flex items-center gap-3 text-slate-300">
+                  <User className="w-4 h-4 text-slate-500" />
+                  <span className="text-sm">Cadastrado por: {lead.source === "enove" ? "Enove" : lead.source}</span>
                 </div>
                 {lead.lead_origin && (
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex items-center gap-3">
+                    <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
                     <span className={cn(
                       "px-2 py-0.5 text-xs font-medium rounded-full border",
                       ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
@@ -337,26 +346,32 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
           </div>
 
           {/* Quick Actions */}
-          <div className="space-y-3">
-            <h4 className="font-medium text-sm text-foreground">Ações Rápidas</h4>
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 space-y-3">
+            <h4 className="text-sm font-medium text-slate-400">Ações Rápidas</h4>
             
             <div className="grid grid-cols-2 gap-2">
               {lead.status === "new" && (
                 <div className="col-span-2 flex gap-2">
                   <Select value={selectedChannel} onValueChange={setSelectedChannel}>
-                    <SelectTrigger className="w-[120px]">
+                    <SelectTrigger className="w-[120px] bg-[#1e1e22] border-[#3a3a3e] text-slate-200">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bg-[#1e1e22] border-[#3a3a3e]">
                       {INTERACTION_CHANNELS.map(ch => (
-                        <SelectItem key={ch.key} value={ch.key}>{ch.label}</SelectItem>
+                        <SelectItem 
+                          key={ch.key} 
+                          value={ch.key}
+                          className="text-slate-200 focus:bg-[#2a2a2e] focus:text-white"
+                        >
+                          {ch.label}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
+                    className="flex-1 border-[#3a3a3e] bg-[#1e1e22] text-slate-300 hover:bg-[#2a2a2e] hover:text-white"
                     onClick={handleMarkInfoSent}
                   >
                     <Send className="w-4 h-4 mr-2" />
@@ -369,7 +384,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                 <Button
                   variant="outline"
                   size="sm"
-                  className="col-span-2"
+                  className="col-span-2 border-[#3a3a3e] bg-[#1e1e22] text-slate-300 hover:bg-[#2a2a2e] hover:text-white"
                   onClick={handleMarkDocsRequested}
                 >
                   <FileText className="w-4 h-4 mr-2" />
@@ -381,7 +396,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                 <Button
                   variant="outline"
                   size="sm"
-                  className="col-span-2"
+                  className="col-span-2 border-[#3a3a3e] bg-[#1e1e22] text-slate-300 hover:bg-[#2a2a2e] hover:text-white"
                   onClick={handleMarkDocsReceived}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
@@ -391,9 +406,8 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
               {lead.status === "docs_received" && (
                 <Button
-                  variant="default"
                   size="sm"
-                  className="col-span-2"
+                  className="col-span-2 bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 font-semibold"
                   onClick={handleMarkRegistered}
                 >
                   <CheckCircle className="w-4 h-4 mr-2" />
@@ -405,20 +419,22 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
 
           {/* Document Checklist */}
           {(lead.status === "awaiting_docs" || lead.status === "docs_received") && (
-            <DocumentChecklist
-              documents={documents}
-              onToggle={(docId, isReceived) => toggleDocument(docId, isReceived, userId || undefined)}
-              receivedCount={receivedCount}
-              totalCount={totalCount}
-            />
+            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4">
+              <DocumentChecklist
+                documents={documents}
+                onToggle={(docId, isReceived) => toggleDocument(docId, isReceived, userId || undefined)}
+                receivedCount={receivedCount}
+                totalCount={totalCount}
+              />
+            </div>
           )}
 
           {/* Notes */}
-          <div className="space-y-3">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 space-y-3">
             {lead.notes && (
               <div className="space-y-1">
-                <h4 className="font-medium text-sm text-foreground">Observações do Lead</h4>
-                <p className="text-sm text-muted-foreground bg-muted p-3 rounded-lg">
+                <h4 className="text-sm font-medium text-slate-400">Observações do Lead</h4>
+                <p className="text-sm text-slate-300 bg-[#0f0f12] p-3 rounded-lg border border-[#2a2a2e]">
                   {lead.notes}
                 </p>
               </div>
@@ -439,12 +455,12 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                     setSelectedTemplates([]);
                   }
                 }}
-                className="min-h-[60px]"
+                className="min-h-[60px] bg-[#0f0f12] border-[#3a3a3e] text-slate-200 placeholder:text-slate-500 focus:border-[#FFFF00]/50"
               />
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full"
+                className="w-full border-[#3a3a3e] bg-[#1e1e22] text-slate-300 hover:bg-[#2a2a2e] hover:text-white disabled:opacity-50"
                 onClick={handleAddNote}
                 disabled={!newNote.trim()}
               >
@@ -455,7 +471,9 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
           </div>
 
           {/* Timeline */}
-          <LeadTimeline interactions={interactions} />
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4">
+            <LeadTimeline interactions={interactions} />
+          </div>
         </div>
       </SheetContent>
     </Sheet>

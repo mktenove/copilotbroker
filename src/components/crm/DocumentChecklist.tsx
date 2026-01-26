@@ -18,12 +18,12 @@ export function DocumentChecklist({ documents, onToggle, receivedCount, totalCou
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <h4 className="font-medium text-sm text-foreground">Checklist de Documentos</h4>
+        <h4 className="text-sm font-medium text-slate-400">Checklist de Documentos</h4>
         <span className={cn(
           "text-xs font-medium px-2 py-0.5 rounded-full",
           receivedCount === totalCount 
-            ? "bg-emerald-100 text-emerald-700" 
-            : "bg-amber-100 text-amber-700"
+            ? "bg-emerald-500/20 text-emerald-300" 
+            : "bg-amber-500/20 text-amber-300"
         )}>
           {receivedCount}/{totalCount}
         </span>
@@ -34,31 +34,32 @@ export function DocumentChecklist({ documents, onToggle, receivedCount, totalCou
           <label
             key={doc.id}
             className={cn(
-              "flex items-center gap-3 p-2 rounded-lg cursor-pointer transition-colors",
+              "flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-colors border",
               doc.is_received 
-                ? "bg-emerald-50 border border-emerald-200" 
-                : "bg-muted/50 border border-transparent hover:border-border"
+                ? "bg-emerald-500/10 border-emerald-500/30" 
+                : "bg-[#0f0f12] border-[#2a2a2e] hover:border-slate-600"
             )}
           >
             <Checkbox
               checked={doc.is_received}
               onCheckedChange={(checked) => onToggle(doc.id, !!checked)}
+              className="border-slate-600 data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
             />
             <div className="flex items-center gap-2 flex-1">
               {doc.is_received ? (
-                <FileCheck className="w-4 h-4 text-emerald-600" />
+                <FileCheck className="w-4 h-4 text-emerald-400" />
               ) : (
-                <FileX className="w-4 h-4 text-muted-foreground" />
+                <FileX className="w-4 h-4 text-slate-500" />
               )}
               <span className={cn(
                 "text-sm",
-                doc.is_received ? "text-emerald-700" : "text-foreground"
+                doc.is_received ? "text-emerald-300" : "text-slate-300"
               )}>
                 {getDocLabel(doc.document_type)}
               </span>
             </div>
             {doc.received_at && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[10px] text-slate-500">
                 {new Date(doc.received_at).toLocaleDateString("pt-BR")}
               </span>
             )}
