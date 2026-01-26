@@ -6,6 +6,18 @@ interface UTMParams {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
+  utm_term: string | null;
+  utm_content: string | null;
+}
+
+interface ClickParams {
+  gclid: string | null;    // Google Ads
+  gbraid: string | null;   // Google Ads (iOS)
+  wbraid: string | null;   // Google Ads (web-to-app)
+  fbclid: string | null;   // Meta Ads (Facebook/Instagram)
+  ttclid: string | null;   // TikTok Ads
+  li_fat_id: string | null; // LinkedIn Ads
+  msclkid: string | null;  // Microsoft/Bing Ads
 }
 
 // Generate a simple session ID
@@ -25,15 +37,46 @@ export const getUTMParams = (): UTMParams => {
     utm_source: params.get("utm_source"),
     utm_medium: params.get("utm_medium"),
     utm_campaign: params.get("utm_campaign"),
+    utm_term: params.get("utm_term"),
+    utm_content: params.get("utm_content"),
   };
 };
 
-// Store UTM params in session for later use (lead attribution)
-export const storeUTMParams = (): void => {
+// Extract click IDs from ad platforms
+export const getClickParams = (): ClickParams => {
+  const params = new URLSearchParams(window.location.search);
+  return {
+    gclid: params.get("gclid"),
+    gbraid: params.get("gbraid"),
+    wbraid: params.get("wbraid"),
+    fbclid: params.get("fbclid"),
+    ttclid: params.get("ttclid"),
+    li_fat_id: params.get("li_fat_id"),
+    msclkid: params.get("msclkid"),
+  };
+};
+
+// Store tracking params in session for later use (lead attribution)
+export const storeTrackingParams = (): void => {
   const utmParams = getUTMParams();
-  if (utmParams.utm_source || utmParams.utm_medium || utmParams.utm_campaign) {
+  const clickParams = getClickParams();
+  
+  const hasUTM = utmParams.utm_source || utmParams.utm_medium || utmParams.utm_campaign;
+  const hasClick = clickParams.gclid || clickParams.gbraid || clickParams.wbraid || 
+                   clickParams.fbclid || clickParams.ttclid || 
+                   clickParams.li_fat_id || clickParams.msclkid;
+  
+  if (hasUTM) {
     sessionStorage.setItem("utm_params", JSON.stringify(utmParams));
   }
+  if (hasClick) {
+    sessionStorage.setItem("click_params", JSON.stringify(clickParams));
+  }
+};
+
+// Legacy function - now calls storeTrackingParams
+export const storeUTMParams = (): void => {
+  storeTrackingParams();
 };
 
 // Get stored UTM params
@@ -43,10 +86,23 @@ export const getStoredUTMParams = (): UTMParams => {
     try {
       return JSON.parse(stored);
     } catch {
-      return { utm_source: null, utm_medium: null, utm_campaign: null };
+      return { utm_source: null, utm_medium: null, utm_campaign: null, utm_term: null, utm_content: null };
     }
   }
   return getUTMParams();
+};
+
+// Get stored click params
+export const getStoredClickParams = (): ClickParams => {
+  const stored = sessionStorage.getItem("click_params");
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return { gclid: null, gbraid: null, wbraid: null, fbclid: null, ttclid: null, li_fat_id: null, msclkid: null };
+    }
+  }
+  return getClickParams();
 };
 
 // Helper: Capitalize first letter
@@ -57,8 +113,17 @@ const capitalizeFirst = (str: string): string => {
 // Helper: Format source name to friendly display
 const formatSourceName = (source: string): string => {
   const mapping: Record<string, string> = {
+    // Abreviações comuns
     'fb': 'Facebook',
     'ig': 'Instagram',
+    'yt': 'YouTube',
+    'tw': 'Twitter/X',
+    'li': 'LinkedIn',
+    'tt': 'TikTok',
+    'pin': 'Pinterest',
+    'gads': 'Google Ads',
+    'meta': 'Meta',
+    // Nomes completos
     'facebook': 'Facebook',
     'instagram': 'Instagram',
     'google': 'Google',
@@ -68,11 +133,36 @@ const formatSourceName = (source: string): string => {
     'twitter': 'Twitter/X',
     'x': 'Twitter/X',
     'bing': 'Bing',
-    'meta': 'Meta',
     'email': 'Email',
     'whatsapp': 'WhatsApp',
+    'pinterest': 'Pinterest',
+    'reddit': 'Reddit',
+    'threads': 'Threads',
+    'snapchat': 'Snapchat',
+    'telegram': 'Telegram',
   };
   return mapping[source.toLowerCase()] || capitalizeFirst(source);
+};
+
+// Helper: Format medium to friendly display
+const formatMediumName = (medium: string): string => {
+  const mapping: Record<string, string> = {
+    'cpc': 'CPC',
+    'ppc': 'PPC',
+    'cpm': 'CPM',
+    'paid': 'Pago',
+    'paid_social': 'Social Pago',
+    'organic': 'Orgânico',
+    'social': 'Social',
+    'email': 'Email',
+    'referral': 'Referral',
+    'display': 'Display',
+    'banner': 'Banner',
+    'video': 'Vídeo',
+    'retargeting': 'Retargeting',
+    'remarketing': 'Remarketing',
+  };
+  return mapping[medium.toLowerCase()] || medium;
 };
 
 // Helper: Extract domain from referrer
@@ -88,62 +178,161 @@ const extractDomain = (referrer: string): string | null => {
 // Helper: Format domain name to friendly display
 const formatDomainName = (domain: string): string => {
   const mapping: Record<string, string> = {
+    // Google
     'google.com': 'Google',
     'google.com.br': 'Google',
+    'google.pt': 'Google',
+    
+    // Meta / Facebook
     'facebook.com': 'Facebook',
-    'instagram.com': 'Instagram',
-    'linkedin.com': 'LinkedIn',
-    'tiktok.com': 'TikTok',
-    'youtube.com': 'YouTube',
-    't.co': 'Twitter/X',
+    'fb.com': 'Facebook',
     'l.facebook.com': 'Facebook',
     'lm.facebook.com': 'Facebook',
+    'm.facebook.com': 'Facebook',
+    'web.facebook.com': 'Facebook',
+    
+    // Instagram
+    'instagram.com': 'Instagram',
+    'l.instagram.com': 'Instagram',
+    
+    // TikTok
+    'tiktok.com': 'TikTok',
+    'vm.tiktok.com': 'TikTok',
+    'www.tiktok.com': 'TikTok',
+    
+    // LinkedIn
+    'linkedin.com': 'LinkedIn',
+    'lnkd.in': 'LinkedIn',
+    
+    // Twitter/X
+    't.co': 'Twitter/X',
+    'twitter.com': 'Twitter/X',
+    'x.com': 'Twitter/X',
+    'mobile.twitter.com': 'Twitter/X',
+    
+    // YouTube
+    'youtube.com': 'YouTube',
+    'youtu.be': 'YouTube',
+    'm.youtube.com': 'YouTube',
+    
+    // Pinterest
+    'pinterest.com': 'Pinterest',
+    'pinterest.com.br': 'Pinterest',
+    'br.pinterest.com': 'Pinterest',
+    'pin.it': 'Pinterest',
+    
+    // Outros sociais
+    'reddit.com': 'Reddit',
+    'old.reddit.com': 'Reddit',
+    'threads.net': 'Threads',
+    'whatsapp.com': 'WhatsApp',
+    'web.whatsapp.com': 'WhatsApp',
+    'api.whatsapp.com': 'WhatsApp',
+    'snapchat.com': 'Snapchat',
+    'telegram.org': 'Telegram',
+    't.me': 'Telegram',
+    
+    // Buscadores
+    'bing.com': 'Bing',
+    'duckduckgo.com': 'DuckDuckGo',
+    'yahoo.com': 'Yahoo',
+    'search.yahoo.com': 'Yahoo',
+    'ecosia.org': 'Ecosia',
+    'baidu.com': 'Baidu',
+    
+    // Email providers (quando clicam em links de email)
+    'mail.google.com': 'Gmail',
+    'outlook.live.com': 'Outlook',
+    'outlook.office.com': 'Outlook',
   };
   return mapping[domain] || domain;
 };
 
-// Get lead origin from UTM params - returns descriptive string
-export const getLeadOriginFromUTM = (): string | null => {
-  const utmParams = getStoredUTMParams();
-  const referrer = document.referrer?.toLowerCase() || '';
+// Check if domain is our own site (to exclude from referrer tracking)
+const isOwnDomain = (referrer: string): boolean => {
+  const ownDomains = [
+    'lovable.app',
+    'onovocondominio',
+    'localhost',
+    '127.0.0.1',
+  ];
+  const lower = referrer.toLowerCase();
+  return ownDomains.some(domain => lower.includes(domain));
+};
+
+// Format UTM params into a descriptive origin string
+const formatUTMOrigin = (utmParams: UTMParams): string => {
+  const parts: string[] = [];
   
-  const source = utmParams.utm_source;
-  const medium = utmParams.utm_medium;
-  const campaign = utmParams.utm_campaign;
-  
-  // Se tiver UTM source, criar string descritiva
-  if (source) {
-    const parts: string[] = [];
-    
-    // Formatar nome da source
-    parts.push(formatSourceName(source));
-    
-    // Adicionar medium se existir (cpc, organic, etc)
-    if (medium) {
-      parts.push(`(${medium})`);
-    }
-    
-    // Adicionar campaign se existir
-    if (campaign) {
-      parts.push(`- ${campaign}`);
-    }
-    
-    return parts.join(' ');
-    // Exemplos de saída:
-    // "Facebook (cpc) - lancamento_jan25"
-    // "Google (organic)"
-    // "Instagram (paid_social) - remarketing"
+  // Source name
+  if (utmParams.utm_source) {
+    parts.push(formatSourceName(utmParams.utm_source));
   }
   
-  // Se não tiver UTM, tentar detectar pelo referrer
-  if (referrer) {
+  // Medium in parentheses
+  if (utmParams.utm_medium) {
+    parts.push(`(${formatMediumName(utmParams.utm_medium)})`);
+  }
+  
+  // Campaign after dash
+  if (utmParams.utm_campaign) {
+    parts.push(`- ${utmParams.utm_campaign}`);
+  }
+  
+  return parts.join(' ');
+};
+
+// Get lead origin from tracking params - returns descriptive string
+export const getLeadOriginFromUTM = (): string | null => {
+  const utmParams = getStoredUTMParams();
+  const clickParams = getStoredClickParams();
+  const referrer = document.referrer?.toLowerCase() || '';
+  
+  // PRIORITY 1: UTM Parameters (most precise - user-defined)
+  if (utmParams.utm_source) {
+    return formatUTMOrigin(utmParams);
+  }
+  
+  // PRIORITY 2: Click IDs (indicates paid ad click - auto-detected)
+  // Google Ads
+  if (clickParams.gclid || clickParams.gbraid || clickParams.wbraid) {
+    return 'Google Ads (auto)';
+  }
+  
+  // Meta Ads (Facebook/Instagram)
+  if (clickParams.fbclid) {
+    return 'Meta Ads (auto)';
+  }
+  
+  // TikTok Ads
+  if (clickParams.ttclid) {
+    return 'TikTok Ads (auto)';
+  }
+  
+  // LinkedIn Ads
+  if (clickParams.li_fat_id) {
+    return 'LinkedIn Ads (auto)';
+  }
+  
+  // Microsoft/Bing Ads
+  if (clickParams.msclkid) {
+    return 'Bing Ads (auto)';
+  }
+  
+  // PRIORITY 3: Referrer detection
+  if (referrer && !isOwnDomain(referrer)) {
     const domain = extractDomain(referrer);
     if (domain) {
       const formattedDomain = formatDomainName(domain);
-      // Não retornar se for o próprio domínio do site
-      if (!referrer.includes('lovable.app') && !referrer.includes('onovocondominio')) {
-        return `Referral: ${formattedDomain}`;
+      
+      // Detectar se é busca orgânica
+      const searchEngines = ['Google', 'Bing', 'DuckDuckGo', 'Yahoo', 'Ecosia', 'Baidu'];
+      if (searchEngines.includes(formattedDomain)) {
+        return `${formattedDomain} (Orgânico)`;
       }
+      
+      // Para redes sociais, indicar como referral
+      return `Referral: ${formattedDomain}`;
     }
   }
   
@@ -157,8 +346,8 @@ const trackPageView = async (pagePath: string, projectId?: string) => {
     const sessionId = getSessionId();
     const referrer = document.referrer || null;
 
-    // Store UTM params for later attribution
-    storeUTMParams();
+    // Store all tracking params for later attribution
+    storeTrackingParams();
 
     // Use type assertion for new table not yet in types
     const client = supabase as any;

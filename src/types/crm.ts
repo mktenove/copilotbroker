@@ -93,9 +93,10 @@ export const getOriginType = (origin: string | null): OriginType => {
   
   const lower = origin.toLowerCase();
   
-  // Tráfego pago
+  // Tráfego pago (inclui auto-detected de click IDs)
   if (lower.includes('cpc') || lower.includes('paid') || lower.includes('ads') || 
-      lower.includes('cpm') || lower.includes('sponsored') || lower.includes('ppc')) {
+      lower.includes('cpm') || lower.includes('sponsored') || lower.includes('ppc') ||
+      lower.includes('(auto)') || lower.includes('auto-detected')) {
     return 'paid';
   }
   
