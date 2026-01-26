@@ -2,12 +2,12 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogOut, Users, Calendar, Search, RefreshCw, ExternalLink, Copy, Check, Kanban, List } from "lucide-react";
-import logoEnove from "@/assets/logo-enove.png";
+import { Users, Calendar, Search, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
 import { KanbanBoard } from "@/components/crm";
+import { BrokerLayout } from "@/components/broker";
 
 interface Lead {
   id: string;
@@ -122,6 +122,11 @@ const BrokerAdmin = () => {
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
+  const openLanding = () => {
+    if (!broker) return;
+    window.open(`/estanciavelha/${broker.slug}`, "_blank");
+  };
+
   const filteredLeads = leads.filter(
     (lead) =>
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -131,6 +136,8 @@ const BrokerAdmin = () => {
   const todayLeads = leads.filter(
     (l) => new Date(l.created_at).toDateString() === new Date().toDateString()
   );
+
+  const brokerInitial = broker?.name?.charAt(0).toUpperCase() || "C";
 
   if (isRoleLoading) {
     return (
@@ -145,155 +152,117 @@ const BrokerAdmin = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
-      {/* Header */}
-      <header className="bg-[#141417]/95 backdrop-blur-sm border-b border-[#2a2a2e] sticky top-0 z-50">
-        <div className="container px-4 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <img src={logoEnove} alt="Enove Imobiliária" className="h-8 sm:h-10" />
-            <div>
-              <h1 className="text-base sm:text-lg font-serif font-bold text-white">Meus Leads</h1>
-              <p className="text-xs sm:text-sm text-slate-400">{broker?.name || "Carregando..."}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* View Mode Toggle */}
-            <div className="flex items-center bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-1">
-              <button
-                onClick={() => setViewMode("kanban")}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === "kanban" 
-                    ? "bg-[#2a2a2e] text-[#FFFF00] shadow-sm" 
-                    : "text-slate-400 hover:text-white"
-                }`}
-                title="Visualização Kanban"
-              >
-                <Kanban className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`p-2 rounded transition-colors ${
-                  viewMode === "list" 
-                    ? "bg-[#2a2a2e] text-[#FFFF00] shadow-sm" 
-                    : "text-slate-400 hover:text-white"
-                }`}
-                title="Visualização Lista"
-              >
-                <List className="w-4 h-4" />
-              </button>
-            </div>
+    <BrokerLayout
+      brokerName={broker?.name}
+      brokerInitial={brokerInitial}
+      viewMode={viewMode}
+      onViewChange={setViewMode}
+      onLogout={handleLogout}
+      onCopyLink={copyLink}
+      onOpenLanding={openLanding}
+      searchTerm={viewMode === "list" ? searchTerm : undefined}
+      onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
+    >
+      {/* Link da landing page */}
+      {broker && (
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 mb-6">
+          <p className="text-sm text-slate-400 mb-2">Sua landing page</p>
+          <code className="block text-xs sm:text-sm bg-[#0f0f12] text-slate-300 px-3 py-2 rounded mb-3 break-all border border-[#2a2a2e]">
+            {window.location.origin}/estanciavelha/{broker.slug}
+          </code>
+          <div className="flex gap-2">
             <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:text-white transition-colors"
+              onClick={copyLink}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors text-sm"
             >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">Sair</span>
+              {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiedLink ? "Copiado!" : "Copiar Link"}
             </button>
+            <a
+              href={`/estanciavelha/${broker.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00] text-black font-medium rounded-lg hover:bg-[#FFFF00]/90 transition-colors text-sm"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Abrir
+            </a>
           </div>
         </div>
-      </header>
+      )}
 
-      {/* Main Content */}
-      <main className="container px-4 py-6 sm:py-8">
-        {/* Link da landing page */}
-        {broker && (
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 mb-6">
-            <p className="text-sm text-slate-400 mb-2">Sua landing page</p>
-            <code className="block text-xs sm:text-sm bg-[#0f0f12] text-slate-300 px-3 py-2 rounded mb-3 break-all border border-[#2a2a2e]">
-              {window.location.origin}/estanciavelha/{broker.slug}
-            </code>
-            <div className="flex gap-2">
-              <button
-                onClick={copyLink}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors text-sm"
-              >
-                {copiedLink ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                {copiedLink ? "Copiado!" : "Copiar Link"}
-              </button>
-              <a
-                href={`/estanciavelha/${broker.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#FFFF00] text-black font-medium rounded-lg hover:bg-[#FFFF00]/90 transition-colors text-sm"
-              >
-                <ExternalLink className="w-4 h-4" />
-                Abrir
-              </a>
+      {/* Stats */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
             </div>
-          </div>
-        )}
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6 sm:mb-8">
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
-                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-slate-400">Total</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
-              </div>
-            </div>
-          </div>
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-            <div className="flex items-center gap-3 sm:gap-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
-                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm text-slate-400">Hoje</p>
-                <p className="text-xl sm:text-2xl font-bold text-white">{todayLeads.length}</p>
-              </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-slate-400">Total</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
             </div>
           </div>
         </div>
-
-        {/* Kanban or List View */}
-        {viewMode === "kanban" ? (
-          <div className="h-[calc(100vh-400px)] min-h-[400px]">
-            <KanbanBoard brokerId={brokerId} isAdmin={false} />
-          </div>
-        ) : (
-          <>
-            {/* Search and Export */}
-            <div className="flex flex-col gap-3 mb-6">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                <input
-                  type="text"
-                  placeholder="Buscar por nome ou WhatsApp..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-[#1e1e22] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 focus:border-[#FFFF00]/50 transition-all"
-                />
-              </div>
-              <div className="flex gap-2">
-                <ExportButton leads={filteredLeads} filename={`meus-leads`} />
-                <button
-                  onClick={fetchLeads}
-                  disabled={isLoading}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors disabled:opacity-50"
-                >
-                  <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                  <span>Atualizar</span>
-                </button>
-              </div>
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
+              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
             </div>
+            <div className="min-w-0">
+              <p className="text-xs sm:text-sm text-slate-400">Hoje</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{todayLeads.length}</p>
+            </div>
+          </div>
+        </div>
+      </div>
 
-            {/* Leads Table */}
-            <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
-              <LeadsTable
-                leads={filteredLeads}
-                isLoading={isLoading}
-                searchTerm={searchTerm}
-                showSource={false}
+      {/* Kanban or List View */}
+      {viewMode === "kanban" ? (
+        <div className="flex-1 min-h-[400px]">
+          <KanbanBoard brokerId={brokerId} isAdmin={false} />
+        </div>
+      ) : (
+        <>
+          {/* Search and Export - Mobile only (desktop has search in header) */}
+          <div className="flex flex-col gap-3 mb-6 md:hidden">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Buscar por nome ou WhatsApp..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-[#1e1e22] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 focus:border-[#FFFF00]/50 transition-all"
               />
             </div>
-          </>
-        )}
-      </main>
-    </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 mb-6">
+            <ExportButton leads={filteredLeads} filename={`meus-leads`} />
+            <button
+              onClick={fetchLeads}
+              disabled={isLoading}
+              className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-[#FFFF00]/10 text-[#FFFF00] rounded-lg hover:bg-[#FFFF00]/20 transition-colors disabled:opacity-50"
+            >
+              <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
+              <span>Atualizar</span>
+            </button>
+          </div>
+
+          {/* Leads Table */}
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
+            <LeadsTable
+              leads={filteredLeads}
+              isLoading={isLoading}
+              searchTerm={searchTerm}
+              showSource={false}
+            />
+          </div>
+        </>
+      )}
+    </BrokerLayout>
   );
 };
 
