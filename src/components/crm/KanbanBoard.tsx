@@ -58,10 +58,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     projectId: selectedProject === "all" ? null : selectedProject
   });
 
-  // Fetch projects for admin filter
+  // Fetch projects for filter (admin sees all, broker sees their associated projects)
   useEffect(() => {
-    if (isAdmin) {
-      const fetchProjects = async () => {
+    const fetchProjects = async () => {
+      if (isAdmin) {
+        // Admin sees all active projects
         const { data } = await supabase
           .from("projects")
           .select("id, name, slug, city_slug")
@@ -71,10 +72,24 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         if (data) {
           setProjects(data);
         }
-      };
-      fetchProjects();
-    }
-  }, [isAdmin]);
+      } else if (brokerId) {
+        // Broker sees only their associated projects
+        const { data } = await supabase
+          .from("broker_projects")
+          .select("project:projects(id, name, slug, city_slug)")
+          .eq("broker_id", brokerId)
+          .eq("is_active", true);
+        
+        if (data) {
+          const brokerProjects = data
+            .map(bp => bp.project)
+            .filter((p): p is Project => p !== null);
+          setProjects(brokerProjects);
+        }
+      }
+    };
+    fetchProjects();
+  }, [isAdmin, brokerId]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -195,8 +210,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
         </button>
 
-        {/* Filtro de Empreendimentos */}
-        {isAdmin && projects.length > 0 && (
+        {/* Filtro de Empreendimentos - admin ou corretor com múltiplos projetos */}
+        {(isAdmin || projects.length > 1) && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-auto h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-2 px-2">
               <Building2 className="w-4 h-4 text-slate-500" />
