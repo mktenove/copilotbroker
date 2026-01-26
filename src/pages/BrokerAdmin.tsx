@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Calendar, Search, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
+import { Users, Search, RefreshCw, ExternalLink, Copy, Check } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import { AddLeadModal } from "@/components/admin/AddLeadModal";
 import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
+import { LeadStatus } from "@/types/crm";
 
 interface Lead {
   id: string;
@@ -16,6 +17,7 @@ interface Lead {
   created_at: string;
   source: string;
   broker_id: string | null;
+  status: LeadStatus;
 }
 
 interface BrokerInfo {
@@ -143,9 +145,7 @@ const BrokerAdmin = () => {
       lead.whatsapp.includes(searchTerm)
   );
 
-  const todayLeads = leads.filter(
-    (l) => new Date(l.created_at).toDateString() === new Date().toDateString()
-  );
+  const newLeads = leads.filter((l) => l.status === "new");
 
   const brokerInitial = broker?.name?.charAt(0).toUpperCase() || "C";
 
@@ -211,19 +211,19 @@ const BrokerAdmin = () => {
               <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-slate-400">Total</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
+              <p className="text-xs sm:text-sm text-slate-400">Novos</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{newLeads.length}</p>
             </div>
           </div>
         </div>
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-[#FFFF00]/10 flex items-center justify-center shrink-0">
-              <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
+              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
             </div>
             <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-slate-400">Hoje</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{todayLeads.length}</p>
+              <p className="text-xs sm:text-sm text-slate-400">Total</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
             </div>
           </div>
         </div>
