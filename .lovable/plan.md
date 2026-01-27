@@ -1,87 +1,247 @@
 
-# Plano: Corrigir Drag-and-Drop e Exibir Nome do Corretor
+# Plano: Broker Admin Multi-Empreendimentos
 
-## Problema 1: Erro ao Arrastar Cards entre Colunas
+## Visao Geral
+Transformar o sistema de corretores para suportar multiplos empreendimentos, permitindo que corretores escolham projetos durante o cadastro, gerenciem seus projetos e gerem links personalizados para cada empreendimento.
 
-### Diagnostico
-Quando um card e arrastado e solto **sobre outro card** (em vez de uma area vazia da coluna), o `over.id` retorna o ID do card de destino (UUID) em vez do status da coluna. O codigo atual tenta usar esse UUID como valor de enum `lead_status`, causando o erro:
-```
-invalid input value for enum lead_status: "d614c97d-e3ab-4c5d-9977-56ace05ccca4"
-```
+---
 
-### Solucao
-Modificar o `handleDragEnd` no `KanbanBoard.tsx` para:
-1. Verificar se o `over.id` e um status valido
-2. Se nao for (ou seja, e um UUID de lead), encontrar o lead de destino e usar o status dele
+## 1. Modificar Cadastro de Corretor (`BrokerSignup.tsx`)
+
+### Adicionar Etapa 3: Selecao de Empreendimentos
+
+Expandir o fluxo de 2 para 3 etapas:
+
+| Etapa | Conteudo |
+|-------|----------|
+| 1. Conta | Email, senha |
+| 2. Perfil | Nome, WhatsApp, slug base |
+| 3. Empreendimentos | Lista de checkboxes com projetos disponiveis + preview dos links |
+
+### Logica da Etapa 3
 
 ```typescript
-// Antes
-const newStatus = over.id as LeadStatus;
+// Novo estado para projetos
+const [availableProjects, setAvailableProjects] = useState<Project[]>([]);
+const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
 
-// Depois
-const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered', 'inactive'];
+// Buscar projetos ativos ao montar
+useEffect(() => {
+  const fetchProjects = async () => {
+    const { data } = await supabase
+      .from("projects")
+      .select("id, name, slug, city, city_slug")
+      .eq("is_active", true)
+      .order("name");
+    setAvailableProjects(data || []);
+  };
+  fetchProjects();
+}, []);
 
-let newStatus: LeadStatus;
+// Gerar preview dos links
+const generateProjectLinks = () => {
+  return selectedProjectIds.map(projectId => {
+    const project = availableProjects.find(p => p.id === projectId);
+    if (!project) return null;
+    return {
+      project,
+      url: `/${project.city_slug}/${project.slug}/${profileData.slug}`
+    };
+  }).filter(Boolean);
+};
+```
 
-// Verificar se over.id e um status valido
-if (VALID_STATUSES.includes(over.id as LeadStatus)) {
-  newStatus = over.id as LeadStatus;
-} else {
-  // over.id e um UUID de lead - encontrar o status desse lead
-  const targetLead = leads.find(l => l.id === over.id);
-  if (!targetLead) return;
-  newStatus = targetLead.status;
+### Interface da Etapa 3
+
+```
+┌─────────────────────────────────────────────┐
+│  Escolha seus empreendimentos               │
+├─────────────────────────────────────────────┤
+│  ☑ GoldenView - Portao                      │
+│  ☑ O Novo Condominio - Estancia Velha       │
+│                                             │
+│  ───────────────────────────────────────    │
+│                                             │
+│  Seus links personalizados:                 │
+│                                             │
+│  📍 /portao/goldenview/joao-silva          │
+│     [Copiar] [Abrir]                        │
+│                                             │
+│  📍 /estancia-velha/estanciavelha/joao-silva│
+│     [Copiar] [Abrir]                        │
+│                                             │
+│           [Voltar]   [Finalizar Cadastro]   │
+└─────────────────────────────────────────────┘
+```
+
+### Salvamento Final
+
+Apos criar o broker, inserir registros em `broker_projects` para cada projeto selecionado.
+
+---
+
+## 2. Nova Pagina de Gerenciamento de Empreendimentos
+
+### Criar `src/pages/BrokerProjects.tsx`
+
+Pagina dedicada para corretores gerenciarem seus projetos e links.
+
+### Funcionalidades
+
+1. **Ver projetos atualmente associados**
+2. **Adicionar/remover projetos** (escolher entre os ativos)
+3. **Ver e copiar link de cada empreendimento**
+4. **Editar slug personalizado** (unico para todos os projetos)
+
+### Layout
+
+```
+┌──────────────────────────────────────────────────┐
+│  Meus Empreendimentos                    [+ Add] │
+├──────────────────────────────────────────────────┤
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ 📍 GoldenView - Portao                     │  │
+│  │ /portao/goldenview/joao-silva              │  │
+│  │ [Copiar Link] [Abrir Landing] [Remover]    │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ┌────────────────────────────────────────────┐  │
+│  │ 📍 O Novo Condominio - Estancia Velha      │  │
+│  │ /estancia-velha/estanciavelha/joao-silva   │  │
+│  │ [Copiar Link] [Abrir Landing] [Remover]    │  │
+│  └────────────────────────────────────────────┘  │
+│                                                  │
+│  ─────────────────────────────────────────────   │
+│                                                  │
+│  Seu Link Personalizado                          │
+│  Slug: [joao-silva] [Salvar]                     │
+│  Nota: Este slug sera usado em todos os links    │
+│                                                  │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Modificar Broker Admin Principal (`BrokerAdmin.tsx`)
+
+### Substituir Card de Link Unico por Cards Multiplos
+
+```
+Antes:
+┌─────────────────────────────────┐
+│ Sua landing page                │
+│ /estanciavelha/joao-silva       │
+│ [Copiar] [Abrir]                │
+└─────────────────────────────────┘
+
+Depois:
+┌─────────────────────────────────────────────────┐
+│ Seus Links de Captacao          [Gerenciar →]   │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│ GoldenView                                      │
+│ /portao/goldenview/joao-silva    [Copiar][Abrir]│
+│                                                 │
+│ O Novo Condominio                               │
+│ /estancia-velha/.../joao-silva   [Copiar][Abrir]│
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Novo Estado
+
+```typescript
+interface BrokerProject {
+  project: Project;
+  url: string;
 }
+
+const [brokerProjects, setBrokerProjects] = useState<BrokerProject[]>([]);
+
+// Buscar projetos associados ao corretor
+const fetchBrokerProjects = async () => {
+  const { data } = await supabase
+    .from("broker_projects")
+    .select(`
+      project:projects(id, name, slug, city, city_slug)
+    `)
+    .eq("broker_id", brokerId)
+    .eq("is_active", true);
+  
+  const projects = data?.map(bp => ({
+    project: bp.project,
+    url: `/${bp.project.city_slug}/${bp.project.slug}/${broker?.slug}`
+  })) || [];
+  
+  setBrokerProjects(projects);
+};
 ```
 
 ---
 
-## Problema 2: Nome do Corretor Incompleto
+## 4. Atualizar Navegacao
 
-### Diagnostico
-O `KanbanCard.tsx` mostra apenas a primeira letra do corretor no avatar, mas nao exibe o nome completo em nenhum lugar do card, dificultando identificar o corretor responsavel.
+### Sidebar Desktop (`BrokerSidebar.tsx`)
 
-### Solucao
-Adicionar o nome completo do corretor ao lado do avatar no footer do card:
+Adicionar item de navegacao para "Empreendimentos":
 
 ```typescript
-// Linha 326-337 do KanbanCard.tsx
-<div className="flex items-center gap-2">
-  {/* Broker avatar */}
-  <Avatar className="w-5 h-5 border border-[#2a2a2e]">
-    <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 text-white text-[9px] font-medium">
-      {lead.broker?.name?.charAt(0) || "E"}
-    </AvatarFallback>
-  </Avatar>
-  
-  {/* Broker name - NOVO */}
-  <span className="text-[10px] text-slate-400 max-w-[60px] truncate" title={lead.broker?.name || "Enove"}>
-    {lead.broker?.name || "Enove"}
-  </span>
-  
-  {/* Separador visual */}
-  <span className="text-slate-600">|</span>
+const NAV_ITEMS = [
+  { id: "kanban", label: "Kanban", icon: LayoutDashboard },
+  { id: "list", label: "Lista", icon: List },
+  { id: "projects", label: "Empreendimentos", icon: Building2 }, // Novo
+];
+```
 
-  {/* Last interaction time */}
-  <div className="flex items-center gap-1 text-[10px] text-slate-500">
-    <Clock className="w-3 h-3" />
-    <span>{timeSinceInteraction}</span>
-  </div>
-</div>
+### Bottom Nav Mobile (`BrokerBottomNav.tsx`)
+
+Substituir um item existente ou adicionar acesso via menu de configuracoes.
+
+---
+
+## 5. Atualizar Roteamento (`App.tsx`)
+
+```typescript
+// Nova rota para gerenciamento de projetos do corretor
+<Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
 ```
 
 ---
+
+## 6. Fluxo de Edicao de Slug
+
+Permitir que corretores editem seu slug na pagina de empreendimentos:
+
+1. Campo editavel com o slug atual
+2. Verificacao de disponibilidade em tempo real
+3. Ao salvar, atualiza tabela `brokers`
+4. Todos os links sao atualizados automaticamente (pois usam o mesmo slug)
+
+---
+
+## Arquivos a Criar
+
+| Arquivo | Descricao |
+|---------|-----------|
+| `src/pages/BrokerProjects.tsx` | Pagina de gerenciamento de empreendimentos |
+| `src/hooks/use-broker-projects.ts` | Hook para gerenciar projetos do corretor |
 
 ## Arquivos a Modificar
 
 | Arquivo | Mudanca |
 |---------|---------|
-| `src/components/crm/KanbanBoard.tsx` | Corrigir logica do `handleDragEnd` para lidar com drop sobre cards |
-| `src/components/crm/KanbanCard.tsx` | Adicionar nome do corretor visivel no footer do card |
+| `src/pages/BrokerSignup.tsx` | Adicionar etapa 3 com selecao de projetos |
+| `src/pages/BrokerAdmin.tsx` | Exibir multiplos links em vez de um unico |
+| `src/components/broker/BrokerSidebar.tsx` | Adicionar item de navegacao |
+| `src/components/broker/BrokerLayout.tsx` | Propagar novo modo de visualizacao |
+| `src/App.tsx` | Adicionar nova rota |
 
 ---
 
 ## Resultado Esperado
 
-1. **Drag-and-drop**: Arrastar cards entre colunas funcionara corretamente, mesmo quando solto sobre outro card
-2. **Nome do corretor**: O nome completo (ou truncado com tooltip) sera exibido no footer de cada card, facilitando identificar o responsavel
+1. **Cadastro**: Corretor escolhe empreendimentos e ve todos os links antes de finalizar
+2. **Dashboard**: Corretor ve todos os seus links de captacao com acoes rapidas
+3. **Gerenciamento**: Pagina dedicada para adicionar/remover projetos e editar slug
+4. **Consistencia**: Um unico slug para todos os projetos, mantendo identidade do corretor
