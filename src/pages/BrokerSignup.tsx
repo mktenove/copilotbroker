@@ -220,6 +220,9 @@ const BrokerSignup = () => {
   };
 
   const getProjectUrl = (project: Project) => {
+    if (project.slug === "estanciavelha") {
+      return `/estanciavelha/${profileData.slug}`;
+    }
     return `/${project.city_slug}/${project.slug}/${profileData.slug}`;
   };
 
