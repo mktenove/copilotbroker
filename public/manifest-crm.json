@@ -1,0 +1,23 @@
+{
+  "name": "CRM Enove",
+  "short_name": "CRM",
+  "description": "Sistema de Gestão de Leads - Enove Imobiliária",
+  "start_url": "/admin",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#FFFF00",
+  "icons": [
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Calendar, Phone, RefreshCw, UserCog } from "lucide-react";
@@ -437,15 +438,23 @@ const Admin = () => {
   const handleSearchChange = activeTab === "crm" ? setCrmSearchTerm : setSearchTerm;
 
   return (
-    <AdminLayout
-      activeTab={activeTab}
-      onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
-      onLogout={handleLogout}
-      searchTerm={currentSearchTerm}
-      onSearchChange={handleSearchChange}
-      onAddLead={handleAddLead}
-      brokers={brokers}
-    >
+    <>
+      <Helmet>
+        <title>CRM | Enove</title>
+        <link rel="manifest" href="/manifest-crm.json" />
+        <meta name="apple-mobile-web-app-title" content="CRM" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </Helmet>
+      <AdminLayout
+        activeTab={activeTab}
+        onTabChange={(tab) => setActiveTab(tab as typeof activeTab)}
+        onLogout={handleLogout}
+        searchTerm={currentSearchTerm}
+        onSearchChange={handleSearchChange}
+        onAddLead={handleAddLead}
+        brokers={brokers}
+      >
       {activeTab === "crm" ? (
         <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} onSearchChange={setCrmSearchTerm} />
       ) : activeTab === "leads" ? (
@@ -563,6 +572,7 @@ const Admin = () => {
         onSuccess={handleAddLeadSuccess}
       />
     </AdminLayout>
+    </>
   );
 };
 
