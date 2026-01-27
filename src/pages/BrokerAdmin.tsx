@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Users, Search, RefreshCw, ExternalLink, Copy, Check, Building2, ArrowRight } from "lucide-react";
@@ -164,7 +165,14 @@ const BrokerAdmin = () => {
 
   return (
     <>
-    <BrokerLayout
+      <Helmet>
+        <title>CRM | Enove</title>
+        <link rel="manifest" href="/manifest-crm-broker.json" />
+        <meta name="apple-mobile-web-app-title" content="CRM" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </Helmet>
+      <BrokerLayout
       brokerName={broker?.name}
       brokerInitial={brokerInitial}
       viewMode={viewMode}
