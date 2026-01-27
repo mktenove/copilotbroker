@@ -322,13 +322,24 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
 
           {/* Row 6: Footer with avatar, time and origin */}
           <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* Broker avatar */}
-              <Avatar className="w-6 h-6 border border-[#2a2a2e]">
-                <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 text-white text-[10px] font-medium">
+              <Avatar className="w-5 h-5 border border-[#2a2a2e]">
+                <AvatarFallback className="bg-gradient-to-br from-slate-600 to-slate-700 text-white text-[9px] font-medium">
                   {lead.broker?.name?.charAt(0) || (lead.source === "enove" ? "E" : "?")}
                 </AvatarFallback>
               </Avatar>
+
+              {/* Broker name */}
+              <span 
+                className="text-[10px] text-slate-400 max-w-[70px] truncate" 
+                title={lead.broker?.name || "Enove"}
+              >
+                {lead.broker?.name || "Enove"}
+              </span>
+
+              {/* Separator */}
+              <span className="text-slate-600">•</span>
 
               {/* Last interaction time */}
               <div className="flex items-center gap-1 text-[10px] text-slate-500" title="Última interação">
