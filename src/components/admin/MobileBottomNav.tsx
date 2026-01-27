@@ -1,6 +1,9 @@
-import { LayoutDashboard, Users, BarChart3, Plus, Bell } from "lucide-react";
+import { LayoutDashboard, Users, BarChart3, Plus, Bell, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -16,20 +19,29 @@ export function MobileBottomNav({
   onNotificationsClick 
 }: MobileBottomNavProps) {
   const { unreadCount } = useNotifications();
+  const navigate = useNavigate();
 
   const navItems = [
     { id: "notifications", icon: Bell, badge: unreadCount },
     { id: "crm", icon: LayoutDashboard },
     { id: "add", icon: Plus, isFab: true },
     { id: "leads", icon: Users },
-    { id: "analytics", icon: BarChart3 },
+    { id: "logout", icon: LogOut },
   ];
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logout realizado com sucesso");
+    navigate("/auth");
+  };
 
   const handleClick = (id: string) => {
     if (id === "notifications" && onNotificationsClick) {
       onNotificationsClick();
     } else if (id === "add" && onAddLead) {
       onAddLead();
+    } else if (id === "logout") {
+      handleLogout();
     } else {
       onTabChange(id);
     }

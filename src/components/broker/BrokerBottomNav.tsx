@@ -1,6 +1,9 @@
-import { LayoutDashboard, List, Copy, Plus, Bell } from "lucide-react";
+import { LayoutDashboard, List, Copy, Plus, Bell, LogOut } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 interface BrokerBottomNavProps {
   viewMode: "kanban" | "list";
@@ -18,6 +21,7 @@ export function BrokerBottomNav({
   onNotificationsClick,
 }: BrokerBottomNavProps) {
   const { unreadCount } = useNotifications();
+  const navigate = useNavigate();
 
   const navItems: Array<{
     id: string;
@@ -30,8 +34,14 @@ export function BrokerBottomNav({
     { id: "kanban", label: "Kanban", icon: LayoutDashboard },
     { id: "add", label: "Adicionar", icon: Plus, isFab: true },
     { id: "list", label: "Lista", icon: List },
-    { id: "copy", label: "Link", icon: Copy },
+    { id: "logout", label: "Sair", icon: LogOut },
   ] as const;
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logout realizado com sucesso");
+    navigate("/auth");
+  };
 
   const handleClick = (id: string) => {
     if (id === "kanban" || id === "list") {
@@ -42,6 +52,8 @@ export function BrokerBottomNav({
       onCopyLink();
     } else if (id === "notifications" && onNotificationsClick) {
       onNotificationsClick();
+    } else if (id === "logout") {
+      handleLogout();
     }
   };
 
