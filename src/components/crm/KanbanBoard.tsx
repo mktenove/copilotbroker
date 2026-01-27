@@ -132,7 +132,21 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     if (!over) return;
 
     const leadId = active.id as string;
-    const newStatus = over.id as LeadStatus;
+    
+    // Valid status values
+    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered', 'inactive'];
+    
+    let newStatus: LeadStatus;
+    
+    // Check if over.id is a valid status (dropped on column)
+    if (VALID_STATUSES.includes(over.id as LeadStatus)) {
+      newStatus = over.id as LeadStatus;
+    } else {
+      // over.id is a lead UUID - find target lead's status
+      const targetLead = leads.find(l => l.id === over.id);
+      if (!targetLead) return;
+      newStatus = targetLead.status;
+    }
 
     // Find the lead being moved
     const lead = leads.find(l => l.id === leadId);
