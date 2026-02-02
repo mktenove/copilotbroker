@@ -26,10 +26,10 @@ const MCFloatingCTA = () => {
   return (
     <button
       onClick={scrollToForm}
-      className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-6 py-3 bg-[hsl(var(--mc-sage))] text-white font-semibold uppercase tracking-wider text-sm rounded-full shadow-[0_10px_40px_hsl(var(--mc-sage)/0.4)] hover:shadow-[0_15px_50px_hsl(var(--mc-sage)/0.6)] hover:scale-105 transition-all duration-300 animate-float"
+      className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-8 py-4 bg-[hsl(var(--mc-forest))] text-white font-medium uppercase tracking-[0.2em] text-xs rounded-sm shadow-[0_10px_40px_hsl(var(--mc-forest)/0.5)] hover:bg-[hsl(var(--mc-charcoal))] transition-all duration-300 animate-float"
     >
       <ArrowUp className="w-4 h-4" />
-      Cadastre-se
+      Cadastrar
     </button>
   );
 };

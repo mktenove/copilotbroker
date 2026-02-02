@@ -30,64 +30,63 @@ const MCHeader = ({ brokerName }: MCHeaderProps) => {
     <header
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         isScrolled
-          ? "bg-[hsl(var(--mc-cream))]/95 backdrop-blur-md shadow-lg py-3"
-          : "bg-transparent py-6"
+          ? "bg-[hsl(var(--mc-cream))] py-4"
+          : "bg-transparent py-8"
       }`}
     >
       <div className="container mx-auto px-4 md:px-6">
         <div className="flex items-center justify-between">
-          {/* Logo */}
-          <div className="flex items-center gap-3">
+          {/* Logo - Monocolor */}
+          <div className="flex items-center gap-4">
             <img
               src={logoEnove}
               alt="Enove"
-              className="h-8 md:h-10 w-auto"
+              className={`h-7 md:h-8 w-auto transition-all duration-500 ${
+                isScrolled 
+                  ? "brightness-0" 
+                  : "brightness-0 invert"
+              }`}
             />
             {brokerName && (
-              <span className="text-sm text-[hsl(var(--mc-earth))] border-l border-[hsl(var(--mc-sage))] pl-3 hidden sm:inline">
+              <span className={`text-xs tracking-[0.1em] uppercase border-l pl-4 hidden sm:inline transition-colors duration-500 ${
+                isScrolled 
+                  ? "text-[hsl(var(--mc-charcoal))] border-[hsl(var(--mc-charcoal))]/20" 
+                  : "text-white/80 border-white/30"
+              }`}>
                 {brokerName}
               </span>
             )}
           </div>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <button
-              onClick={() => scrollToSection("conceito")}
-              className="text-sm font-medium text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))] transition-colors"
-            >
-              Conceito
-            </button>
-            <button
-              onClick={() => scrollToSection("apartamentos")}
-              className="text-sm font-medium text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))] transition-colors"
-            >
-              Apartamentos
-            </button>
-            <button
-              onClick={() => scrollToSection("lazer")}
-              className="text-sm font-medium text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))] transition-colors"
-            >
-              Lazer
-            </button>
-            <button
-              onClick={() => scrollToSection("investimento")}
-              className="text-sm font-medium text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))] transition-colors"
-            >
-              Investimento
-            </button>
+          <nav className="hidden md:flex items-center gap-10">
+            {["conceito", "apartamentos", "lazer", "investimento"].map((section) => (
+              <button
+                key={section}
+                onClick={() => scrollToSection(section)}
+                className={`text-xs uppercase tracking-[0.15em] font-medium transition-colors duration-300 ${
+                  isScrolled
+                    ? "text-[hsl(var(--mc-charcoal))] hover:text-[hsl(var(--mc-sage))]"
+                    : "text-white/90 hover:text-white"
+                }`}
+              >
+                {section === "lazer" ? "Wellness" : section.charAt(0).toUpperCase() + section.slice(1)}
+              </button>
+            ))}
             <button
               onClick={() => scrollToSection("cadastro")}
-              className="px-6 py-2.5 bg-[hsl(var(--mc-sage))] text-white text-sm font-semibold rounded-full hover:bg-[hsl(var(--mc-sage-dark))] transition-all duration-300 shadow-lg hover:shadow-xl"
+              className="px-6 py-2.5 bg-[hsl(var(--mc-forest))] text-white text-xs uppercase tracking-[0.15em] font-medium rounded hover:bg-[hsl(var(--mc-charcoal))] transition-all duration-300"
             >
-              Cadastre-se
+              Cadastrar
             </button>
           </nav>
 
           {/* Mobile Menu Button */}
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2 text-[hsl(var(--mc-earth))]"
+            className={`md:hidden p-2 transition-colors ${
+              isScrolled ? "text-[hsl(var(--mc-charcoal))]" : "text-white"
+            }`}
             aria-label="Menu"
           >
             {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -96,36 +95,29 @@ const MCHeader = ({ brokerName }: MCHeaderProps) => {
 
         {/* Mobile Navigation */}
         {isMobileMenuOpen && (
-          <nav className="md:hidden mt-4 pb-4 border-t border-[hsl(var(--mc-sage))]/20 pt-4 space-y-3">
-            <button
-              onClick={() => scrollToSection("conceito")}
-              className="block w-full text-left py-2 text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))]"
-            >
-              Conceito
-            </button>
-            <button
-              onClick={() => scrollToSection("apartamentos")}
-              className="block w-full text-left py-2 text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))]"
-            >
-              Apartamentos
-            </button>
-            <button
-              onClick={() => scrollToSection("lazer")}
-              className="block w-full text-left py-2 text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))]"
-            >
-              Lazer
-            </button>
-            <button
-              onClick={() => scrollToSection("investimento")}
-              className="block w-full text-left py-2 text-[hsl(var(--mc-earth))] hover:text-[hsl(var(--mc-sage-dark))]"
-            >
-              Investimento
-            </button>
+          <nav className={`md:hidden mt-6 pb-6 border-t pt-6 space-y-4 ${
+            isScrolled 
+              ? "border-[hsl(var(--mc-charcoal))]/10" 
+              : "border-white/20"
+          }`}>
+            {["conceito", "apartamentos", "lazer", "investimento"].map((section) => (
+              <button
+                key={section}
+                onClick={() => scrollToSection(section)}
+                className={`block w-full text-left py-2 text-sm uppercase tracking-[0.1em] ${
+                  isScrolled 
+                    ? "text-[hsl(var(--mc-charcoal))]" 
+                    : "text-white"
+                }`}
+              >
+                {section === "lazer" ? "Wellness" : section.charAt(0).toUpperCase() + section.slice(1)}
+              </button>
+            ))}
             <button
               onClick={() => scrollToSection("cadastro")}
-              className="block w-full mt-2 px-6 py-3 bg-[hsl(var(--mc-sage))] text-white text-center font-semibold rounded-full"
+              className="block w-full mt-4 px-6 py-3 bg-[hsl(var(--mc-forest))] text-white text-center text-sm uppercase tracking-[0.1em] font-medium rounded"
             >
-              Cadastre-se
+              Cadastrar
             </button>
           </nav>
         )}
