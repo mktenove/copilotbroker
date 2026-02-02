@@ -1,0 +1,12 @@
+export { default as MCHeader } from "./MCHeader";
+export { default as MCHeroSection } from "./MCHeroSection";
+export { default as MCLocationSection } from "./MCLocationSection";
+export { default as MCConceptSection } from "./MCConceptSection";
+export { default as MCApartmentsSection } from "./MCApartmentsSection";
+export { default as MCWellnessSection } from "./MCWellnessSection";
+export { default as MCTargetSection } from "./MCTargetSection";
+export { default as MCInvestmentSection } from "./MCInvestmentSection";
+export { default as MCBenefitsSection } from "./MCBenefitsSection";
+export { default as MCFormSection } from "./MCFormSection";
+export { default as MCFloatingCTA } from "./MCFloatingCTA";
+export { default as MCFooter } from "./MCFooter";
