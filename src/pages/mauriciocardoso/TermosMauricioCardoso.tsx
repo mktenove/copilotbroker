@@ -4,7 +4,7 @@ import logoEnove from "@/assets/logo-enove.png";
 
 const TermosMauricioCardoso = () => {
   return (
-    <div className="min-h-screen bg-[hsl(var(--mc-cream))]">
+    <div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-[hsl(var(--mc-cream))] border-b border-[hsl(var(--mc-sage))]/20">
         <div className="container py-4 flex items-center justify-between">

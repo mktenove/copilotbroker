@@ -79,7 +79,7 @@ const MauricioCardosoLandingPage = () => {
         </script>
       </Helmet>
 
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))]">
+      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
         <MCHeader />
         <MCHeroSection />
         <MCLocationSection />
