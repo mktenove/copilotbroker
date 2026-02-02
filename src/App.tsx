@@ -12,6 +12,8 @@ import ProjectLandingPage from "./pages/ProjectLandingPage";
 import ProjectBrokerLandingPage from "./pages/ProjectBrokerLandingPage";
 import GoldenViewLandingPage from "./pages/goldenview/GoldenViewLandingPage";
 import GoldenViewBrokerLandingPage from "./pages/goldenview/GoldenViewBrokerLandingPage";
+import MauricioCardosoLandingPage from "./pages/mauriciocardoso/MauricioCardosoLandingPage";
+import MauricioCardosoBrokerLandingPage from "./pages/mauriciocardoso/MauricioCardosoBrokerLandingPage";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import BrokerAdmin from "./pages/BrokerAdmin";
@@ -36,6 +38,10 @@ const App = () => (
             {/* GoldenView - custom landing page with unique visual identity */}
             <Route path="/portao/goldenview" element={<GoldenViewLandingPage />} />
             <Route path="/portao/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
+            
+            {/* Mauricio Cardoso - Wellness landing page for Novo Hamburgo */}
+            <Route path="/novohamburgo/mauriciocardoso" element={<MauricioCardosoLandingPage />} />
+            <Route path="/novohamburgo/mauriciocardoso/:brokerSlug" element={<MauricioCardosoBrokerLandingPage />} />
             
             {/* Legacy redirects for backward compatibility */}
             <Route path="/goldenview" element={<Navigate to="/portao/goldenview" replace />} />
