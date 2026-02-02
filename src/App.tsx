@@ -14,6 +14,7 @@ import GoldenViewLandingPage from "./pages/goldenview/GoldenViewLandingPage";
 import GoldenViewBrokerLandingPage from "./pages/goldenview/GoldenViewBrokerLandingPage";
 import MauricioCardosoLandingPage from "./pages/mauriciocardoso/MauricioCardosoLandingPage";
 import MauricioCardosoBrokerLandingPage from "./pages/mauriciocardoso/MauricioCardosoBrokerLandingPage";
+import TermosMauricioCardoso from "./pages/mauriciocardoso/TermosMauricioCardoso";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import BrokerAdmin from "./pages/BrokerAdmin";
@@ -41,6 +42,7 @@ const App = () => (
             
             {/* Mauricio Cardoso - Wellness landing page for Novo Hamburgo */}
             <Route path="/novohamburgo/mauriciocardoso" element={<MauricioCardosoLandingPage />} />
+            <Route path="/novohamburgo/mauriciocardoso/termos" element={<TermosMauricioCardoso />} />
             <Route path="/novohamburgo/mauriciocardoso/:brokerSlug" element={<MauricioCardosoBrokerLandingPage />} />
             
             {/* Legacy redirects for backward compatibility */}
