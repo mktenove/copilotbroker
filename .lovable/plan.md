@@ -1,163 +1,211 @@
 
-# Redesign UX Premium: Mauricio Cardoso Landing Page
+# Plano: Redesign Profissional Mobile-First - Mauricio Cardoso
 
-## Diagnóstico do Design Atual
+## Problemas Identificados (baseado nos prints)
 
-### Problemas Identificados
-1. **Paleta de cores sem contraste adequado** - O verde-sálvia atual (`145 30% 55%`) é muito claro e "lavado"
-2. **Excesso de elementos visuais** - Muitos cards, bordas, sombras competindo por atenção
-3. **Logo Enove colorida** - Quebra a harmonia visual
-4. **Seções muito similares** - Alternância repetitiva cream/stone cria monotonia
-5. **CTAs pouco contrastantes** - Verde suave não gera urgência
-6. **Tipografia sem hierarquia forte** - Títulos e corpo se misturam
+### 1. Menu Mobile Crítico
+- O menu mobile abre **transparente sobre o conteúdo** (print image-17)
+- Botões do menu se sobrepõem ao texto da página
+- Sem backdrop ou fundo sólido quando aberto
 
-## Nova Proposta: Design "Botanical Luxury"
+### 2. Contraste de Cores Ilegível
+- Texto em verde-escuro (`mc-sage`: `152 45% 32%`) sobre fundo escuro é quase invisível
+- Quote na seção de localização (print image-19): texto verde sobre fundo preto
+- Seção de apartamentos (print image-16): features em verde-claro sobre fundo escuro
+- Label "LOCALIZAÇÃO" em verde-claro difícil de ler (print image-18)
 
-### Conceito Visual
-Inspiração em **folhagens escuras**, **musgo de floresta** e **jardins contemplativos japoneses**. O design transmite: sofisticação silenciosa, natureza madura, exclusividade atemporal.
+### 3. Floating CTA Sobrepondo Conteúdo
+- O botão "CADASTRAR" flutuante cobre texto importante
 
-### Nova Paleta de Cores
+### 4. Termos de Uso Desatualizados
+- Referencia "Novo Condomínio de Estância Velha" ao invés de "Mauricio Cardoso"
+- Foro da comarca errado (Estância Velha/RS ao invés de Novo Hamburgo/RS)
+- Botão "Voltar" leva para a raiz (`/`) ao invés da página do projeto
 
-| Token | Valor Atual | Novo Valor | Inspiração |
-|-------|-------------|------------|------------|
-| `--mc-sage` | `145 30% 55%` | `152 45% 32%` | Verde-musgo profundo |
-| `--mc-sage-light` | `145 35% 70%` | `148 35% 45%` | Folha de samambaia |
-| `--mc-sage-dark` | `145 35% 40%` | `155 50% 22%` | Floresta à noite |
-| `--mc-stone` | `35 25% 92%` | `40 20% 94%` | Areia clara |
-| `--mc-earth` | `25 20% 35%` | `30 25% 25%` | Terra úmida |
-| `--mc-cream` | `40 30% 97%` | `45 15% 98%` | Off-white puro |
-| `--mc-forest` | `150 40% 25%` | `158 55% 15%` | Floresta densa |
+### 5. Layout não Mobile-First
+- Espaçamentos não otimizados para telas pequenas
+- Tipografia muito grande em mobile para algumas seções
 
-### Novas Cores Adicionais
+---
 
-| Token | Valor | Uso |
-|-------|-------|-----|
-| `--mc-charcoal` | `30 15% 12%` | Textos de alto impacto |
-| `--mc-gold-accent` | `42 75% 55%` | Destaques sutis (opcional) |
+## Solução: Redesign Profissional Mobile-First
 
-## Mudanças Estruturais por Componente
+### Arquivo 1: `MCHeader.tsx`
+**Mudanças:**
+- Menu mobile com **fundo sólido opaco** (`bg-[hsl(var(--mc-cream))]` ou `bg-[hsl(var(--mc-forest))]`)
+- Animação de abertura suave
+- Z-index correto para não sobrepor
+- Padding melhorado para mobile
+- Botões com área de toque maior (44x44px mínimo)
 
-### 1. MCHeader
-- Logo Enove **toda branca** em fundo escuro / **toda preta** quando scrollado
-- Remoção de bordas e sombras
-- Tipografia mais leve no menu
-- CTA do header com fundo verde-musgo escuro
+```tsx
+// Mobile menu com fundo sólido
+{isMobileMenuOpen && (
+  <div className="fixed inset-0 top-[60px] z-40 md:hidden">
+    {/* Backdrop */}
+    <div className="absolute inset-0 bg-black/50" onClick={() => setIsMobileMenuOpen(false)} />
+    
+    {/* Menu Panel */}
+    <nav className="relative bg-[hsl(var(--mc-cream))] mx-4 mt-4 p-6 rounded-lg shadow-xl">
+      {/* Links com área de toque grande */}
+    </nav>
+  </div>
+)}
+```
 
-### 2. MCHeroSection  
-- Overlay mais dramático (verde-floresta 85% → transparente)
-- Headline com **letter-spacing mais amplo**
-- Subtítulo em branco puro (não verde-claro)
-- CTA maior, com **animação sutil de pulso**
-- Scroll indicator minimalista (linha fina, não chevron)
+### Arquivo 2: `MCLocationSection.tsx`
+**Mudanças:**
+- Quote com **texto branco ou creme** (não verde-escuro sobre fundo escuro)
+- Melhor contraste entre texto e fundo
+- Padding mobile otimizado
 
-### 3. MCLocationSection
-- **Remover cards** - usar layout de texto corrido mais editorial
-- Ícones menores e monocromáticos
-- Bordas laterais em vez de cards
-- Citação em destaque com aspas tipográficas grandes
+### Arquivo 3: `MCApartmentsSection.tsx`
+**Mudanças:**
+- Cards com **fundo sólido claro** em mobile
+- Texto de features em cor mais contrastante
+- Área de metragem com destaque visual adequado
 
-### 4. MCConceptSection
-- **Números gigantes** (8xl) em verde-floresta escuro
-- Cards sem bordas visíveis, apenas hover sutil
-- Background em off-white puro (não stone)
-- Espaçamento generoso entre elementos
+### Arquivo 4: `MCFloatingCTA.tsx`
+**Mudanças:**
+- Posição menos intrusiva
+- Tamanho menor em mobile
+- Animação de entrada após mais scroll
+- Opção de fechar/minimizar
 
-### 5. MCApartmentsSection
-- **Remover gradiente** do header dos cards
-- Cards com borda superior colorida apenas
-- Tipografia hierárquica mais clara
-- Features em lista minimalista (sem bullets coloridos)
+### Arquivo 5: Nova Página de Termos para Mauricio Cardoso
+**Criar:** `src/pages/mauriciocardoso/TermosMauricioCardoso.tsx`
 
-### 6. MCWellnessSection
-- Manter imagem como foco principal
-- Overlay mais suave na imagem
-- Número "1.800 m²" em **destaque tipográfico** (não em box)
-- Quote com tipografia mais elegante
+**Conteúdo atualizado:**
+- Nome do projeto: "Mauricio Cardoso - Novo Hamburgo"
+- Foro: Comarca de Novo Hamburgo/RS
+- Botão "Voltar" leva para `/novohamburgo/mauriciocardoso#cadastro`
+- Design visual alinhado com a paleta wellness
 
-### 7. MCTargetSection
-- Checklist com **linhas horizontais** em vez de círculos
-- Tipografia mais espaçada
-- Remover card branco envolvente
+### Arquivo 6: `App.tsx`
+**Mudanças:**
+- Adicionar rota `/novohamburgo/mauriciocardoso/termos`
 
-### 8. MCInvestmentSection
-- Cards de condições **sem ícones** - apenas números e texto
-- Data de entrega em formato mais impactante
-- Remover gradiente do card de entrega
+### Arquivo 7: `MCFormSection.tsx`
+**Mudanças:**
+- Link dos termos aponta para `/novohamburgo/mauriciocardoso/termos`
 
-### 9. MCBenefitsSection
-- **Condensar** - menos cards, mais texto corrido
-- Remover redundância com outras seções
+---
 
-### 10. MCFormSection
-- Form card com **fundo verde-floresta escuro** + textos brancos
-- Inputs com estilo mais premium (bordas finas)
-- CTA em **off-white** sobre fundo escuro (inversão)
+## Correções de Contraste Detalhadas
 
-### 11. MCFloatingCTA
-- Borda arredondada menor (mais retangular)
-- Sombra mais sutil
-- Texto em caixa alta com mais espaçamento
+| Componente | Problema | Solução |
+|------------|----------|---------|
+| MCLocationSection Quote | Texto verde `mc-sage` sobre fundo claro | Usar `mc-charcoal` para texto |
+| MCApartmentsSection Features | Verde sobre fundo escuro | Usar branco/creme para texto |
+| MCHeader Mobile Menu | Transparente | Fundo sólido `mc-cream` |
+| Labels "LOCALIZAÇÃO" etc | Verde-claro ilegível | Usar `mc-sage` mais escuro ou branco |
+| MCConceptSection Stats | OK em desktop, ruim em mobile | Ajustar tamanho responsivo |
 
-### 12. MCFooter
-- Fundo **charcoal** (quase preto)
-- Logo Enove totalmente branca
-- Quote em tipografia serif grande e elegante
+---
 
 ## Arquivos a Modificar
 
-| Arquivo | Mudanças |
-|---------|----------|
-| `src/index.css` | Nova paleta wellness com verdes mais escuros |
-| `src/components/mauriciocardoso/MCHeader.tsx` | Logo monocolor, menu clean |
-| `src/components/mauriciocardoso/MCHeroSection.tsx` | Overlay dramático, tipografia refinada |
-| `src/components/mauriciocardoso/MCLocationSection.tsx` | Layout editorial, sem cards |
-| `src/components/mauriciocardoso/MCConceptSection.tsx` | Números gigantes, cards minimalistas |
-| `src/components/mauriciocardoso/MCApartmentsSection.tsx` | Cards sem gradiente, lista limpa |
-| `src/components/mauriciocardoso/MCWellnessSection.tsx` | Destaque tipográfico |
-| `src/components/mauriciocardoso/MCTargetSection.tsx` | Checklist com linhas |
-| `src/components/mauriciocardoso/MCInvestmentSection.tsx` | Cards sem ícones, números em foco |
-| `src/components/mauriciocardoso/MCBenefitsSection.tsx` | Versão condensada |
-| `src/components/mauriciocardoso/MCFormSection.tsx` | Form dark premium |
-| `src/components/mauriciocardoso/MCFloatingCTA.tsx` | Estilo mais retangular |
-| `src/components/mauriciocardoso/MCFooter.tsx` | Fundo charcoal, logo branca |
+| Arquivo | Tipo | Descrição |
+|---------|------|-----------|
+| `src/components/mauriciocardoso/MCHeader.tsx` | Modificar | Menu mobile com fundo sólido |
+| `src/components/mauriciocardoso/MCLocationSection.tsx` | Modificar | Contraste de texto |
+| `src/components/mauriciocardoso/MCApartmentsSection.tsx` | Modificar | Cards mobile-friendly |
+| `src/components/mauriciocardoso/MCConceptSection.tsx` | Modificar | Stats responsivos |
+| `src/components/mauriciocardoso/MCWellnessSection.tsx` | Modificar | Layout mobile otimizado |
+| `src/components/mauriciocardoso/MCTargetSection.tsx` | Modificar | Texto mais contrastante |
+| `src/components/mauriciocardoso/MCInvestmentSection.tsx` | Modificar | Grid mobile |
+| `src/components/mauriciocardoso/MCBenefitsSection.tsx` | Modificar | Espaçamento mobile |
+| `src/components/mauriciocardoso/MCFormSection.tsx` | Modificar | Link para novos termos |
+| `src/components/mauriciocardoso/MCFloatingCTA.tsx` | Modificar | Menos intrusivo |
+| `src/components/mauriciocardoso/MCFooter.tsx` | Modificar | Mobile padding |
+| `src/pages/mauriciocardoso/TermosMauricioCardoso.tsx` | Criar | Termos específicos do projeto |
+| `src/App.tsx` | Modificar | Nova rota de termos |
 
-## Referências de Estilo
+---
 
-O novo design segue princípios de:
-- **Apple** - Espaço negativo generoso, hierarquia tipográfica clara
-- **Aesop** - Cores terrosas sofisticadas, minimalismo editorial
-- **Aman Resorts** - Luxo silencioso, natureza como protagonista
-- **Tadao Ando** - Simplicidade arquitetônica, luz e sombra
+## Detalhes Técnicos das Correções
 
-## Detalhes Técnicos
+### Menu Mobile - Solução Completa
+```tsx
+// Estado para controlar menu
+const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-### CSS Variables Atualizadas
+// Bloquear scroll do body quando menu aberto
+useEffect(() => {
+  if (isMobileMenuOpen) {
+    document.body.style.overflow = 'hidden';
+  } else {
+    document.body.style.overflow = '';
+  }
+  return () => { document.body.style.overflow = ''; };
+}, [isMobileMenuOpen]);
 
-```css
-/* Mauricio Cardoso - Botanical Luxury Palette */
---mc-sage: 152 45% 32%;           /* Verde-musgo profundo */
---mc-sage-light: 148 35% 45%;     /* Folha de samambaia */
---mc-sage-dark: 155 50% 22%;      /* Floresta à noite */
---mc-stone: 40 20% 94%;           /* Areia clara */
---mc-earth: 30 25% 25%;           /* Terra úmida */
---mc-cream: 45 15% 98%;           /* Off-white puro */
---mc-forest: 158 55% 15%;         /* Floresta densa */
---mc-charcoal: 30 15% 12%;        /* Quase preto quente */
+// Menu com fundo sólido e animação
+<div className={`
+  fixed inset-x-0 top-[var(--header-height)] 
+  bg-[hsl(var(--mc-cream))] 
+  shadow-2xl
+  transition-transform duration-300
+  ${isMobileMenuOpen ? 'translate-y-0' : '-translate-y-full'}
+`}>
 ```
 
-### Logo Enove Monocolor
-- Usar filtros CSS: `brightness(0)` para preto, `brightness(0) invert(1)` para branco
-- Transição suave baseada no scroll do header
+### Contraste Corrigido - Paleta de Texto
+```css
+/* Texto sobre fundo claro (cream/stone) */
+--mc-text-primary: 30 15% 12%;     /* Charcoal - títulos */
+--mc-text-secondary: 30 25% 25%;   /* Earth - corpo */
+--mc-text-accent: 158 55% 15%;     /* Forest - destaques */
 
-### Tipografia Refinada
-- Headlines: `tracking-[0.08em]` (mais espaçado)
-- Subtítulos: `tracking-[0.15em]` para labels
-- Corpo: `leading-[1.8]` (mais respiro)
+/* Texto sobre fundo escuro (forest/charcoal) */
+--mc-text-on-dark: 0 0% 100%;      /* Branco puro */
+--mc-text-on-dark-muted: 0 0% 80%; /* Branco suave */
+```
+
+### Mobile-First Breakpoints
+```css
+/* Mobile first - base styles para mobile */
+.section-title {
+  @apply text-2xl leading-tight; /* Mobile */
+}
+
+@screen md {
+  .section-title {
+    @apply text-4xl; /* Tablet */
+  }
+}
+
+@screen lg {
+  .section-title {
+    @apply text-5xl; /* Desktop */
+  }
+}
+```
+
+---
+
+## Termos de Uso - Conteúdo Atualizado
+
+### Mudanças no texto:
+1. **Seção 1**: "Novo Condomínio de Estância Velha" → "Empreendimento Mauricio Cardoso"
+2. **Seção 3**: Descrição sobre o endereço Rua Maurício Cardoso, Novo Hamburgo
+3. **Seção 7 (Foro)**: "Comarca de Estância Velha/RS" → "Comarca de Novo Hamburgo/RS"
+4. **Botão Voltar**: Link para `/novohamburgo/mauriciocardoso#cadastro`
+
+### Visual dos Termos:
+- Usar paleta wellness (verde-floresta, creme)
+- Header com logo Enove monocolor
+- Design consistente com a landing page
+
+---
 
 ## Resultado Esperado
 
-Uma landing page que transmite:
-- **Sofisticação silenciosa** - menos é mais
-- **Natureza madura** - verdes profundos de floresta
-- **Exclusividade atemporal** - design que não envelhece
-- **Confiança patrimonial** - seriedade sem frieza
+Após as correções:
+1. Menu mobile abre com **fundo sólido** sem sobrepor o conteúdo
+2. **Todo texto legível** com contraste adequado (WCAG AA mínimo)
+3. **CTA flutuante** não cobre conteúdo importante
+4. **Termos de Uso** corretos para o projeto Mauricio Cardoso
+5. **Botão Voltar** retorna para a landing page correta
+6. Layout **mobile-first** com espaçamentos e tipografia otimizados
+7. **Experiência profissional** sem elementos amadores
