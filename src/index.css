@@ -47,14 +47,15 @@
     /* Enove official yellow #FFFF00 */
     --enove-yellow: 60 100% 50%;
     
-    /* Mauricio Cardoso - Wellness Palette */
-    --mc-sage: 145 30% 55%;
-    --mc-sage-light: 145 35% 70%;
-    --mc-sage-dark: 145 35% 40%;
-    --mc-stone: 35 25% 92%;
-    --mc-earth: 25 20% 35%;
-    --mc-cream: 40 30% 97%;
-    --mc-forest: 150 40% 25%;
+    /* Mauricio Cardoso - Botanical Luxury Palette */
+    --mc-sage: 152 45% 32%;           /* Verde-musgo profundo */
+    --mc-sage-light: 148 35% 45%;     /* Folha de samambaia */
+    --mc-sage-dark: 155 50% 22%;      /* Floresta à noite */
+    --mc-stone: 40 20% 94%;           /* Areia clara */
+    --mc-earth: 30 25% 25%;           /* Terra úmida */
+    --mc-cream: 45 15% 98%;           /* Off-white puro */
+    --mc-forest: 158 55% 15%;         /* Floresta densa */
+    --mc-charcoal: 30 15% 12%;        /* Quase preto quente */
     
     /* Gradients */
     --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--gold)) 100%);
@@ -115,14 +116,15 @@
     /* Enove official yellow #FFFF00 */
     --enove-yellow: 60 100% 50%;
     
-    /* Mauricio Cardoso - Wellness Palette (Dark mode) */
-    --mc-sage: 145 30% 55%;
-    --mc-sage-light: 145 35% 70%;
-    --mc-sage-dark: 145 35% 40%;
-    --mc-stone: 35 15% 15%;
-    --mc-earth: 25 15% 70%;
+    /* Mauricio Cardoso - Botanical Luxury Palette (Dark mode) */
+    --mc-sage: 152 45% 32%;
+    --mc-sage-light: 148 35% 45%;
+    --mc-sage-dark: 155 50% 22%;
+    --mc-stone: 40 15% 15%;
+    --mc-earth: 30 15% 75%;
     --mc-cream: 40 20% 8%;
-    --mc-forest: 150 40% 25%;
+    --mc-forest: 158 55% 15%;
+    --mc-charcoal: 30 15% 12%;
     
     /* Gradients */
     --gradient-gold: linear-gradient(135deg, hsl(var(--gold)) 0%, hsl(var(--gold-light)) 50%, hsl(var(--gold)) 100%);
