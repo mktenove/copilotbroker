@@ -6,13 +6,13 @@ const MCApartmentsSection = () => {
       type: "2 Dormitórios",
       area: "95 m²",
       description: "Ideal para casais contemporâneos que valorizam espaço e funcionalidade",
-      features: ["Suíte master", "Living ampliado", "Varanda gourmet"],
+      features: ["2 suítes", "Living integrado", "Sacada"],
     },
     {
       type: "3 Dormitórios",
       area: "125 m²",
       description: "Perfeito para famílias que buscam conforto sem abrir mão da localização",
-      features: ["2 suítes", "Home office", "Varanda integrada"],
+      features: ["1 suíte plena + 2 demi suítes", "Living integrado", "Sacada"],
     },
   ];
 
