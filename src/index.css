@@ -144,6 +144,19 @@
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
+
+  /* Force light mode for Mauricio Cardoso landing pages */
+  .light,
+  [data-theme="light"] {
+    --mc-sage: 152 45% 32%;
+    --mc-sage-light: 148 35% 45%;
+    --mc-sage-dark: 155 50% 22%;
+    --mc-stone: 40 20% 94%;
+    --mc-earth: 30 25% 25%;
+    --mc-cream: 45 15% 98%;
+    --mc-forest: 158 55% 15%;
+    --mc-charcoal: 30 15% 12%;
+  }
 }
 
 @layer base {

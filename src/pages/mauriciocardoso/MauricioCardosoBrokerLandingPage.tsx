@@ -72,7 +72,7 @@ const MauricioCardosoBrokerLandingPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))] flex items-center justify-center">
+      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light flex items-center justify-center" data-theme="light">
         <div className="w-10 h-10 border-4 border-[hsl(var(--mc-sage))] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -100,7 +100,7 @@ const MauricioCardosoBrokerLandingPage = () => {
         <meta name="robots" content="noindex, nofollow" />
       </Helmet>
 
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))]">
+      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
         <MCHeader brokerName={brokerName} />
         <MCHeroSection />
         <MCLocationSection />
