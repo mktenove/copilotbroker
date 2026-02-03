@@ -81,8 +81,8 @@ const GoldenViewLandingPage = () => {
     return null;
   }
 
-  const canonicalUrl = "https://onovocondominio.lovable.app/portao/goldenview";
-  const ogImageUrl = "https://onovocondominio.lovable.app/goldenview-og.jpg";
+  const canonicalUrl = "https://onovocondominio.com.br/portao/goldenview";
+  const ogImageUrl = "https://onovocondominio.com.br/goldenview-og.jpg";
 
   // Rich Residence Schema
   const residenceSchema = {
@@ -169,8 +169,8 @@ const GoldenViewLandingPage = () => {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.lovable.app" },
-      { "@type": "ListItem", "position": 2, "name": "Portão", "item": "https://onovocondominio.lovable.app/portao" },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.com.br" },
+      { "@type": "ListItem", "position": 2, "name": "Portão", "item": "https://onovocondominio.com.br/portao" },
       { "@type": "ListItem", "position": 3, "name": "GoldenView", "item": canonicalUrl }
     ]
   };

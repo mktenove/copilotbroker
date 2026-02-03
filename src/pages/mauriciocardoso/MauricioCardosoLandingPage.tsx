@@ -39,8 +39,8 @@ const MauricioCardosoLandingPage = () => {
     fetchProject();
   }, []);
 
-  const canonicalUrl = "https://onovocondominio.lovable.app/novohamburgo/mauriciocardoso";
-  const ogImageUrl = "https://onovocondominio.lovable.app/mauriciocardoso-og.jpg";
+  const canonicalUrl = "https://onovocondominio.com.br/novohamburgo/mauriciocardoso";
+  const ogImageUrl = "https://onovocondominio.com.br/mauriciocardoso-og.jpg";
 
   // Rich Residence Schema
   const residenceSchema = {
@@ -128,8 +128,8 @@ const MauricioCardosoLandingPage = () => {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.lovable.app" },
-      { "@type": "ListItem", "position": 2, "name": "Novo Hamburgo", "item": "https://onovocondominio.lovable.app/novohamburgo" },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.com.br" },
+      { "@type": "ListItem", "position": 2, "name": "Novo Hamburgo", "item": "https://onovocondominio.com.br/novohamburgo" },
       { "@type": "ListItem", "position": 3, "name": "Mauricio Cardoso", "item": canonicalUrl }
     ]
   };
