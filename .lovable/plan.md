@@ -1,134 +1,48 @@
 
-# Plano: Adicionar Página /admin à Tela Inicial do iPhone
+# Plano: Remover Travessões do Texto da Landing Page Mauricio Cardoso
 
-## O Problema
+## Problema Identificado
 
-O iOS Safari possui uma **limitação conhecida**: ele **ignora completamente o `start_url` do manifest.json**. Quando você clica em "Adicionar à Tela de Início", o Safari usa a **URL atual da aba**, não a definida no manifest.
+Os travessões (—) são um padrão muito comum em textos gerados por IA e denunciam a origem artificial do conteúdo. Encontrei travessões nos seguintes arquivos:
 
-Mesmo tendo o `manifest-crm.json` configurado com `"start_url": "/admin"`, se você estiver na raiz (`/`) quando adicionar à tela inicial, o atalho vai abrir na raiz.
+| Arquivo | Linha | Texto com Travessão |
+|---------|-------|---------------------|
+| `MCTargetSection.tsx` | 54 | "que escolhem com critério — e não por impulso" |
+| `MCApartmentsSection.tsx` | 81 | "do casal contemporâneo à família que busca conforto" (sem travessão, ok) |
 
 ## Solução
 
-Para adicionar a página `/admin` à tela inicial do iPhone, você precisa:
+Substituir o travessão por construção mais natural e humana.
 
-1. **Navegar para `/admin` no Safari** antes de adicionar
-2. **Garantir que o manifest correto seja carregado** na página /admin
-3. **Configurar meta tags PWA específicas** para a página admin
+### Arquivo: `MCTargetSection.tsx`
 
-O código já está parcialmente correto (o Admin.tsx usa `react-helmet-async` para injetar o manifest-crm.json), mas há ajustes necessários para garantir que funcione.
-
-## Mudanças Necessárias
-
-### 1. Atualizar `manifest-crm.json`
-Adicionar `scope` para limitar o escopo do PWA à área admin:
-
-```json
-{
-  "name": "CRM Enove",
-  "short_name": "CRM",
-  "description": "Sistema de Gestão de Leads - Enove Imobiliária",
-  "start_url": "/admin",
-  "scope": "/admin",
-  "display": "standalone",
-  "background_color": "#0f0f12",
-  "theme_color": "#FFFF00",
-  "icons": [...]
-}
-```
-
-### 2. Criar ícone específico para o CRM (Opcional mas recomendado)
-Criar um ícone PNG de 180x180 específico para o CRM, diferente do favicon geral da Enove.
-
-### 3. Adicionar `apple-touch-icon` específico no Admin.tsx
-Garantir que o ícone correto seja usado no atalho da tela inicial.
-
-### 4. Instrução para o Usuário
-
-**Passo a passo correto para adicionar /admin à tela inicial:**
-
-1. Abra o Safari no iPhone
-2. Navegue para `https://onovocondominio.lovable.app/admin`
-3. Faça login se necessário
-4. **Aguarde a página /admin carregar completamente**
-5. Toque no ícone de compartilhar (quadrado com seta para cima)
-6. Role para baixo e toque em "Adicionar à Tela de Início"
-7. O nome sugerido deve ser "CRM" - confirme
-
-O atalho agora abrirá diretamente em `/admin`.
-
-## Arquivos a Modificar
-
-| Arquivo | Tipo | Mudança |
-|---------|------|---------|
-| `public/manifest-crm.json` | Modificar | Adicionar `scope: "/admin"` |
-| `src/pages/Admin.tsx` | Modificar | Adicionar `apple-touch-icon` específico via Helmet |
-| `public/manifest-crm-broker.json` | Modificar | Adicionar `scope: "/corretor"` |
-| `src/pages/BrokerAdmin.tsx` | Modificar | Adicionar `apple-touch-icon` específico |
-
-## Detalhes Técnicos
-
-### Admin.tsx - Meta Tags Atualizadas
-
+**Antes (linha 54):**
 ```tsx
-<Helmet>
-  <title>CRM | Enove</title>
-  <link rel="manifest" href="/manifest-crm.json" />
-  <link rel="apple-touch-icon" href="/favicon-enove.jpg" />
-  <meta name="apple-mobile-web-app-title" content="CRM" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <meta name="theme-color" content="#0f0f12" />
-</Helmet>
+que escolhem com critério — e não por impulso.
 ```
 
-### manifest-crm.json Atualizado
-
-```json
-{
-  "name": "CRM Enove",
-  "short_name": "CRM",
-  "description": "Sistema de Gestão de Leads - Enove Imobiliária",
-  "start_url": "/admin",
-  "scope": "/admin",
-  "id": "/admin",
-  "display": "standalone",
-  "orientation": "portrait",
-  "background_color": "#0f0f12",
-  "theme_color": "#FFFF00",
-  "icons": [
-    {
-      "src": "/favicon-enove.jpg",
-      "sizes": "192x192",
-      "type": "image/jpeg",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon-enove.jpg",
-      "sizes": "512x512",
-      "type": "image/jpeg",
-      "purpose": "any"
-    }
-  ]
-}
+**Depois:**
+```tsx
+que escolhem com critério, nunca por impulso.
 ```
 
-## Importante: Limitação do iOS
+## Mudança Única
 
-Mesmo com todas essas configurações, o iOS Safari:
-- **Usa a URL atual** (não o `start_url`) quando você adiciona à tela inicial
-- **Por isso é essencial estar em `/admin`** quando você adiciona o atalho
+| Arquivo | Tipo | Descrição |
+|---------|------|-----------|
+| `src/components/mauriciocardoso/MCTargetSection.tsx` | Modificar | Remover travessão da frase final |
 
-O `start_url` no manifest serve principalmente para:
-- Android/Chrome PWA
-- Quando o usuário já tem o PWA instalado e abre novamente
+## Observação
 
-## Resumo da Solução
+Fiz uma varredura completa em todos os componentes da landing page:
+- `MCLocationSection.tsx` - sem travessões ✓
+- `MCConceptSection.tsx` - sem travessões ✓  
+- `MCApartmentsSection.tsx` - sem travessões ✓
+- `MCWellnessSection.tsx` - sem travessões ✓
+- `MCInvestmentSection.tsx` - sem travessões ✓
+- `MCBenefitsSection.tsx` - sem travessões ✓
+- `MCFormSection.tsx` - sem travessões ✓
+- `MCFooter.tsx` - sem travessões ✓
+- `MCTargetSection.tsx` - **1 travessão encontrado** (linha 54)
 
-1. **Navegar para `/admin` antes de adicionar**
-2. **Atualizar o manifest com `scope` e `id`**
-3. **Garantir que as meta tags Apple estão corretas**
-
-Após implementar, o fluxo será:
-- Você acessa `/admin` no Safari
-- Adiciona à tela inicial
-- O atalho "CRM" abre diretamente em `/admin` em modo standalone
+A alteração é simples e direta: apenas remover o travessão da seção "Para Quem".
