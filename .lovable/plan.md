@@ -1,190 +1,207 @@
 
-# Redesign Premium - Página de Corretores
+# Redesign Cards de Corretores - Estilo Kanban
 
 ## Objetivo
-Transformar a página de gerenciamento de corretores de uma tabela tradicional para um layout moderno com cards premium clicáveis que abrem o histórico de atividades do corretor.
+Transformar os cards de corretores para seguir o mesmo padrão visual dos cards do Kanban (KanbanCard.tsx), mantendo a funcionalidade de clique para abrir o log de atividades.
 
 ---
 
-## Nova Interface Visual
+## Análise do KanbanCard (Referência de Estilo)
 
-### Layout: Cards em Grid
+O KanbanCard possui estas características visuais:
 
-```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│ Corretores                                           [+ Novo Corretor]  │
-│ 18 corretores ativos                                                    │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐            │
-│  │  ●                  ✓    │  │  ●                  ✓    │            │
-│  │                          │  │                          │            │
-│  │  João Gabriel            │  │  Maria Silva             │            │
-│  │  joao@imob.com           │  │  maria@imob.com          │            │
-│  │                          │  │                          │            │
-│  │  ┌────────┐ ┌────────┐   │  │  ┌────────┐ ┌────────┐   │            │
-│  │  │  15    │ │ Há 2h  │   │  │  │  23    │ │ Ontem  │   │            │
-│  │  │ leads  │ │ acesso │   │  │  │ leads  │ │ acesso │   │            │
-│  │  └────────┘ └────────┘   │  │  └────────┘ └────────┘   │            │
-│  │                          │  │                          │            │
-│  │  GoldenView  Estância V  │  │  Maurício C.             │            │
-│  │                          │  │                          │            │
-│  │  ─────────────────────   │  │  ─────────────────────   │            │
-│  │  [Copiar Link] [✏️] [🗑️] │  │  [Copiar Link] [✏️] [🗑️] │            │
-│  └──────────────────────────┘  └──────────────────────────┘            │
-│                                                                         │
-│  ┌──────────────────────────┐  ┌──────────────────────────┐            │
-│  │  ○                  ✗    │  │  ●                  ✓    │            │
-│  │                          │  │                          │            │
-│  │  Pedro Santos (inativo)  │  │  Ana Costa               │            │
-│  │  ...                     │  │  ...                     │            │
-│  └──────────────────────────┘  └──────────────────────────┘            │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+- **Container**: `rounded-xl` (não rounded-2xl), `bg-[#1e1e22] border border-[#2a2a2e]`
+- **Hover**: `hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]`
+- **Padding interno**: `p-3` (mais compacto)
+- **Indicadores visuais**: Barra de progresso, tags coloridas
+- **Footer**: Separador com `border-t border-slate-700/50`
+- **Ícones menores**: w-3.5 h-3.5 para ações
+- **Avatar pequeno**: `w-5 h-5` no footer
+
+---
+
+## Mudanças Propostas
+
+### 1. Container do Card
+
+**Atual:**
+```tsx
+className="bg-[#1e1e22] border rounded-2xl p-5 cursor-pointer group..."
 ```
 
----
+**Novo (estilo Kanban):**
+```tsx
+className={cn(
+  "relative rounded-xl cursor-pointer",
+  "bg-[#1e1e22] border border-[#2a2a2e]",
+  "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+  "transition-all duration-200 ease-out",
+  "group overflow-hidden",
+  !broker.is_active && "ring-2 ring-red-400/50"
+)}
+```
 
-## Componentes do Redesign
+### 2. Estrutura Interna (mais compacta como Kanban)
 
-### 1. Card do Corretor (Clicável)
-- **Estrutura visual:**
-  - Avatar com inicial do nome (gradiente colorido)
-  - Badge de status (ativo/inativo) no canto superior direito
-  - Nome e email do corretor
-  - Métricas em mini-cards: Leads atendidos + Último acesso
-  - Tags dos projetos associados
-  - Barra de ações na parte inferior
+```text
+┌─────────────────────────────────────┐
+│ [Tag Status]           [dd/mm hh:mm]│  <- Row 1: Status badge + data criação
+├─────────────────────────────────────┤
+│ Nome do Corretor                    │  <- Row 2: Nome destaque
+│ email@corretor.com                  │  <- Row 3: Email
+├─────────────────────────────────────┤
+│ ████████████░░░░░░░░░░░░░░░  35%    │  <- Row 4: Barra de progresso (leads)
+├─────────────────────────────────────┤
+│ [GoldenView] [Maurício C.]          │  <- Row 5: Tags de projetos
+├─────────────────────────────────────┤
+│ [Copiar Link]      [✏️] [🗑️]        │  <- Row 6: Ações
+├─────────────────────────────────────┤
+│ 🔵J  │  ⏱️ Há 2h  │  👥 15 leads    │  <- Row 7: Footer com métricas
+└─────────────────────────────────────┘
+```
 
-- **Interação:**
-  - Clicar no card abre o BrokerActivitySheet
-  - Hover sutil com elevação (scale + shadow)
-  - Botões de ação (editar, excluir, copiar) param propagação
+### 3. Elementos Visuais do Kanban a Adotar
 
-### 2. Header Aprimorado
-- Contador de corretores ativos/total
-- Botão "Novo Corretor" com destaque
-- Filtro rápido (ativos/inativos/todos)
+| Elemento | Kanban | Implementar |
+|----------|--------|-------------|
+| Border radius | `rounded-xl` | Sim |
+| Padding | `p-3` | Sim (mais compacto) |
+| Hover shadow | `shadow-[0_8px_30px_rgb(0,0,0,0.3)]` | Sim |
+| Status tag | Tags coloridas uppercase | Badge de status similar |
+| Progress bar | Barra com cor por status | Barra baseada em leads |
+| Footer | `border-t border-slate-700/50` | Sim |
+| Timestamp | `text-[10px] text-slate-500` | Data de criação |
 
-### 3. Grid Responsivo
-- Desktop: 3 colunas
-- Tablet: 2 colunas  
-- Mobile: 1 coluna
+### 4. Barra de Progresso para Corretores
 
----
+Adicionar barra visual baseada em leads:
+- 0-5 leads: 20%
+- 6-10 leads: 40%
+- 11-20 leads: 60%
+- 21-50 leads: 80%
+- 50+ leads: 100%
 
-## Detalhes de Estilo Premium
-
-### Paleta de Cores (consistente com dark theme)
-- Background cards: `#1e1e22`
-- Background hover: `#252528`
-- Bordas: `#2a2a2e`
-- Accent (ativo): `#FFFF00`
-- Status inativo: `#ef4444`
-- Métricas: gradientes sutis
-
-### Tipografia
-- Nome: `text-lg font-semibold text-white`
-- Email: `text-sm text-slate-400`
-- Métricas: `text-xl font-bold` com labels `text-xs text-slate-500`
-
-### Animações
-- Hover: `transform scale-[1.02]` + `shadow-lg`
-- Transição suave: `transition-all duration-200`
-
----
-
-## Alterações Técnicas
-
-### Arquivo: `src/components/admin/BrokerManagement.tsx`
-
-1. **Substituir tabela por grid de cards**
-   - Remover `<table>` e substituir por `<div className="grid">`
-   - Criar componente interno `BrokerCard`
-
-2. **Tornar card clicável**
-   - `onClick={() => setSelectedBrokerForHistory(broker)}`
-   - Botões de ação usam `e.stopPropagation()`
-
-3. **Adicionar métricas visuais**
-   - Avatar com inicial colorida
-   - Mini-cards para leads e último acesso
-   - Status badge no canto
-
-4. **Header aprimorado**
-   - Adicionar contador de corretores
-   - Opcional: filtro de status
+Cores:
+- Ativo: `bg-primary` (amarelo)
+- Inativo: `bg-red-500`
 
 ---
 
-## Estrutura do Card Premium
+## Código Resultante
 
 ```tsx
-<div 
+<div
   onClick={() => setSelectedBrokerForHistory(broker)}
-  className="
-    bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-5
-    cursor-pointer group
-    hover:bg-[#252528] hover:border-[#3a3a3e]
-    hover:shadow-xl hover:shadow-black/20
-    hover:scale-[1.02]
-    transition-all duration-200
-  "
+  className={cn(
+    "relative rounded-xl cursor-pointer",
+    "bg-[#1e1e22] border border-[#2a2a2e]",
+    "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+    "transition-all duration-200 ease-out",
+    "group overflow-hidden",
+    !broker.is_active && "ring-2 ring-red-400/50"
+  )}
 >
-  {/* Header: Avatar + Status */}
-  <div className="flex items-start justify-between mb-4">
-    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 
-                    flex items-center justify-center">
-      <span className="text-lg font-bold text-white">
-        {broker.name.charAt(0).toUpperCase()}
+  <div className="p-3">
+    {/* Row 1: Status + Data de cadastro */}
+    <div className="flex items-start justify-between gap-2 mb-2.5">
+      <span className={cn(
+        "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
+        broker.is_active
+          ? "bg-primary/20 text-primary border-primary/40"
+          : "bg-red-500/20 text-red-400 border-red-500/40"
+      )}>
+        {broker.is_active ? 'Ativo' : 'Inativo'}
+      </span>
+      <span className="text-[10px] text-slate-500 shrink-0">
+        {format(new Date(broker.created_at), "dd/MM HH:mm")}
       </span>
     </div>
-    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-      broker.is_active 
-        ? 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20'
-        : 'bg-red-500/10 text-red-400 border border-red-500/20'
-    }`}>
-      {broker.is_active ? 'Ativo' : 'Inativo'}
-    </span>
-  </div>
 
-  {/* Info */}
-  <h3 className="text-lg font-semibold text-white mb-1">{broker.name}</h3>
-  <p className="text-sm text-slate-400 mb-4">{broker.email}</p>
+    {/* Row 2: Nome */}
+    <h4 className="font-semibold text-white text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
+      {broker.name}
+    </h4>
 
-  {/* Métricas */}
-  <div className="grid grid-cols-2 gap-3 mb-4">
-    <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
-      <p className="text-xl font-bold text-white">{leadsCount}</p>
-      <p className="text-xs text-slate-500">leads</p>
+    {/* Row 3: Email */}
+    <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+      <Mail className="w-3 h-3 text-slate-500" />
+      <span className="truncate">{broker.email}</span>
     </div>
-    <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
-      <p className="text-sm font-medium text-slate-300">{lastAccess}</p>
-      <p className="text-xs text-slate-500">último acesso</p>
-    </div>
-  </div>
 
-  {/* Projetos */}
-  <div className="flex flex-wrap gap-1.5 mb-4">
-    {projects.map(p => (
-      <span className="px-2 py-0.5 text-xs rounded-full 
-                       bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
-        {p.name}
+    {/* Row 4: Barra de progresso */}
+    <div className="mb-3">
+      <div className="h-1 w-full bg-slate-700/50 rounded-full overflow-hidden">
+        <div 
+          className={cn(
+            "h-full rounded-full transition-all duration-500",
+            broker.is_active ? "bg-primary" : "bg-red-500"
+          )}
+          style={{ width: `${getProgressPercentage(leadsCount)}%` }}
+        />
+      </div>
+    </div>
+
+    {/* Row 5: Projetos */}
+    <div className="flex flex-wrap gap-1.5 mb-3 min-h-[22px]">
+      {broker.projects?.slice(0, 2).map(project => (
+        <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
+          {project.name}
+        </span>
+      ))}
+      {(broker.projects?.length || 0) > 2 && (
+        <span className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-400">
+          +{broker.projects!.length - 2}
+        </span>
+      )}
+    </div>
+
+    {/* Row 6: Ações */}
+    <div className="flex items-center gap-1 mb-3">
+      <button onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
+          "bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 rounded-lg",
+          "font-medium text-xs transition-all"
+        )}
+      >
+        {copiedSlug === broker.slug ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+        <span>{copiedSlug === broker.slug ? 'Copiado!' : 'Link'}</span>
+      </button>
+      
+      <div className="flex-1" />
+      
+      <button onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
+        className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-slate-700/50 transition-colors"
+      >
+        <Edit2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+      </button>
+      
+      <button onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
+        className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+      >
+        <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+      </button>
+    </div>
+
+    {/* Row 7: Footer com métricas */}
+    <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
+      <div className="flex items-center gap-2">
+        <Avatar className="w-5 h-5 border border-[#2a2a2e]">
+          <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
+            {broker.name.charAt(0).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        <span className="text-slate-600">•</span>
+        <div className="flex items-center gap-1 text-[10px] text-slate-500">
+          <Clock className="w-3 h-3" />
+          <span>{lastAccess ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR }) : '—'}</span>
+        </div>
+      </div>
+      
+      <span className="text-[10px] text-slate-400 font-medium">
+        {leadsCount} lead{leadsCount !== 1 ? 's' : ''}
       </span>
-    ))}
-  </div>
-
-  {/* Ações */}
-  <div className="flex items-center gap-2 pt-3 border-t border-[#2a2a2e]">
-    <button onClick={e => { e.stopPropagation(); copyLink(broker.slug); }}>
-      Copiar Link
-    </button>
-    <button onClick={e => { e.stopPropagation(); handleOpenDialog(broker); }}>
-      Editar
-    </button>
-    <button onClick={e => { e.stopPropagation(); deleteBroker(broker); }}>
-      Excluir
-    </button>
+    </div>
   </div>
 </div>
 ```
@@ -195,16 +212,43 @@ Transformar a página de gerenciamento de corretores de uma tabela tradicional p
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/admin/BrokerManagement.tsx` | Substituir tabela por grid de cards premium clicáveis |
+| `src/components/admin/BrokerManagement.tsx` | Refatorar cards para estilo Kanban |
 
 ---
 
-## Resultado Esperado
+## Imports Adicionais Necessários
 
-- Visual premium e moderno com cards
-- Melhor hierarquia visual de informações
-- Interação intuitiva (clique abre histórico)
-- Métricas destacadas (leads, último acesso)
-- Responsivo para todos os dispositivos
-- Animações suaves de hover
-- Mantém todas as funcionalidades existentes
+```tsx
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Clock, Mail } from "lucide-react";
+import { format } from "date-fns";
+```
+
+---
+
+## Função Auxiliar para Progresso
+
+```tsx
+const getProgressPercentage = (leads: number): number => {
+  if (leads === 0) return 5;
+  if (leads <= 5) return 20;
+  if (leads <= 10) return 40;
+  if (leads <= 20) return 60;
+  if (leads <= 50) return 80;
+  return 100;
+};
+```
+
+---
+
+## Resultado Visual Esperado
+
+- Cards com aparência idêntica ao Kanban
+- Layout mais compacto (p-3 vs p-5)
+- Hover com efeito de sombra profunda
+- Barra de progresso visual para leads
+- Footer com avatar pequeno e métricas
+- Tags de status com estilo uppercase
+- Ícones menores e mais refinados
+- Totalmente clicável para abrir histórico
