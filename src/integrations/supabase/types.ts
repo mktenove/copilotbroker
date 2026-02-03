@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      broker_activity_logs: {
+        Row: {
+          activity_type: string
+          broker_id: string
+          created_at: string
+          details: Json | null
+          id: string
+          ip_address: string | null
+          lead_id: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          broker_id: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          broker_id?: string
+          created_at?: string
+          details?: Json | null
+          id?: string
+          ip_address?: string | null
+          lead_id?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_activity_logs_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_activity_logs_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_projects: {
         Row: {
           broker_id: string
@@ -49,6 +100,47 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      broker_sessions: {
+        Row: {
+          broker_id: string
+          id: string
+          ip_address: string | null
+          last_activity_at: string
+          logged_in_at: string
+          login_method: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          broker_id: string
+          id?: string
+          ip_address?: string | null
+          last_activity_at?: string
+          logged_in_at?: string
+          login_method?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          broker_id?: string
+          id?: string
+          ip_address?: string | null
+          last_activity_at?: string
+          logged_in_at?: string
+          login_method?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_sessions_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
             referencedColumns: ["id"]
           },
         ]

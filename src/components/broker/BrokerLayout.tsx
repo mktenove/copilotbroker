@@ -9,6 +9,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useBrokerSessionTracker } from "@/hooks/use-broker-session-tracker";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bell, UserPlus, Clock, ArrowRightCircle, Check, Trash2, Loader2, CheckCheck } from "lucide-react";
@@ -56,6 +57,9 @@ export function BrokerLayout({
   onSearchChange,
 }: BrokerLayoutProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  // Rastrear sessão de login
+  useBrokerSessionTracker();
+
   const {
     notifications,
     unreadCount,
