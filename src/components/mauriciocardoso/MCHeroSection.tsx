@@ -40,7 +40,7 @@ const MCHeroSection = () => {
           {/* Tagline - Editorial spacing */}
           <div className="pt-2 md:pt-4">
             <p className="text-[10px] sm:text-xs md:text-sm uppercase tracking-[0.3em] md:tracking-[0.4em] text-white/70 font-medium px-4">
-              Não é apenas um novo prédio — É um novo patamar
+              NÃO É APENAS UM NOVO PRÉDIO, É UM NOVO PATAMAR
             </p>
           </div>
 
