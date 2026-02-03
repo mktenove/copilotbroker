@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Search, RefreshCw, Building2, ArrowRight } from "lucide-react";
+import { Users, Search, RefreshCw, Building2, ArrowRight, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
 import LeadsTable from "@/components/admin/LeadsTable";
@@ -40,7 +42,7 @@ const BrokerAdmin = () => {
   const navigate = useNavigate();
   const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
   
-  const { brokerProjects, isLoading: isProjectsLoading } = useBrokerProjects(brokerId);
+  const { brokerProjects, isLoading: isProjectsLoading, totalProjects, pendingCount } = useBrokerProjects(brokerId);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -177,28 +179,65 @@ const BrokerAdmin = () => {
       {broker && (
         <div 
           onClick={() => navigate("/corretor/empreendimentos")}
-          className="bg-card border border-border rounded-xl p-4 mb-6 cursor-pointer hover:border-primary/50 transition-colors group"
+          className={cn(
+            "bg-card border rounded-xl p-4 mb-6 cursor-pointer transition-colors group",
+            pendingCount > 0 
+              ? "border-amber-500/50 hover:border-amber-500" 
+              : "border-border hover:border-primary/50"
+          )}
         >
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Building2 className="w-5 h-5 text-primary" />
+              <div className={cn(
+                "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+                pendingCount > 0 ? "bg-amber-500/10" : "bg-primary/10"
+              )}>
+                <Building2 className={cn(
+                  "w-5 h-5",
+                  pendingCount > 0 ? "text-amber-500" : "text-primary"
+                )} />
               </div>
               <div>
                 <p className="text-sm font-medium text-white">Seus Empreendimentos</p>
                 {isProjectsLoading ? (
                   <p className="text-xs text-muted-foreground">Carregando...</p>
-                ) : brokerProjects.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">Nenhum empreendimento associado</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {brokerProjects.length} {brokerProjects.length === 1 ? 'empreendimento ativo' : 'empreendimentos ativos'}
+                    {brokerProjects.length} de {totalProjects} ativos
                   </p>
                 )}
               </div>
             </div>
-            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+            <ArrowRight className={cn(
+              "w-5 h-5 transition-colors",
+              pendingCount > 0 
+                ? "text-amber-500 group-hover:text-amber-400" 
+                : "text-muted-foreground group-hover:text-primary"
+            )} />
           </div>
+
+          {/* Progress Bar */}
+          {!isProjectsLoading && totalProjects > 0 && (
+            <Progress 
+              value={(brokerProjects.length / totalProjects) * 100} 
+              className={cn(
+                "h-1.5 mb-2",
+                pendingCount > 0 && "[&>div]:bg-amber-500"
+              )}
+            />
+          )}
+
+          {/* Pending Alert */}
+          {!isProjectsLoading && pendingCount > 0 && (
+            <div className="flex items-center gap-2 text-amber-500 text-xs">
+              <AlertCircle className="w-3.5 h-3.5" />
+              <span>
+                {pendingCount === 1 
+                  ? "1 empreendimento disponível para adicionar" 
+                  : `${pendingCount} empreendimentos disponíveis para adicionar`}
+              </span>
+            </div>
+          )}
         </div>
       )}
 

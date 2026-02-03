@@ -275,5 +275,7 @@ export function useBrokerProjects(brokerId?: string | null) {
     checkSlugAvailability,
     getProjectUrl,
     refetch: fetchBrokerProjects,
+    totalProjects: availableProjects.length,
+    pendingCount: unassociatedProjects.length,
   };
 }
