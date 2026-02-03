@@ -35,8 +35,8 @@ const EstanciaVelha = () => {
   // Track page view with project ID
   usePageTracking(projectId || undefined);
 
-  const canonicalUrl = "https://onovocondominio.lovable.app/estanciavelha";
-  const ogImageUrl = "https://onovocondominio.lovable.app/og-image.jpg";
+  const canonicalUrl = "https://onovocondominio.com.br/estanciavelha";
+  const ogImageUrl = "https://onovocondominio.com.br/og-image.jpg";
 
   // Rich Residence Schema
   const residenceSchema = {
@@ -122,7 +122,7 @@ const EstanciaVelha = () => {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     "itemListElement": [
-      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.lovable.app" },
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.com.br" },
       { "@type": "ListItem", "position": 2, "name": "Estância Velha", "item": canonicalUrl }
     ]
   };
