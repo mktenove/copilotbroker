@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Save,
   ClipboardList,
+  Sparkles,
 } from "lucide-react";
 import { BrokerLayout } from "@/components/broker";
 import {
@@ -60,6 +61,7 @@ const BrokerProjects = () => {
     addProject,
     removeProject,
     updateSlug,
+    pendingCount,
   } = useBrokerProjects(brokerId);
 
   // Auth check
@@ -272,6 +274,38 @@ const BrokerProjects = () => {
           )}
         </div>
       </div>
+
+      {/* Pending Projects Banner */}
+      {pendingCount > 0 && (
+        <div className="bg-gradient-to-r from-amber-500/10 to-amber-600/10 border border-amber-500/30 rounded-xl p-4 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                <Sparkles className="w-5 h-5 text-amber-500" />
+              </div>
+              <div>
+                <p className="font-medium text-foreground">
+                  {pendingCount === 1 
+                    ? "Novo empreendimento disponível!" 
+                    : `${pendingCount} novos empreendimentos disponíveis!`}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {pendingCount === 1 
+                    ? "Adicione à sua carteira e comece a captar leads" 
+                    : "Adicione à sua carteira e amplie sua captação"}
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => setIsAddDialogOpen(true)}
+              className="bg-amber-500 hover:bg-amber-600 text-white shrink-0"
+            >
+              <Plus className="w-4 h-4 mr-1" />
+              Adicionar agora
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Projects Grid */}
       <div className="grid gap-3 mb-6">
