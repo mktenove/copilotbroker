@@ -90,7 +90,7 @@ const BrokerManagement = () => {
       const { data: brokersData, error: brokersError } = await (supabase
         .from("brokers" as any)
         .select("*")
-        .order("created_at", { ascending: false }) as any);
+        .order("name", { ascending: true }) as any);
 
       if (brokersError) throw brokersError;
 
@@ -532,7 +532,7 @@ const BrokerManagement = () => {
                 onClick={() => setSelectedBrokerForHistory(broker)}
                 className={cn(
                   "relative rounded-xl cursor-pointer",
-                  "bg-card border border-border",
+                  "bg-[#1e1e22] border border-[#2a2a2e]",
                   "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
                   "transition-all duration-200 ease-out",
                   "group overflow-hidden",
@@ -545,30 +545,30 @@ const BrokerManagement = () => {
                     <span className={cn(
                       "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
                       broker.is_active
-                        ? "bg-primary/20 text-primary border-primary/40"
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
                         : "bg-red-500/20 text-red-400 border-red-500/40"
                     )}>
                       {broker.is_active ? 'Ativo' : 'Inativo'}
                     </span>
-                    <span className="text-[10px] text-muted-foreground shrink-0">
+                    <span className="text-[10px] text-slate-500 shrink-0">
                       {format(new Date(broker.created_at), "dd/MM HH:mm")}
                     </span>
                   </div>
 
                   {/* Row 2: Nome */}
-                  <h4 className="font-semibold text-foreground text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
+                  <h4 className="font-semibold text-white text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
                     {broker.name}
                   </h4>
 
                   {/* Row 3: Email */}
-                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
-                    <Mail className="w-3 h-3 text-muted-foreground/70" />
+                  <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
+                    <Mail className="w-3 h-3 text-slate-500" />
                     <span className="truncate">{broker.email}</span>
                   </div>
 
                   {/* Row 4: Barra de progresso */}
                   <div className="mb-3">
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-1 w-full bg-slate-700/50 rounded-full overflow-hidden">
                       <div 
                         className={cn(
                           "h-full rounded-full transition-all duration-500",
@@ -582,17 +582,17 @@ const BrokerManagement = () => {
                   {/* Row 5: Projetos */}
                   <div className="flex flex-wrap gap-1.5 mb-3 min-h-[22px]">
                     {broker.projects?.slice(0, 2).map(project => (
-                      <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground border border-border">
+                      <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
                         {project.name}
                       </span>
                     ))}
                     {(broker.projects?.length || 0) > 2 && (
-                      <span className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground">
+                      <span className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-400">
                         +{broker.projects!.length - 2}
                       </span>
                     )}
                     {(!broker.projects || broker.projects.length === 0) && (
-                      <span className="text-[10px] text-muted-foreground/50">Nenhum projeto</span>
+                      <span className="text-[10px] text-slate-500">Nenhum projeto</span>
                     )}
                   </div>
 
@@ -602,7 +602,7 @@ const BrokerManagement = () => {
                       onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
-                        "bg-muted hover:bg-muted/80 text-muted-foreground rounded-lg",
+                        "bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 rounded-lg",
                         "font-medium text-xs transition-all"
                       )}
                     >
@@ -614,35 +614,35 @@ const BrokerManagement = () => {
                     
                     <button 
                       onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
-                      className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                      className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-slate-700/50 transition-colors"
                     >
                       <Edit2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
                     </button>
                     
                     <button 
                       onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
-                      className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                      className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                     >
                       <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
                     </button>
                   </div>
 
                   {/* Row 7: Footer com métricas */}
-                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
                     <div className="flex items-center gap-2">
-                      <Avatar className="w-5 h-5 border border-border">
+                      <Avatar className="w-5 h-5 border border-[#2a2a2e]">
                         <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
                           {broker.name.charAt(0).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-muted-foreground/50">•</span>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                      <span className="text-slate-600">•</span>
+                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
                         <Clock className="w-3 h-3" />
                         <span>{lastAccess ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR }) : '—'}</span>
                       </div>
                     </div>
                     
-                    <span className="text-[10px] text-muted-foreground font-medium">
+                    <span className="text-[10px] text-slate-400 font-medium">
                       {leadsCount} lead{leadsCount !== 1 ? 's' : ''}
                     </span>
                   </div>
