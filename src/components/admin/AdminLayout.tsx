@@ -53,7 +53,10 @@ export function AdminLayout({
             <SheetTitle className="text-white">Notificações</SheetTitle>
           </SheetHeader>
           <div className="h-[calc(100vh-60px)] overflow-y-auto admin-scrollbar">
-            <NotificationPanel />
+            {/* Inline para exibir a lista imediatamente ao abrir a Sheet */}
+            <div className="p-4">
+              <NotificationPanel variant="inline" showHeader={false} />
+            </div>
           </div>
         </SheetContent>
       </Sheet>
