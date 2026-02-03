@@ -1,92 +1,134 @@
 
-# Plano: Correção Definitiva de Contraste - Mauricio Cardoso
+# Plano: Adicionar Página /admin à Tela Inicial do iPhone
 
-## Diagnóstico do Problema
+## O Problema
 
-A página está sendo renderizada em **dark mode** do sistema, e as variáveis CSS no dark mode estão configuradas assim:
+O iOS Safari possui uma **limitação conhecida**: ele **ignora completamente o `start_url` do manifest.json**. Quando você clica em "Adicionar à Tela de Início", o Safari usa a **URL atual da aba**, não a definida no manifest.
 
-| Variável | Valor Dark Mode | Resultado |
-|----------|-----------------|-----------|
-| `--mc-cream` | `40 20% 8%` | Fundo quase preto (8% luminosidade) |
-| `--mc-stone` | `40 15% 15%` | Fundo escuro (15% luminosidade) |
-| `--mc-charcoal` | `30 15% 12%` | Texto escuro (12% luminosidade) |
-| `--mc-forest` | `158 55% 15%` | Texto verde escuro (15% luminosidade) |
-| `--mc-earth` | `30 15% 75%` | Texto claro (75% luminosidade) - OK |
+Mesmo tendo o `manifest-crm.json` configurado com `"start_url": "/admin"`, se você estiver na raiz (`/`) quando adicionar à tela inicial, o atalho vai abrir na raiz.
 
-**Resultado**: Texto escuro (`mc-charcoal`, `mc-forest`) sobre fundo escuro (`mc-cream`, `mc-stone`) = ilegível!
+## Solução
 
-## Solução: Forçar Light Mode na Landing Page
+Para adicionar a página `/admin` à tela inicial do iPhone, você precisa:
 
-A melhor solução é **forçar a landing page Mauricio Cardoso a usar light mode**, ignorando a preferência do sistema. Isso garante que as cores sejam sempre as definidas no `:root` (light mode).
+1. **Navegar para `/admin` no Safari** antes de adicionar
+2. **Garantir que o manifest correto seja carregado** na página /admin
+3. **Configurar meta tags PWA específicas** para a página admin
 
-### Benefícios desta abordagem:
-1. Mantém a identidade visual "Botanical Luxury" com fundos claros
-2. Garante contraste consistente em todos os dispositivos
-3. Não requer duplicar todas as classes de cor com variantes dark
+O código já está parcialmente correto (o Admin.tsx usa `react-helmet-async` para injetar o manifest-crm.json), mas há ajustes necessários para garantir que funcione.
 
-## Arquivos a Modificar
+## Mudanças Necessárias
 
-### 1. `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx`
-- Adicionar classe `light` no container principal para forçar light mode
-- Usar atributo `data-theme="light"` como fallback
+### 1. Atualizar `manifest-crm.json`
+Adicionar `scope` para limitar o escopo do PWA à área admin:
 
-**Antes:**
-```tsx
-<div className="min-h-screen bg-[hsl(var(--mc-cream))]">
-```
-
-**Depois:**
-```tsx
-<div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
-```
-
-### 2. `src/index.css`
-- Adicionar seletores que forçam as cores light quando a classe `.light` está presente
-- Criar regra específica para garantir que `.light` sobrescreva o dark mode
-
-**Adicionar regra CSS:**
-```css
-/* Force light mode for Mauricio Cardoso landing page */
-.light,
-[data-theme="light"] {
-  --mc-sage: 152 45% 32%;
-  --mc-sage-light: 148 35% 45%;
-  --mc-sage-dark: 155 50% 22%;
-  --mc-stone: 40 20% 94%;
-  --mc-earth: 30 25% 25%;
-  --mc-cream: 45 15% 98%;
-  --mc-forest: 158 55% 15%;
-  --mc-charcoal: 30 15% 12%;
+```json
+{
+  "name": "CRM Enove",
+  "short_name": "CRM",
+  "description": "Sistema de Gestão de Leads - Enove Imobiliária",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "display": "standalone",
+  "background_color": "#0f0f12",
+  "theme_color": "#FFFF00",
+  "icons": [...]
 }
 ```
 
-### 3. `src/pages/mauriciocardoso/TermosMauricioCardoso.tsx`
-- Aplicar a mesma solução para a página de termos
+### 2. Criar ícone específico para o CRM (Opcional mas recomendado)
+Criar um ícone PNG de 180x180 específico para o CRM, diferente do favicon geral da Enove.
 
-### 4. `src/pages/mauriciocardoso/MauricioCardosoBrokerLandingPage.tsx`
-- Aplicar a mesma solução para a versão broker da landing page
+### 3. Adicionar `apple-touch-icon` específico no Admin.tsx
+Garantir que o ícone correto seja usado no atalho da tela inicial.
 
-## Verificação de Contraste
+### 4. Instrução para o Usuário
 
-Após a correção, as combinações de cor serão:
+**Passo a passo correto para adicionar /admin à tela inicial:**
 
-| Elemento | Fundo | Texto | Contraste |
-|----------|-------|-------|-----------|
-| Títulos | `--mc-cream` (98% lum) | `--mc-charcoal` (12% lum) | Excelente ✓ |
-| Labels | `--mc-cream` (98% lum) | `--mc-forest` (15% lum) | Bom ✓ |
-| Corpo | `--mc-stone` (94% lum) | `--mc-earth` (25% lum) | Bom ✓ |
-| Itálicos | `--mc-cream` (98% lum) | `--mc-forest` (15% lum) | Bom ✓ |
+1. Abra o Safari no iPhone
+2. Navegue para `https://onovocondominio.lovable.app/admin`
+3. Faça login se necessário
+4. **Aguarde a página /admin carregar completamente**
+5. Toque no ícone de compartilhar (quadrado com seta para cima)
+6. Role para baixo e toque em "Adicionar à Tela de Início"
+7. O nome sugerido deve ser "CRM" - confirme
 
-## Resultado Esperado
+O atalho agora abrirá diretamente em `/admin`.
 
-1. **MCLocationSection**: Título "O Endereço Fala Por Si" visível em charcoal sobre cream
-2. **MCTargetSection**: Lista de critérios legível em charcoal sobre cream
-3. **MCInvestmentSection**: Stats (20%, 71x, INCC) visíveis em forest sobre stone
-4. **MCBenefitsSection**: Todo texto legível com bom contraste
+## Arquivos a Modificar
 
-## Ordem de Implementação
+| Arquivo | Tipo | Mudança |
+|---------|------|---------|
+| `public/manifest-crm.json` | Modificar | Adicionar `scope: "/admin"` |
+| `src/pages/Admin.tsx` | Modificar | Adicionar `apple-touch-icon` específico via Helmet |
+| `public/manifest-crm-broker.json` | Modificar | Adicionar `scope: "/corretor"` |
+| `src/pages/BrokerAdmin.tsx` | Modificar | Adicionar `apple-touch-icon` específico |
 
-1. Atualizar `src/index.css` com regra `.light`
-2. Atualizar `MauricioCardosoLandingPage.tsx`
-3. Atualizar `MauricioCardosoBrokerLandingPage.tsx`
-4. Atualizar `TermosMauricioCardoso.tsx`
+## Detalhes Técnicos
+
+### Admin.tsx - Meta Tags Atualizadas
+
+```tsx
+<Helmet>
+  <title>CRM | Enove</title>
+  <link rel="manifest" href="/manifest-crm.json" />
+  <link rel="apple-touch-icon" href="/favicon-enove.jpg" />
+  <meta name="apple-mobile-web-app-title" content="CRM" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#0f0f12" />
+</Helmet>
+```
+
+### manifest-crm.json Atualizado
+
+```json
+{
+  "name": "CRM Enove",
+  "short_name": "CRM",
+  "description": "Sistema de Gestão de Leads - Enove Imobiliária",
+  "start_url": "/admin",
+  "scope": "/admin",
+  "id": "/admin",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f12",
+  "theme_color": "#FFFF00",
+  "icons": [
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon-enove.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ]
+}
+```
+
+## Importante: Limitação do iOS
+
+Mesmo com todas essas configurações, o iOS Safari:
+- **Usa a URL atual** (não o `start_url`) quando você adiciona à tela inicial
+- **Por isso é essencial estar em `/admin`** quando você adiciona o atalho
+
+O `start_url` no manifest serve principalmente para:
+- Android/Chrome PWA
+- Quando o usuário já tem o PWA instalado e abre novamente
+
+## Resumo da Solução
+
+1. **Navegar para `/admin` antes de adicionar**
+2. **Atualizar o manifest com `scope` e `id`**
+3. **Garantir que as meta tags Apple estão corretas**
+
+Após implementar, o fluxo será:
+- Você acessa `/admin` no Safari
+- Adiciona à tela inicial
+- O atalho "CRM" abre diretamente em `/admin` em modo standalone
