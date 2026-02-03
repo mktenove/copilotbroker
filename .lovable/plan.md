@@ -1,54 +1,45 @@
 
 
-# Plano: Criar Imagem OG para Mauricio Cardoso
+# Plano: Corrigir OG Tags e Atualizar Texto de Estância Velha
 
-## Contexto do Projeto
+## Diagnóstico do Problema
 
-O empreendimento Mauricio Cardoso utiliza:
-- **Cores principais**: Verde floresta (forest), tons terrosos (sage, cream, charcoal)
-- **Estilo visual**: Editorial, elegante, alto padrão
-- **Imagem do prédio**: `predio.png` (fachada do empreendimento)
-- **Headline**: "Quando o endereço é definitivo, o projeto precisa estar à altura"
+As tags `og:image:width` e `og:image:height` **já existem** nos arquivos React. O problema é que:
 
-## Especificações da Imagem OG
+1. O React Helmet injeta as tags dinamicamente via JavaScript
+2. Crawlers como Facebook/WhatsApp podem não executar JavaScript completamente
+3. As tags no `index.html` (fallback estático) podem estar sendo lidas em vez das dinâmicas
 
-| Propriedade | Valor |
-|-------------|-------|
-| Dimensões | 1200 x 630 pixels |
-| Formato | JPG |
-| Destino | `public/mauriciocardoso-og.jpg` |
+## Solução
 
-## Abordagem
+### 1. Garantir Fallback Estático no index.html
 
-Usar o modelo de geração de imagem AI (Nano banana) para criar uma imagem promocional elegante que combine:
+O `index.html` já tem tags OG genéricas que são sobrescritas pelo React Helmet. Precisamos verificar se estão corretas.
 
-1. **Fundo**: Renderização arquitetônica de prédio residencial moderno de alto padrão
-2. **Overlay**: Gradiente verde floresta escuro para contraste
-3. **Texto**: 
-   - "MAURICIO CARDOSO" (título principal)
-   - "Novo Hamburgo | RS" (localização)
-   - "Apartamentos de 95 a 125m²" (destaque)
+### 2. Atualizar Texto do Estância Velha
 
-## Prompt para Geração
+| Tag | Texto Atual | Novo Texto |
+|-----|-------------|------------|
+| **og:title** | `Novo Condomínio em Estância Velha \| Lançamento 2025` | **Manter** |
+| **og:description** | `Cadastre-se para acesso antecipado ao maior lançamento imobiliário de Estância Velha...` | `O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora.` |
+| **twitter:description** | `Cadastre-se para acesso antecipado. 350 lotes exclusivos a partir de 500m².` | `O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora.` |
 
-```text
-Professional real estate marketing banner, 1200x630 pixels, modern luxury apartment building facade, 
-elegant dark forest green gradient overlay, premium typography with "MAURICIO CARDOSO" in white serif font,
-"Novo Hamburgo | RS" subtitle, architectural visualization style, high-end real estate marketing,
-sophisticated and minimalist design, Brazilian contemporary architecture
-```
+### 3. Verificar Imagem OG
 
-## Implementação
+A imagem `mauriciocardoso-og.jpg` foi criada mas precisa ser **publicada** para que o Facebook/WhatsApp possam acessá-la via HTTPS.
 
-1. Chamar API de geração de imagem com prompt otimizado
-2. Converter resultado para formato JPG
-3. Salvar em `public/mauriciocardoso-og.jpg`
+## Arquivos a Modificar
 
-## Resultado Esperado
+| Arquivo | Mudança |
+|---------|---------|
+| `src/pages/EstanciaVelha.tsx` | Atualizar `og:description` e `twitter:description` |
 
-Uma imagem OG profissional que:
-- Represente o alto padrão do empreendimento
-- Mantenha consistência visual com a landing page
-- Seja otimizada para compartilhamento em redes sociais (WhatsApp, Facebook, LinkedIn)
-- Inclua informações essenciais de forma clara e elegante
+## Passos Pós-Implementação
+
+Após publicar as alterações:
+
+1. Acesse o [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
+2. Cole a URL: `https://onovocondominio.com.br/novohamburgo/mauriciocardoso`
+3. Clique em "Fetch new information" para limpar o cache
+4. Repita para as outras páginas
 
