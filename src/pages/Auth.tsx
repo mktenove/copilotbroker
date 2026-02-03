@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Mail, Lock } from "lucide-react";
@@ -108,7 +109,11 @@ const Auth = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0c] flex">
+    <>
+      <Helmet>
+        <title>CRM | Login - Enove</title>
+      </Helmet>
+      <div className="min-h-screen bg-[#0a0a0c] flex">
       {/* Visual Panel - Desktop only */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e]">
         {/* Geometric pattern - with subtle float animation */}
@@ -236,7 +241,8 @@ const Auth = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };
 

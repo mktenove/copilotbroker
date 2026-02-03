@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
+import AppHead from "@/components/AppHead";
 import Home from "./pages/Home";
 import EstanciaVelha from "./pages/EstanciaVelha";
 import BrokerLandingPage from "./pages/BrokerLandingPage";
@@ -33,7 +34,8 @@ const App = () => (
           <Toaster />
           <Sonner />
           <BrowserRouter>
-        <Routes>
+            <AppHead />
+            <Routes>
             <Route path="/" element={<Home />} />
             
             {/* GoldenView - custom landing page with unique visual identity */}

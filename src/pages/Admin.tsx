@@ -441,12 +441,6 @@ const Admin = () => {
     <>
       <Helmet>
         <title>CRM | Enove</title>
-        <link rel="manifest" href="/manifest-crm.json" />
-        <link rel="apple-touch-icon" href="/favicon-enove.jpg" />
-        <meta name="apple-mobile-web-app-title" content="CRM" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="theme-color" content="#0f0f12" />
       </Helmet>
       <AdminLayout
         activeTab={activeTab}
