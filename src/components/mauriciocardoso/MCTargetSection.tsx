@@ -51,7 +51,7 @@ const MCTargetSection = () => {
             <span className="font-medium text-[hsl(var(--mc-charcoal))]">
               Famílias, investidores e profissionais consolidados
             </span>{" "}
-            que escolhem com critério — e não por impulso.
+            que escolhem com critério, nunca por impulso.
           </p>
         </div>
       </div>
