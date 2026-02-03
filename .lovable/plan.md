@@ -1,150 +1,139 @@
 
-# Plano: Correção de RLS e Melhoria do Gerenciamento de Empreendimentos para Corretores
+# Plano: Melhorar Visibilidade de Empreendimentos Pendentes para Corretores
 
-## Diagnóstico do Problema
+## Objetivo
 
-### Problema 1: Empreendimento não aparece após habilitar
-A corretora Samyra habilitou o empreendimento "Mauricio Cardoso" (Novo Hamburgo), mas ele **não foi salvo no banco de dados**.
+Mostrar claramente quantos empreendimentos o corretor possui versus o total disponível, incentivando-o a adicionar os que faltam.
 
-**Causa raiz**: A tabela `broker_projects` possui RLS ativo, mas **faltam políticas de INSERT e UPDATE** para corretores:
+## Mudanças Propostas
 
-| Política Atual | Comando | Quem pode |
-|----------------|---------|-----------|
-| Admins gerenciam associações | ALL | Apenas admins |
-| Corretores veem suas associações | SELECT | Corretores (só leitura) |
+### 1. Atualizar o Card de Empreendimentos no Dashboard (`BrokerAdmin.tsx`)
 
-Quando um corretor tenta adicionar um empreendimento via `useBrokerProjects.addProject()`, a inserção é **bloqueada silenciosamente** pela RLS.
+O card compacto será aprimorado para mostrar:
+- Indicador visual tipo "2/3 empreendimentos"
+- Barra de progresso sutil
+- Badge de alerta quando há empreendimentos pendentes
 
-### Problema 2: Interface de gerenciamento confusa
-A página inicial do corretor (`BrokerAdmin.tsx`) mostra todos os links de empreendimentos diretamente, o que ficará confuso com muitos projetos.
+**Layout proposto:**
 
-## Solução Proposta
-
-### Parte 1: Corrigir RLS da tabela `broker_projects`
-
-Adicionar políticas que permitam corretores gerenciarem suas próprias associações:
-
-```sql
--- Corretores podem adicionar empreendimentos para si mesmos
-CREATE POLICY "Corretores podem criar suas associações"
-ON public.broker_projects FOR INSERT
-WITH CHECK (
-  broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
-);
-
--- Corretores podem atualizar suas próprias associações (ativar/desativar)
-CREATE POLICY "Corretores podem atualizar suas associações"
-ON public.broker_projects FOR UPDATE
-USING (
-  broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
-);
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 🏢 Seus Empreendimentos                                    →    │
+│                                                                 │
+│ [████████░░░░] 2 de 3 empreendimentos                           │
+│                                                                 │
+│ ⚠️ Você ainda não adicionou 1 empreendimento                   │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-### Parte 2: Melhorar a Interface de Gerenciamento
+**Variações de estado:**
+- **Todos adicionados (3/3):** Card verde, sem alerta
+- **Parcial (2/3):** Card com alerta laranja e mensagem incentivadora
+- **Nenhum (0/3):** Card com destaque vermelho e CTA forte
 
-**Mudanças na página `BrokerAdmin.tsx`:**
-- Mostrar apenas um **resumo compacto** (máx. 2 projetos) com link para "Ver todos"
-- Remover os botões de copiar/abrir de cada projeto (ficam apenas na página de gerenciamento)
-- Adicionar indicador visual de quantos empreendimentos estão ativos
+### 2. Atualizar o Hook `useBrokerProjects`
 
-**Mudanças na página `BrokerProjects.tsx`:**
-- Melhorar a organização visual com cards mais compactos
-- Adicionar filtro/busca quando houver muitos projetos
-- Mostrar preview do link de forma mais elegante
-- Adicionar ação de "Copiar todos os links"
+Expor uma propriedade adicional `totalProjects` para facilitar o cálculo no componente:
 
-### Arquivos a Modificar
+```typescript
+return {
+  // ... existing properties
+  totalProjects: availableProjects.length,
+  pendingCount: unassociatedProjects.length,
+};
+```
+
+### 3. Melhorar a Página de Gerenciamento (`BrokerProjects.tsx`)
+
+Adicionar seção destacada no topo quando houver empreendimentos pendentes:
+
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│ 📢 Novos empreendimentos disponíveis!                           │
+│                                                                 │
+│ Você pode adicionar mais 1 empreendimento à sua carteira        │
+│                                                                 │
+│                                       [+ Adicionar agora]       │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Arquivos a Modificar
 
 | Arquivo | Tipo | Descrição |
 |---------|------|-----------|
-| Migration SQL | Criar | Adicionar políticas RLS de INSERT e UPDATE para corretores |
-| `src/pages/BrokerAdmin.tsx` | Modificar | Simplificar card de empreendimentos (resumo compacto) |
-| `src/pages/BrokerProjects.tsx` | Modificar | Melhorar UX da página de gerenciamento |
-| `src/hooks/use-broker-projects.ts` | Modificar | Adicionar tratamento de erro mais específico para RLS |
+| `src/hooks/use-broker-projects.ts` | Modificar | Expor `totalProjects` e `pendingCount` |
+| `src/pages/BrokerAdmin.tsx` | Modificar | Card com progresso e alerta de pendentes |
+| `src/pages/BrokerProjects.tsx` | Modificar | Banner de destaque para pendentes |
 
-## Detalhes Técnicos
+## Detalhes da Implementação
 
-### Migration SQL para RLS
+### Card do Dashboard (BrokerAdmin.tsx)
 
-```sql
--- Política para INSERT
-CREATE POLICY "Corretores podem criar suas associações"
-ON public.broker_projects FOR INSERT
-WITH CHECK (
-  broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
-);
+```tsx
+{/* Compact Projects Summary Card */}
+{broker && (
+  <div 
+    onClick={() => navigate("/corretor/empreendimentos")}
+    className={cn(
+      "bg-card border rounded-xl p-4 mb-6 cursor-pointer transition-colors group",
+      pendingCount > 0 
+        ? "border-amber-500/50 hover:border-amber-500" 
+        : "border-border hover:border-primary/50"
+    )}
+  >
+    <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center gap-3">
+        <div className={cn(
+          "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
+          pendingCount > 0 ? "bg-amber-500/10" : "bg-primary/10"
+        )}>
+          <Building2 className={cn(
+            "w-5 h-5",
+            pendingCount > 0 ? "text-amber-500" : "text-primary"
+          )} />
+        </div>
+        <div>
+          <p className="text-sm font-medium text-white">Seus Empreendimentos</p>
+          <p className="text-xs text-muted-foreground">
+            {brokerProjects.length} de {totalProjects} ativos
+          </p>
+        </div>
+      </div>
+      <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
+    </div>
 
--- Política para UPDATE
-CREATE POLICY "Corretores podem atualizar suas associações"
-ON public.broker_projects FOR UPDATE
-USING (
-  broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
-)
-WITH CHECK (
-  broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
-);
+    {/* Progress Bar */}
+    <Progress 
+      value={(brokerProjects.length / totalProjects) * 100} 
+      className="h-1.5 mb-2"
+    />
+
+    {/* Pending Alert */}
+    {pendingCount > 0 && (
+      <div className="flex items-center gap-2 text-amber-500 text-xs">
+        <AlertCircle className="w-3.5 h-3.5" />
+        <span>
+          {pendingCount === 1 
+            ? "1 empreendimento disponível para adicionar" 
+            : `${pendingCount} empreendimentos disponíveis para adicionar`}
+        </span>
+      </div>
+    )}
+  </div>
+)}
 ```
 
-### Nova Interface do BrokerAdmin
+### Textos por Estado
 
-O card de "Seus Links de Captação" será simplificado para:
-
-```text
-┌─────────────────────────────────────────────┐
-│ 🏢 Seus Empreendimentos                     │
-│                                             │
-│ ● 3 empreendimentos ativos                  │
-│                                             │
-│ [Gerenciar Empreendimentos →]               │
-└─────────────────────────────────────────────┘
-```
-
-### Nova Interface do BrokerProjects
-
-Estrutura melhorada com:
-
-```text
-┌─────────────────────────────────────────────┐
-│ Meus Empreendimentos                        │
-│ 3 ativos                      [+ Adicionar] │
-├─────────────────────────────────────────────┤
-│                                             │
-│ ┌─────────────────────────────────────────┐ │
-│ │ GoldenView           Portão             │ │
-│ │ /portao/goldenview/samyra-saltiel       │ │
-│ │ [📋 Copiar] [🔗 Abrir] [🗑️ Remover]    │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-│ ┌─────────────────────────────────────────┐ │
-│ │ Mauricio Cardoso     Novo Hamburgo      │ │
-│ │ /novohamburgo/mauriciocardoso/samyra... │ │
-│ │ [📋 Copiar] [🔗 Abrir] [🗑️ Remover]    │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-│ ┌─────────────────────────────────────────┐ │
-│ │ O Novo Condomínio    Estância Velha     │ │
-│ │ /estanciavelha/samyra-saltiel           │ │
-│ │ [📋 Copiar] [🔗 Abrir] [🗑️ Remover]    │ │
-│ └─────────────────────────────────────────┘ │
-│                                             │
-├─────────────────────────────────────────────┤
-│ 🔗 Seu Link Personalizado                   │
-│ samyra-saltiel                    [Salvar]  │
-│ (usado em todos os empreendimentos)         │
-└─────────────────────────────────────────────┘
-```
+| Cenário | Texto Principal | Alerta |
+|---------|----------------|--------|
+| 0/3 | "0 de 3 ativos" | "3 empreendimentos disponíveis para adicionar" |
+| 2/3 | "2 de 3 ativos" | "1 empreendimento disponível para adicionar" |
+| 3/3 | "3 de 3 ativos" | (sem alerta, card em estado normal) |
 
 ## Resultado Esperado
 
-1. **Samyra poderá adicionar empreendimentos** - A RLS permitirá INSERT
-2. **Empreendimentos aparecerão corretamente** - O banco salvará as associações
-3. **Interface mais limpa** - Dashboard principal focado em leads
-4. **Gerenciamento dedicado** - Página específica para empreendimentos
-5. **Escalável** - Funciona bem com 1 ou 20 empreendimentos
-
-## Ordem de Implementação
-
-1. **Migração SQL** - Corrigir RLS (resolve o bug imediatamente)
-2. **BrokerAdmin.tsx** - Simplificar card de empreendimentos
-3. **BrokerProjects.tsx** - Melhorar página de gerenciamento
-4. **use-broker-projects.ts** - Melhorar tratamento de erros
+1. **Corretor vê claramente** quantos empreendimentos tem vs. total
+2. **Incentivo visual** com barra de progresso e alerta
+3. **Call-to-action sutil** que direciona para página de gerenciamento
+4. **Experiência gamificada** - corretor quer "completar" a barra
