@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Search, RefreshCw, ExternalLink, Copy, Check, Building2, ArrowRight } from "lucide-react";
+import { Users, Search, RefreshCw, Building2, ArrowRight } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
 import LeadsTable from "@/components/admin/LeadsTable";
@@ -34,7 +34,7 @@ const BrokerAdmin = () => {
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
+  
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const navigate = useNavigate();
@@ -120,17 +120,6 @@ const BrokerAdmin = () => {
     navigate("/auth");
   };
 
-  const copyUrl = async (url: string) => {
-    const fullUrl = `${window.location.origin}${url}`;
-    await navigator.clipboard.writeText(fullUrl);
-    setCopiedUrl(url);
-    toast.success("Link copiado!");
-    setTimeout(() => setCopiedUrl(null), 2000);
-  };
-
-  const openLanding = (url: string) => {
-    window.open(url, "_blank");
-  };
 
   const handleAddLead = () => {
     setIsAddLeadOpen(true);
@@ -175,96 +164,41 @@ const BrokerAdmin = () => {
         <meta name="theme-color" content="#0f0f12" />
       </Helmet>
       <BrokerLayout
-      brokerName={broker?.name}
-      brokerInitial={brokerInitial}
-      viewMode={viewMode}
-      onViewChange={setViewMode}
-      onLogout={handleLogout}
-      onCopyLink={() => brokerProjects[0] && copyUrl(brokerProjects[0].url)}
-      onOpenLanding={() => brokerProjects[0] && openLanding(brokerProjects[0].url)}
-      onAddLead={handleAddLead}
-      searchTerm={viewMode === "list" ? searchTerm : undefined}
-      onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
-    >
-      {/* Multi-project Links Card */}
+        brokerName={broker?.name}
+        brokerInitial={brokerInitial}
+        viewMode={viewMode}
+        onViewChange={setViewMode}
+        onLogout={handleLogout}
+        onAddLead={handleAddLead}
+        searchTerm={viewMode === "list" ? searchTerm : undefined}
+        onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
+      >
+      {/* Compact Projects Summary Card */}
       {broker && (
-        <div className="bg-card border border-border rounded-xl p-4 mb-6">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-primary" />
-              <p className="text-sm font-medium text-white">Seus Links de Captação</p>
+        <div 
+          onClick={() => navigate("/corretor/empreendimentos")}
+          className="bg-card border border-border rounded-xl p-4 mb-6 cursor-pointer hover:border-primary/50 transition-colors group"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                <Building2 className="w-5 h-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-white">Seus Empreendimentos</p>
+                {isProjectsLoading ? (
+                  <p className="text-xs text-muted-foreground">Carregando...</p>
+                ) : brokerProjects.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Nenhum empreendimento associado</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    {brokerProjects.length} {brokerProjects.length === 1 ? 'empreendimento ativo' : 'empreendimentos ativos'}
+                  </p>
+                )}
+              </div>
             </div>
-            <button
-              onClick={() => navigate("/corretor/empreendimentos")}
-              className="flex items-center gap-1 text-xs text-primary hover:underline"
-            >
-              Gerenciar
-              <ArrowRight className="w-3 h-3" />
-            </button>
+            <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary transition-colors" />
           </div>
-          
-          {isProjectsLoading ? (
-            <div className="flex justify-center py-4">
-              <RefreshCw className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : brokerProjects.length === 0 ? (
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-3">
-                Nenhum empreendimento associado.
-              </p>
-              <button
-                onClick={() => navigate("/corretor/empreendimentos")}
-                className="text-sm text-primary hover:underline"
-              >
-                Adicionar empreendimentos
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {brokerProjects.slice(0, 3).map((bp) => (
-                <div
-                  key={bp.id}
-                  className="flex items-center justify-between gap-3 p-3 rounded-lg bg-background border border-border"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-white truncate">
-                      {bp.project.name}
-                    </p>
-                    <code className="text-xs text-muted-foreground truncate block">
-                      {bp.url}
-                    </code>
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <button
-                      onClick={() => copyUrl(bp.url)}
-                      className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
-                    >
-                      {copiedUrl === bp.url ? (
-                        <Check className="w-4 h-4" />
-                      ) : (
-                        <Copy className="w-4 h-4" />
-                      )}
-                    </button>
-                    <button
-                      onClick={() => openLanding(bp.url)}
-                      className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-              
-              {brokerProjects.length > 3 && (
-                <button
-                  onClick={() => navigate("/corretor/empreendimentos")}
-                  className="w-full text-center py-2 text-sm text-primary hover:underline"
-                >
-                  Ver todos ({brokerProjects.length} empreendimentos)
-                </button>
-              )}
-            </div>
-          )}
         </div>
       )}
 
