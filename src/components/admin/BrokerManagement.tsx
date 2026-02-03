@@ -355,18 +355,39 @@ const BrokerManagement = () => {
     );
   }
 
+  // Cores para avatares baseadas no nome
+  const getAvatarGradient = (name: string) => {
+    const gradients = [
+      'from-blue-500 to-purple-600',
+      'from-emerald-500 to-teal-600',
+      'from-orange-500 to-red-600',
+      'from-pink-500 to-rose-600',
+      'from-indigo-500 to-blue-600',
+      'from-amber-500 to-orange-600',
+    ];
+    const index = name.charCodeAt(0) % gradients.length;
+    return gradients[index];
+  };
+
+  const activeCount = brokers.filter(b => b.is_active).length;
+
   return (
     <div className="space-y-6">
-      {/* Header com botão de adicionar */}
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold text-white">Corretores</h2>
+      {/* Header Premium */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Corretores</h2>
+          <p className="text-sm text-slate-400 mt-1">
+            {activeCount} corretor{activeCount !== 1 ? 'es' : ''} ativo{activeCount !== 1 ? 's' : ''} de {brokers.length} total
+          </p>
+        </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
             <button
               onClick={() => handleOpenDialog()}
-              className="flex items-center gap-2 px-4 py-2 bg-[#FFFF00] text-black font-medium rounded-lg hover:brightness-110 transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[#FFFF00] text-black font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-[#FFFF00]/20"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-5 h-5" />
               Novo Corretor
             </button>
           </DialogTrigger>
@@ -483,133 +504,129 @@ const BrokerManagement = () => {
         </Dialog>
       </div>
 
-      {/* Lista de corretores */}
+      {/* Grid de Cards Premium */}
       {brokers.length === 0 ? (
-        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-12 text-center">
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-12 text-center">
           <p className="text-slate-400">Nenhum corretor cadastrado ainda.</p>
         </div>
       ) : (
-        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#1e1e22] border-b border-[#2a2a2e]">
-                <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Nome</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Email</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Último Acesso</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Leads</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Projetos</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Status</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Link</th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#2a2a2e]">
-                {brokers.map((broker) => (
-                  <tr key={broker.id} className="hover:bg-[#1e1e22] transition-colors">
-                    <td className="px-6 py-4">
-                      <span className="font-medium text-white">{broker.name}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-slate-400">{broker.email}</span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {lastAccessMap[broker.id] ? (
-                        <span className="text-sm text-slate-300">
-                          {formatDistanceToNow(new Date(lastAccessMap[broker.id]), {
-                            addSuffix: true,
-                            locale: ptBR,
-                          })}
-                        </span>
-                      ) : (
-                        <span className="text-xs text-slate-500">Nunca acessou</span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="text-sm font-medium text-white">
-                        {leadsCountMap[broker.id] || 0}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap gap-1">
-                        {broker.projects && broker.projects.length > 0 ? (
-                          broker.projects.map(project => (
-                            <span key={project.id} className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
-                              {project.name}
-                            </span>
-                          ))
-                        ) : (
-                          <span className="text-xs text-slate-500">Nenhum</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        onClick={() => toggleBrokerStatus(broker)}
-                        className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                          broker.is_active
-                            ? "bg-[#FFFF00]/10 text-[#FFFF00] hover:bg-[#FFFF00]/20"
-                            : "bg-red-500/10 text-red-400 hover:bg-red-500/20"
-                        }`}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {brokers.map((broker) => {
+            const lastAccess = lastAccessMap[broker.id];
+            const leadsCount = leadsCountMap[broker.id] || 0;
+            
+            return (
+              <div
+                key={broker.id}
+                onClick={() => setSelectedBrokerForHistory(broker)}
+                className={`
+                  bg-[#1e1e22] border rounded-2xl p-5
+                  cursor-pointer group relative
+                  hover:bg-[#252528] hover:border-[#3a3a3e]
+                  hover:shadow-xl hover:shadow-black/30
+                  hover:scale-[1.02]
+                  transition-all duration-200
+                  ${broker.is_active ? 'border-[#2a2a2e]' : 'border-red-500/20'}
+                `}
+              >
+                {/* Header: Avatar + Status */}
+                <div className="flex items-start justify-between mb-4">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getAvatarGradient(broker.name)} flex items-center justify-center shadow-lg`}>
+                    <span className="text-lg font-bold text-white">
+                      {broker.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleBrokerStatus(broker); }}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                      broker.is_active
+                        ? 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20 hover:bg-[#FFFF00]/20'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
+                    }`}
+                  >
+                    {broker.is_active ? 'Ativo' : 'Inativo'}
+                  </button>
+                </div>
+
+                {/* Nome e Email */}
+                <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-[#FFFF00] transition-colors">
+                  {broker.name}
+                </h3>
+                <p className="text-sm text-slate-400 mb-4 truncate">{broker.email}</p>
+
+                {/* Métricas */}
+                <div className="grid grid-cols-2 gap-3 mb-4">
+                  <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-white">{leadsCount}</p>
+                    <p className="text-xs text-slate-500">leads</p>
+                  </div>
+                  <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
+                    <p className="text-sm font-medium text-slate-300 truncate">
+                      {lastAccess
+                        ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR })
+                        : '—'
+                      }
+                    </p>
+                    <p className="text-xs text-slate-500">último acesso</p>
+                  </div>
+                </div>
+
+                {/* Projetos */}
+                <div className="flex flex-wrap gap-1.5 mb-4 min-h-[28px]">
+                  {broker.projects && broker.projects.length > 0 ? (
+                    broker.projects.slice(0, 3).map(project => (
+                      <span
+                        key={project.id}
+                        className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]"
                       >
-                        {broker.is_active ? "Ativo" : "Inativo"}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs bg-[#0f0f12] px-2 py-1 rounded text-slate-300">/estanciavelha/{broker.slug}</code>
-                        <button
-                          onClick={() => copyLink(broker.slug)}
-                          className="p-1 hover:bg-[#2a2a2e] rounded transition-colors"
-                          title="Copiar link"
-                        >
-                          {copiedSlug === broker.slug ? (
-                            <Check className="w-4 h-4 text-[#FFFF00]" />
-                          ) : (
-                            <Copy className="w-4 h-4 text-slate-500" />
-                          )}
-                        </button>
-                        <a
-                          href={`/estanciavelha/${broker.slug}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-1 hover:bg-[#2a2a2e] rounded transition-colors"
-                          title="Abrir página"
-                        >
-                          <ExternalLink className="w-4 h-4 text-slate-500" />
-                        </a>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => setSelectedBrokerForHistory(broker)}
-                          className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
-                          title="Ver histórico"
-                        >
-                          <BarChart3 className="w-4 h-4 text-blue-400" />
-                        </button>
-                        <button
-                          onClick={() => handleOpenDialog(broker)}
-                          className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
-                          title="Editar"
-                        >
-                          <Edit2 className="w-4 h-4 text-slate-500" />
-                        </button>
-                        <button
-                          onClick={() => deleteBroker(broker)}
-                          className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                          title="Excluir"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-400" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        {project.name}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-xs text-slate-500">Nenhum projeto</span>
+                  )}
+                  {broker.projects && broker.projects.length > 3 && (
+                    <span className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-400 border border-[#3a3a3e]">
+                      +{broker.projects.length - 3}
+                    </span>
+                  )}
+                </div>
+
+                {/* Ações */}
+                <div className="flex items-center gap-2 pt-3 border-t border-[#2a2a2e]">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-[#0f0f12] rounded-lg hover:bg-[#2a2a2e] transition-colors"
+                  >
+                    {copiedSlug === broker.slug ? (
+                      <Check className="w-3.5 h-3.5 text-[#FFFF00]" />
+                    ) : (
+                      <Copy className="w-3.5 h-3.5" />
+                    )}
+                    {copiedSlug === broker.slug ? 'Copiado!' : 'Copiar Link'}
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
+                    className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
+                    title="Editar"
+                  >
+                    <Edit2 className="w-4 h-4 text-slate-400 hover:text-white" />
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
+                    className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
+                    title="Excluir"
+                  >
+                    <Trash2 className="w-4 h-4 text-red-400" />
+                  </button>
+                </div>
+
+                {/* Indicador visual de clique */}
+                <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#FFFF00]/20 pointer-events-none transition-colors" />
+              </div>
+            );
+          })}
         </div>
       )}
 
