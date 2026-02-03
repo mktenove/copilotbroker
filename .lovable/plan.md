@@ -1,52 +1,54 @@
 
 
-# Plano: Atualizar URLs para Domínio Personalizado
+# Plano: Criar Imagem OG para Mauricio Cardoso
 
-## Objetivo
+## Contexto do Projeto
 
-Atualizar todas as referências de `onovocondominio.lovable.app` para `onovocondominio.com.br` em todo o projeto, garantindo que o SEO seja consolidado no domínio principal.
+O empreendimento Mauricio Cardoso utiliza:
+- **Cores principais**: Verde floresta (forest), tons terrosos (sage, cream, charcoal)
+- **Estilo visual**: Editorial, elegante, alto padrão
+- **Imagem do prédio**: `predio.png` (fachada do empreendimento)
+- **Headline**: "Quando o endereço é definitivo, o projeto precisa estar à altura"
 
-## Arquivos a Modificar
+## Especificações da Imagem OG
 
-| Arquivo | Mudanças |
-|---------|----------|
-| `public/sitemap.xml` | Atualizar todas as URLs para `.com.br` |
-| `public/robots.txt` | Atualizar URL do sitemap |
-| `index.html` | Atualizar canonical, og:url, twitter:url e schemas |
-| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Atualizar canonical, og:url, schemas |
-| `src/pages/goldenview/GoldenViewLandingPage.tsx` | Atualizar canonical, og:url, schemas |
-| `src/pages/EstanciaVelha.tsx` | Atualizar canonical, og:url, schemas |
+| Propriedade | Valor |
+|-------------|-------|
+| Dimensões | 1200 x 630 pixels |
+| Formato | JPG |
+| Destino | `public/mauriciocardoso-og.jpg` |
 
-## Detalhes das Mudanças
+## Abordagem
 
-### 1. `public/sitemap.xml`
-```xml
-<!-- De -->
-<loc>https://onovocondominio.lovable.app/portao/goldenview</loc>
-<!-- Para -->
-<loc>https://onovocondominio.com.br/portao/goldenview</loc>
-```
+Usar o modelo de geração de imagem AI (Nano banana) para criar uma imagem promocional elegante que combine:
 
-### 2. `public/robots.txt`
+1. **Fundo**: Renderização arquitetônica de prédio residencial moderno de alto padrão
+2. **Overlay**: Gradiente verde floresta escuro para contraste
+3. **Texto**: 
+   - "MAURICIO CARDOSO" (título principal)
+   - "Novo Hamburgo | RS" (localização)
+   - "Apartamentos de 95 a 125m²" (destaque)
+
+## Prompt para Geração
+
 ```text
-Sitemap: https://onovocondominio.com.br/sitemap.xml
+Professional real estate marketing banner, 1200x630 pixels, modern luxury apartment building facade, 
+elegant dark forest green gradient overlay, premium typography with "MAURICIO CARDOSO" in white serif font,
+"Novo Hamburgo | RS" subtitle, architectural visualization style, high-end real estate marketing,
+sophisticated and minimalist design, Brazilian contemporary architecture
 ```
 
-### 3. `index.html`
-- Canonical URL
-- og:url e og:image
-- twitter:url e twitter:image
-- JSON-LD schema URL
+## Implementação
 
-### 4. Landing Pages (MauricioCardoso, GoldenView, EstanciaVelha)
-- `canonicalUrl` variable
-- `ogImageUrl` variable
-- Todos os JSON-LD schemas (Residence, FAQ, Breadcrumb)
+1. Chamar API de geração de imagem com prompt otimizado
+2. Converter resultado para formato JPG
+3. Salvar em `public/mauriciocardoso-og.jpg`
 
 ## Resultado Esperado
 
-- Google indexará apenas o domínio `.com.br`
-- Sem duplicação de conteúdo entre domínios
-- Social sharing exibirá URLs corretas
-- Rich snippets apontarão para o domínio principal
+Uma imagem OG profissional que:
+- Represente o alto padrão do empreendimento
+- Mantenha consistência visual com a landing page
+- Seja otimizada para compartilhamento em redes sociais (WhatsApp, Facebook, LinkedIn)
+- Inclua informações essenciais de forma clara e elegante
 
