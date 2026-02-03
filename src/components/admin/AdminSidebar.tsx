@@ -119,16 +119,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
         {/* Bottom Section */}
         <div className="flex flex-col items-center gap-2 py-4 border-t border-[#2a2a2e]">
           {/* Notifications */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span>
-                <NotificationPanel />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
-              Notificações
-            </TooltipContent>
-          </Tooltip>
+          <NotificationPanel />
 
           {/* Settings */}
           <Tooltip>
