@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, ExternalLink, RefreshCw, Copy, Check } from "lucide-react";
+import { Plus, Edit2, Trash2, ExternalLink, RefreshCw, Copy, Check, BarChart3 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,10 @@ import {
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { BrokerActivitySheet } from "./BrokerActivitySheet";
+import { useBrokersLastAccess } from "@/hooks/use-broker-activity";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Project {
   id: string;
@@ -54,6 +58,9 @@ const BrokerManagement = () => {
     password: "",
   });
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
+  const [selectedBrokerForHistory, setSelectedBrokerForHistory] = useState<Broker | null>(null);
+  
+  const { lastAccessMap, leadsCountMap, fetchLastAccess } = useBrokersLastAccess();
 
   useEffect(() => {
     fetchBrokers();
@@ -103,6 +110,12 @@ const BrokerManagement = () => {
       });
 
       setBrokers(brokersWithProjects as Broker[]);
+      
+      // Buscar último acesso e contagem de leads
+      const brokerIds = (brokersWithProjects as Broker[]).map(b => b.id);
+      if (brokerIds.length > 0) {
+        fetchLastAccess(brokerIds);
+      }
     } catch (error) {
       console.error("Erro ao buscar corretores:", error);
       toast.error("Erro ao carregar corretores.");
@@ -483,6 +496,8 @@ const BrokerManagement = () => {
                 <tr>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Nome</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Email</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Último Acesso</th>
+                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Leads</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Projetos</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Status</th>
                   <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">Link</th>
@@ -497,6 +512,23 @@ const BrokerManagement = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-slate-400">{broker.email}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      {lastAccessMap[broker.id] ? (
+                        <span className="text-sm text-slate-300">
+                          {formatDistanceToNow(new Date(lastAccessMap[broker.id]), {
+                            addSuffix: true,
+                            locale: ptBR,
+                          })}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-500">Nunca acessou</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-sm font-medium text-white">
+                        {leadsCountMap[broker.id] || 0}
+                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <div className="flex flex-wrap gap-1">
@@ -551,6 +583,13 @@ const BrokerManagement = () => {
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-2">
                         <button
+                          onClick={() => setSelectedBrokerForHistory(broker)}
+                          className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
+                          title="Ver histórico"
+                        >
+                          <BarChart3 className="w-4 h-4 text-blue-400" />
+                        </button>
+                        <button
                           onClick={() => handleOpenDialog(broker)}
                           className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
                           title="Editar"
@@ -573,6 +612,13 @@ const BrokerManagement = () => {
           </div>
         </div>
       )}
+
+      {/* Sheet de Histórico do Corretor */}
+      <BrokerActivitySheet
+        broker={selectedBrokerForHistory}
+        isOpen={!!selectedBrokerForHistory}
+        onClose={() => setSelectedBrokerForHistory(null)}
+      />
     </div>
   );
 };
