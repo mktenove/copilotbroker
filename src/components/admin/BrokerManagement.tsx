@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, ExternalLink, RefreshCw, Copy, Check, BarChart3 } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import { BrokerActivitySheet } from "./BrokerActivitySheet";
 import { useBrokersLastAccess } from "@/hooks/use-broker-activity";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 interface Project {
   id: string;
@@ -349,8 +350,8 @@ const BrokerManagement = () => {
   if (isLoading) {
     return (
       <div className="p-12 text-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-[#FFFF00] mx-auto mb-4" />
-        <p className="text-slate-400">Carregando corretores...</p>
+        <RefreshCw className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
+        <p className="text-muted-foreground">Carregando corretores...</p>
       </div>
     );
   }
@@ -369,6 +370,16 @@ const BrokerManagement = () => {
     return gradients[index];
   };
 
+  // Barra de progresso baseada em leads
+  const getProgressPercentage = (leads: number): number => {
+    if (leads === 0) return 5;
+    if (leads <= 5) return 20;
+    if (leads <= 10) return 40;
+    if (leads <= 20) return 60;
+    if (leads <= 50) return 80;
+    return 100;
+  };
+
   const activeCount = brokers.filter(b => b.is_active).length;
 
   return (
@@ -376,8 +387,8 @@ const BrokerManagement = () => {
       {/* Header Premium */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-white">Corretores</h2>
-          <p className="text-sm text-slate-400 mt-1">
+          <h2 className="text-2xl font-bold text-foreground">Corretores</h2>
+          <p className="text-sm text-muted-foreground mt-1">
             {activeCount} corretor{activeCount !== 1 ? 'es' : ''} ativo{activeCount !== 1 ? 's' : ''} de {brokers.length} total
           </p>
         </div>
@@ -385,7 +396,7 @@ const BrokerManagement = () => {
           <DialogTrigger asChild>
             <button
               onClick={() => handleOpenDialog()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#FFFF00] text-black font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-[#FFFF00]/20"
+              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20"
             >
               <Plus className="w-5 h-5" />
               Novo Corretor
@@ -399,39 +410,39 @@ const BrokerManagement = () => {
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4 mt-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Nome Completo
                 </label>
                 <input
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder="Nome do corretor"
                 />
                 {!editingBroker && formData.name && (
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-muted-foreground">
                     URL: /estanciavelha/{generateSlug(formData.name)}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Email
                 </label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50 disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                   placeholder="email@exemplo.com"
                   disabled={!!editingBroker}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   WhatsApp
                 </label>
                 <WhatsAppInput
@@ -443,40 +454,40 @@ const BrokerManagement = () => {
 
               {/* Seleção de Empreendimentos */}
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Empreendimentos
                 </label>
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-[#2a2a2e] rounded-lg p-3 bg-[#0f0f12]">
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3 bg-background">
                   {projects.length > 0 ? (
                     projects.map(project => (
-                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-[#1e1e22] p-1 rounded">
+                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1 rounded">
                         <Checkbox
                           checked={selectedProjects.includes(project.id)}
                           onCheckedChange={() => toggleProject(project.id)}
                         />
-                        <span className="text-sm text-white">{project.name}</span>
-                        <span className="text-xs text-slate-500">({project.city})</span>
+                        <span className="text-sm text-foreground">{project.name}</span>
+                        <span className="text-xs text-muted-foreground">({project.city})</span>
                       </label>
                     ))
                   ) : (
-                    <p className="text-sm text-slate-500">Nenhum projeto disponível</p>
+                    <p className="text-sm text-muted-foreground">Nenhum projeto disponível</p>
                   )}
                 </div>
-                <p className="text-xs text-slate-500 mt-1">
+                <p className="text-xs text-muted-foreground mt-1">
                   Selecione os empreendimentos que este corretor pode vender
                 </p>
               </div>
 
               {!editingBroker && (
                 <div>
-                  <label className="block text-sm font-medium text-slate-300 mb-2">
+                  <label className="block text-sm font-medium text-muted-foreground mb-2">
                     Senha
                   </label>
                   <input
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full px-4 py-3 bg-[#0f0f12] border border-[#2a2a2e] rounded-lg text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-[#FFFF00]/50"
+                    className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                     placeholder="Mínimo 6 caracteres"
                   />
                 </div>
@@ -486,7 +497,7 @@ const BrokerManagement = () => {
                 <DialogClose asChild>
                   <button
                     type="button"
-                    className="flex-1 px-4 py-3 border border-[#2a2a2e] rounded-lg text-white hover:bg-[#1e1e22] transition-colors"
+                    className="flex-1 px-4 py-3 border border-border rounded-lg text-foreground hover:bg-muted transition-colors"
                   >
                     Cancelar
                   </button>
@@ -494,7 +505,7 @@ const BrokerManagement = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className="flex-1 px-4 py-3 bg-[#FFFF00] text-black font-medium rounded-lg hover:brightness-110 transition-all disabled:opacity-50"
+                  className="flex-1 px-4 py-3 bg-primary text-primary-foreground font-medium rounded-lg hover:brightness-110 transition-all disabled:opacity-50"
                 >
                   {isSubmitting ? "Salvando..." : "Salvar"}
                 </button>
@@ -504,10 +515,10 @@ const BrokerManagement = () => {
         </Dialog>
       </div>
 
-      {/* Grid de Cards Premium */}
+      {/* Grid de Cards Estilo Kanban */}
       {brokers.length === 0 ? (
-        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-12 text-center">
-          <p className="text-slate-400">Nenhum corretor cadastrado ainda.</p>
+        <div className="bg-card border border-border rounded-xl p-12 text-center">
+          <p className="text-muted-foreground">Nenhum corretor cadastrado ainda.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -519,111 +530,123 @@ const BrokerManagement = () => {
               <div
                 key={broker.id}
                 onClick={() => setSelectedBrokerForHistory(broker)}
-                className={`
-                  bg-[#1e1e22] border rounded-2xl p-5
-                  cursor-pointer group relative
-                  hover:bg-[#252528] hover:border-[#3a3a3e]
-                  hover:shadow-xl hover:shadow-black/30
-                  hover:scale-[1.02]
-                  transition-all duration-200
-                  ${broker.is_active ? 'border-[#2a2a2e]' : 'border-red-500/20'}
-                `}
+                className={cn(
+                  "relative rounded-xl cursor-pointer",
+                  "bg-card border border-border",
+                  "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+                  "transition-all duration-200 ease-out",
+                  "group overflow-hidden",
+                  !broker.is_active && "ring-2 ring-red-400/50"
+                )}
               >
-                {/* Header: Avatar + Status */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${getAvatarGradient(broker.name)} flex items-center justify-center shadow-lg`}>
-                    <span className="text-lg font-bold text-white">
-                      {broker.name.charAt(0).toUpperCase()}
+                <div className="p-3">
+                  {/* Row 1: Status + Data de cadastro */}
+                  <div className="flex items-start justify-between gap-2 mb-2.5">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
+                      broker.is_active
+                        ? "bg-primary/20 text-primary border-primary/40"
+                        : "bg-red-500/20 text-red-400 border-red-500/40"
+                    )}>
+                      {broker.is_active ? 'Ativo' : 'Inativo'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground shrink-0">
+                      {format(new Date(broker.created_at), "dd/MM HH:mm")}
                     </span>
                   </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleBrokerStatus(broker); }}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      broker.is_active
-                        ? 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20 hover:bg-[#FFFF00]/20'
-                        : 'bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20'
-                    }`}
-                  >
-                    {broker.is_active ? 'Ativo' : 'Inativo'}
-                  </button>
-                </div>
 
-                {/* Nome e Email */}
-                <h3 className="text-lg font-semibold text-white mb-1 group-hover:text-[#FFFF00] transition-colors">
-                  {broker.name}
-                </h3>
-                <p className="text-sm text-slate-400 mb-4 truncate">{broker.email}</p>
+                  {/* Row 2: Nome */}
+                  <h4 className="font-semibold text-foreground text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
+                    {broker.name}
+                  </h4>
 
-                {/* Métricas */}
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
-                    <p className="text-2xl font-bold text-white">{leadsCount}</p>
-                    <p className="text-xs text-slate-500">leads</p>
+                  {/* Row 3: Email */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                    <Mail className="w-3 h-3 text-muted-foreground/70" />
+                    <span className="truncate">{broker.email}</span>
                   </div>
-                  <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
-                    <p className="text-sm font-medium text-slate-300 truncate">
-                      {lastAccess
-                        ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR })
-                        : '—'
-                      }
-                    </p>
-                    <p className="text-xs text-slate-500">último acesso</p>
-                  </div>
-                </div>
 
-                {/* Projetos */}
-                <div className="flex flex-wrap gap-1.5 mb-4 min-h-[28px]">
-                  {broker.projects && broker.projects.length > 0 ? (
-                    broker.projects.slice(0, 3).map(project => (
-                      <span
-                        key={project.id}
-                        className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]"
-                      >
+                  {/* Row 4: Barra de progresso */}
+                  <div className="mb-3">
+                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full rounded-full transition-all duration-500",
+                          broker.is_active ? "bg-primary" : "bg-red-500"
+                        )}
+                        style={{ width: `${getProgressPercentage(leadsCount)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Row 5: Projetos */}
+                  <div className="flex flex-wrap gap-1.5 mb-3 min-h-[22px]">
+                    {broker.projects?.slice(0, 2).map(project => (
+                      <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground border border-border">
                         {project.name}
                       </span>
-                    ))
-                  ) : (
-                    <span className="text-xs text-slate-500">Nenhum projeto</span>
-                  )}
-                  {broker.projects && broker.projects.length > 3 && (
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-[#2a2a2e] text-slate-400 border border-[#3a3a3e]">
-                      +{broker.projects.length - 3}
-                    </span>
-                  )}
-                </div>
-
-                {/* Ações */}
-                <div className="flex items-center gap-2 pt-3 border-t border-[#2a2a2e]">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-300 bg-[#0f0f12] rounded-lg hover:bg-[#2a2a2e] transition-colors"
-                  >
-                    {copiedSlug === broker.slug ? (
-                      <Check className="w-3.5 h-3.5 text-[#FFFF00]" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
+                    ))}
+                    {(broker.projects?.length || 0) > 2 && (
+                      <span className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground">
+                        +{broker.projects!.length - 2}
+                      </span>
                     )}
-                    {copiedSlug === broker.slug ? 'Copiado!' : 'Copiar Link'}
-                  </button>
-                  <div className="flex-1" />
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
-                    className="p-2 hover:bg-[#2a2a2e] rounded-lg transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 className="w-4 h-4 text-slate-400 hover:text-white" />
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
-                    className="p-2 hover:bg-red-500/10 rounded-lg transition-colors"
-                    title="Excluir"
-                  >
-                    <Trash2 className="w-4 h-4 text-red-400" />
-                  </button>
-                </div>
+                    {(!broker.projects || broker.projects.length === 0) && (
+                      <span className="text-[10px] text-muted-foreground/50">Nenhum projeto</span>
+                    )}
+                  </div>
 
-                {/* Indicador visual de clique */}
-                <div className="absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-[#FFFF00]/20 pointer-events-none transition-colors" />
+                  {/* Row 6: Ações */}
+                  <div className="flex items-center gap-1 mb-3">
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
+                      className={cn(
+                        "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
+                        "bg-muted hover:bg-muted/80 text-muted-foreground rounded-lg",
+                        "font-medium text-xs transition-all"
+                      )}
+                    >
+                      {copiedSlug === broker.slug ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span>{copiedSlug === broker.slug ? 'Copiado!' : 'Link'}</span>
+                    </button>
+                    
+                    <div className="flex-1" />
+                    
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
+                      className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <Edit2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                    </button>
+                    
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
+                      className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                    >
+                      <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Row 7: Footer com métricas */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="w-5 h-5 border border-border">
+                        <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
+                          {broker.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-muted-foreground/50">•</span>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{lastAccess ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR }) : '—'}</span>
+                      </div>
+                    </div>
+                    
+                    <span className="text-[10px] text-muted-foreground font-medium">
+                      {leadsCount} lead{leadsCount !== 1 ? 's' : ''}
+                    </span>
+                  </div>
+                </div>
               </div>
             );
           })}
