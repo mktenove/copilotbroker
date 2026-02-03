@@ -3,7 +3,10 @@
   "short_name": "CRM",
   "description": "Sistema de Gestão de Leads - Enove Imobiliária",
   "start_url": "/corretor/admin",
+  "scope": "/corretor",
+  "id": "/corretor/admin",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#0f0f12",
   "theme_color": "#FFFF00",
   "icons": [
