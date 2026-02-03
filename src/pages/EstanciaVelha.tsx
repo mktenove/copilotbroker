@@ -142,7 +142,7 @@ const EstanciaVelha = () => {
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content="Enove Imobiliária" />
         <meta property="og:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
-        <meta property="og:description" content="Cadastre-se para acesso antecipado ao maior lançamento imobiliário de Estância Velha. 350 lotes exclusivos a partir de 500m²." />
+        <meta property="og:description" content="O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora." />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />
@@ -153,7 +153,7 @@ const EstanciaVelha = () => {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content={canonicalUrl} />
         <meta name="twitter:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
-        <meta name="twitter:description" content="Cadastre-se para acesso antecipado. 350 lotes exclusivos a partir de 500m²." />
+        <meta name="twitter:description" content="O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora." />
         <meta name="twitter:image" content={ogImageUrl} />
 
         {/* JSON-LD Schemas */}
