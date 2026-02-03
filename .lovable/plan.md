@@ -1,45 +1,112 @@
 
+## Objetivo (solução definitiva)
+Garantir que ao adicionar **onovocondominio.com.br/auth** à tela inicial do celular:
+1) o atalho **abra diretamente /auth** (login) quando deslogado  
+2) o ícone apareça com o **nome “CRM”** (não “Enove”)  
+3) se o usuário já estiver logado, pode **redirecionar para /admin ou /corretor/admin** (conforme você confirmou)
 
-# Plano: Corrigir OG Tags e Atualizar Texto de Estância Velha
+---
 
-## Diagnóstico do Problema
+## Diagnóstico do porquê está acontecendo
+Hoje o `index.html` define **sempre**:
+- `<link rel="manifest" href="/manifest.json">` (start_url = `/`)
+- `<meta name="apple-mobile-web-app-title" content="Enove">`
 
-As tags `og:image:width` e `og:image:height` **já existem** nos arquivos React. O problema é que:
+Então, quando o iPhone cria o atalho, ele tende a usar **o manifest padrão do site** e o “nome padrão” (“Enove”), e por isso o atalho abre a **raiz /** em vez de `/auth`.
 
-1. O React Helmet injeta as tags dinamicamente via JavaScript
-2. Crawlers como Facebook/WhatsApp podem não executar JavaScript completamente
-3. As tags no `index.html` (fallback estático) podem estar sendo lidas em vez das dinâmicas
+Nos dashboards (/admin e /corretor/admin) vocês já têm manifests específicos (`manifest-crm*.json`) via Helmet, mas o `/auth` não tem um manifest próprio e ainda herda o manifest do `index.html`.
 
-## Solução
+Para ficar definitivo, precisamos garantir que:
+- exista um **manifest próprio do /auth** com `start_url: "/auth"` e nome “CRM”
+- exista **apenas um manifest “válido” por rota** (evitando que o navegador escolha o errado)
 
-### 1. Garantir Fallback Estático no index.html
+---
 
-O `index.html` já tem tags OG genéricas que são sobrescritas pelo React Helmet. Precisamos verificar se estão corretas.
+## Solução proposta (robusta e consistente)
+### A) Criar um manifest dedicado para o atalho do login (CRM)
+Criar novo arquivo em `public/`:
 
-### 2. Atualizar Texto do Estância Velha
+- `public/manifest-crm-auth.json`
 
-| Tag | Texto Atual | Novo Texto |
-|-----|-------------|------------|
-| **og:title** | `Novo Condomínio em Estância Velha \| Lançamento 2025` | **Manter** |
-| **og:description** | `Cadastre-se para acesso antecipado ao maior lançamento imobiliário de Estância Velha...` | `O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora.` |
-| **twitter:description** | `Cadastre-se para acesso antecipado. 350 lotes exclusivos a partir de 500m².` | `O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora.` |
+Com:
+- `name`: `"CRM Enove"`
+- `short_name`: `"CRM"`
+- `start_url`: `"/auth"`
+- `scope`: `"/"` (importante para permitir navegar para `/admin` após login sem “sair do app”)
+- `id`: `"/auth"` (importante no iOS para diferenciar instalações)
+- cores iguais ao CRM (dark + amarelo)
+- ícones iguais aos atuais (pode manter `favicon-enove.jpg`, pois o requisito principal aqui é o **nome “CRM”** e o **start_url**)
 
-### 3. Verificar Imagem OG
+### B) Centralizar o “head” (manifest + título iOS) por rota (uma fonte de verdade)
+Criar um componente único de head (via `react-helmet-async`) que escolha automaticamente qual manifest usar conforme a URL.
 
-A imagem `mauriciocardoso-og.jpg` foi criada mas precisa ser **publicada** para que o Facebook/WhatsApp possam acessá-la via HTTPS.
+Regras:
+- Se rota começa com `/admin` → usar `/manifest-crm.json` e `apple-mobile-web-app-title=CRM`
+- Se rota começa com `/corretor` → usar `/manifest-crm-broker.json` e `apple-mobile-web-app-title=CRM`
+- Se rota é `/auth` → usar `/manifest-crm-auth.json` e `apple-mobile-web-app-title=CRM`
+- Caso contrário (site público) → usar `/manifest.json` e `apple-mobile-web-app-title=Enove`
 
-## Arquivos a Modificar
+Implementação:
+- Ajustar `src/App.tsx` para renderizar esse “AppHead” **dentro** do `BrowserRouter` usando `useLocation()` (pois precisa ler o pathname).
+- Isso elimina “efeitos colaterais” de múltiplos `<link rel="manifest">` competindo entre si.
 
-| Arquivo | Mudança |
-|---------|---------|
-| `src/pages/EstanciaVelha.tsx` | Atualizar `og:description` e `twitter:description` |
+### C) Remover do `index.html` os itens que causam conflito
+Editar `index.html` para remover:
+- `<link rel="manifest" href="/manifest.json" />`
+- `<meta name="apple-mobile-web-app-title" content="Enove" />`
+- (opcional mas recomendado) também remover o `<meta name="theme-color" ...>` estático, e deixar o AppHead setar `theme-color` por rota (Enove vs CRM), para manter coerência.
 
-## Passos Pós-Implementação
+Motivo: tags estáticas no `index.html` são sempre carregadas e podem ser “escolhidas” pelo iOS no momento de criar o atalho, mesmo que depois o React injete outras.
 
-Após publicar as alterações:
+### D) Evitar duplicidade: limpar Helmet específico dos dashboards
+Como `/admin` e `/corretor/admin` hoje já definem `<Helmet>` com manifest e apple title, vamos:
+- Remover ou reduzir esses blocos em:
+  - `src/pages/Admin.tsx`
+  - `src/pages/BrokerAdmin.tsx`
+Deixar neles apenas o que for realmente “da página” (se houver), e o PWA/manifest fica centralizado no AppHead.
 
-1. Acesse o [Facebook Sharing Debugger](https://developers.facebook.com/tools/debug/)
-2. Cole a URL: `https://onovocondominio.com.br/novohamburgo/mauriciocardoso`
-3. Clique em "Fetch new information" para limpar o cache
-4. Repita para as outras páginas
+### E) Garantir o nome “CRM” no ícone do /auth
+Atualizar `src/pages/Auth.tsx` para incluir `<Helmet>` com pelo menos:
+- `<title>` apropriado (ex: “CRM | Login”)
+- (se quisermos redundância segura) repetir `apple-mobile-web-app-title=CRM` e `theme-color` ali também  
+Mas o ponto principal é que o AppHead já fará isso.
+
+---
+
+## Arquivos envolvidos
+1) **Criar**
+- `public/manifest-crm-auth.json`
+
+2) **Modificar**
+- `index.html` (remover manifest e apple-mobile-web-app-title estáticos)
+- `src/App.tsx` (criar/AppHead + roteamento para setar manifest por URL)
+- `src/pages/Admin.tsx` (remover Helmet de manifest/apple title para evitar duplicidade)
+- `src/pages/BrokerAdmin.tsx` (mesmo)
+- `src/pages/Auth.tsx` (adicionar título e, se desejável, redundância de meta/manifest — ou apenas título)
+
+---
+
+## Critérios de aceite (o que você vai ver na prática)
+No iPhone (Safari):
+1) Abrir **https://onovocondominio.com.br/auth**
+2) “Compartilhar” → “Adicionar à Tela de Início”
+3) O atalho deve aparecer como **CRM**
+4) Ao tocar no ícone:
+   - se **deslogado**: abre diretamente **/auth**
+   - se **logado**: pode redirecionar para **/admin** ou **/corretor/admin** (comportamento atual do app)
+
+---
+
+## Passo a passo de teste (para evitar cache do iOS)
+Depois de publicar:
+1) Apagar o atalho antigo da tela inicial (“Enove”/atalho anterior).
+2) iOS: Ajustes → Safari → **Limpar Histórico e Dados dos Sites** (opcional, mas ajuda).
+3) Fechar o Safari totalmente (deslizar pra cima e remover da multitarefa).
+4) Abrir `/auth` de novo e adicionar o atalho novamente.
+
+---
+
+## Observação importante (por que isso resolve “definitivamente”)
+O principal “pulo do gato” é tirar do `index.html` o manifest fixo que força `start_url: "/"`.  
+Com o manifest selecionado por rota (AppHead), a página `/auth` passa a “anunciar” um manifest cujo `start_url` é `/auth`, e o iOS deixa de ter motivo para criar o atalho apontando para a raiz.
 
