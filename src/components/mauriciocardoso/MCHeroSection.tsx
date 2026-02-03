@@ -9,11 +9,16 @@ const MCHeroSection = () => {
   };
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section 
+      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      aria-labelledby="hero-heading"
+    >
       {/* Background Image */}
       <div 
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
         style={{ backgroundImage: `url(${predioImage})` }}
+        role="img"
+        aria-label="Fachada do empreendimento Mauricio Cardoso em Novo Hamburgo"
       />
       
       {/* Overlay - More dramatic */}
@@ -23,7 +28,10 @@ const MCHeroSection = () => {
       <div className="relative z-10 container mx-auto px-4 md:px-6 text-center pt-20 md:pt-24">
         <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 animate-fade-up">
           {/* Main Headline - Mobile optimized */}
-          <h1 className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-normal text-white leading-[1.2] md:leading-[1.15] tracking-[0.02em]">
+          <h1 
+            id="hero-heading"
+            className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-normal text-white leading-[1.2] md:leading-[1.15] tracking-[0.02em]"
+          >
             Quando o endereço é definitivo,
             <br />
             <span className="text-white/90 italic">
@@ -49,6 +57,7 @@ const MCHeroSection = () => {
             <button
               onClick={scrollToForm}
               className="inline-flex items-center gap-2 md:gap-3 px-6 sm:px-8 md:px-10 py-4 md:py-5 bg-white text-[hsl(var(--mc-forest))] font-medium uppercase tracking-[0.15em] md:tracking-[0.2em] text-[11px] sm:text-xs rounded hover:bg-[hsl(var(--mc-sage-light))] hover:text-white transition-all duration-500 hover:scale-[1.02] min-h-[48px]"
+              aria-label="Quero receber informações sobre o empreendimento"
             >
               Quero receber informações
             </button>
@@ -56,7 +65,7 @@ const MCHeroSection = () => {
         </div>
 
         {/* Scroll Indicator - Hidden on small mobile */}
-        <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 flex-col items-center gap-3 animate-float hidden sm:flex">
+        <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 flex-col items-center gap-3 animate-float hidden sm:flex" aria-hidden="true">
           <span className="text-[10px] uppercase tracking-[0.3em] text-white/50">Scroll</span>
           <div className="w-px h-10 md:h-12 bg-gradient-to-b from-white/50 to-transparent" />
         </div>
