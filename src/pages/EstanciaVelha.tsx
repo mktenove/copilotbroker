@@ -38,41 +38,102 @@ const EstanciaVelha = () => {
   const canonicalUrl = "https://onovocondominio.lovable.app/estanciavelha";
   const ogImageUrl = "https://onovocondominio.lovable.app/og-image.jpg";
 
-  const structuredData = {
+  // Rich Residence Schema
+  const residenceSchema = {
     "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
-    "name": "Enove Imobiliária",
-    "description": "Comercialização exclusiva do novo condomínio de alto padrão em Estância Velha - RS",
+    "@type": "Residence",
+    "@id": `${canonicalUrl}#residence`,
+    "name": "Condomínio Alto Padrão Estância Velha",
+    "description": "Condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão.",
     "url": canonicalUrl,
-    "telephone": "+55-51-0000-0000",
+    "image": ogImageUrl,
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Estância Velha",
       "addressRegion": "RS",
-      "addressCountry": "BR"
+      "addressCountry": "BR",
+      "postalCode": "93600-000"
     },
-    "areaServed": {
-      "@type": "City",
-      "name": "Estância Velha"
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "-29.6544",
+      "longitude": "-51.1789"
     },
-    "makesOffer": {
-      "@type": "Offer",
-      "itemOffered": {
-        "@type": "Product",
-        "name": "Lotes em Condomínio Fechado",
-        "description": "350 lotes exclusivos a partir de 500m² em condomínio fechado de alto padrão"
+    "amenityFeature": [
+      { "@type": "LocationFeatureSpecification", "name": "Vista panorâmica", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Piscina aquecida", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Segurança 24h", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Clube", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Quadras esportivas", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Trilhas", "value": true }
+    ],
+    "floorSize": {
+      "@type": "QuantitativeValue",
+      "minValue": 500,
+      "unitCode": "MTK"
+    },
+    "numberOfRooms": "350 lotes a partir de 500m²",
+    "petsAllowed": true,
+    "tourBookingPage": `${canonicalUrl}#cadastro`
+  };
+
+  // FAQ Schema for Rich Snippets
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Qual o tamanho mínimo dos lotes em Estância Velha?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Os lotes têm tamanho mínimo de 500m², ideais para construir a casa dos seus sonhos com amplo espaço."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quantos lotes estão disponíveis no condomínio?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "São 350 lotes exclusivos disponíveis neste empreendimento de alto padrão em Estância Velha."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O condomínio possui piscina aquecida?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim, o condomínio conta com piscina aquecida além de clube completo, quadras esportivas e trilhas ecológicas."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quem é a incorporadora do empreendimento?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O empreendimento é uma realização da Ábaco Incorporadora com comercialização exclusiva da Enove Imobiliária."
+        }
       }
-    }
+    ]
+  };
+
+  // Breadcrumb Schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.lovable.app" },
+      { "@type": "ListItem", "position": 2, "name": "Estância Velha", "item": canonicalUrl }
+    ]
   };
 
   return (
     <>
-      {/* Skip to main content - Accessibility */}
       <Helmet>
         <title>Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²</title>
         <meta name="title" content="Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²" />
         <meta name="description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão." />
-        <meta name="keywords" content="condomínio fechado Estância Velha, terrenos Vale dos Sinos, lotes alto padrão RS, Ábaco Incorporadora, Enove Imobiliária, lançamento imobiliário 2025" />
+        <meta name="keywords" content="condomínio fechado Estância Velha, terrenos Vale dos Sinos, lotes alto padrão RS, Ábaco Incorporadora, Enove Imobiliária, lançamento imobiliário 2025, lotes 500m², condomínio piscina aquecida" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 
@@ -95,9 +156,15 @@ const EstanciaVelha = () => {
         <meta name="twitter:description" content="Cadastre-se para acesso antecipado. 350 lotes exclusivos a partir de 500m²." />
         <meta name="twitter:image" content={ogImageUrl} />
 
-        {/* Schema.org JSON-LD */}
+        {/* JSON-LD Schemas */}
         <script type="application/ld+json">
-          {JSON.stringify(structuredData)}
+          {JSON.stringify(residenceSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(faqSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbSchema)}
         </script>
       </Helmet>
 

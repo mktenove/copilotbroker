@@ -84,31 +84,95 @@ const GoldenViewLandingPage = () => {
   const canonicalUrl = "https://onovocondominio.lovable.app/portao/goldenview";
   const ogImageUrl = "https://onovocondominio.lovable.app/goldenview-og.jpg";
 
-  const structuredData = {
+  // Rich Residence Schema
+  const residenceSchema = {
     "@context": "https://schema.org",
-    "@type": "RealEstateAgent",
+    "@type": "Residence",
+    "@id": `${canonicalUrl}#residence`,
     "name": "GoldenView Residencial",
-    "description": "Condomínio fechado de alto padrão em Portão - RS. Vista panorâmica e infraestrutura completa.",
+    "description": "Condomínio fechado de alto padrão em Portão - RS com vista panorâmica. Lotes de 300m² a 600m² com infraestrutura completa.",
     "url": canonicalUrl,
-    "telephone": "+55-51-0000-0000",
+    "image": ogImageUrl,
     "address": {
       "@type": "PostalAddress",
       "addressLocality": "Portão",
       "addressRegion": "RS",
-      "addressCountry": "BR"
+      "addressCountry": "BR",
+      "postalCode": "93180-000"
     },
-    "areaServed": {
-      "@type": "City",
-      "name": "Portão"
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": "-29.5489",
+      "longitude": "-51.1639"
     },
-    "makesOffer": {
-      "@type": "Offer",
-      "itemOffered": {
-        "@type": "Product",
-        "name": "Lotes em Condomínio Fechado GoldenView",
-        "description": "Terrenos exclusivos de alto padrão com vista panorâmica em condomínio fechado"
+    "amenityFeature": [
+      { "@type": "LocationFeatureSpecification", "name": "Vista panorâmica", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Segurança 24h", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Piscina", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Clube", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Quadras esportivas", "value": true },
+      { "@type": "LocationFeatureSpecification", "name": "Trilhas ecológicas", "value": true }
+    ],
+    "floorSize": {
+      "@type": "QuantitativeValue",
+      "minValue": 300,
+      "maxValue": 600,
+      "unitCode": "MTK"
+    },
+    "numberOfRooms": "Lotes de 300m² a 600m²",
+    "petsAllowed": true,
+    "tourBookingPage": `${canonicalUrl}#cadastro`
+  };
+
+  // FAQ Schema for Rich Snippets
+  const faqSchema = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Qual o tamanho dos lotes no GoldenView?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Os lotes variam de 300m² a 600m², todos com vista panorâmica e infraestrutura completa."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "O condomínio GoldenView tem segurança 24h?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Sim, o GoldenView conta com portaria 24h, controle de acesso e sistema de segurança completo com monitoramento por câmeras."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Quais são as opções de lazer do GoldenView?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O condomínio oferece clube completo com piscina, quadras esportivas, trilhas ecológicas, salão de festas e área gourmet."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Onde fica localizado o GoldenView?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "O GoldenView está localizado em Portão, RS, em uma região privilegiada com vista panorâmica para o Vale dos Sinos."
+        }
       }
-    }
+    ]
+  };
+
+  // Breadcrumb Schema
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      { "@type": "ListItem", "position": 1, "name": "Início", "item": "https://onovocondominio.lovable.app" },
+      { "@type": "ListItem", "position": 2, "name": "Portão", "item": "https://onovocondominio.lovable.app/portao" },
+      { "@type": "ListItem", "position": 3, "name": "GoldenView", "item": canonicalUrl }
+    ]
   };
 
   return (
@@ -117,7 +181,7 @@ const GoldenViewLandingPage = () => {
         <title>GoldenView | Condomínio de Alto Padrão em Portão - RS</title>
         <meta name="title" content="GoldenView | Condomínio de Alto Padrão em Portão" />
         <meta name="description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos de alto padrão em Portão. Vista panorâmica, segurança 24h e valorização garantida. Construsinos + Maricler." />
-        <meta name="keywords" content="condomínio fechado Portão, terrenos alto padrão Portão RS, GoldenView Residencial, Construsinos, Maricler, lotes Portão 2026, condomínio vista panorâmica" />
+        <meta name="keywords" content="condomínio fechado Portão, terrenos alto padrão Portão RS, GoldenView Residencial, Construsinos, Maricler, lotes Portão 2026, condomínio vista panorâmica, lotes 300m², lotes 600m²" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 
@@ -140,9 +204,15 @@ const GoldenViewLandingPage = () => {
         <meta name="twitter:description" content="Pré-lançamento exclusivo. Vista panorâmica e segurança 24h." />
         <meta name="twitter:image" content={ogImageUrl} />
 
-        {/* Schema.org JSON-LD */}
+        {/* JSON-LD Schemas */}
         <script type="application/ld+json">
-          {JSON.stringify(structuredData)}
+          {JSON.stringify(residenceSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(faqSchema)}
+        </script>
+        <script type="application/ld+json">
+          {JSON.stringify(breadcrumbSchema)}
         </script>
       </Helmet>
 
@@ -156,7 +226,7 @@ const GoldenViewLandingPage = () => {
 
       <GVHeader />
       
-      <main>
+      <main id="main-content" role="main">
         <GVHeroSection />
         <GVPartnersSection />
         <GVFeaturesSection />
