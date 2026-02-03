@@ -1,240 +1,210 @@
 
-# Histórico de Acessos e Registro de Atividades dos Corretores
+# Redesign Premium - Página de Corretores
 
 ## Objetivo
-Adicionar na página de gerenciamento de corretores um sistema que mostre:
-1. **Histórico de logins** de cada corretor (último acesso, total de acessos)
-2. **Registro de atividades** no CRM (leads movidos, notas adicionadas, documentos processados)
+Transformar a página de gerenciamento de corretores de uma tabela tradicional para um layout moderno com cards premium clicáveis que abrem o histórico de atividades do corretor.
 
 ---
 
-## Arquitetura da Solução
+## Nova Interface Visual
 
-### 1. Nova Tabela: `broker_activity_logs`
-Armazenar atividades relevantes dos corretores de forma estruturada:
-
-```sql
-CREATE TABLE broker_activity_logs (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID REFERENCES brokers(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
-  activity_type TEXT NOT NULL, -- 'login', 'lead_update', 'note_added', 'doc_processed', 'status_change'
-  lead_id UUID REFERENCES leads(id) ON DELETE SET NULL,
-  details JSONB, -- metadados extras
-  ip_address TEXT,
-  user_agent TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 2. Nova Tabela: `broker_sessions`
-Rastrear sessões de login para histórico de acessos:
-
-```sql
-CREATE TABLE broker_sessions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID REFERENCES brokers(id) ON DELETE CASCADE,
-  user_id UUID NOT NULL,
-  logged_in_at TIMESTAMPTZ DEFAULT now(),
-  last_activity_at TIMESTAMPTZ DEFAULT now(),
-  ip_address TEXT,
-  user_agent TEXT
-);
-```
-
-### 3. Registro Automático de Login
-Criar um hook que registra automaticamente quando um corretor faz login:
-- Arquivo: `src/hooks/use-broker-session-tracker.ts`
-- Registra sessão ao detectar login no auth state change
-
-### 4. Atualização do `lead_interactions`
-Aproveitar a tabela existente para vincular `broker_id` corretamente quando corretores fazem ações.
-
----
-
-## Interface no Painel Admin
-
-### Adicionar ao `BrokerManagement.tsx`:
-
-#### Opção A: Modal de Detalhes do Corretor
-Ao clicar no corretor, abrir um modal/sheet com abas:
-- **Informações**: dados atuais
-- **Acessos**: histórico de logins
-- **Atividades**: timeline de ações no CRM
-
-#### Opção B: Coluna Expandível
-Adicionar botão "Ver histórico" que expande uma seção com:
-- Último acesso
-- Total de logins este mês
-- Leads atendidos
-- Atividades recentes
-
-### Design Proposto
+### Layout: Cards em Grid
 
 ```text
-┌─────────────────────────────────────────────────────────────────┐
-│ Corretores                                         [+ Novo]     │
-├─────────────────────────────────────────────────────────────────┤
-│ Nome         │ Email       │ Último Acesso │ Leads │ Ações     │
-├──────────────┼─────────────┼───────────────┼───────┼───────────┤
-│ João Gabriel │ joao@...    │ Há 2 horas    │   15  │ 📊 ✏️ 🗑️ │
-│ Maicon       │ maicon@...  │ Ontem 14:30   │   23  │ 📊 ✏️ 🗑️ │
-└─────────────────────────────────────────────────────────────────┘
-
-Ao clicar em 📊 (detalhes):
-
-┌─────────────────────────────────────────────────────────────────┐
-│ Histórico - João Gabriel                               [Fechar] │
-├─────────────────────────────────────────────────────────────────┤
-│ [Acessos] [Atividades]                                          │
-├─────────────────────────────────────────────────────────────────┤
-│ Acessos Recentes:                                               │
-│ • 03/02 22:33 - Login via token                                 │
-│ • 02/02 14:15 - Login via senha                                 │
-│ • 01/02 09:20 - Login via senha                                 │
-├─────────────────────────────────────────────────────────────────┤
-│ Resumo do Mês:                                                  │
-│ 📅 12 dias ativos  │  🔐 28 logins  │  📈 15 leads atendidos    │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Corretores                                           [+ Novo Corretor]  │
+│ 18 corretores ativos                                                    │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐            │
+│  │  ●                  ✓    │  │  ●                  ✓    │            │
+│  │                          │  │                          │            │
+│  │  João Gabriel            │  │  Maria Silva             │            │
+│  │  joao@imob.com           │  │  maria@imob.com          │            │
+│  │                          │  │                          │            │
+│  │  ┌────────┐ ┌────────┐   │  │  ┌────────┐ ┌────────┐   │            │
+│  │  │  15    │ │ Há 2h  │   │  │  │  23    │ │ Ontem  │   │            │
+│  │  │ leads  │ │ acesso │   │  │  │ leads  │ │ acesso │   │            │
+│  │  └────────┘ └────────┘   │  │  └────────┘ └────────┘   │            │
+│  │                          │  │                          │            │
+│  │  GoldenView  Estância V  │  │  Maurício C.             │            │
+│  │                          │  │                          │            │
+│  │  ─────────────────────   │  │  ─────────────────────   │            │
+│  │  [Copiar Link] [✏️] [🗑️] │  │  [Copiar Link] [✏️] [🗑️] │            │
+│  └──────────────────────────┘  └──────────────────────────┘            │
+│                                                                         │
+│  ┌──────────────────────────┐  ┌──────────────────────────┐            │
+│  │  ○                  ✗    │  │  ●                  ✓    │            │
+│  │                          │  │                          │            │
+│  │  Pedro Santos (inativo)  │  │  Ana Costa               │            │
+│  │  ...                     │  │  ...                     │            │
+│  └──────────────────────────┘  └──────────────────────────┘            │
+│                                                                         │
+└─────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Implementação - Etapas
+## Componentes do Redesign
 
-### Etapa 1: Banco de Dados
-1. Criar tabela `broker_sessions` para rastrear logins
-2. Criar tabela `broker_activity_logs` para atividades
-3. Configurar RLS adequado (admins veem tudo, corretores veem só suas atividades)
-4. Criar índices para performance
+### 1. Card do Corretor (Clicável)
+- **Estrutura visual:**
+  - Avatar com inicial do nome (gradiente colorido)
+  - Badge de status (ativo/inativo) no canto superior direito
+  - Nome e email do corretor
+  - Métricas em mini-cards: Leads atendidos + Último acesso
+  - Tags dos projetos associados
+  - Barra de ações na parte inferior
 
-### Etapa 2: Rastreamento de Login
-1. Criar hook `use-broker-session-tracker.ts`
-2. Integrar no `BrokerLayout.tsx` e `AdminLayout.tsx`
-3. Registrar sessão no primeiro load após login
+- **Interação:**
+  - Clicar no card abre o BrokerActivitySheet
+  - Hover sutil com elevação (scale + shadow)
+  - Botões de ação (editar, excluir, copiar) param propagação
 
-### Etapa 3: Rastreamento de Atividades
-1. Modificar funções de status change para registrar broker_id
-2. Atualizar `use-lead-interactions.ts` para logar atividades
-3. Registrar quando corretor adiciona nota, move lead, processa doc
+### 2. Header Aprimorado
+- Contador de corretores ativos/total
+- Botão "Novo Corretor" com destaque
+- Filtro rápido (ativos/inativos/todos)
 
-### Etapa 4: Interface do Admin
-1. Criar componente `BrokerActivitySheet.tsx`
-2. Adicionar colunas "Último Acesso" e "Leads" na tabela
-3. Criar hook `use-broker-activity.ts` para buscar dados
-4. Implementar abas de Acessos e Atividades
+### 3. Grid Responsivo
+- Desktop: 3 colunas
+- Tablet: 2 colunas  
+- Mobile: 1 coluna
 
 ---
 
-## Detalhes Técnicos
+## Detalhes de Estilo Premium
 
-### Políticas RLS
+### Paleta de Cores (consistente com dark theme)
+- Background cards: `#1e1e22`
+- Background hover: `#252528`
+- Bordas: `#2a2a2e`
+- Accent (ativo): `#FFFF00`
+- Status inativo: `#ef4444`
+- Métricas: gradientes sutis
 
-```sql
--- Admins veem todas as sessões
-CREATE POLICY "Admins podem ver todas as sessões"
-  ON broker_sessions FOR SELECT
-  USING (has_role(auth.uid(), 'admin'));
+### Tipografia
+- Nome: `text-lg font-semibold text-white`
+- Email: `text-sm text-slate-400`
+- Métricas: `text-xl font-bold` com labels `text-xs text-slate-500`
 
--- Corretores veem suas próprias sessões
-CREATE POLICY "Corretores veem suas sessões"
-  ON broker_sessions FOR SELECT
-  USING (user_id = auth.uid());
+### Animações
+- Hover: `transform scale-[1.02]` + `shadow-lg`
+- Transição suave: `transition-all duration-200`
 
--- Insert permitido para usuários autenticados
-CREATE POLICY "Usuários podem registrar sua sessão"
-  ON broker_sessions FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+---
+
+## Alterações Técnicas
+
+### Arquivo: `src/components/admin/BrokerManagement.tsx`
+
+1. **Substituir tabela por grid de cards**
+   - Remover `<table>` e substituir por `<div className="grid">`
+   - Criar componente interno `BrokerCard`
+
+2. **Tornar card clicável**
+   - `onClick={() => setSelectedBrokerForHistory(broker)}`
+   - Botões de ação usam `e.stopPropagation()`
+
+3. **Adicionar métricas visuais**
+   - Avatar com inicial colorida
+   - Mini-cards para leads e último acesso
+   - Status badge no canto
+
+4. **Header aprimorado**
+   - Adicionar contador de corretores
+   - Opcional: filtro de status
+
+---
+
+## Estrutura do Card Premium
+
+```tsx
+<div 
+  onClick={() => setSelectedBrokerForHistory(broker)}
+  className="
+    bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-5
+    cursor-pointer group
+    hover:bg-[#252528] hover:border-[#3a3a3e]
+    hover:shadow-xl hover:shadow-black/20
+    hover:scale-[1.02]
+    transition-all duration-200
+  "
+>
+  {/* Header: Avatar + Status */}
+  <div className="flex items-start justify-between mb-4">
+    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 
+                    flex items-center justify-center">
+      <span className="text-lg font-bold text-white">
+        {broker.name.charAt(0).toUpperCase()}
+      </span>
+    </div>
+    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+      broker.is_active 
+        ? 'bg-[#FFFF00]/10 text-[#FFFF00] border border-[#FFFF00]/20'
+        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+    }`}>
+      {broker.is_active ? 'Ativo' : 'Inativo'}
+    </span>
+  </div>
+
+  {/* Info */}
+  <h3 className="text-lg font-semibold text-white mb-1">{broker.name}</h3>
+  <p className="text-sm text-slate-400 mb-4">{broker.email}</p>
+
+  {/* Métricas */}
+  <div className="grid grid-cols-2 gap-3 mb-4">
+    <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
+      <p className="text-xl font-bold text-white">{leadsCount}</p>
+      <p className="text-xs text-slate-500">leads</p>
+    </div>
+    <div className="bg-[#0f0f12] rounded-xl p-3 text-center">
+      <p className="text-sm font-medium text-slate-300">{lastAccess}</p>
+      <p className="text-xs text-slate-500">último acesso</p>
+    </div>
+  </div>
+
+  {/* Projetos */}
+  <div className="flex flex-wrap gap-1.5 mb-4">
+    {projects.map(p => (
+      <span className="px-2 py-0.5 text-xs rounded-full 
+                       bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
+        {p.name}
+      </span>
+    ))}
+  </div>
+
+  {/* Ações */}
+  <div className="flex items-center gap-2 pt-3 border-t border-[#2a2a2e]">
+    <button onClick={e => { e.stopPropagation(); copyLink(broker.slug); }}>
+      Copiar Link
+    </button>
+    <button onClick={e => { e.stopPropagation(); handleOpenDialog(broker); }}>
+      Editar
+    </button>
+    <button onClick={e => { e.stopPropagation(); deleteBroker(broker); }}>
+      Excluir
+    </button>
+  </div>
+</div>
 ```
 
-### Hook de Rastreamento
+---
 
-```typescript
-// src/hooks/use-broker-session-tracker.ts
-export const useBrokerSessionTracker = () => {
-  useEffect(() => {
-    const trackSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
-      
-      // Verificar se é corretor
-      const { data: broker } = await supabase
-        .from('brokers')
-        .select('id')
-        .eq('user_id', session.user.id)
-        .single();
-      
-      if (broker) {
-        await supabase.from('broker_sessions').insert({
-          broker_id: broker.id,
-          user_id: session.user.id,
-        });
-      }
-    };
-    
-    trackSession();
-  }, []);
-};
-```
+## Arquivos a Modificar
 
-### Componente de Atividades
-
-```typescript
-// src/components/admin/BrokerActivitySheet.tsx
-interface BrokerActivitySheetProps {
-  broker: Broker;
-  isOpen: boolean;
-  onClose: () => void;
-}
-
-// Mostra histórico de acessos + timeline de atividades
-```
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/admin/BrokerManagement.tsx` | Substituir tabela por grid de cards premium clicáveis |
 
 ---
 
-## Dados Mostrados
+## Resultado Esperado
 
-### Painel de Acessos
-- Data/hora do login
-- Método (senha, token/refresh)
-- IP e dispositivo (se disponível)
-- Tempo desde último acesso
-
-### Painel de Atividades
-- Leads movidos de status
-- Notas adicionadas
-- Documentos marcados como recebidos
-- Leads atribuídos/cadastrados
-
-### Métricas Resumidas
-- Dias ativos no mês
-- Total de logins
-- Leads atendidos
-- Média de atividades por dia
-
----
-
-## Arquivos a Criar/Modificar
-
-| Arquivo | Ação |
-|---------|------|
-| `src/components/admin/BrokerManagement.tsx` | Adicionar colunas e botão de histórico |
-| `src/components/admin/BrokerActivitySheet.tsx` | **Novo** - Sheet com histórico |
-| `src/hooks/use-broker-activity.ts` | **Novo** - Buscar atividades |
-| `src/hooks/use-broker-session-tracker.ts` | **Novo** - Rastrear sessões |
-| `src/components/broker/BrokerLayout.tsx` | Integrar tracker de sessão |
-| Migration SQL | Criar tabelas broker_sessions e broker_activity_logs |
-
----
-
-## Considerações
-
-### Performance
-- Índices em `broker_id` e `created_at` para queries rápidas
-- Paginação no histórico de atividades
-- Cache de resumos mensais
-
-### Privacidade
-- Apenas admins veem dados de todos os corretores
-- Corretores podem ver seus próprios dados
-- IPs e user agents opcionais (podem ser desativados)
+- Visual premium e moderno com cards
+- Melhor hierarquia visual de informações
+- Interação intuitiva (clique abre histórico)
+- Métricas destacadas (leads, último acesso)
+- Responsivo para todos os dispositivos
+- Animações suaves de hover
+- Mantém todas as funcionalidades existentes
