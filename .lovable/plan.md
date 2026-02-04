@@ -1,63 +1,39 @@
 
-# Plano: Corrigir Loading Infinito na Aba Automação
+# Plano: Atualizar Mensagem Padrão de Automação
 
-## Diagnóstico
+## Objetivo
 
-O problema ocorre porque:
-
-1. O usuário `maicon.enove@gmail.com` possui **duas roles**: `admin` e `broker`
-2. O hook `useUserRole` prioriza `admin` sobre `broker`, então define `role = "admin"`
-3. O `brokerId` só é buscado quando `role === "broker"`, ficando `null` para admins
-4. O hook `useAutoMessageRules` verifica `if (!brokerId) return;` e **nunca executa a query**
-5. O estado `isLoading` permanece `true` indefinidamente
-
-## Solução
-
-Modificar o hook `useUserRole` para **sempre buscar o brokerId** quando o usuário tiver a role `broker`, independentemente de também ter a role `admin`.
+Trocar o texto padrão exibido ao criar uma nova regra de automação de WhatsApp.
 
 ---
 
 ## Alteração Necessária
 
-### Arquivo: `src/hooks/use-user-role.ts`
+### Arquivo: `src/types/auto-message.ts`
 
-**Mudança na lógica (linhas 50-60):**
+**Substituir o valor da constante `DEFAULT_AUTO_MESSAGE`:**
 
 ```typescript
-// ANTES: Só busca brokerId se role === "broker"
-let brokerId = null;
-if (role === "broker") {
-  const { data: brokerData } = await supabase
-    .from("brokers")
-    .select("id")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
-  
-  brokerId = brokerData?.id || null;
-}
+// ANTES
+export const DEFAULT_AUTO_MESSAGE = `Olá {nome_lead}! 👋
 
-// DEPOIS: Busca brokerId se o usuário TEM a role "broker" (independente de ter admin também)
-let brokerId = null;
-if (roles.includes("broker")) {  // ← Usar roles.includes em vez de role ===
-  const { data: brokerData } = await supabase
-    .from("brokers")
-    .select("id")
-    .eq("user_id", session.user.id)
-    .maybeSingle();
-  
-  brokerId = brokerData?.id || null;
-}
+Sou {nome_corretor}, da Enove Incorporadora.
+Vi que você tem interesse no {empreendimento}!
+
+Posso te enviar mais informações?`;
+
+// DEPOIS
+export const DEFAULT_AUTO_MESSAGE = `Oi {nome_lead}, tudo bem? 👋
+Aqui é {nome_corretor}, da Enove Imobiliária!
+
+Vi agora o seu cadastro para fazer parte da lista VIP do *novo condomínio de Estância Velha* e já quis te chamar pra te explicar com calma como vai funcionar! Foi você mesmo que se cadastrou?`;
 ```
 
 ---
 
-## Por que essa mudança funciona?
+## Observação
 
-| Cenário | Antes | Depois |
-|---------|-------|--------|
-| Usuário só admin | role="admin", brokerId=null | role="admin", brokerId=null |
-| Usuário só broker | role="broker", brokerId="xxx" | role="broker", brokerId="xxx" |
-| Usuário admin+broker | role="admin", brokerId=**null** | role="admin", brokerId=**"xxx"** |
+A nova mensagem usa formatação de negrito do WhatsApp (`*texto*`) para destacar "novo condomínio de Estância Velha". Isso funcionará corretamente quando enviado via WhatsApp.
 
 ---
 
@@ -65,12 +41,10 @@ if (roles.includes("broker")) {  // ← Usar roles.includes em vez de role ===
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/hooks/use-user-role.ts` | Mudar condição de `role === "broker"` para `roles.includes("broker")` |
+| `src/types/auto-message.ts` | Atualizar texto de `DEFAULT_AUTO_MESSAGE` |
 
 ---
 
 ## Resultado Esperado
 
-- Admin com perfil de corretor terá acesso ao `brokerId`
-- A aba Automação carregará corretamente as regras
-- Todas as funcionalidades que dependem do `brokerId` funcionarão para admins que também são corretores
+Ao clicar em "Nova Regra" na aba Automação, o campo de mensagem virá preenchido com o novo texto padrão.
