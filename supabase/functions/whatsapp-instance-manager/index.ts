@@ -39,17 +39,24 @@ const buildUazapiHeaders = (
 
 const uazapiFetchWithAuthFallback = async (
   url: string,
-  opts: Omit<RequestInit, "headers"> & { includeJson?: boolean },
+  opts: Omit<RequestInit, "headers"> & { includeJson?: boolean; bodyString?: string },
   token: string,
 ): Promise<Response> => {
   const styles: UazapiAuthStyle[] = ["token", "apikey", "x-api-key", "bearer"];
 
   let lastResponse: Response | null = null;
   for (const style of styles) {
-    const res = await fetch(url, {
-      ...opts,
+    // Build fresh request options each time - body can only be consumed once per request
+    const fetchOpts: RequestInit = {
+      method: opts.method,
       headers: buildUazapiHeaders(token, Boolean(opts.includeJson), style),
-    });
+    };
+    // Use bodyString to allow re-sending the body on retry
+    if (opts.bodyString) {
+      fetchOpts.body = opts.bodyString;
+    }
+
+    const res = await fetch(url, fetchOpts);
 
     if (res.status !== 401) return res;
 
@@ -152,7 +159,7 @@ app.post("/init", async (c) => {
       {
         method: "POST",
         includeJson: true,
-        body: JSON.stringify({
+        bodyString: JSON.stringify({
           instanceName,
           qrcode: true,
           integration: "WHATSAPP-BAILEYS",
@@ -187,7 +194,7 @@ app.post("/init", async (c) => {
         {
           method: "POST",
           includeJson: true,
-          body: JSON.stringify({
+          bodyString: JSON.stringify({
             url: webhookUrl,
             webhook_by_events: false,
             events: ["messages.upsert", "connection.update", "message.update"],
