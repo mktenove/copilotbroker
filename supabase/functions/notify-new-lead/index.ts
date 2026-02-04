@@ -98,12 +98,12 @@ Deno.serve(async (req) => {
 
     console.log(`Enviando mensagem para ${recipientPhone} via UAZAPI`);
 
-    // Formato correto conforme documentação UAZAPI
+    // Formato correto conforme documentação UAZAPI - usando header "token"
     const response = await fetch(`${uazapiUrl}/message/text`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${uazapiToken}`,
+        "token": uazapiToken,
       },
       body: JSON.stringify({
         phone: recipientPhone,
