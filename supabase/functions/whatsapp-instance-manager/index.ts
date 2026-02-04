@@ -16,7 +16,11 @@ const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
 const buildUazapiHeaders = (token: string, includeJson = false): Record<string, string> => {
   const headers: Record<string, string> = {
     // UAZAPI may accept the token in different header names depending on deployment/config.
+    // NOTE: other functions in this repo (notify-new-lead) use `token`, so we send both.
+    token,
     apikey: token,
+    "x-api-key": token,
+    "X-API-Key": token,
     Authorization: `Bearer ${token}`,
   };
   if (includeJson) headers["Content-Type"] = "application/json";
