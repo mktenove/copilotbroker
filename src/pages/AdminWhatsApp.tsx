@@ -15,7 +15,8 @@ import {
   Send,
   Shield,
   Bot,
-  Eye
+  Eye,
+  Globe
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWhatsAppGlobalStats } from "@/hooks/use-whatsapp-stats";
@@ -25,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 
 import { WhatsAppOverviewTab } from "@/components/admin/WhatsAppOverviewTab";
 import { ConnectionTab } from "@/components/whatsapp/ConnectionTab";
+import { GlobalConnectionTab } from "@/components/whatsapp/GlobalConnectionTab";
 import { CampaignsTab } from "@/components/whatsapp/CampaignsTab";
 import { QueueTab } from "@/components/whatsapp/QueueTab";
 import { SecurityTab } from "@/components/whatsapp/SecurityTab";
@@ -188,10 +190,14 @@ const AdminWhatsApp = () => {
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex bg-[#1a1a1d] border border-[#2a2a2e]">
+            <TabsList className="grid w-full grid-cols-7 lg:w-auto lg:inline-flex bg-[#1a1a1d] border border-[#2a2a2e]">
               <TabsTrigger value="overview" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Eye className="w-4 h-4" />
                 <span className="hidden sm:inline">Visão Global</span>
+              </TabsTrigger>
+              <TabsTrigger value="global-connection" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">Conexão Global</span>
               </TabsTrigger>
               <TabsTrigger value="connection" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Wifi className="w-4 h-4" />
@@ -227,6 +233,10 @@ const AdminWhatsApp = () => {
                 isLoadingOptouts={isLoadingOptouts}
                 onTogglePause={handleTogglePause}
               />
+            </TabsContent>
+
+            <TabsContent value="global-connection" className="mt-6">
+              <GlobalConnectionTab />
             </TabsContent>
 
             <TabsContent value="connection" className="mt-6">

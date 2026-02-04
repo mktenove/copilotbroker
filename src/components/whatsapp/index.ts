@@ -1,5 +1,6 @@
 // WhatsApp Dispatcher Components
 export { ConnectionTab } from "./ConnectionTab";
+export { GlobalConnectionTab } from "./GlobalConnectionTab";
 export { ConnectionStatusCard } from "./ConnectionStatusCard";
 export { QRCodeDisplay } from "./QRCodeDisplay";
 export { HealthScoreCard } from "./HealthScoreCard";

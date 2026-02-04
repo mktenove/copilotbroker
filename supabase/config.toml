@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.auto-first-message]
 verify_jwt = false
+
+[functions.whatsapp-global-instance-manager]
+verify_jwt = false
