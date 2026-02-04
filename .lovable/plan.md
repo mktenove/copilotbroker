@@ -266,23 +266,22 @@ Antes de criar campanha:
 
 ## Ordem de Implementação
 
-1. Criar hooks `use-whatsapp-campaigns.ts` e `use-whatsapp-queue.ts`
-2. Criar componentes auxiliares (TemplateSelector, LeadStatusSelector, MessagePreview)
-3. Criar NewCampaignSheet.tsx
-4. Atualizar CampaignsTab.tsx com listagem real
-5. Atualizar QueueTab.tsx com dados reais
-6. Criar edge function `whatsapp-message-sender`
-7. Adicionar botão no KanbanColumn.tsx
-8. Testar fluxo completo
+1. ✅ Criar hooks `use-whatsapp-campaigns.ts` e `use-whatsapp-queue.ts`
+2. ✅ Criar componentes auxiliares (NewCampaignSheet, CampaignCard)
+3. ✅ Atualizar CampaignsTab.tsx com listagem real
+4. ✅ Atualizar QueueTab.tsx com dados reais
+5. 🔜 Criar edge function `whatsapp-message-sender`
+6. ✅ Adicionar botão no KanbanColumn.tsx
+7. 🔜 Testar fluxo completo
 
 ---
 
 ## Resultado Esperado
 
 Após esta fase, o corretor poderá:
-- Criar campanhas selecionando leads por status do Kanban
-- Usar templates prontos ou escrever mensagens personalizadas
-- Ver prévia da mensagem antes de enviar
-- Acompanhar o progresso na aba de Campanhas
-- Visualizar a fila de envio em tempo real
-- Disparar diretamente de uma coluna do Kanban
+- ✅ Criar campanhas selecionando leads por status do Kanban
+- ✅ Usar templates prontos ou escrever mensagens personalizadas
+- ✅ Ver prévia da mensagem antes de enviar
+- ✅ Acompanhar o progresso na aba de Campanhas
+- ✅ Visualizar a fila de envio em tempo real
+- ✅ Disparar diretamente de uma coluna do Kanban

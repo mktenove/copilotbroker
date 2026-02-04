@@ -18,6 +18,7 @@ import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { LeadDetailSheet } from "./LeadDetailSheet";
+import { NewCampaignSheet } from "@/components/whatsapp/NewCampaignSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import {
@@ -51,6 +52,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
+  const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
+  const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
 
   const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus } = useKanbanLeads({
     brokerId,
@@ -208,6 +211,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     }
   };
 
+  const handleDispatchWhatsApp = (status: LeadStatus) => {
+    setWhatsappPreselectedStatus(status);
+    setWhatsappCampaignOpen(true);
+  };
+
   return (
     <div className="flex flex-col min-h-[700px]">
       {/* Mobile: Botão Atualizar grande */}
@@ -313,6 +321,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 onInactivate={handleInactivateLead}
                 onDelete={isAdmin ? handleDeleteLead : undefined}
                 onAdvanceStatus={handleAdvanceStatus}
+                onDispatchWhatsApp={handleDispatchWhatsApp}
               />
             ))}
           </div>
@@ -334,6 +343,13 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         onClose={() => setSelectedLead(null)}
         onUpdate={handleLeadUpdate}
         onStatusChange={handleStatusUpdate}
+      />
+
+      {/* WhatsApp Campaign Sheet */}
+      <NewCampaignSheet
+        open={whatsappCampaignOpen}
+        onOpenChange={setWhatsappCampaignOpen}
+        preselectedStatus={whatsappPreselectedStatus}
       />
     </div>
   );
