@@ -4,7 +4,8 @@ import { QRCodeDisplay } from "./QRCodeDisplay";
 import { HealthScoreCard } from "./HealthScoreCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, RefreshCw, Power, RotateCcw, Wifi } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, RefreshCw, Power, RotateCcw, Wifi, AlertTriangle } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -14,6 +15,7 @@ export function ConnectionTab() {
     isLoading,
     qrCode,
     isLoadingQR,
+    error,
     initInstance,
     refreshStatus,
     fetchQRCode,
@@ -65,6 +67,26 @@ export function ConnectionTab() {
 
   return (
     <div className="space-y-6">
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive" className="border-red-500/30 bg-red-500/10">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertTitle>Erro ao verificar status</AlertTitle>
+          <AlertDescription className="flex items-center justify-between">
+            <span>Não foi possível verificar o status agora. Clique em Atualizar.</span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshStatus}
+              className="ml-2 border-red-500/30 text-red-400 hover:bg-red-500/10"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Atualizar
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* Main Connection Card */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Status Card */}
