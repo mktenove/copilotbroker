@@ -141,17 +141,6 @@ export function ConnectionTab() {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 pt-3 border-t border-[#2a2a2e]">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshStatus}
-                disabled={isLoading}
-                className="border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-              
               {needsQR && (
                 <Button
                   variant="outline"
