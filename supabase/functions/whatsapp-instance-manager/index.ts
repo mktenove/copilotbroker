@@ -17,7 +17,7 @@ const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
 const UAZAPI_ADMIN_TOKEN = Deno.env.get("UAZAPI_ADMIN_TOKEN") || "";
 const UAZAPI_DEFAULT_TOKEN = UAZAPI_ADMIN_TOKEN || UAZAPI_TOKEN;
 
-type UazapiAuthStyle = "token" | "apikey" | "bearer" | "x-api-key";
+ type UazapiAuthStyle = "admintoken" | "token" | "apikey" | "bearer" | "x-api-key";
 
 const buildUazapiHeaders = (
   token: string,
@@ -28,6 +28,7 @@ const buildUazapiHeaders = (
   // If we send multiple auth headers at once, the server may prioritize the wrong one and return 401.
   const headers: Record<string, string> = {};
 
+  if (style === "admintoken") headers.admintoken = token;
   if (style === "token") headers.token = token;
   if (style === "apikey") headers.apikey = token;
   if (style === "x-api-key") headers["x-api-key"] = token;
@@ -42,7 +43,9 @@ const uazapiFetchWithAuthFallback = async (
   opts: Omit<RequestInit, "headers"> & { includeJson?: boolean; bodyString?: string },
   token: string,
 ): Promise<Response> => {
-  const styles: UazapiAuthStyle[] = ["token", "apikey", "x-api-key", "bearer"];
+  // UAZAPI has "administrative" endpoints that expect an "admintoken" header.
+  // We try that first, then fall back to other common auth header styles.
+  const styles: UazapiAuthStyle[] = ["admintoken", "token", "apikey", "x-api-key", "bearer"];
   
   // Sanitize token
   const cleanToken = token.trim();
@@ -172,16 +175,19 @@ app.post("/init", async (c) => {
     // Generate unique instance name
     const instanceName = `enove_broker_${brokerId.substring(0, 8)}`;
 
-    // Create instance via UAZAPI
+    // Create instance via UAZAPI (admin endpoint)
     const uazResponse = await uazapiFetchWithAuthFallback(
       `${UAZAPI_BASE_URL}/instance/init`,
       {
         method: "POST",
         includeJson: true,
         bodyString: JSON.stringify({
-          instanceName,
-          qrcode: true,
-          integration: "WHATSAPP-BAILEYS",
+          // Docs: https://docs.uazapi.com/schema/Instance
+          // Endpoint expects "name" and an administrative token (admintoken)
+          name: instanceName,
+          systemName: "enove",
+          // Optional metadata fields (safe + helpful for tracing)
+          adminField01: brokerId,
         }),
       },
       UAZAPI_DEFAULT_TOKEN,
@@ -203,9 +209,16 @@ app.post("/init", async (c) => {
     console.log("UAZAPI Response:", uazData);
 
     // Get instance token from response
-    const instanceToken = uazData.hash || uazData.instance?.apikey || null;
+    // Some UAZAPI deployments may return different keys; we try the known ones.
+    const instanceToken =
+      uazData?.token ||
+      uazData?.key ||
+      uazData?.hash ||
+      uazData?.instance?.token ||
+      uazData?.instance?.apikey ||
+      null;
 
-    // Configure webhook for this instance
+    // Configure webhook (admin endpoint)
     const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
     try {
       const webhookResponse = await uazapiFetchWithAuthFallback(
@@ -220,7 +233,8 @@ app.post("/init", async (c) => {
             excludeMessages: ["wasSentByApi"],
           }),
         },
-        instanceToken || UAZAPI_DEFAULT_TOKEN,
+        // Webhook config is under "Administração" in docs, so prefer admin token.
+        UAZAPI_DEFAULT_TOKEN,
       );
       
       if (webhookResponse.ok) {
