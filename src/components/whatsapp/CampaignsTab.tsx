@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Megaphone, Loader2 } from "lucide-react";
+import { Plus, Megaphone, Loader2, FileText } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
 import { NewCampaignSheet } from "./NewCampaignSheet";
 import { CampaignCard } from "./CampaignCard";
+import { TemplatesSheet } from "./TemplatesSheet";
 
 export function CampaignsTab() {
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const { 
     campaigns, 
     isLoading, 
@@ -27,14 +29,24 @@ export function CampaignsTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Campanhas</h2>
-        <Button 
-          className="bg-primary hover:bg-primary/90"
-          onClick={() => setIsNewCampaignOpen(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Nova Campanha
-        </Button>
+        <h2 className="text-lg font-semibold text-foreground">Campanhas</h2>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="outline"
+            onClick={() => setIsTemplatesOpen(true)}
+            className="bg-card border-border text-foreground hover:bg-accent"
+          >
+            <FileText className="w-4 h-4 mr-2" />
+            Templates
+          </Button>
+          <Button 
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => setIsNewCampaignOpen(true)}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Nova Campanha
+          </Button>
+        </div>
       </div>
 
       {campaigns.length === 0 ? (
@@ -123,6 +135,11 @@ export function CampaignsTab() {
       <NewCampaignSheet
         open={isNewCampaignOpen}
         onOpenChange={setIsNewCampaignOpen}
+      />
+
+      <TemplatesSheet
+        open={isTemplatesOpen}
+        onOpenChange={setIsTemplatesOpen}
       />
     </div>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { 
   LayoutDashboard, 
   Users, 
@@ -6,6 +7,7 @@ import {
   BarChart3, 
   Settings,
   Plus,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -33,9 +35,11 @@ const NAV_ITEMS = [
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "whatsapp", label: "WhatsApp", icon: Smartphone },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {
+  const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userInitial, setUserInitial] = useState("A");
 
@@ -93,12 +97,18 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
               <Tooltip key={item.id}>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={() => onTabChange(item.id)}
+                    onClick={() => {
+                      if (item.id === "whatsapp") {
+                        navigate("/admin/whatsapp");
+                      } else {
+                        onTabChange(item.id);
+                      }
+                    }}
                     className={cn(
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                       isActive 
                         ? "bg-primary/20 text-primary" 
-                        : "text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22]"
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
                     {/* Active indicator bar */}
@@ -108,7 +118,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     <Icon className="w-5 h-5" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
+                <TooltipContent side="right" className="bg-card border-border text-foreground">
                   {item.label}
                 </TooltipContent>
               </Tooltip>
