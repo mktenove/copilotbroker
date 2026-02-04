@@ -1,98 +1,63 @@
 
-## Correção do Envio de Mensagens WhatsApp via UAZAPI
 
-### Diagnóstico Final
+## Plano: Gerenciamento da Instância Global de WhatsApp no Painel Admin
 
-Após análise detalhada, identifiquei **3 problemas principais** que causam o erro `405 Method Not Allowed`:
+### Contexto
 
----
+O sistema possui **dois tipos de instâncias WhatsApp**:
 
-### Problema 1: Estrutura de URL Incorreta
+1. **Instâncias individuais de corretores** - Armazenadas na tabela `broker_whatsapp_instances`, gerenciadas pela edge function `whatsapp-instance-manager`
+2. **Instância global da Enove** - Configurada via variáveis de ambiente (`UAZAPI_INSTANCE_URL`, `UAZAPI_TOKEN`), usada para notificações de leads
 
-**Documentação UAZAPI (página 3):**
-```
-URL Base: https://api.uazapi.com/v2/{instanceId}/{endpoint}
-```
-
-**O que o código atual faz:**
-```typescript
-// notify-new-lead e whatsapp-message-sender
-fetch(`${UAZAPI_INSTANCE_URL}/message/text`, ...)
-```
-
-**O problema:**
-- Se `UAZAPI_INSTANCE_URL` = `https://api.uazapi.com` (sem instanceId), o endpoint seria `/message/text` que não existe
-- Se `UAZAPI_INSTANCE_URL` = `https://api.uazapi.com/v2/alguma_instancia`, está fixado em UMA instância e não funciona para outras
-
-**Solução:**
-- Separar `UAZAPI_BASE_URL` (ex: `https://api.uazapi.com`) do `instanceId`
-- Construir URL: `{BASE_URL}/v2/{instanceName}/message/text`
-- Usar o `instance_name` e `instance_token` da tabela `broker_whatsapp_instances`
+A aba "Conexão" no painel admin atualmente usa o mesmo hook dos corretores, que busca a instância vinculada ao broker logado. Como o admin não é um broker, isso não funciona corretamente.
 
 ---
 
-### Problema 2: Header de Autenticação Incorreto
+### Solução Proposta
 
-**Documentação UAZAPI (página 3):**
-```
-Authorization: Bearer {seu-token}
-```
+#### 1. Nova Edge Function: `whatsapp-global-instance-manager`
 
-**Código atual já usa Bearer**, mas o `whatsapp-instance-manager` que funciona usa um sistema de fallback que tenta múltiplos headers:
-- `token`
-- `admintoken`
-- `apikey`
-- `Authorization: Bearer`
+Criação de uma edge function dedicada para gerenciar a instância global da Enove, com os endpoints:
 
-**Descoberta importante:** O `whatsapp-instance-manager` tenta `token` PRIMEIRO, não `Bearer`. Isso sugere que a UAZAPI neste ambiente aceita o header `token` diretamente.
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/status` | GET | Verifica o status da instância global na UAZAPI |
+| `/qrcode` | GET | Obtém QR Code para reconectar a instância global |
+| `/logout` | POST | Desconecta a instância global |
+| `/restart` | POST | Reinicia a instância global |
 
----
+Esta edge function usará as variáveis de ambiente `UAZAPI_INSTANCE_URL` e `UAZAPI_TOKEN` diretamente.
 
-### Problema 3: `notify-new-lead` Não Busca Instância do Broker
+#### 2. Novo Hook: `use-whatsapp-global-instance.ts`
 
-Quando um lead é atribuído a um corretor, a função `notify-new-lead` deveria:
-1. Buscar a instância WhatsApp conectada do corretor em `broker_whatsapp_instances`
-2. Usar o `instance_name` para construir a URL correta
-3. Usar o `instance_token` para autenticação
+Similar ao `use-whatsapp-instance.ts`, mas chamando a nova edge function `whatsapp-global-instance-manager`.
 
-Atualmente ela usa apenas as variáveis de ambiente globais.
+Funcionalidades:
+- Verificar status da instância global
+- Exibir QR Code quando desconectada
+- Desconectar/reiniciar
 
----
+#### 3. Novo Componente: `AdminConnectionTab.tsx`
 
-### Correções Necessárias
+Componente dedicado para o painel admin que:
+- Mostra o status da instância global (não individual de corretor)
+- Permite conectar/reconectar via QR Code
+- Usa o hook `useWhatsAppGlobalInstance`
 
-#### 1. `supabase/functions/notify-new-lead/index.ts`
+#### 4. Correção do `notify-new-lead`
+
+Ajustar o endpoint para usar o formato correto da UAZAPI:
 
 ```typescript
-// ANTES:
-const response = await fetch(`${uazapiUrl}/message/text`, {
-  headers: {
-    "Authorization": `Bearer ${uazapiToken}`,
-  },
-  body: JSON.stringify({ phone, message }),
-});
+// Antes (incorreto):
+fetch(`${uazapiUrl}/message/text`, ...)
 
-// DEPOIS:
-// 1. Buscar instância do broker
-const { data: brokerInstance } = await supabase
-  .from("broker_whatsapp_instances")
-  .select("instance_name, instance_token, status")
-  .eq("broker_id", recipientBrokerId)
-  .eq("status", "connected")
-  .single();
-
-// 2. Construir URL com instanceName
-const instanceName = brokerInstance?.instance_name || "default";
-const instanceToken = brokerInstance?.instance_token || uazapiToken;
-
-// 3. Usar URL base sem instance, adicionando o path correto
-// UAZAPI_INSTANCE_URL pode ser: https://api.uazapi.com/v2/{instance}
-// Então o endpoint fica: {UAZAPI_INSTANCE_URL}/message/text
-const response = await fetch(`${uazapiUrl}/message/text`, {
+// Depois (correto):
+fetch(`${uazapiUrl}/message/text`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "token": instanceToken,  // Header "token" em vez de "Bearer"
+    "token": uazapiToken,
   },
   body: JSON.stringify({
     phone: recipientPhone,
@@ -101,92 +66,104 @@ const response = await fetch(`${uazapiUrl}/message/text`, {
 });
 ```
 
-#### 2. `supabase/functions/whatsapp-message-sender/index.ts`
-
-A função `sendMessageViaUAZAPI` precisa:
-
-```typescript
-// ANTES:
-const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
-  headers: {
-    "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
-  },
-  ...
-});
-
-// DEPOIS:
-const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "token": instanceToken || UAZAPI_TOKEN,  // Header "token" em vez de "Bearer"
-  },
-  body: JSON.stringify({
-    phone: formatPhoneForUAZAPI(phone),
-    message: messageText,
-  }),
-});
-```
+**Importante:** O erro 405 acontece porque o endpoint ou o formato de autenticação está incorreto. A UAZAPI usa o header `token` (não Bearer).
 
 ---
 
-### Implementação Robusta com Fallback
+### Arquivos a Criar/Modificar
 
-Para garantir compatibilidade com diferentes configurações UAZAPI, implementar o mesmo padrão de fallback do `whatsapp-instance-manager`:
+| Arquivo | Ação |
+|---------|------|
+| `supabase/functions/whatsapp-global-instance-manager/index.ts` | Criar |
+| `supabase/config.toml` | Adicionar configuração da nova função |
+| `src/hooks/use-whatsapp-global-instance.ts` | Criar |
+| `src/components/whatsapp/AdminConnectionTab.tsx` | Criar |
+| `src/pages/AdminWhatsApp.tsx` | Modificar para usar `AdminConnectionTab` |
+| `supabase/functions/notify-new-lead/index.ts` | Verificar/corrigir endpoint |
+
+---
+
+### Detalhes Técnicos
+
+#### Edge Function `whatsapp-global-instance-manager`
 
 ```typescript
-const sendWithAuthFallback = async (
-  url: string,
-  token: string,
-  body: object
-): Promise<Response> => {
-  const headers = ["token", "apikey", "Authorization"];
-  
-  for (const headerType of headers) {
-    const reqHeaders: Record<string, string> = {
-      "Content-Type": "application/json",
-    };
-    
-    if (headerType === "Authorization") {
-      reqHeaders["Authorization"] = `Bearer ${token}`;
-    } else {
-      reqHeaders[headerType] = token;
-    }
-    
-    const res = await fetch(url, {
-      method: "POST",
-      headers: reqHeaders,
-      body: JSON.stringify(body),
-    });
-    
-    if (res.ok) return res;
-    if (res.status !== 401 && res.status !== 405) return res;
+// Estrutura principal
+const app = new Hono().basePath("/whatsapp-global-instance-manager");
+
+// Extrai instance name da URL
+// Se UAZAPI_INSTANCE_URL = "https://api.uazapi.com/v2/enove_principal"
+// Então instanceName = "enove_principal"
+const parseInstanceFromUrl = (): { baseUrl: string; instanceName: string } => {
+  const url = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+  const match = url.match(/^(.+?)\/v2\/([^/]+)$/);
+  if (match) {
+    return { baseUrl: match[1], instanceName: match[2] };
   }
-  
-  // Retorna última resposta se todas falharem
-  return fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "token": token },
-    body: JSON.stringify(body),
-  });
+  // Fallback: assume URL é a base e precisa de instanceName separado
+  return { baseUrl: url, instanceName: "enove_principal" };
 };
+
+// GET /status - Verificar conexão
+app.get("/status", async (c) => {
+  const { baseUrl, instanceName } = parseInstanceFromUrl();
+  const token = Deno.env.get("UAZAPI_TOKEN");
+  
+  const response = await fetch(`${baseUrl}/v2/${instanceName}/instance/status`, {
+    headers: { "token": token },
+  });
+  // ...
+});
+
+// GET /qrcode - Obter QR Code
+app.get("/qrcode", async (c) => {
+  const { baseUrl, instanceName } = parseInstanceFromUrl();
+  const token = Deno.env.get("UAZAPI_TOKEN");
+  
+  const response = await fetch(`${baseUrl}/v2/${instanceName}/instance/connect`, {
+    headers: { "token": token },
+  });
+  // ...
+});
+```
+
+#### Hook `useWhatsAppGlobalInstance`
+
+```typescript
+const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-global-instance-manager`;
+
+export function useWhatsAppGlobalInstance() {
+  const [status, setStatus] = useState<"connected" | "disconnected" | "qr_pending">("disconnected");
+  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  // ...
+  
+  const refreshStatus = async () => {
+    const res = await fetch(`${FUNCTION_URL}/status`, { headers: await getAuthHeaders() });
+    // ...
+  };
+  
+  return { status, phoneNumber, qrCode, refreshStatus, fetchQRCode, ... };
+}
 ```
 
 ---
 
-### Arquivos a Modificar
+### Fluxo de Notificações Corrigido
 
-| Arquivo | Alteração Principal |
-|---------|---------------------|
-| `supabase/functions/notify-new-lead/index.ts` | Mudar header de `Authorization: Bearer` para `token` |
-| `supabase/functions/whatsapp-message-sender/index.ts` | Mudar header de `Authorization: Bearer` para `token` |
+```text
+1. Novo lead cadastrado
+2. Trigger chama notify-new-lead
+3. notify-new-lead usa UAZAPI_INSTANCE_URL + UAZAPI_TOKEN
+4. Mensagem enviada via instância global da Enove
+5. Corretor recebe notificação no WhatsApp
+```
 
 ---
 
-### Testes Pós-Implementação
+### Benefícios
 
-1. Deploy das edge functions
-2. Adicionar um lead manualmente para testar `notify-new-lead`
-3. Verificar logs da edge function para confirmar resposta da UAZAPI
-4. Verificar timeline do lead para ver se notificação foi enviada
+- **Separação clara**: Instância global (notificações) vs instâncias individuais (campanhas)
+- **Admin tem controle**: Pode reconectar a instância global quando necessário
+- **Não afeta corretores**: Cada corretor continua com sua própria instância para campanhas
 
