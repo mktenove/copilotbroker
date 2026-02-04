@@ -69,12 +69,12 @@ const sendMessageViaUAZAPI = async (
   messageText: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
-    // Formato correto conforme documentação UAZAPI
+    // Formato correto conforme documentação UAZAPI - usando header "token"
     const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
+        "token": instanceToken || UAZAPI_TOKEN,
       },
       body: JSON.stringify({
         phone: formatPhoneForUAZAPI(phone),
