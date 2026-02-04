@@ -38,14 +38,18 @@ const buildUazapiHeaders = (
   return headers;
 };
 
+// For regular instance operations, we should try "token" first (instance token).
+// For admin operations (like /instance/init), we should try "admintoken" first.
 const uazapiFetchWithAuthFallback = async (
   url: string,
   opts: Omit<RequestInit, "headers"> & { includeJson?: boolean; bodyString?: string },
   token: string,
+  isAdminEndpoint = false,
 ): Promise<Response> => {
-  // UAZAPI has "administrative" endpoints that expect an "admintoken" header.
-  // We try that first, then fall back to other common auth header styles.
-  const styles: UazapiAuthStyle[] = ["admintoken", "token", "apikey", "x-api-key", "bearer"];
+  // Prioritize based on endpoint type
+  const styles: UazapiAuthStyle[] = isAdminEndpoint 
+    ? ["admintoken", "token", "apikey", "x-api-key", "bearer"]
+    : ["token", "admintoken", "apikey", "x-api-key", "bearer"];
   
   // Sanitize token
   const cleanToken = token.trim();
@@ -191,6 +195,7 @@ app.post("/init", async (c) => {
         }),
       },
       UAZAPI_DEFAULT_TOKEN,
+      true, // isAdminEndpoint
     );
 
     if (!uazResponse.ok) {
@@ -235,6 +240,7 @@ app.post("/init", async (c) => {
         },
         // Webhook config is under "Administração" in docs, so prefer admin token.
         UAZAPI_DEFAULT_TOKEN,
+        true, // isAdminEndpoint
       );
       
       if (webhookResponse.ok) {
@@ -318,6 +324,7 @@ app.get("/status", async (c) => {
       `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
       { method: "GET" },
       instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+      false, // Not an admin endpoint
     );
 
     let uazStatus = null;
@@ -387,17 +394,62 @@ app.get("/qrcode", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Get QR code from UAZAPI
-    const uazResponse = await uazapiFetchWithAuthFallback(
-      `${UAZAPI_BASE_URL}/instance/connect/${instance.instance_name}`,
-      { method: "GET" },
-      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
-    );
-
-    if (!uazResponse.ok) {
-      const errorText = await uazResponse.text();
-      console.error("UAZAPI QR Error:", errorText);
-      return c.json({ error: "Failed to get QR code", details: errorText }, 500, corsHeaders);
+    // Get QR code from UAZAPI - try multiple endpoint variations
+    // Different UAZAPI versions/deployments may use different endpoints
+    const instanceToken = instance.instance_token || UAZAPI_DEFAULT_TOKEN;
+    const instanceName = instance.instance_name;
+    
+    // Define endpoint variations to try (in order of priority)
+    const endpointVariations = [
+      // UAZAPI V2 documented endpoints
+      { url: `${UAZAPI_BASE_URL}/instance/connect/${instanceName}`, method: "POST", includeJson: true },
+      { url: `${UAZAPI_BASE_URL}/instance/connect/${instanceName}`, method: "GET", includeJson: false },
+      // Alternative endpoints found in UAZAPI variations
+      { url: `${UAZAPI_BASE_URL}/instance/qrcode/${instanceName}`, method: "GET", includeJson: false },
+      { url: `${UAZAPI_BASE_URL}/instance/exportQrcodeBase64/${instanceName}`, method: "GET", includeJson: false },
+      { url: `${UAZAPI_BASE_URL}/qrcode/${instanceName}`, method: "GET", includeJson: false },
+    ];
+    
+    let uazResponse: Response | null = null;
+    let lastError = "";
+    
+    for (const endpoint of endpointVariations) {
+      console.log(`[UAZAPI] Trying QR endpoint: ${endpoint.method} ${endpoint.url}`);
+      
+      const response = await uazapiFetchWithAuthFallback(
+        endpoint.url,
+        { 
+          method: endpoint.method, 
+          includeJson: endpoint.includeJson,
+          bodyString: endpoint.includeJson ? JSON.stringify({}) : undefined,
+        },
+        instanceToken,
+        false, // Instance endpoints use "token" header, not "admintoken"
+      );
+      
+      console.log(`[UAZAPI] QR endpoint response: ${response.status}`);
+      
+      // If we get a success or a non-404/405 error, use this response
+      if (response.ok || (response.status !== 404 && response.status !== 405)) {
+        uazResponse = response;
+        break;
+      }
+      
+      // Store error for logging
+      try {
+        lastError = await response.text();
+      } catch {
+        lastError = `Status ${response.status}`;
+      }
+    }
+    
+    if (!uazResponse || !uazResponse.ok) {
+      console.error("UAZAPI QR Error - all endpoints failed:", lastError);
+      return c.json({ 
+        error: "Failed to get QR code", 
+        details: lastError,
+        hint: "Nenhum endpoint de QR Code funcionou. Verifique se a instância foi criada corretamente na UAZAPI.",
+      }, 500, corsHeaders);
     }
 
     const qrData = await uazResponse.json();
@@ -459,6 +511,7 @@ app.post("/logout", async (c) => {
       `${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`,
       { method: "DELETE" },
       instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+      false, // Not an admin endpoint
     );
 
     if (!uazResponse.ok) {
@@ -523,6 +576,7 @@ app.post("/restart", async (c) => {
       `${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`,
       { method: "PUT" },
       instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+      false, // Not an admin endpoint
     );
 
     if (!uazResponse.ok) {
