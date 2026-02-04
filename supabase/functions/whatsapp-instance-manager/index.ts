@@ -45,53 +45,61 @@ const uazapiFetchWithAuthFallback = async (
   opts: Omit<RequestInit, "headers"> & { includeJson?: boolean; bodyString?: string },
   token: string,
   isAdminEndpoint = false,
+  additionalTokens: string[] = [], // Additional tokens to try (e.g., admin token as fallback)
 ): Promise<Response> => {
   // Prioritize based on endpoint type
   const styles: UazapiAuthStyle[] = isAdminEndpoint 
     ? ["admintoken", "token", "apikey", "x-api-key", "bearer"]
     : ["token", "admintoken", "apikey", "x-api-key", "bearer"];
   
-  // Sanitize token
-  const cleanToken = token.trim();
+  // Build list of tokens to try: primary token first, then additional tokens
+  const tokensToTry = [token.trim(), ...additionalTokens.map(t => t.trim())].filter(Boolean);
 
   console.log(`[UAZAPI] Attempting request to: ${url}`);
-  console.log(`[UAZAPI] Token length: ${cleanToken.length}, Token preview: ${cleanToken.substring(0, 8)}...`);
+  console.log(`[UAZAPI] Tokens to try: ${tokensToTry.length}, Primary token preview: ${tokensToTry[0]?.substring(0, 8)}...`);
 
   let lastResponseBody = "";
   let lastStatus = 401;
   let lastStatusText = "Unauthorized";
 
-  for (const style of styles) {
-    const headers = buildUazapiHeaders(cleanToken, Boolean(opts.includeJson), style);
-    console.log(`[UAZAPI] Trying auth style: ${style}, headers: ${JSON.stringify(Object.keys(headers))}`);
-    
-    const fetchOpts: RequestInit = {
-      method: opts.method,
-      headers,
-    };
-    if (opts.bodyString) {
-      fetchOpts.body = opts.bodyString;
-    }
+  // Try each token with each auth style
+  for (const currentToken of tokensToTry) {
+    for (const style of styles) {
+      const headers = buildUazapiHeaders(currentToken, Boolean(opts.includeJson), style);
+      console.log(`[UAZAPI] Trying token: ${currentToken.substring(0, 8)}..., style: ${style}`);
+      
+      const fetchOpts: RequestInit = {
+        method: opts.method,
+        headers,
+      };
+      if (opts.bodyString) {
+        fetchOpts.body = opts.bodyString;
+      }
 
-    const res = await fetch(url, fetchOpts);
-    console.log(`[UAZAPI] Response status: ${res.status} for style: ${style}`);
+      const res = await fetch(url, fetchOpts);
+      console.log(`[UAZAPI] Response status: ${res.status} for token: ${currentToken.substring(0, 8)}..., style: ${style}`);
 
-    if (res.status !== 401) return res;
+      // Success! Return immediately
+      if (res.ok) return res;
+      
+      // Only continue fallback on auth errors (401) or not found (404 - some UAZAPI versions return this for wrong token)
+      if (res.status !== 401 && res.status !== 404) return res;
 
-    // Store response info before consuming body
-    lastStatus = res.status;
-    lastStatusText = res.statusText;
-    try {
-      lastResponseBody = await res.text();
-      console.log(`[UAZAPI] 401 response body: ${lastResponseBody.substring(0, 200)}`);
-    } catch {
-      lastResponseBody = "Unauthorized";
+      // Store response info before consuming body
+      lastStatus = res.status;
+      lastStatusText = res.statusText;
+      try {
+        lastResponseBody = await res.text();
+        console.log(`[UAZAPI] ${res.status} response body: ${lastResponseBody.substring(0, 200)}`);
+      } catch {
+        lastResponseBody = "Unauthorized";
+      }
     }
   }
 
-  console.error(`[UAZAPI] All auth styles failed for URL: ${url}`);
+  console.error(`[UAZAPI] All auth combinations failed for URL: ${url}`);
   
-  // All auth styles returned 401 - return a new Response with the stored body
+  // All auth styles returned errors - return a new Response with the stored body
   return new Response(lastResponseBody, {
     status: lastStatus,
     statusText: lastStatusText,
@@ -428,11 +436,13 @@ app.get("/qrcode", async (c) => {
 
     // === FIXED: Use /instance/connectionState which returns QR code in response ===
     // The logs show this endpoint returns the QR code at response.instance.qrcode
+    // Try with instance token first, fallback to admin token
     const uazResponse = await uazapiFetchWithAuthFallback(
       `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
       { method: "GET" },
       instanceToken,
       false, // Instance endpoint, not admin
+      [UAZAPI_DEFAULT_TOKEN], // Fallback to admin token if instance token fails
     );
 
     console.log(`[UAZAPI] ConnectionState response status: ${uazResponse.status}`);
