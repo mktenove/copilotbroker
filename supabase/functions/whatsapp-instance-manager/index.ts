@@ -702,4 +702,74 @@ app.post("/settings", async (c) => {
   }
 });
 
+// GET /debug/instances - List all instances from UAZAPI (admin diagnostic)
+app.get("/debug/instances", async (c) => {
+  try {
+    if (!UAZAPI_BASE_URL || !UAZAPI_DEFAULT_TOKEN) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
+    const authHeader = c.req.header("Authorization");
+    const supabase = getSupabaseClient(authHeader);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return c.json({ error: "Unauthorized" }, 401, corsHeaders);
+    }
+
+    // List all instances via UAZAPI admin endpoint (try multiple paths)
+    const listEndpoints = ["/instance/fetchInstances", "/instance/list", "/instances"];
+    let uazResponse: Response | null = null;
+    
+    for (const path of listEndpoints) {
+      const resp = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}${path}`,
+        { method: "GET" },
+        UAZAPI_DEFAULT_TOKEN,
+        true,
+      );
+      if (resp.ok || resp.status !== 404) {
+        uazResponse = resp;
+        break;
+      }
+    }
+    
+    if (!uazResponse) {
+      uazResponse = new Response(JSON.stringify({ error: "No list endpoint found" }), { status: 404 });
+    }
+
+    if (!uazResponse.ok) {
+      const errorText = await uazResponse.text();
+      console.error("UAZAPI List Error:", errorText);
+      return c.json({ 
+        error: "Failed to list instances", 
+        status: uazResponse.status,
+        details: errorText,
+      }, 500, corsHeaders);
+    }
+
+    const instances = await uazResponse.json();
+    
+    // Also get local broker instance for comparison
+    const brokerId = await getBrokerId(supabase, user.id);
+    const { data: localInstance } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("*")
+      .eq("broker_id", brokerId)
+      .maybeSingle();
+
+    return c.json({
+      success: true,
+      uazapi_instances: instances,
+      local_instance: localInstance,
+      uazapi_base_url: UAZAPI_BASE_URL,
+    }, 200, corsHeaders);
+
+  } catch (err) {
+    const error = err as Error;
+    console.error("Debug Error:", error);
+    return c.json({ error: error.message }, 500, corsHeaders);
+  }
+});
+
 Deno.serve(app.fetch);
