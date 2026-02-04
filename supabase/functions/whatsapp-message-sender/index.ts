@@ -221,6 +221,35 @@ app.post("/process", async (c) => {
         continue;
       }
 
+      // DEDUPLICATION: Check if already sent to this lead in last 24h
+      if (queueMsg.lead_id) {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: recentMessage } = await supabase
+          .from("whatsapp_message_queue")
+          .select("id")
+          .eq("lead_id", queueMsg.lead_id)
+          .eq("status", "sent")
+          .gte("sent_at", oneDayAgo)
+          .neq("id", queueMsg.id)
+          .maybeSingle();
+
+        if (recentMessage) {
+          // Cancel - already sent today
+          await supabase
+            .from("whatsapp_message_queue")
+            .update({ 
+              status: "cancelled", 
+              error_message: "Deduplicação: já enviado nas últimas 24h",
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", queueMsg.id);
+          
+          console.log(`Dedup: Skipping message ${queueMsg.id} - already sent to lead ${queueMsg.lead_id} today`);
+          results.push({ brokerId: instance.broker_id, sent: false, error: "deduplicated" });
+          continue;
+        }
+      }
+
       // Mark as sending
       await supabase
         .from("whatsapp_message_queue")

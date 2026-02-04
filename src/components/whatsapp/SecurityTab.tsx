@@ -1,15 +1,45 @@
+import { useState, useEffect } from "react";
 import { useWhatsAppInstance } from "@/hooks/use-whatsapp-instance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Shield, AlertOctagon, Check, Clock } from "lucide-react";
-import { useState } from "react";
+import { DailyStatsChart } from "./DailyStatsChart";
+import { OptoutsList } from "./OptoutsList";
+import { ErrorLogsCard } from "./ErrorLogsCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 
 export function SecurityTab() {
   const { instance, togglePause, updateSettings } = useWhatsAppInstance();
   const [hourlyLimit, setHourlyLimit] = useState(instance?.hourly_limit || 30);
   const [dailyLimit, setDailyLimit] = useState(instance?.daily_limit || 150);
+
+  // Fetch broker ID
+  const { data: broker } = useQuery({
+    queryKey: ["current-broker-security"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      const { data } = await supabase
+        .from("brokers")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      
+      return data;
+    },
+  });
+
+  // Update local state when instance loads
+  useEffect(() => {
+    if (instance) {
+      setHourlyLimit(instance.hourly_limit || 30);
+      setDailyLimit(instance.daily_limit || 150);
+    }
+  }, [instance]);
 
   const handleKillSwitch = async () => {
     if (instance) {
@@ -30,17 +60,17 @@ export function SecurityTab() {
     <div className="space-y-6">
       {/* Kill Switch */}
       <Card className={instance?.is_paused 
-        ? "bg-red-500/10 border-red-500/30" 
-        : "bg-[#1a1a1d] border-[#2a2a2e]"
+        ? "bg-destructive/10 border-destructive/30" 
+        : "bg-card border-border"
       }>
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <AlertOctagon className="w-5 h-5 text-red-400" />
+          <CardTitle className="text-foreground flex items-center gap-2">
+            <AlertOctagon className="w-5 h-5 text-destructive" />
             Botão de Emergência
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-slate-400 mb-4">
+          <p className="text-sm text-muted-foreground mb-4">
             {instance?.is_paused 
               ? "Todos os envios estão pausados. Clique para retomar."
               : "Pause imediatamente todos os envios em caso de problemas."
@@ -51,7 +81,7 @@ export function SecurityTab() {
             variant={instance?.is_paused ? "default" : "destructive"}
             className={instance?.is_paused 
               ? "bg-green-600 hover:bg-green-700" 
-              : "bg-red-600 hover:bg-red-700"
+              : ""
             }
           >
             {instance?.is_paused ? "▶ Retomar Envios" : "⛔ PARAR TODOS OS ENVIOS"}
@@ -62,30 +92,39 @@ export function SecurityTab() {
       {/* Warmup Progress */}
       <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             🔥 Aquecimento
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400">
+            <span className="text-muted-foreground">
               Dia {instance?.warmup_day || 1} de 14
             </span>
             <span className="text-amber-400">
               {instance?.warmup_stage === "normal" ? "Completo" : "Em andamento"}
             </span>
           </div>
-          <Progress value={warmupProgress} className="h-2 bg-[#2a2a2e]" />
-          <p className="text-xs text-slate-500">
+          <Progress value={warmupProgress} className="h-2" />
+          <p className="text-xs text-muted-foreground">
             O aquecimento gradual aumenta seus limites de envio ao longo de 14 dias para proteger seu número.
           </p>
         </CardContent>
       </Card>
 
+      {/* Daily Stats Chart */}
+      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
+
+      {/* Opt-outs List */}
+      <OptoutsList />
+
+      {/* Error Logs */}
+      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
+
       {/* Limits Settings */}
-      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Clock className="w-5 h-5" />
             Limites de Envio
           </CardTitle>
@@ -94,8 +133,8 @@ export function SecurityTab() {
           {/* Hourly Limit */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-sm text-slate-400">Limite por hora</span>
-              <span className="text-sm text-white font-mono">{hourlyLimit}</span>
+              <span className="text-sm text-muted-foreground">Limite por hora</span>
+              <span className="text-sm text-foreground font-mono">{hourlyLimit}</span>
             </div>
             <Slider
               value={[hourlyLimit]}
@@ -110,8 +149,8 @@ export function SecurityTab() {
           {/* Daily Limit */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-sm text-slate-400">Limite por dia</span>
-              <span className="text-sm text-white font-mono">{dailyLimit}</span>
+              <span className="text-sm text-muted-foreground">Limite por dia</span>
+              <span className="text-sm text-foreground font-mono">{dailyLimit}</span>
             </div>
             <Slider
               value={[dailyLimit]}
@@ -133,9 +172,9 @@ export function SecurityTab() {
       </Card>
 
       {/* Active Rules */}
-      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+      <Card className="bg-card border-border">
         <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
+          <CardTitle className="text-foreground flex items-center gap-2">
             <Shield className="w-5 h-5 text-green-400" />
             Regras Anti-Spam Ativas
           </CardTitle>
@@ -152,7 +191,7 @@ export function SecurityTab() {
             ].map((rule, i) => (
               <li key={i} className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-400 shrink-0" />
-                <span className="text-slate-300">{rule}</span>
+                <span className="text-muted-foreground">{rule}</span>
               </li>
             ))}
           </ul>
