@@ -1,147 +1,124 @@
 
 
-## Simplificar FAB e Mover Importação CSV para a Página Leads
+## Correção do Envio de Mensagens WhatsApp via UAZAPI
 
-### Visão Geral
+### Diagnóstico
 
-Reverter o botão amarelo (+) para sua função original de **adicionar lead manualmente com um clique**, e mover a opção de **Importar CSV** para dentro da página de Leads, onde faz mais sentido contextualmente.
-
----
-
-### Alterações Necessárias
-
-#### 1. AdminSidebar - Reverter FAB para Ação Única
-
-**Arquivo:** `src/components/admin/AdminSidebar.tsx`
-
-- Remover o `DropdownMenu` do botão FAB
-- Voltar para botão simples que chama `onAddLead` diretamente
-- Remover prop `onImportCsv` (não será mais usada aqui)
-
-**De:**
-```tsx
-<DropdownMenu>
-  <DropdownMenuTrigger>
-    <button>+</button>
-  </DropdownMenuTrigger>
-  <DropdownMenuContent>
-    <DropdownMenuItem>Adicionar Lead</DropdownMenuItem>
-    <DropdownMenuItem>Importar CSV</DropdownMenuItem>
-  </DropdownMenuContent>
-</DropdownMenu>
-```
-
-**Para:**
-```tsx
-<button onClick={onAddLead}>+</button>
-```
+Após análise detalhada da documentação oficial da UAZAPI, identifiquei que as edge functions estão usando endpoints e formatos incorretos.
 
 ---
 
-#### 2. BrokerSidebar - Mesma Alteração
+### Comparação: Documentação vs Código Atual
 
-**Arquivo:** `src/components/broker/BrokerSidebar.tsx`
-
-- Reverter para botão simples sem dropdown
-- Remover prop `onImportCsv`
-
----
-
-#### 3. MobileBottomNav - Simplificar FAB
-
-**Arquivo:** `src/components/admin/MobileBottomNav.tsx`
-
-- Remover menu overlay do FAB
-- FAB chama diretamente `onAddLead`
-- Remover prop `onImportCsv`
-
----
-
-#### 4. BrokerBottomNav - Mesma Alteração
-
-**Arquivo:** `src/components/broker/BrokerBottomNav.tsx`
-
-- Simplificar FAB para ação direta
-
----
-
-#### 5. Página Admin (aba Leads) - Adicionar Botão Importar CSV
-
-**Arquivo:** `src/pages/Admin.tsx`
-
-Na seção da aba "leads", adicionar um botão "Importar CSV" no cabeçalho junto com os filtros e exportação:
-
-```tsx
-{activeTab === "leads" && (
-  <>
-    {/* Header com ações */}
-    <div className="flex justify-end gap-2 mb-4">
-      <Button onClick={() => setIsCsvImportOpen(true)}>
-        <FileSpreadsheet className="w-4 h-4 mr-2" />
-        Importar CSV
-      </Button>
-      <ExportButton leads={filteredLeads} />
-    </div>
-    {/* ... resto do conteúdo */}
-  </>
-)}
-```
-
----
-
-#### 6. Página BrokerAdmin - Adicionar na Visualização Lista
-
-**Arquivo:** `src/pages/BrokerAdmin.tsx`
-
-Adicionar botão "Importar CSV" quando o corretor estiver na visualização de lista:
-
-```tsx
-{viewMode === "list" && (
-  <div className="flex justify-end gap-2 mb-4">
-    <Button onClick={() => setIsCsvImportOpen(true)}>
-      <FileSpreadsheet className="w-4 h-4 mr-2" />
-      Importar CSV
-    </Button>
-  </div>
-)}
-```
-
----
-
-#### 7. AdminLayout - Remover prop onImportCsv
-
-**Arquivo:** `src/components/admin/AdminLayout.tsx`
-
-- Remover prop `onImportCsv` da interface e propagação
-
----
-
-#### 8. BrokerLayout - Remover prop onImportCsv
-
-**Arquivo:** `src/components/broker/BrokerLayout.tsx`
-
-- Remover prop `onImportCsv`
-
----
-
-### Resultado Final
-
-| Componente | Antes | Depois |
-|------------|-------|--------|
-| Botão amarelo (+) | Dropdown com 2 opções | Clique único → Adicionar Lead |
-| Importar CSV | No dropdown do FAB | Botão na página de Leads |
-| UX | 2 cliques para adicionar lead | 1 clique para adicionar lead |
+| Aspecto | Documentação UAZAPI | Código Atual |
+|---------|---------------------|--------------|
+| URL Base | `https://api.uazapi.com/v2/{instanceId}/...` | Variável (sem instanceId) |
+| Endpoint Texto | `POST /message/text` | `/send/text` ou `/message/sendText` |
+| Header Auth | `Authorization: Bearer {token}` | `token` ou `apikey` |
+| Campo telefone | `phone` | `number` |
+| Campo mensagem | `message` | `text` |
 
 ---
 
 ### Arquivos a Modificar
 
-1. `src/components/admin/AdminSidebar.tsx` - Simplificar FAB
-2. `src/components/broker/BrokerSidebar.tsx` - Simplificar FAB
-3. `src/components/admin/MobileBottomNav.tsx` - Remover menu overlay
-4. `src/components/broker/BrokerBottomNav.tsx` - Remover menu overlay
-5. `src/components/admin/AdminLayout.tsx` - Remover prop
-6. `src/components/broker/BrokerLayout.tsx` - Remover prop
-7. `src/pages/Admin.tsx` - Adicionar botão na aba Leads
-8. `src/pages/BrokerAdmin.tsx` - Adicionar botão na visualização lista
+#### 1. `supabase/functions/whatsapp-message-sender/index.ts`
+
+**Alteração 1 - Adicionar basePath (Linha 4):**
+```typescript
+// De:
+const app = new Hono();
+
+// Para:
+const app = new Hono().basePath("/whatsapp-message-sender");
+```
+
+**Alteração 2 - Corrigir função sendMessageViaUAZAPI (Linhas 64-99):**
+- Mudar endpoint de `/message/sendText/${instanceName}` para formato correto
+- Mudar header de `apikey` para `Authorization: Bearer`
+- Mudar payload de `{ number, text }` para `{ phone, message }`
+
+```typescript
+const sendMessageViaUAZAPI = async (
+  instanceName: string,
+  instanceToken: string | null,
+  phone: string,
+  message: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> => {
+  try {
+    // Formato correto conforme documentação UAZAPI
+    const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
+      },
+      body: JSON.stringify({
+        phone: formatPhoneForUAZAPI(phone),
+        message: message,
+      }),
+    });
+    // ... resto permanece igual
+  }
+};
+```
+
+---
+
+#### 2. `supabase/functions/notify-new-lead/index.ts`
+
+**Alteração - Corrigir chamada UAZAPI (Linhas 99-111):**
+- Mudar endpoint de `/send/text` para `/message/text`
+- Mudar header de `token` para `Authorization: Bearer`
+- Mudar payload de `{ number, text }` para `{ phone, message }`
+
+```typescript
+// De:
+const response = await fetch(`${uazapiUrl}/send/text`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "token": uazapiToken,
+  },
+  body: JSON.stringify({
+    number: recipientPhone,
+    text: message,
+  }),
+});
+
+// Para:
+const response = await fetch(`${uazapiUrl}/message/text`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${uazapiToken}`,
+  },
+  body: JSON.stringify({
+    phone: recipientPhone,
+    message: message,
+  }),
+});
+```
+
+---
+
+### Resumo das Correções
+
+| Arquivo | Problema | Solução |
+|---------|----------|---------|
+| `whatsapp-message-sender` | Falta basePath no Hono | Adicionar `.basePath("/whatsapp-message-sender")` |
+| `whatsapp-message-sender` | Header `apikey` | Mudar para `Authorization: Bearer` |
+| `whatsapp-message-sender` | Payload `{ number, text }` | Mudar para `{ phone, message }` |
+| `notify-new-lead` | Endpoint `/send/text` | Mudar para `/message/text` |
+| `notify-new-lead` | Header `token` | Mudar para `Authorization: Bearer` |
+| `notify-new-lead` | Payload `{ number, text }` | Mudar para `{ phone, message }` |
+
+---
+
+### Pós-Implementação
+
+Após aplicar as correções:
+1. As edge functions serão automaticamente re-deployed
+2. Testar enviando um lead manualmente para verificar notificação
+3. Verificar se a fila de mensagens (cron) processa corretamente
 
