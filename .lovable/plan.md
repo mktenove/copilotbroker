@@ -1,20 +1,86 @@
 
-# Fase 2: Sistema de Campanhas + Integração Kanban
+
+# Fase 3: Processador de Fila + Webhook de Recebimento
 
 ## Resumo
 
-Implementar a funcionalidade completa de campanhas de disparo WhatsApp, permitindo que corretores selecionem leads por status do Kanban, criem templates de mensagem com variáveis dinâmicas, e disparem mensagens automatizadas com intervalo randômico de 60-240 segundos.
+Implementar a edge function que processa a fila de mensagens com intervalo randômico de 60-240 segundos, enviando efetivamente as mensagens via UAZAPI, além do webhook para receber respostas e detectar opt-out automático.
+
+---
+
+## Estado Atual
+
+**Implementado:**
+- Banco de dados completo (6 tabelas com RLS)
+- Hook `use-whatsapp-instance.ts` para gerenciar conexão
+- Hook `use-whatsapp-campaigns.ts` para criar campanhas e enfileirar mensagens
+- Hook `use-whatsapp-queue.ts` para visualizar a fila
+- UI completa: ConnectionTab, CampaignsTab, QueueTab, SecurityTab
+- Integração com Kanban (botão "Disparar WhatsApp")
+- Edge function `whatsapp-instance-manager` para conexão via QR Code
+
+**Faltando:**
+- Edge function `whatsapp-message-sender` que processa a fila e envia mensagens
+- Edge function `whatsapp-webhook` para receber respostas e detectar opt-out
+- Lógica de warmup progressivo funcional
+- Reset diário dos contadores
 
 ---
 
 ## O que será implementado
 
-1. **Modal de Nova Campanha** - Interface para criar campanhas selecionando leads por status do Kanban
-2. **Templates de Mensagem** - CRUD de templates com variáveis `{nome}`, `{empreendimento}`, `{corretor_nome}`
-3. **Botão no Kanban** - Ação rápida "Disparar WhatsApp" em cada coluna
-4. **Fila de Envio Funcional** - Listagem real das mensagens agendadas/enviadas
-5. **Hook de Campanhas** - Gerenciamento de estado e operações CRUD
-6. **Edge Function de Envio** - Processador de fila com intervalo randômico
+### 1. Edge Function: `whatsapp-message-sender`
+
+Processador que será chamado via cron job para enviar mensagens da fila.
+
+**Lógica principal:**
+```text
+1. Para cada corretor com instância conectada:
+   a. Verificar se está pausado -> skip
+   b. Verificar horário de trabalho -> skip se fora
+   c. Verificar limites (hora/dia) -> skip se atingido
+   d. Buscar próxima mensagem scheduled onde scheduled_at <= now
+   e. Verificar opt-out do telefone -> cancelar se optout
+   f. Enviar via UAZAPI /message/sendText
+   g. Atualizar status (sent/failed)
+   h. Incrementar contadores
+   i. Registrar em lead_interactions
+   j. Atualizar estatísticas diárias
+
+2. Verificar erros consecutivos -> pausar se >= 5
+3. Avançar warmup_day se completou 24h desde connected_at
+```
+
+**Endpoints:**
+- `POST /process` - Processa fila (chamado pelo cron)
+- `POST /send-single` - Envia mensagem avulsa (para testes)
+- `POST /reset-daily` - Reseta contadores diários (cron à meia-noite)
+
+### 2. Edge Function: `whatsapp-webhook`
+
+Recebe eventos da UAZAPI para detectar respostas e opt-out.
+
+**Eventos tratados:**
+- `message.received` - Detectar palavras de opt-out
+- `message.status` - Atualizar status de entrega
+- `connection.update` - Sincronizar status da conexão
+
+**Lógica de opt-out:**
+```javascript
+const OPTOUT_KEYWORDS = [
+  'pare', 'parar', 'sair', 'remover', 'cancelar',
+  'spam', 'bloquear', 'não quero', 'nao quero',
+  'stop', 'remove', 'unsubscribe'
+];
+
+const message = payload.message.toLowerCase();
+const hasOptout = OPTOUT_KEYWORDS.some(kw => message.includes(kw));
+
+if (hasOptout) {
+  // Inserir em whatsapp_optouts
+  // Cancelar mensagens pendentes para este telefone
+}
+```
 
 ---
 
@@ -22,266 +88,243 @@ Implementar a funcionalidade completa de campanhas de disparo WhatsApp, permitin
 
 | Arquivo | Função |
 |---------|--------|
-| `src/components/whatsapp/NewCampaignSheet.tsx` | Modal/Sheet para criar nova campanha |
-| `src/components/whatsapp/TemplateSelector.tsx` | Seletor de templates com prévia |
-| `src/components/whatsapp/LeadStatusSelector.tsx` | Seletor de status do Kanban |
-| `src/components/whatsapp/MessagePreview.tsx` | Prévia da mensagem com variáveis substituídas |
-| `src/components/whatsapp/CampaignCard.tsx` | Card individual de campanha na listagem |
-| `src/components/whatsapp/TemplatesSheet.tsx` | Modal para gerenciar templates |
-| `src/hooks/use-whatsapp-campaigns.ts` | Hook para campanhas |
-| `src/hooks/use-whatsapp-queue.ts` | Hook para fila de envio |
-| `supabase/functions/whatsapp-message-sender/index.ts` | Edge function processadora da fila |
-
----
-
-## Arquivos a modificar
-
-| Arquivo | Alteração |
-|---------|-----------|
-| `src/components/whatsapp/CampaignsTab.tsx` | Adicionar funcionalidade real de campanhas |
-| `src/components/whatsapp/QueueTab.tsx` | Listagem real da fila com dados do banco |
-| `src/components/crm/KanbanColumn.tsx` | Adicionar botão "Disparar WhatsApp" |
-| `src/components/whatsapp/index.ts` | Exportar novos componentes |
+| `supabase/functions/whatsapp-message-sender/index.ts` | Processador de fila |
+| `supabase/functions/whatsapp-webhook/index.ts` | Webhook de recebimento |
 
 ---
 
 ## Detalhamento Técnico
 
-### 1. NewCampaignSheet.tsx
-
-```text
-Interface:
-┌─────────────────────────────────────────┐
-│  Nova Campanha                    [X]   │
-├─────────────────────────────────────────┤
-│  Nome da campanha: [____________]       │
-│                                         │
-│  Selecionar leads:                      │
-│  [x] Novos Leads (15)                   │
-│  [ ] Informações Enviadas (8)           │
-│  [ ] Aguardando Dados (12)              │
-│                                         │
-│  Filtrar por projeto: [Todos    ▼]      │
-│                                         │
-│  Total de leads selecionados: 15        │
-│                                         │
-│  ─────────────────────────────────────  │
-│                                         │
-│  Mensagem:                              │
-│  [Template ▼] ou [Escrever própria]     │
-│                                         │
-│  Prévia:                                │
-│  ┌───────────────────────────────────┐  │
-│  │ Olá João! Temos novidades sobre   │  │
-│  │ o GoldenView que podem te...      │  │
-│  └───────────────────────────────────┘  │
-│                                         │
-│  [Cancelar]        [Iniciar Campanha]   │
-└─────────────────────────────────────────┘
-```
-
-### 2. use-whatsapp-campaigns.ts
+### whatsapp-message-sender/index.ts
 
 ```typescript
-interface UseWhatsAppCampaignsReturn {
-  campaigns: WhatsAppCampaign[];
-  isLoading: boolean;
-  createCampaign: (data: CreateCampaignData) => Promise<void>;
-  pauseCampaign: (id: string) => Promise<void>;
-  resumeCampaign: (id: string) => Promise<void>;
-  cancelCampaign: (id: string) => Promise<void>;
-  templates: WhatsAppMessageTemplate[];
-  createTemplate: (data: CreateTemplateData) => Promise<void>;
-  updateTemplate: (id: string, data: Partial<CreateTemplateData>) => Promise<void>;
-  deleteTemplate: (id: string) => Promise<void>;
-}
+// Estrutura principal
+POST /process
+- Buscar todas instâncias conectadas e não pausadas
+- Para cada instância:
+  - Verificar working_hours
+  - Verificar hourly_limit e daily_limit
+  - Buscar 1 mensagem scheduled mais antiga
+  - Enviar via UAZAPI
+  - Atualizar contadores
+  - Registrar interação
+
+POST /reset-daily (chamado às 00:00)
+- Zerar daily_sent_count de todas instâncias
+- Avançar warmup_day onde aplicável
+- Ajustar limites baseado no warmup_day
+
+POST /send-single (para admin/testes)
+- Envia mensagem específica da fila
 ```
 
-### 3. use-whatsapp-queue.ts
-
-```typescript
-interface UseWhatsAppQueueReturn {
-  queue: WhatsAppMessageQueue[];
-  stats: {
-    queued: number;
-    sent: number;
-    failed: number;
-    replies: number;
-  };
-  isLoading: boolean;
-  cancelMessage: (id: string) => Promise<void>;
-  retryMessage: (id: string) => Promise<void>;
-  nextSendIn: number | null; // segundos até próximo envio
-}
-```
-
-### 4. whatsapp-message-sender (Edge Function)
-
-Lógica do processador de fila:
+### Fluxo de envio de mensagem
 
 ```text
-1. Buscar mensagens com status 'queued' ou 'scheduled'
-2. Para cada corretor com mensagens pendentes:
-   a. Verificar se instância está conectada
-   b. Verificar limites (hora/dia)
-   c. Verificar se não está pausado
-   d. Verificar horário de trabalho
-   e. Verificar opt-out do telefone
-3. Enviar UMA mensagem por corretor por execução
-4. Calcular próximo intervalo: random(60-240s) + jitter(0-5s)
-5. Agendar próxima mensagem com scheduled_at = now + intervalo
-6. Atualizar contadores (hourly_sent_count, daily_sent_count)
-7. Registrar em lead_interactions
+1. Buscar mensagem da fila:
+   SELECT * FROM whatsapp_message_queue
+   WHERE status = 'scheduled'
+     AND scheduled_at <= NOW()
+     AND broker_id = :broker_id
+   ORDER BY scheduled_at ASC
+   LIMIT 1
+
+2. Verificar opt-out:
+   SELECT * FROM whatsapp_optouts WHERE phone = :phone
+
+3. Enviar via UAZAPI:
+   POST /message/sendText/:instance_name
+   {
+     "number": "5551999999999",
+     "text": "Olá João! ..."
+   }
+
+4. Atualizar fila:
+   UPDATE whatsapp_message_queue
+   SET status = 'sent', sent_at = NOW(), uazapi_message_id = :id
+   WHERE id = :queue_id
+
+5. Incrementar contadores:
+   UPDATE broker_whatsapp_instances
+   SET daily_sent_count = daily_sent_count + 1,
+       hourly_sent_count = hourly_sent_count + 1
+   WHERE id = :instance_id
+
+6. Registrar interação:
+   INSERT INTO lead_interactions
+   (lead_id, broker_id, interaction_type, notes)
+   VALUES (:lead_id, :broker_id, 'whatsapp', 'Mensagem enviada: ...')
+
+7. Atualizar estatísticas:
+   UPSERT INTO whatsapp_daily_stats
+   (broker_id, date, sent_count)
+   VALUES (:broker_id, CURRENT_DATE, 1)
+   ON CONFLICT UPDATE sent_count = sent_count + 1
 ```
 
-### 5. Integração com KanbanColumn
+### whatsapp-webhook/index.ts
 
-Adicionar ícone de WhatsApp no menu da coluna:
-
-```tsx
-<DropdownMenuItem 
-  className="text-green-400 focus:bg-green-500/10"
-  onClick={() => onDispatchWhatsApp?.(status)}
->
-  <MessageSquare className="w-4 h-4 mr-2" />
-  Disparar WhatsApp
-</DropdownMenuItem>
+```typescript
+// Estrutura principal
+POST /
+- Validar signature do webhook (se UAZAPI enviar)
+- Parsear evento
+- Tratar conforme tipo:
+  - messages.upsert -> verificar opt-out
+  - connection.update -> atualizar status da instância
+  - message.update -> atualizar status de entrega
 ```
 
 ---
 
-## Fluxo de Criação de Campanha
+## Lógica de Warmup
 
-```text
-1. Corretor clica "Nova Campanha" ou "Disparar WhatsApp" no Kanban
-2. Abre sheet com seletor de status/leads
-3. Corretor escolhe template ou escreve mensagem
-4. Sistema mostra prévia com variáveis substituídas
-5. Corretor confirma
-6. Sistema:
-   a. Cria registro na tabela whatsapp_campaigns
-   b. Para cada lead selecionado:
-      - Valida telefone (E.164)
-      - Verifica opt-out
-      - Substitui variáveis na mensagem
-      - Insere na whatsapp_message_queue com scheduled_at escalonado
-   c. Atualiza total_leads na campanha
-7. UI mostra progresso na aba Campanhas e Fila
-```
-
----
-
-## Cálculo de Intervalo Randômico
+O warmup será gerenciado automaticamente:
 
 ```javascript
-// Para N leads, calcular tempo estimado
-const calculateEstimatedTime = (leadCount: number): string => {
-  const avgInterval = 150; // média entre 60 e 240
-  const totalSeconds = leadCount * avgInterval;
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  return hours > 0 ? `~${hours}h ${minutes}min` : `~${minutes}min`;
-};
+// No /reset-daily
+const instances = await getConnectedInstances();
 
-// Ao agendar cada mensagem
-const scheduleMessages = async (leads, campaignId, message) => {
-  let currentTime = new Date();
-  
-  for (const lead of leads) {
-    // Intervalo randômico 60-240s + jitter 0-5s
-    const interval = Math.floor(Math.random() * 180) + 60 + Math.floor(Math.random() * 5);
-    currentTime = new Date(currentTime.getTime() + interval * 1000);
+for (const instance of instances) {
+  // Avançar dia de warmup se ainda não completou 14 dias
+  if (instance.warmup_stage !== 'normal' && instance.warmup_day < 14) {
+    const newDay = instance.warmup_day + 1;
+    const schedule = WARMUP_SCHEDULE[newDay];
     
-    await insertQueueItem({
-      lead_id: lead.id,
-      phone: formatPhoneE164(lead.whatsapp),
-      message: replaceVariables(message, lead),
-      campaign_id: campaignId,
-      scheduled_at: currentTime.toISOString(),
-      status: 'scheduled'
+    await updateInstance(instance.id, {
+      warmup_day: newDay,
+      hourly_limit: schedule.hourlyLimit,
+      daily_limit: schedule.dailyLimit,
+      warmup_stage: newDay >= 14 ? 'normal' : 'warming'
     });
   }
-};
+  
+  // Resetar contadores diários
+  await updateInstance(instance.id, {
+    daily_sent_count: 0,
+    hourly_sent_count: 0
+  });
+}
 ```
+
+**Tabela de Warmup (já definida em types/whatsapp.ts):**
+| Dia | Limite Diário | Limite/Hora |
+|-----|---------------|-------------|
+| 1-3 | 30 | 15 |
+| 4-7 | 60 | 25 |
+| 8-10 | 100 | 35 |
+| 11-14 | 150 | 45 |
+| 15+ | 250 | 60 |
 
 ---
 
-## Templates Padrão (Seed)
+## Tratamento de Erros
 
-```typescript
-const DEFAULT_TEMPLATES = [
-  {
-    name: "Primeiro contato",
-    content: "Olá {nome}! Sou {corretor_nome}, da Enove Incorporadora. Vi que você tem interesse no {empreendimento}. Posso te enviar mais informações?",
-    category: "geral"
-  },
-  {
-    name: "Follow-up 1",
-    content: "Oi {nome}! Passando para saber se teve tempo de ver as informações do {empreendimento}. Posso ajudar com alguma dúvida?",
-    category: "follow_up"
-  },
-  {
-    name: "Solicitar documentos",
-    content: "Olá {nome}! Para avançarmos no processo do {empreendimento}, preciso de alguns documentos. Posso te explicar quais são?",
-    category: "docs"
+```javascript
+// Contador de erros consecutivos
+if (sendResult.error) {
+  const newErrorCount = instance.consecutive_errors + 1;
+  
+  await updateInstance(instance.id, {
+    consecutive_errors: newErrorCount
+  });
+  
+  // Pausar após 5 erros consecutivos
+  if (newErrorCount >= 5) {
+    await pauseInstance(instance.id, 'Pausado automaticamente: 5 erros consecutivos');
   }
-];
+} else {
+  // Reset contador em sucesso
+  await updateInstance(instance.id, {
+    consecutive_errors: 0
+  });
+}
 ```
 
 ---
 
-## Validações de Segurança
+## Setup do Cron Job
 
-Antes de criar campanha:
-1. Verificar se corretor tem instância conectada
-2. Verificar se não está pausado
-3. Verificar se há saldo diário disponível
-4. Filtrar telefones em opt-out
-5. Filtrar telefones já contatados hoje
+Após implementar as edge functions, será necessário configurar os cron jobs no Supabase:
+
+```sql
+-- Processar fila a cada minuto
+SELECT cron.schedule(
+  'whatsapp-process-queue',
+  '* * * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://nckzxwxxtyeydolmdijn.supabase.co/functions/v1/whatsapp-message-sender/process',
+    headers := '{"Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb
+  );
+  $$
+);
+
+-- Resetar contadores diários à meia-noite
+SELECT cron.schedule(
+  'whatsapp-daily-reset',
+  '0 0 * * *',
+  $$
+  SELECT net.http_post(
+    url := 'https://nckzxwxxtyeydolmdijn.supabase.co/functions/v1/whatsapp-message-sender/reset-daily',
+    headers := '{"Authorization": "Bearer ' || current_setting('app.settings.service_role_key') || '"}'::jsonb
+  );
+  $$
+);
+
+-- Resetar contador horário a cada hora
+SELECT cron.schedule(
+  'whatsapp-hourly-reset',
+  '0 * * * *',
+  $$
+  UPDATE broker_whatsapp_instances SET hourly_sent_count = 0;
+  $$
+);
+```
 
 ---
 
-## UI da Fila de Envio (QueueTab atualizado)
+## Fluxo do Webhook UAZAPI
 
-```text
-┌─────────────────────────────────────────────────────────┐
-│  📬 Fila de Envio                   Próximo em: 2:34   │
-├─────────────────────────────────────────────────────────┤
-│  [🔍 Buscar...]  [Status ▼]  [Campanha ▼]              │
-├─────────────────────────────────────────────────────────┤
-│  Nome          │ Status    │ Horário │ Campanha        │
-│  ─────────────────────────────────────────────────────  │
-│  João Silva    │ 🟡 Agend. │ 14:32   │ Follow-up Novos │
-│  Maria Santos  │ 🟢 Env.   │ 14:28   │ Follow-up Novos │
-│  Pedro Costa   │ 🔴 Falhou │ 14:25   │ Follow-up Novos │
-│  Ana Oliveira  │ ⏳ Na fila│ ─       │ Follow-up Novos │
-└─────────────────────────────────────────────────────────┘
-│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                   │
-│  │  24  │ │  45  │ │   3  │ │   2  │                   │
-│  │Fila  │ │Enviad│ │Falhas│ │Resp. │                   │
-│  └──────┘ └──────┘ └──────┘ └──────┘                   │
+Para configurar o webhook na UAZAPI, o corretor (ou admin) precisa:
+
+1. Acessar o painel UAZAPI
+2. Configurar webhook URL: `https://nckzxwxxtyeydolmdijn.supabase.co/functions/v1/whatsapp-webhook`
+3. Selecionar eventos: `messages.upsert`, `connection.update`
+
+Alternativamente, podemos configurar via API na criação da instância:
+```javascript
+// No whatsapp-instance-manager /init
+await fetch(`${UAZAPI_BASE_URL}/webhook/set/${instanceName}`, {
+  method: 'POST',
+  body: JSON.stringify({
+    url: `${SUPABASE_URL}/functions/v1/whatsapp-webhook`,
+    webhook_by_events: false,
+    events: ['messages.upsert', 'connection.update']
+  })
+});
 ```
 
 ---
 
 ## Ordem de Implementação
 
-1. ✅ Criar hooks `use-whatsapp-campaigns.ts` e `use-whatsapp-queue.ts`
-2. ✅ Criar componentes auxiliares (NewCampaignSheet, CampaignCard)
-3. ✅ Atualizar CampaignsTab.tsx com listagem real
-4. ✅ Atualizar QueueTab.tsx com dados reais
-5. 🔜 Criar edge function `whatsapp-message-sender`
-6. ✅ Adicionar botão no KanbanColumn.tsx
-7. 🔜 Testar fluxo completo
+1. Criar edge function `whatsapp-message-sender` com endpoints /process, /reset-daily
+2. Criar edge function `whatsapp-webhook` para receber eventos
+3. Atualizar `whatsapp-instance-manager` para configurar webhook automaticamente
+4. Testar fluxo completo: criar campanha -> mensagens na fila -> processamento
+5. Documentar setup dos cron jobs
 
 ---
 
 ## Resultado Esperado
 
-Após esta fase, o corretor poderá:
-- ✅ Criar campanhas selecionando leads por status do Kanban
-- ✅ Usar templates prontos ou escrever mensagens personalizadas
-- ✅ Ver prévia da mensagem antes de enviar
-- ✅ Acompanhar o progresso na aba de Campanhas
-- ✅ Visualizar a fila de envio em tempo real
-- ✅ Disparar diretamente de uma coluna do Kanban
+Após esta fase:
+- Mensagens da fila serão enviadas automaticamente via UAZAPI
+- Intervalo randômico de 60-240s entre envios será respeitado
+- Limites de hora/dia serão aplicados
+- Warmup progressivo funcionará automaticamente
+- Respostas com palavras de opt-out serão detectadas
+- Contadores serão resetados diariamente
+- Erros consecutivos pausarão a instância automaticamente
+
