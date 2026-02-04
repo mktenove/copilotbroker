@@ -118,18 +118,6 @@ export function WhatsAppOverviewTab({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-end">
-        <Button
-          variant="outline"
-          onClick={() => refetchInstances()}
-          className="bg-[#1a1a1d] border-[#2a2a2e]"
-        >
-          <RefreshCw className="w-4 h-4 mr-2" />
-          Atualizar
-        </Button>
-      </div>
-
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
