@@ -17,7 +17,7 @@ const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
 const UAZAPI_ADMIN_TOKEN = Deno.env.get("UAZAPI_ADMIN_TOKEN") || "";
 const UAZAPI_DEFAULT_TOKEN = UAZAPI_ADMIN_TOKEN || UAZAPI_TOKEN;
 
- type UazapiAuthStyle = "admintoken" | "token" | "apikey" | "bearer" | "x-api-key";
+type UazapiAuthStyle = "admintoken" | "token" | "apikey" | "bearer" | "x-api-key";
 
 const buildUazapiHeaders = (
   token: string,
@@ -165,13 +165,21 @@ app.post("/init", async (c) => {
       .maybeSingle();
 
     if (existingInstance) {
-      const instance = existingInstance as { status: string };
+      const instance = existingInstance as { status: string; instance_token: string | null };
       // If exists and connected, return current status
       if (instance.status === "connected") {
         return c.json({
           success: true,
           instance: existingInstance,
           message: "Instance already connected",
+        }, 200, corsHeaders);
+      }
+      // If has token but not connected, skip creation and just return for QR
+      if (instance.instance_token) {
+        return c.json({
+          success: true,
+          instance: existingInstance,
+          message: "Instance exists, ready for QR code",
         }, 200, corsHeaders);
       }
     }
@@ -211,21 +219,32 @@ app.post("/init", async (c) => {
     }
 
     const uazData = await uazResponse.json();
-    console.log("UAZAPI Response:", uazData);
+    console.log("UAZAPI Init Response:", JSON.stringify(uazData, null, 2));
 
-    // Get instance token from response
-    // Some UAZAPI deployments may return different keys; we try the known ones.
+    // === IMPROVED: Capture real instance data from UAZAPI response ===
+    // UAZAPI may return different structures, so we check multiple paths
+    const realInstanceName = 
+      uazData?.name || 
+      uazData?.instance?.name || 
+      uazData?.instance?.instanceName ||
+      instanceName;
+    
+    // Get instance token from response (different UAZAPI versions use different keys)
     const instanceToken =
       uazData?.token ||
       uazData?.key ||
       uazData?.hash ||
       uazData?.instance?.token ||
       uazData?.instance?.apikey ||
+      uazData?.instance?.key ||
       null;
+
+    console.log(`[UAZAPI] Real instance name: ${realInstanceName}, Token found: ${!!instanceToken}`);
 
     // Configure webhook (admin endpoint)
     const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
     try {
+      // Use instance token if available for webhook config
       const webhookResponse = await uazapiFetchWithAuthFallback(
         `${UAZAPI_BASE_URL}/webhook`,
         {
@@ -238,13 +257,12 @@ app.post("/init", async (c) => {
             excludeMessages: ["wasSentByApi"],
           }),
         },
-        // Webhook config is under "Administração" in docs, so prefer admin token.
-        UAZAPI_DEFAULT_TOKEN,
-        true, // isAdminEndpoint
+        instanceToken || UAZAPI_DEFAULT_TOKEN,
+        !instanceToken, // Use admin mode only if no instance token
       );
       
       if (webhookResponse.ok) {
-        console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
+        console.log(`Webhook configured for ${realInstanceName}: ${webhookUrl}`);
       } else {
         console.error("Failed to configure webhook:", await webhookResponse.text());
       }
@@ -253,12 +271,12 @@ app.post("/init", async (c) => {
       // Continue anyway - webhook can be configured manually
     }
 
-    // Upsert broker instance record
+    // Upsert broker instance record with real data from UAZAPI
     const { data: instance, error: dbError } = await supabase
       .from("broker_whatsapp_instances")
       .upsert({
         broker_id: brokerId,
-        instance_name: instanceName,
+        instance_name: realInstanceName, // Use name returned by UAZAPI
         instance_token: instanceToken,
         status: "qr_pending",
         updated_at: new Date().toISOString(),
@@ -319,12 +337,12 @@ app.get("/status", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null; status: string; connected_at: string | null };
 
-    // Check UAZAPI status
+    // Check UAZAPI status - try connectionState endpoint with instance token
     const uazResponse = await uazapiFetchWithAuthFallback(
       `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
       { method: "GET" },
       instance.instance_token || UAZAPI_DEFAULT_TOKEN,
-      false, // Not an admin endpoint
+      false, // Instance endpoint
     );
 
     let uazStatus = null;
@@ -332,7 +350,7 @@ app.get("/status", async (c) => {
       uazStatus = await uazResponse.json();
       
       // Update local status based on UAZAPI response
-      const state = uazStatus.instance?.state;
+      const state = uazStatus.instance?.state || uazStatus.state;
       const newStatus = state === "open" ? "connected" : 
                         state === "connecting" ? "connecting" : 
                         "disconnected";
@@ -394,65 +412,64 @@ app.get("/qrcode", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Get QR code from UAZAPI - try multiple endpoint variations
-    // Different UAZAPI versions/deployments may use different endpoints
-    const instanceToken = instance.instance_token || UAZAPI_DEFAULT_TOKEN;
-    const instanceName = instance.instance_name;
+    // === FIXED: Use correct endpoint and token for QR code ===
+    // According to UAZAPI V2 docs: POST /instance/connect with instance token
+    const instanceToken = instance.instance_token;
     
-    // Define endpoint variations to try (in order of priority)
-    const endpointVariations = [
-      // UAZAPI V2 documented endpoints
-      { url: `${UAZAPI_BASE_URL}/instance/connect/${instanceName}`, method: "POST", includeJson: true },
-      { url: `${UAZAPI_BASE_URL}/instance/connect/${instanceName}`, method: "GET", includeJson: false },
-      // Alternative endpoints found in UAZAPI variations
-      { url: `${UAZAPI_BASE_URL}/instance/qrcode/${instanceName}`, method: "GET", includeJson: false },
-      { url: `${UAZAPI_BASE_URL}/instance/exportQrcodeBase64/${instanceName}`, method: "GET", includeJson: false },
-      { url: `${UAZAPI_BASE_URL}/qrcode/${instanceName}`, method: "GET", includeJson: false },
-    ];
-    
-    let uazResponse: Response | null = null;
-    let lastError = "";
-    
-    for (const endpoint of endpointVariations) {
-      console.log(`[UAZAPI] Trying QR endpoint: ${endpoint.method} ${endpoint.url}`);
-      
-      const response = await uazapiFetchWithAuthFallback(
-        endpoint.url,
-        { 
-          method: endpoint.method, 
-          includeJson: endpoint.includeJson,
-          bodyString: endpoint.includeJson ? JSON.stringify({}) : undefined,
-        },
-        instanceToken,
-        false, // Instance endpoints use "token" header, not "admintoken"
-      );
-      
-      console.log(`[UAZAPI] QR endpoint response: ${response.status}`);
-      
-      // If we get a success or a non-404/405 error, use this response
-      if (response.ok || (response.status !== 404 && response.status !== 405)) {
-        uazResponse = response;
-        break;
-      }
-      
-      // Store error for logging
-      try {
-        lastError = await response.text();
-      } catch {
-        lastError = `Status ${response.status}`;
-      }
+    if (!instanceToken) {
+      return c.json({ 
+        error: "Instance token not found", 
+        hint: "A instância foi criada mas não retornou um token. Tente reinicializar a conexão.",
+      }, 400, corsHeaders);
     }
-    
-    if (!uazResponse || !uazResponse.ok) {
-      console.error("UAZAPI QR Error - all endpoints failed:", lastError);
+
+    console.log(`[UAZAPI] Getting QR code for instance: ${instance.instance_name}`);
+    console.log(`[UAZAPI] Using instance token: ${instanceToken.substring(0, 8)}...`);
+
+    // UAZAPI V2: POST /instance/connect (uses instance token, not admin token)
+    // The request body should be empty or minimal
+    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
+      method: "POST",
+      headers: {
+        "token": instanceToken,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}),
+    });
+
+    console.log(`[UAZAPI] Connect response status: ${uazResponse.status}`);
+
+    if (!uazResponse.ok) {
+      const errorText = await uazResponse.text();
+      console.error("UAZAPI QR Error:", errorText);
+      
+      // Try alternative endpoint if primary fails
+      console.log("[UAZAPI] Trying alternative QR endpoint...");
+      const altResponse = await fetch(`${UAZAPI_BASE_URL}/instance/qrcode`, {
+        method: "GET",
+        headers: {
+          "token": instanceToken,
+        },
+      });
+      
+      if (altResponse.ok) {
+        const altData = await altResponse.json();
+        return c.json({
+          success: true,
+          qrcode: altData.base64 || altData.qrcode || altData.code,
+          pairingCode: altData.pairingCode || altData.paircode,
+        }, 200, corsHeaders);
+      }
+      
       return c.json({ 
         error: "Failed to get QR code", 
-        details: lastError,
-        hint: "Nenhum endpoint de QR Code funcionou. Verifique se a instância foi criada corretamente na UAZAPI.",
+        details: errorText,
+        hint: "Verifique se a instância foi criada corretamente e se o token está válido.",
       }, 500, corsHeaders);
     }
 
     const qrData = await uazResponse.json();
+    console.log("[UAZAPI] QR Response:", JSON.stringify(qrData, null, 2));
 
     // Update status to qr_pending
     await supabase
@@ -465,8 +482,8 @@ app.get("/qrcode", async (c) => {
 
     return c.json({
       success: true,
-      qrcode: qrData.base64 || qrData.qrcode,
-      pairingCode: qrData.pairingCode,
+      qrcode: qrData.base64 || qrData.qrcode || qrData.code,
+      pairingCode: qrData.pairingCode || qrData.paircode,
     }, 200, corsHeaders);
 
   } catch (err) {
@@ -506,13 +523,13 @@ app.post("/logout", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Logout from UAZAPI
-    const uazResponse = await uazapiFetchWithAuthFallback(
-      `${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`,
-      { method: "DELETE" },
-      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
-      false, // Not an admin endpoint
-    );
+    // Logout from UAZAPI using instance token
+    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout`, {
+      method: "DELETE",
+      headers: {
+        "token": instance.instance_token || "",
+      },
+    });
 
     if (!uazResponse.ok) {
       console.error("UAZAPI Logout Error:", await uazResponse.text());
@@ -571,13 +588,13 @@ app.post("/restart", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Restart via UAZAPI
-    const uazResponse = await uazapiFetchWithAuthFallback(
-      `${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`,
-      { method: "PUT" },
-      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
-      false, // Not an admin endpoint
-    );
+    // Restart via UAZAPI using instance token
+    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart`, {
+      method: "PUT",
+      headers: {
+        "token": instance.instance_token || "",
+      },
+    });
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
@@ -702,6 +719,87 @@ app.post("/settings", async (c) => {
   }
 });
 
+// POST /sync - Sync instance from UAZAPI (for existing instances created outside)
+app.post("/sync", async (c) => {
+  try {
+    if (!UAZAPI_BASE_URL || !UAZAPI_DEFAULT_TOKEN) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
+    const authHeader = c.req.header("Authorization");
+    const supabase = getSupabaseClient(authHeader);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return c.json({ error: "Unauthorized" }, 401, corsHeaders);
+    }
+
+    const brokerId = await getBrokerId(supabase, user.id);
+    
+    // Try to find instance in UAZAPI by listing all instances
+    const listResponse = await fetch(`${UAZAPI_BASE_URL}/instance/fetchInstances`, {
+      method: "GET",
+      headers: {
+        "admintoken": UAZAPI_ADMIN_TOKEN,
+      },
+    });
+
+    if (!listResponse.ok) {
+      return c.json({ 
+        error: "Failed to list UAZAPI instances", 
+        details: await listResponse.text(),
+      }, 500, corsHeaders);
+    }
+
+    const instances = await listResponse.json();
+    const expectedName = `enove_broker_${brokerId.substring(0, 8)}`;
+    
+    // Find matching instance
+    // deno-lint-ignore no-explicit-any
+    const matchingInstance = (instances as any[])?.find((inst: any) => 
+      inst.name === expectedName || 
+      inst.instanceName === expectedName ||
+      inst.adminField01 === brokerId
+    );
+
+    if (!matchingInstance) {
+      return c.json({ 
+        error: "No matching instance found in UAZAPI",
+        expectedName,
+        availableInstances: instances,
+      }, 404, corsHeaders);
+    }
+
+    // Update local database with UAZAPI data
+    const { data: instance, error: dbError } = await supabase
+      .from("broker_whatsapp_instances")
+      .upsert({
+        broker_id: brokerId,
+        instance_name: matchingInstance.name || matchingInstance.instanceName || expectedName,
+        instance_token: matchingInstance.token || matchingInstance.key || matchingInstance.apikey,
+        status: matchingInstance.connectionStatus === "open" ? "connected" : "disconnected",
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "broker_id" })
+      .select()
+      .single();
+
+    if (dbError) {
+      return c.json({ error: "Failed to sync instance", details: dbError.message }, 500, corsHeaders);
+    }
+
+    return c.json({
+      success: true,
+      instance,
+      synced_from: matchingInstance,
+    }, 200, corsHeaders);
+
+  } catch (err) {
+    const error = err as Error;
+    console.error("Sync Error:", error);
+    return c.json({ error: error.message }, 500, corsHeaders);
+  }
+});
+
 // GET /debug/instances - List all instances from UAZAPI (admin diagnostic)
 app.get("/debug/instances", async (c) => {
   try {
@@ -717,26 +815,13 @@ app.get("/debug/instances", async (c) => {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
 
-    // List all instances via UAZAPI admin endpoint (try multiple paths)
-    const listEndpoints = ["/instance/fetchInstances", "/instance/list", "/instances"];
-    let uazResponse: Response | null = null;
-    
-    for (const path of listEndpoints) {
-      const resp = await uazapiFetchWithAuthFallback(
-        `${UAZAPI_BASE_URL}${path}`,
-        { method: "GET" },
-        UAZAPI_DEFAULT_TOKEN,
-        true,
-      );
-      if (resp.ok || resp.status !== 404) {
-        uazResponse = resp;
-        break;
-      }
-    }
-    
-    if (!uazResponse) {
-      uazResponse = new Response(JSON.stringify({ error: "No list endpoint found" }), { status: 404 });
-    }
+    // List all instances via UAZAPI admin endpoint
+    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/fetchInstances`, {
+      method: "GET",
+      headers: {
+        "admintoken": UAZAPI_ADMIN_TOKEN,
+      },
+    });
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
