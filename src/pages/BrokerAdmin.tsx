@@ -10,6 +10,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
 import LeadsTable from "@/components/admin/LeadsTable";
 import { AddLeadModal } from "@/components/admin/AddLeadModal";
+import { CsvImportModal } from "@/components/admin/CsvImportModal";
 import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
 import { LeadStatus } from "@/types/crm";
@@ -39,6 +40,7 @@ const BrokerAdmin = () => {
   
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const navigate = useNavigate();
   const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
   
@@ -127,9 +129,14 @@ const BrokerAdmin = () => {
     setIsAddLeadOpen(true);
   };
 
+  const handleImportCsv = () => {
+    setIsCsvImportOpen(true);
+  };
+
   const handleAddLeadSuccess = () => {
     fetchLeads();
     setIsAddLeadOpen(false);
+    setIsCsvImportOpen(false);
   };
 
   const filteredLeads = leads.filter(
@@ -166,6 +173,7 @@ const BrokerAdmin = () => {
         onViewChange={setViewMode}
         onLogout={handleLogout}
         onAddLead={handleAddLead}
+        onImportCsv={handleImportCsv}
         searchTerm={viewMode === "list" ? searchTerm : undefined}
         onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
       >
@@ -311,6 +319,15 @@ const BrokerAdmin = () => {
     <AddLeadModal
       isOpen={isAddLeadOpen}
       onClose={() => setIsAddLeadOpen(false)}
+      onSuccess={handleAddLeadSuccess}
+      defaultBrokerId={brokerId || undefined}
+      hideBrokerSelect={true}
+    />
+
+    {/* CSV Import Modal */}
+    <CsvImportModal
+      isOpen={isCsvImportOpen}
+      onClose={() => setIsCsvImportOpen(false)}
       onSuccess={handleAddLeadSuccess}
       defaultBrokerId={brokerId || undefined}
       hideBrokerSelect={true}

@@ -13,6 +13,7 @@ import ProjectManagement from "@/components/admin/ProjectManagement";
 import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AddLeadModal } from "@/components/admin/AddLeadModal";
+import { CsvImportModal } from "@/components/admin/CsvImportModal";
 import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
 import { LeadStatus, CRMLead } from "@/types/crm";
 
@@ -67,6 +68,7 @@ const Admin = () => {
   const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "projects" | "analytics">("crm");
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const navigate = useNavigate();
   const { role, isLoading: isRoleLoading } = useUserRole();
 
@@ -327,6 +329,10 @@ const Admin = () => {
     setIsAddLeadOpen(true);
   };
 
+  const handleImportCsv = () => {
+    setIsCsvImportOpen(true);
+  };
+
   const handleAddLeadSuccess = () => {
     fetchLeads();
   };
@@ -449,6 +455,7 @@ const Admin = () => {
         searchTerm={currentSearchTerm}
         onSearchChange={handleSearchChange}
         onAddLead={handleAddLead}
+        onImportCsv={handleImportCsv}
         brokers={brokers}
       >
       {activeTab === "crm" ? (
@@ -565,6 +572,13 @@ const Admin = () => {
       <AddLeadModal
         isOpen={isAddLeadOpen}
         onClose={() => setIsAddLeadOpen(false)}
+        onSuccess={handleAddLeadSuccess}
+      />
+
+      {/* CSV Import Modal */}
+      <CsvImportModal
+        isOpen={isCsvImportOpen}
+        onClose={() => setIsCsvImportOpen(false)}
         onSuccess={handleAddLeadSuccess}
       />
     </AdminLayout>
