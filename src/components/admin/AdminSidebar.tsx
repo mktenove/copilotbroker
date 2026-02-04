@@ -7,7 +7,7 @@ import {
   BarChart3, 
   Settings,
   Plus,
-  Smartphone,
+  MessageSquare,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -34,8 +34,8 @@ const NAV_ITEMS = [
   { id: "leads", label: "Leads", icon: Users },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
+  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "whatsapp", label: "WhatsApp", icon: Smartphone },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {
@@ -106,9 +106,13 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     }}
                     className={cn(
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                      isActive 
-                        ? "bg-primary/20 text-primary" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      isActive && item.id === "whatsapp"
+                        ? "bg-green-500/20 text-green-400"
+                        : isActive 
+                          ? "bg-primary/20 text-primary" 
+                          : item.id === "whatsapp"
+                            ? "text-green-400/70 hover:text-green-400 hover:bg-green-500/10"
+                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
                     {/* Active indicator bar */}
