@@ -1,7 +1,7 @@
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
-const app = new Hono();
+const app = new Hono().basePath("/whatsapp-message-sender");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -66,18 +66,19 @@ const sendMessageViaUAZAPI = async (
   instanceName: string,
   instanceToken: string | null,
   phone: string,
-  message: string
+  messageText: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   try {
-    const response = await fetch(`${UAZAPI_BASE_URL}/message/sendText/${instanceName}`, {
+    // Formato correto conforme documentação UAZAPI
+    const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": instanceToken || UAZAPI_TOKEN,
+        "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
       },
       body: JSON.stringify({
-        number: formatPhoneForUAZAPI(phone),
-        text: message,
+        phone: formatPhoneForUAZAPI(phone),
+        message: messageText,
       }),
     });
 
