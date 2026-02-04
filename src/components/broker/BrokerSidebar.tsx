@@ -1,5 +1,5 @@
-import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare } from "lucide-react";
+import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
 import { NotificationPanel } from "@/components/admin/NotificationPanel";
@@ -27,6 +27,9 @@ export function BrokerSidebar({
   brokerInitial = "C",
 }: BrokerSidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isWhatsAppPage = location.pathname === "/corretor/whatsapp";
+  
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden md:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
       {/* Logo */}
@@ -73,6 +76,21 @@ export function BrokerSidebar({
             </button>
           );
         })}
+
+        {/* WhatsApp */}
+        <button
+          onClick={() => navigate("/corretor/whatsapp")}
+          className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative mt-2",
+            isWhatsAppPage ? "bg-[#2a2a2e] text-green-400" : "text-slate-400 hover:text-white"
+          )}
+          title="WhatsApp"
+        >
+          <MessageSquare className="w-5 h-5" />
+          <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            WhatsApp
+          </span>
+        </button>
 
         {/* Empreendimentos */}
         <button
