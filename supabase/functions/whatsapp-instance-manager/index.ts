@@ -426,40 +426,20 @@ app.get("/qrcode", async (c) => {
     console.log(`[UAZAPI] Getting QR code for instance: ${instance.instance_name}`);
     console.log(`[UAZAPI] Using instance token: ${instanceToken.substring(0, 8)}...`);
 
-    // UAZAPI V2: POST /instance/connect (uses instance token, not admin token)
-    // The request body should be empty or minimal
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
-      method: "POST",
-      headers: {
-        "token": instanceToken,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({}),
-    });
+    // === FIXED: Use /instance/connectionState which returns QR code in response ===
+    // The logs show this endpoint returns the QR code at response.instance.qrcode
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
+      { method: "GET" },
+      instanceToken,
+      false, // Instance endpoint, not admin
+    );
 
-    console.log(`[UAZAPI] Connect response status: ${uazResponse.status}`);
+    console.log(`[UAZAPI] ConnectionState response status: ${uazResponse.status}`);
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
       console.error("UAZAPI QR Error:", errorText);
-      
-      // Try alternative endpoint if primary fails
-      console.log("[UAZAPI] Trying alternative QR endpoint...");
-      const altResponse = await fetch(`${UAZAPI_BASE_URL}/instance/qrcode`, {
-        method: "GET",
-        headers: {
-          "token": instanceToken,
-        },
-      });
-      
-      if (altResponse.ok) {
-        const altData = await altResponse.json();
-        return c.json({
-          success: true,
-          qrcode: altData.base64 || altData.qrcode || altData.code,
-          pairingCode: altData.pairingCode || altData.paircode,
-        }, 200, corsHeaders);
-      }
       
       return c.json({ 
         error: "Failed to get QR code", 
@@ -470,6 +450,21 @@ app.get("/qrcode", async (c) => {
 
     const qrData = await uazResponse.json();
     console.log("[UAZAPI] QR Response:", JSON.stringify(qrData, null, 2));
+
+    // Extract QR code from response - UAZAPI returns it in instance.qrcode
+    const qrcode = qrData.instance?.qrcode || qrData.qrcode || qrData.base64 || qrData.code;
+    const pairingCode = qrData.instance?.paircode || qrData.pairingCode || qrData.paircode;
+
+    if (!qrcode) {
+      console.log("[UAZAPI] No QR code in response, instance may already be connected");
+      return c.json({
+        success: true,
+        qrcode: null,
+        message: qrData.instance?.status === "connected" 
+          ? "Instância já conectada" 
+          : "QR code não disponível no momento. Tente novamente.",
+      }, 200, corsHeaders);
+    }
 
     // Update status to qr_pending
     await supabase
@@ -482,8 +477,8 @@ app.get("/qrcode", async (c) => {
 
     return c.json({
       success: true,
-      qrcode: qrData.base64 || qrData.qrcode || qrData.code,
-      pairingCode: qrData.pairingCode || qrData.paircode,
+      qrcode: qrcode,
+      pairingCode: pairingCode,
     }, 200, corsHeaders);
 
   } catch (err) {
