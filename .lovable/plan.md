@@ -1,97 +1,98 @@
 
-
 ## Correção do Envio de Mensagens WhatsApp via UAZAPI
 
-### Diagnóstico
+### Diagnóstico Final
 
-Após análise detalhada da documentação oficial da UAZAPI, identifiquei que as edge functions estão usando endpoints e formatos incorretos.
-
----
-
-### Comparação: Documentação vs Código Atual
-
-| Aspecto | Documentação UAZAPI | Código Atual |
-|---------|---------------------|--------------|
-| URL Base | `https://api.uazapi.com/v2/{instanceId}/...` | Variável (sem instanceId) |
-| Endpoint Texto | `POST /message/text` | `/send/text` ou `/message/sendText` |
-| Header Auth | `Authorization: Bearer {token}` | `token` ou `apikey` |
-| Campo telefone | `phone` | `number` |
-| Campo mensagem | `message` | `text` |
+Após análise detalhada, identifiquei **3 problemas principais** que causam o erro `405 Method Not Allowed`:
 
 ---
 
-### Arquivos a Modificar
+### Problema 1: Estrutura de URL Incorreta
 
-#### 1. `supabase/functions/whatsapp-message-sender/index.ts`
-
-**Alteração 1 - Adicionar basePath (Linha 4):**
-```typescript
-// De:
-const app = new Hono();
-
-// Para:
-const app = new Hono().basePath("/whatsapp-message-sender");
+**Documentação UAZAPI (página 3):**
+```
+URL Base: https://api.uazapi.com/v2/{instanceId}/{endpoint}
 ```
 
-**Alteração 2 - Corrigir função sendMessageViaUAZAPI (Linhas 64-99):**
-- Mudar endpoint de `/message/sendText/${instanceName}` para formato correto
-- Mudar header de `apikey` para `Authorization: Bearer`
-- Mudar payload de `{ number, text }` para `{ phone, message }`
-
+**O que o código atual faz:**
 ```typescript
-const sendMessageViaUAZAPI = async (
-  instanceName: string,
-  instanceToken: string | null,
-  phone: string,
-  message: string
-): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  try {
-    // Formato correto conforme documentação UAZAPI
-    const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
-      },
-      body: JSON.stringify({
-        phone: formatPhoneForUAZAPI(phone),
-        message: message,
-      }),
-    });
-    // ... resto permanece igual
-  }
-};
+// notify-new-lead e whatsapp-message-sender
+fetch(`${UAZAPI_INSTANCE_URL}/message/text`, ...)
 ```
+
+**O problema:**
+- Se `UAZAPI_INSTANCE_URL` = `https://api.uazapi.com` (sem instanceId), o endpoint seria `/message/text` que não existe
+- Se `UAZAPI_INSTANCE_URL` = `https://api.uazapi.com/v2/alguma_instancia`, está fixado em UMA instância e não funciona para outras
+
+**Solução:**
+- Separar `UAZAPI_BASE_URL` (ex: `https://api.uazapi.com`) do `instanceId`
+- Construir URL: `{BASE_URL}/v2/{instanceName}/message/text`
+- Usar o `instance_name` e `instance_token` da tabela `broker_whatsapp_instances`
 
 ---
 
-#### 2. `supabase/functions/notify-new-lead/index.ts`
+### Problema 2: Header de Autenticação Incorreto
 
-**Alteração - Corrigir chamada UAZAPI (Linhas 99-111):**
-- Mudar endpoint de `/send/text` para `/message/text`
-- Mudar header de `token` para `Authorization: Bearer`
-- Mudar payload de `{ number, text }` para `{ phone, message }`
+**Documentação UAZAPI (página 3):**
+```
+Authorization: Bearer {seu-token}
+```
+
+**Código atual já usa Bearer**, mas o `whatsapp-instance-manager` que funciona usa um sistema de fallback que tenta múltiplos headers:
+- `token`
+- `admintoken`
+- `apikey`
+- `Authorization: Bearer`
+
+**Descoberta importante:** O `whatsapp-instance-manager` tenta `token` PRIMEIRO, não `Bearer`. Isso sugere que a UAZAPI neste ambiente aceita o header `token` diretamente.
+
+---
+
+### Problema 3: `notify-new-lead` Não Busca Instância do Broker
+
+Quando um lead é atribuído a um corretor, a função `notify-new-lead` deveria:
+1. Buscar a instância WhatsApp conectada do corretor em `broker_whatsapp_instances`
+2. Usar o `instance_name` para construir a URL correta
+3. Usar o `instance_token` para autenticação
+
+Atualmente ela usa apenas as variáveis de ambiente globais.
+
+---
+
+### Correções Necessárias
+
+#### 1. `supabase/functions/notify-new-lead/index.ts`
 
 ```typescript
-// De:
-const response = await fetch(`${uazapiUrl}/send/text`, {
-  method: "POST",
+// ANTES:
+const response = await fetch(`${uazapiUrl}/message/text`, {
   headers: {
-    "Content-Type": "application/json",
-    "token": uazapiToken,
+    "Authorization": `Bearer ${uazapiToken}`,
   },
-  body: JSON.stringify({
-    number: recipientPhone,
-    text: message,
-  }),
+  body: JSON.stringify({ phone, message }),
 });
 
-// Para:
+// DEPOIS:
+// 1. Buscar instância do broker
+const { data: brokerInstance } = await supabase
+  .from("broker_whatsapp_instances")
+  .select("instance_name, instance_token, status")
+  .eq("broker_id", recipientBrokerId)
+  .eq("status", "connected")
+  .single();
+
+// 2. Construir URL com instanceName
+const instanceName = brokerInstance?.instance_name || "default";
+const instanceToken = brokerInstance?.instance_token || uazapiToken;
+
+// 3. Usar URL base sem instance, adicionando o path correto
+// UAZAPI_INSTANCE_URL pode ser: https://api.uazapi.com/v2/{instance}
+// Então o endpoint fica: {UAZAPI_INSTANCE_URL}/message/text
 const response = await fetch(`${uazapiUrl}/message/text`, {
   method: "POST",
   headers: {
     "Content-Type": "application/json",
-    "Authorization": `Bearer ${uazapiToken}`,
+    "token": instanceToken,  // Header "token" em vez de "Bearer"
   },
   body: JSON.stringify({
     phone: recipientPhone,
@@ -100,25 +101,92 @@ const response = await fetch(`${uazapiUrl}/message/text`, {
 });
 ```
 
+#### 2. `supabase/functions/whatsapp-message-sender/index.ts`
+
+A função `sendMessageViaUAZAPI` precisa:
+
+```typescript
+// ANTES:
+const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
+  headers: {
+    "Authorization": `Bearer ${instanceToken || UAZAPI_TOKEN}`,
+  },
+  ...
+});
+
+// DEPOIS:
+const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "token": instanceToken || UAZAPI_TOKEN,  // Header "token" em vez de "Bearer"
+  },
+  body: JSON.stringify({
+    phone: formatPhoneForUAZAPI(phone),
+    message: messageText,
+  }),
+});
+```
+
 ---
 
-### Resumo das Correções
+### Implementação Robusta com Fallback
 
-| Arquivo | Problema | Solução |
-|---------|----------|---------|
-| `whatsapp-message-sender` | Falta basePath no Hono | Adicionar `.basePath("/whatsapp-message-sender")` |
-| `whatsapp-message-sender` | Header `apikey` | Mudar para `Authorization: Bearer` |
-| `whatsapp-message-sender` | Payload `{ number, text }` | Mudar para `{ phone, message }` |
-| `notify-new-lead` | Endpoint `/send/text` | Mudar para `/message/text` |
-| `notify-new-lead` | Header `token` | Mudar para `Authorization: Bearer` |
-| `notify-new-lead` | Payload `{ number, text }` | Mudar para `{ phone, message }` |
+Para garantir compatibilidade com diferentes configurações UAZAPI, implementar o mesmo padrão de fallback do `whatsapp-instance-manager`:
+
+```typescript
+const sendWithAuthFallback = async (
+  url: string,
+  token: string,
+  body: object
+): Promise<Response> => {
+  const headers = ["token", "apikey", "Authorization"];
+  
+  for (const headerType of headers) {
+    const reqHeaders: Record<string, string> = {
+      "Content-Type": "application/json",
+    };
+    
+    if (headerType === "Authorization") {
+      reqHeaders["Authorization"] = `Bearer ${token}`;
+    } else {
+      reqHeaders[headerType] = token;
+    }
+    
+    const res = await fetch(url, {
+      method: "POST",
+      headers: reqHeaders,
+      body: JSON.stringify(body),
+    });
+    
+    if (res.ok) return res;
+    if (res.status !== 401 && res.status !== 405) return res;
+  }
+  
+  // Retorna última resposta se todas falharem
+  return fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "token": token },
+    body: JSON.stringify(body),
+  });
+};
+```
 
 ---
 
-### Pós-Implementação
+### Arquivos a Modificar
 
-Após aplicar as correções:
-1. As edge functions serão automaticamente re-deployed
-2. Testar enviando um lead manualmente para verificar notificação
-3. Verificar se a fila de mensagens (cron) processa corretamente
+| Arquivo | Alteração Principal |
+|---------|---------------------|
+| `supabase/functions/notify-new-lead/index.ts` | Mudar header de `Authorization: Bearer` para `token` |
+| `supabase/functions/whatsapp-message-sender/index.ts` | Mudar header de `Authorization: Bearer` para `token` |
+
+---
+
+### Testes Pós-Implementação
+
+1. Deploy das edge functions
+2. Adicionar um lead manualmente para testar `notify-new-lead`
+3. Verificar logs da edge function para confirmar resposta da UAZAPI
+4. Verificar timeline do lead para ver se notificação foi enviada
 
