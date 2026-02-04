@@ -65,6 +65,54 @@ export type Database = {
           },
         ]
       }
+      broker_auto_message_rules: {
+        Row: {
+          broker_id: string
+          created_at: string | null
+          delay_minutes: number | null
+          id: string
+          is_active: boolean | null
+          message_content: string
+          project_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string | null
+          delay_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          message_content: string
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string | null
+          delay_minutes?: number | null
+          id?: string
+          is_active?: boolean | null
+          message_content?: string
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_auto_message_rules_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_auto_message_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_projects: {
         Row: {
           broker_id: string
@@ -406,6 +454,8 @@ export type Database = {
       }
       leads: {
         Row: {
+          auto_first_message_at: string | null
+          auto_first_message_sent: boolean | null
           broker_id: string | null
           cpf: string | null
           created_at: string
@@ -427,6 +477,8 @@ export type Database = {
           whatsapp: string
         }
         Insert: {
+          auto_first_message_at?: string | null
+          auto_first_message_sent?: boolean | null
           broker_id?: string | null
           cpf?: string | null
           created_at?: string
@@ -448,6 +500,8 @@ export type Database = {
           whatsapp: string
         }
         Update: {
+          auto_first_message_at?: string | null
+          auto_first_message_sent?: boolean | null
           broker_id?: string | null
           cpf?: string | null
           created_at?: string

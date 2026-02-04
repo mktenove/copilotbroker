@@ -376,11 +376,17 @@ export const usePageTracking = (projectId?: string) => {
 };
 
 // Function to track lead attribution when a form is submitted
-export const trackLeadAttribution = async (leadId: string, projectId?: string) => {
+// landingPageType: "landing_page" for public forms, "admin_manual" for manual entry
+export const trackLeadAttribution = async (
+  leadId: string, 
+  projectId?: string,
+  landingPageType?: string
+) => {
   try {
     const utmParams = getStoredUTMParams();
     const referrer = document.referrer || null;
-    const landingPage = sessionStorage.getItem("landing_page") || window.location.pathname;
+    // Use provided type, or fallback to stored/current path
+    const landingPage = landingPageType || sessionStorage.getItem("landing_page") || window.location.pathname;
 
     // Use type assertion for new table not yet in types
     const client = supabase as any;

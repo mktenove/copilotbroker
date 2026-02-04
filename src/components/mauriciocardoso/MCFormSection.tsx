@@ -51,7 +51,11 @@ const MCFormSection = ({ projectId, brokerId }: MCFormSectionProps) => {
     setIsSubmitting(true);
 
     try {
+      // Generate UUID client-side
+      const leadId = crypto.randomUUID();
+      
       const { error } = await supabase.from("leads").insert({
+        id: leadId,
         name: name.trim(),
         whatsapp,
         project_id: projectId || null,
@@ -61,14 +65,22 @@ const MCFormSection = ({ projectId, brokerId }: MCFormSectionProps) => {
 
       if (error) throw error;
 
-      // Save attribution
+      // Save attribution - marca como landing_page para diferenciar de manual
       await supabase.from("lead_attribution").insert({
+        lead_id: leadId,
         project_id: projectId || null,
-        landing_page: window.location.pathname,
+        landing_page: "landing_page",
         referrer: document.referrer || null,
         utm_source: new URLSearchParams(window.location.search).get("utm_source"),
         utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
         utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
+      });
+      
+      // Trigger auto first message (non-blocking)
+      supabase.functions.invoke("auto-first-message", {
+        body: { leadId },
+      }).catch((err) => {
+        console.warn("Auto first message trigger failed:", err);
       });
 
       toast({

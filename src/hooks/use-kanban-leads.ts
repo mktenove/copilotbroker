@@ -21,7 +21,8 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
         .select(`
           *,
           broker:brokers(id, name, slug),
-          project:projects(id, name, slug, city_slug)
+          project:projects(id, name, slug, city_slug),
+          attribution:lead_attribution(landing_page)
         `)
         .neq("status", "inactive")
         .order("last_interaction_at", { ascending: false });
@@ -37,7 +38,16 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
       const { data, error } = await query;
 
       if (error) throw error;
-      setLeads((data || []) as unknown as CRMLead[]);
+      
+      // Transform attribution from array to single object (take first if exists)
+      const transformedData = (data || []).map((lead: any) => ({
+        ...lead,
+        attribution: Array.isArray(lead.attribution) && lead.attribution.length > 0 
+          ? lead.attribution[0] 
+          : lead.attribution
+      }));
+      
+      setLeads(transformedData as unknown as CRMLead[]);
     } catch (error) {
       console.error("Erro ao buscar leads:", error);
       toast.error("Erro ao carregar leads.");

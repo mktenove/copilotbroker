@@ -151,8 +151,15 @@ const FormSection = ({
 
       if (error) throw error;
 
-      // Track lead attribution com o ID pré-gerado
-      await trackLeadAttribution(leadId, projectId || undefined);
+      // Track lead attribution com o ID pré-gerado - marca como landing_page
+      await trackLeadAttribution(leadId, projectId || undefined, "landing_page");
+      
+      // Trigger auto first message (non-blocking)
+      supabase.functions.invoke("auto-first-message", {
+        body: { leadId },
+      }).catch((err) => {
+        console.warn("Auto first message trigger failed:", err);
+      });
       
       // GA4 conversion event
       if (typeof window.gtag === 'function') {
