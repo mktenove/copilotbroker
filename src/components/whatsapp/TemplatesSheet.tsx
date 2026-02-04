@@ -21,6 +21,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Edit2, Trash2, FileText, Loader2 } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
+import { useUserRole } from "@/hooks/use-user-role";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -55,6 +56,8 @@ const VARIABLES = [
 export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
   const { templates, broker, createTemplate, updateTemplate, deleteTemplate } =
     useWhatsAppCampaigns();
+  const { role } = useUserRole();
+  const isAdmin = role === "admin";
 
   const [isEditing, setIsEditing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -210,7 +213,7 @@ export function TemplatesSheet({ open, onOpenChange }: TemplatesSheetProps) {
                               {template.content}
                             </p>
                           </div>
-                          {template.broker_id === broker?.id && (
+                          {(template.broker_id === broker?.id || (isAdmin && template.broker_id === null)) && (
                             <div className="flex items-center gap-1">
                               <Button
                                 variant="ghost"
