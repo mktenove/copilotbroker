@@ -1,202 +1,146 @@
 
-# Plano: Corrigir Atualização do Status de Conexão WhatsApp
-
-## Diagnóstico do Problema
-
-O QR Code foi criado e escaneado com sucesso (celular mostra "Ativo"), mas a interface web não atualiza o status. A análise revelou dois problemas principais:
-
-### Problema 1: Campo errado na resposta da UAZAPI
-
-Os logs mostram que a UAZAPI retorna:
-```json
-{
-  "connected": true/false,
-  "instance": {
-    "status": "connecting" | "connected" | "disconnected",
-    ...
-  },
-  "response": "Connecting" | "Connected"
-}
-```
-
-Porém, o código atual na rota `/status` procura pelo campo `state` em vez de `status`:
-
-```text
-Linha 450-453 (ATUAL):
-  const state = uazStatus.instance?.state || uazStatus.state;
-  const newStatus = state === "open" ? "connected" : ...
-
-DEVERIA SER:
-  const status = uazStatus.connected ? "connected" : 
-                 uazStatus.instance?.status || uazStatus.response?.toLowerCase();
-```
-
-### Problema 2: Webhook não está recebendo eventos
-
-O webhook `whatsapp-webhook` não possui logs, indicando que a UAZAPI não está enviando eventos de conexão. Isso acontece porque:
-
-1. O webhook pode não ter sido registrado corretamente
-2. A URL do webhook pode estar errada
-3. A UAZAPI pode precisar do token da instância para registrar webhooks
-
-### Problema 3: Polling muito lento
-
-O hook `use-whatsapp-instance.ts` faz polling a cada 30 segundos (linha 274), o que significa que após escanear o QR code, o usuário precisa esperar até 30 segundos para ver a atualização.
+## Objetivo
+Fazer o status “Conectado” aparecer corretamente na tela `/corretor/whatsapp` após você escanear o QR Code (no celular já aparece “Ativo”), eliminando o “status travado” no painel.
 
 ---
 
-## Alterações Propostas
+## Diagnóstico do que está acontecendo (com base no código atual)
+Hoje a rota **GET `/whatsapp-instance-manager/status`** faz somente isto para checar o estado no provedor:
 
-### 1. Corrigir extração de status na rota `/status`
+- chama **apenas** `GET /instance/connectionState/{instanceName}` (um único endpoint)
+- usa como token **prioritário** `instance.instance_token` (se existir)
+- **não** passa o token admin como fallback nessa rota
+- interpreta “conectado” apenas por campos típicos de algumas variantes (`connected`, `loggedIn`, `instance.status`, `response`)
 
-**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`  
-**Linhas:** 449-466
+Isso gera 2 causas bem prováveis para “não exibir conectado”:
 
-```typescript
-// ANTES (linhas 449-453)
-const state = uazStatus.instance?.state || uazStatus.state;
-const newStatus = state === "open" ? "connected" : 
-                  state === "connecting" ? "connecting" : 
-                  "disconnected";
+### Causa A) Endpoint de status errado / incompleto
+Seu `/qrcode` tenta vários endpoints (connect_get, connect_post, connectionState, etc.) e consegue achar um que funciona.
+Já o `/status` tenta só `connectionState`. Se a sua instalação da UAZAPI retorna status em outro endpoint, o `/status` nunca vai conseguir confirmar “connected”.
 
-// DEPOIS
-// A UAZAPI retorna múltiplos indicadores de conexão:
-// - connected: boolean no root
-// - instance.status: "connecting" | "connected" | "disconnected"
-// - response: "Connecting" | "Connected"
-// - loggedIn: boolean
-const isConnected = 
-  uazStatus.connected === true || 
-  uazStatus.loggedIn === true ||
-  uazStatus.instance?.status === "connected" ||
-  uazStatus.response?.toLowerCase() === "connected";
-
-const isConnecting = 
-  uazStatus.instance?.status === "connecting" ||
-  uazStatus.response?.toLowerCase() === "connecting";
-
-const newStatus = isConnected ? "connected" : 
-                  isConnecting ? "connecting" : 
-                  "disconnected";
-```
-
-### 2. Extrair número de telefone quando conectado
-
-**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`  
-**Dentro da mesma lógica de status**
-
-```typescript
-// Também capturar o número de telefone da instância quando conectado
-const phoneNumber = 
-  uazStatus.instance?.owner ||
-  uazStatus.jid?.split("@")[0] ||
-  uazStatus.instance?.profileName ||
-  null;
-
-// Formatar para E.164 se necessário
-const formattedPhone = phoneNumber 
-  ? (phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber}`)
-  : null;
-
-// Incluir phone_number no update
-await supabase
-  .from("broker_whatsapp_instances")
-  .update({ 
-    status: newStatus,
-    phone_number: newStatus === "connected" ? formattedPhone : instance.phone_number,
-    connected_at: newStatus === "connected" ? new Date().toISOString() : instance.connected_at,
-    last_seen_at: new Date().toISOString(),
-  })
-  .eq("id", instance.id);
-```
-
-### 3. Adicionar polling mais rápido durante espera de QR
-
-**Arquivo:** `src/hooks/use-whatsapp-instance.ts`  
-**Linhas:** 271-277
-
-```typescript
-// ANTES
-useEffect(() => {
-  if (instance?.status === "connected" || instance?.status === "connecting" || instance?.status === "qr_pending") {
-    const interval = setInterval(refreshStatus, 30000);
-    return () => clearInterval(interval);
-  }
-}, [instance?.status, refreshStatus]);
-
-// DEPOIS - Polling mais agressivo durante conexão
-useEffect(() => {
-  if (!instance) return;
-  
-  // Durante espera do QR, verificar a cada 5 segundos
-  if (instance.status === "qr_pending" || instance.status === "connecting") {
-    const interval = setInterval(refreshStatus, 5000);
-    return () => clearInterval(interval);
-  }
-  
-  // Quando conectado, verificar a cada 60 segundos
-  if (instance.status === "connected") {
-    const interval = setInterval(refreshStatus, 60000);
-    return () => clearInterval(interval);
-  }
-}, [instance?.status, refreshStatus]);
-```
-
-### 4. Limpar QR Code após conexão bem-sucedida
-
-**Arquivo:** `src/hooks/use-whatsapp-instance.ts`  
-**Na função refreshStatus**
-
-```typescript
-const refreshStatus = useCallback(async () => {
-  try {
-    setIsLoading(true);
-    setError(null);
-    
-    const headers = await getAuthHeaders();
-    const response = await fetch(`${FUNCTION_URL}/status`, {
-      method: "GET",
-      headers,
-    });
-
-    const data = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(data.error || "Failed to get status");
-    }
-
-    setInstance(data.instance);
-    
-    // Limpar QR code quando conectado com sucesso
-    if (data.instance?.status === "connected") {
-      setQRCode(null);
-    }
-  } catch (err) {
-    // ... error handling
-  } finally {
-    setIsLoading(false);
-  }
-}, []);
-```
+### Causa B) Token prioritário errado para status
+Você confirmou: **Token usado = Token admin** e **Auth header = token**.
+Se a `instance_token` guardada no banco estiver ausente/antiga/inválida, a chamada do `/status` pode falhar (401/404), e aí o código não atualiza o status local — e o frontend continua mostrando `qr_pending`/`disconnected`.
 
 ---
 
-## Resumo das Alterações
-
-| Arquivo | Alteração | Impacto |
-|---------|-----------|---------|
-| `whatsapp-instance-manager/index.ts` | Corrigir campos de status | Status atualiza corretamente |
-| `whatsapp-instance-manager/index.ts` | Extrair número de telefone | Mostra número quando conectado |
-| `use-whatsapp-instance.ts` | Polling de 5s durante QR | Atualização mais rápida |
-| `use-whatsapp-instance.ts` | Limpar QR ao conectar | UX mais limpa |
+## Estratégia de correção
+Vamos tornar o `/status` tão “resiliente” quanto o `/qrcode`, e alinhar com sua regra: **sempre tentar token admin**.
 
 ---
 
-## Resultado Esperado
+## Passo 1 — Confirmar o que o frontend está recebendo (rápido e decisivo)
+1. No navegador, abrir DevTools → Network.
+2. Clicar em “Atualizar” na aba Conexão.
+3. Inspecionar a resposta do request `.../functions/v1/whatsapp-instance-manager/status` e verificar:
+   - se `uazapi` vem `null`
+   - se vem com `instance.state` tipo `"open"`, `"close"`, etc.
+   - se vem com `instance.status` ou `connected: true`
+4. Isso vai orientar o mapeamento de status (mas já vamos suportar todos os formatos conhecidos).
 
-Após as correções:
+(Como implementação, também podemos retornar um campo `debug` simples na resposta do `/status` com `attemptUsed`, `httpStatus`, `rawState` para facilitar.)
 
-1. Ao escanear o QR Code, o status será atualizado para "connected" em até 5 segundos
-2. O número de telefone conectado será exibido na interface
-3. O QR Code desaparecerá automaticamente após a conexão
-4. O card de "Saúde da Conexão" (Health Score) será exibido no lugar do QR Code
+---
+
+## Passo 2 — Ajustar a Edge Function `/status` (principal correção)
+### 2.1. Token: preferir admin token e manter fallback
+Na chamada do provedor dentro do `/status`, mudar para:
+
+- **token principal:** `UAZAPI_DEFAULT_TOKEN` (admin)
+- **fallback tokens:** `[instance.instance_token]` (se existir e for diferente)
+
+Isso garante que mesmo com `instance_token` inválido, o status ainda é consultado via admin token, como você confirmou ser o correto.
+
+### 2.2. Endpoint probing no `/status` (igual ao `/qrcode`)
+Trocar o hardcode de:
+- `GET /instance/connectionState/{name}`
+
+para uma lista de tentativas, por exemplo:
+- `GET /instance/connectionState/{name}`
+- `GET /instance/connection-state/{name}`
+- `GET /instance/connect/{name}` (algumas variantes retornam status aqui)
+- `GET /instance/fetchInstances` (admin) e filtrar o item do instanceName para inferir estado
+
+A primeira resposta `200 OK` define o `uazStatus` usado.
+
+### 2.3. Mapeamento de status: aceitar `state=open` e equivalentes
+Hoje o `/status` não considera `instance.state === "open"` como conectado (isso é comum e inclusive já está no webhook).
+Vamos criar um normalizador:
+
+- Extrair um `raw` (string) de:
+  - `uazStatus.instance?.state`
+  - `uazStatus.instance?.status`
+  - `uazStatus.state`
+  - `uazStatus.status`
+  - `uazStatus.response`
+- Normalizar para lowercase e mapear:
+  - `"open"`, `"connected"`, `"online"` → `connected`
+  - `"connecting"` → `connecting`
+  - `"qr"`, `"qr_pending"`, `"qrcode"`, `"pairing"` → `qr_pending` (opcional, se aparecer)
+  - `"close"`, `"closed"`, `"disconnected"`, `"offline"` → `disconnected`
+- Também manter o boolean:
+  - `uazStatus.connected === true` ou `uazStatus.loggedIn === true` → `connected`
+
+### 2.4. Atualizar o objeto retornado (não só o banco)
+Atualmente o código faz `instance.status = newStatus`, mas não reflete `connected_at`, `phone_number`, `last_seen_at` no objeto retornado.
+Vamos:
+- atualizar o banco
+- e também “espelhar” os campos no `instance` que será retornado no JSON para o frontend, garantindo que a UI reflita imediatamente a mudança.
+
+---
+
+## Passo 3 — Ajuste no polling do frontend (para não “parar de atualizar”)
+Hoje o hook só faz polling quando:
+- `qr_pending` ou `connecting` (5s)
+- `connected` (60s)
+
+Se por algum motivo o backend marcar como `disconnected` durante o processo (ou começar em disconnected), o hook para de atualizar sozinho.
+Vamos ajustar para:
+- se existir `instance` e `status === "disconnected"`, fazer polling (ex: a cada 10–15s) por um período (ex: 2–3 minutos) ou até mudar o status.
+
+Isso reduz a necessidade de ficar clicando em “Atualizar”.
+
+---
+
+## Passo 4 — Melhorar feedback de erro na UI (evitar “falha silenciosa”)
+O hook já seta `error`, mas o `ConnectionTab` não exibe.
+Vamos adicionar um pequeno alerta/card quando `error` existir, com uma mensagem tipo:
+- “Não foi possível verificar o status agora. Clique em Atualizar.”
+
+E (opcional) um botão “Copiar detalhes técnicos” usando o `uazapi` retornado pelo backend para diagnóstico.
+
+---
+
+## Critérios de aceite (o que deve acontecer após a correção)
+1. Escanear QR Code → em até 5s o status muda para **Conectado** na UI.
+2. Se o provedor retornar `state: "open"`, o sistema reconhece como conectado.
+3. Mesmo que `instance_token` esteja inválido, o status atualiza (porque usa token admin).
+4. Em “disconnected”, o painel continua tentando atualizar automaticamente (sem precisar clicar toda hora).
+
+---
+
+## Arquivos que serão alterados
+1. `supabase/functions/whatsapp-instance-manager/index.ts`
+   - Melhorar `/status`: token admin preferencial, probing de endpoints, mapeamento robusto, resposta com debug, espelhar campos no objeto retornado.
+2. `src/hooks/use-whatsapp-instance.ts`
+   - Incluir polling também no estado `disconnected` (com intervalo mais lento).
+3. `src/components/whatsapp/ConnectionTab.tsx` (pequeno)
+   - Exibir `error` do hook (alerta simples).
+
+---
+
+## Risco/atenções
+- Precisamos manter o `status` sempre dentro do union: `disconnected | connecting | connected | qr_pending` para não quebrar o `ConnectionStatusCard`.
+- O probing deve parar no primeiro `200 OK` para não aumentar muito a latência.
+
+---
+
+## Teste end-to-end (checklist)
+1. Abrir `/corretor/whatsapp`.
+2. Iniciar conexão → gerar QR.
+3. Escanear no celular.
+4. Aguardar até 10s:
+   - UI deve mudar para “Conectado”
+   - QR deve sumir
+   - “Conectado há” começa a aparecer
+5. Clicar “Desconectar” e repetir o fluxo para garantir que reconexão também atualiza status.
