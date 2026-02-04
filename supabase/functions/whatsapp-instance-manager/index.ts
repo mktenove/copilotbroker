@@ -400,7 +400,67 @@ app.post("/init", async (c) => {
   }
 });
 
-// GET /status - Get instance status
+// Normalize UAZAPI status response to our internal status
+// Supports multiple UAZAPI versions and response formats
+const normalizeUazapiStatus = (uazStatus: Record<string, unknown>): {
+  status: "connected" | "connecting" | "disconnected" | "qr_pending";
+  phoneNumber: string | null;
+  rawState: string | null;
+} => {
+  // Extract raw state from various possible locations
+  const rawState = 
+    (uazStatus?.instance as Record<string, unknown>)?.state ||
+    (uazStatus?.instance as Record<string, unknown>)?.status ||
+    uazStatus?.state ||
+    uazStatus?.status ||
+    uazStatus?.response ||
+    null;
+  
+  const rawStr = String(rawState || "").toLowerCase();
+  
+  // Boolean checks
+  const isConnectedBool = 
+    uazStatus?.connected === true || 
+    uazStatus?.loggedIn === true;
+  
+  // String checks for connected
+  const connectedStates = ["open", "connected", "online", "active", "authenticated"];
+  const isConnectedStr = connectedStates.includes(rawStr);
+  
+  // String checks for connecting
+  const connectingStates = ["connecting", "syncing", "opening"];
+  const isConnecting = connectingStates.includes(rawStr);
+  
+  // String checks for QR pending
+  const qrPendingStates = ["qr", "qr_pending", "qrcode", "pairing", "waiting"];
+  const isQrPending = qrPendingStates.includes(rawStr);
+  
+  // Determine final status
+  let status: "connected" | "connecting" | "disconnected" | "qr_pending";
+  if (isConnectedBool || isConnectedStr) {
+    status = "connected";
+  } else if (isConnecting) {
+    status = "connecting";
+  } else if (isQrPending) {
+    status = "qr_pending";
+  } else {
+    status = "disconnected";
+  }
+  
+  // Extract phone number
+  const instanceData = uazStatus?.instance as Record<string, unknown> | undefined;
+  const phoneNumber = 
+    instanceData?.owner ||
+    (uazStatus?.jid as string)?.split("@")[0] ||
+    instanceData?.profileName ||
+    instanceData?.phoneNumber ||
+    uazStatus?.ownerJid?.toString()?.split("@")[0] ||
+    null;
+  
+  return { status, phoneNumber: phoneNumber as string | null, rawState: rawStr || null };
+};
+
+// GET /status - Get instance status with robust endpoint probing
 app.get("/status", async (c) => {
   try {
     if (!UAZAPI_BASE_URL) {
@@ -432,52 +492,114 @@ app.get("/status", async (c) => {
       }, 200, corsHeaders);
     }
 
-    const instance = instanceData as { id: string; instance_name: string; instance_token: string | null; status: string; connected_at: string | null };
+    const instance = instanceData as { 
+      id: string; 
+      instance_name: string; 
+      instance_token: string | null; 
+      status: string; 
+      connected_at: string | null;
+      phone_number: string | null;
+      last_seen_at: string | null;
+    };
 
-    // Check UAZAPI status - try connectionState endpoint with instance token
-    const uazResponse = await uazapiFetchWithAuthFallback(
-      `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
-      { method: "GET" },
-      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
-      false, // Instance endpoint
-    );
+    // === IMPROVED: Multi-endpoint probing with admin token priority ===
+    // Like /qrcode, we try multiple endpoints to find a working one
+    const instanceNameEnc = encodeURIComponent(instance.instance_name);
+    
+    type StatusAttempt = {
+      name: string;
+      path: string;
+      isAdmin: boolean; // Whether this is an admin-level endpoint
+    };
 
-    let uazStatus = null;
-    if (uazResponse.ok) {
-      uazStatus = await uazResponse.json();
-      
-      // Update local status based on UAZAPI response
-      // UAZAPI V2 returns multiple connection indicators:
-      // - connected: boolean at root
-      // - instance.status: "connecting" | "connected" | "disconnected"
-      // - response: "Connecting" | "Connected"
-      // - loggedIn: boolean
-      const isConnected = 
-        uazStatus.connected === true || 
-        uazStatus.loggedIn === true ||
-        uazStatus.instance?.status === "connected" ||
-        uazStatus.response?.toLowerCase() === "connected";
+    const statusAttempts: StatusAttempt[] = [
+      { name: "connectionState", path: `/instance/connectionState/${instanceNameEnc}`, isAdmin: false },
+      { name: "connection-state-kebab", path: `/instance/connection-state/${instanceNameEnc}`, isAdmin: false },
+      { name: "connect", path: `/instance/connect/${instanceNameEnc}`, isAdmin: false },
+      { name: "fetchInstances", path: `/instance/fetchInstances`, isAdmin: true }, // Admin endpoint - filter by name
+    ];
 
-      const isConnecting = 
-        uazStatus.instance?.status === "connecting" ||
-        uazStatus.response?.toLowerCase() === "connecting";
+    let uazStatus: Record<string, unknown> | null = null;
+    let debugInfo = { attemptUsed: "", httpStatus: 0, rawResponse: "" };
+    
+    // Use admin token as primary, instance token as fallback
+    const primaryToken = UAZAPI_DEFAULT_TOKEN;
+    const fallbackTokens = instance.instance_token && instance.instance_token !== primaryToken 
+      ? [instance.instance_token] 
+      : [];
 
-      const newStatus = isConnected ? "connected" : 
-                        isConnecting ? "connecting" : 
-                        "disconnected";
+    console.log(`[STATUS] Checking status for instance: ${instance.instance_name}`);
+    console.log(`[STATUS] Using admin token as primary, fallback tokens: ${fallbackTokens.length}`);
+
+    for (const attempt of statusAttempts) {
+      const url = `${UAZAPI_BASE_URL}${attempt.path}`;
+      console.log(`[STATUS] Trying: ${attempt.name} -> ${url}`);
+
+      const res = await uazapiFetchWithAuthFallback(
+        url,
+        { method: "GET" },
+        primaryToken,
+        attempt.isAdmin,
+        fallbackTokens,
+      );
+
+      debugInfo.httpStatus = res.status;
+
+      if (res.ok) {
+        try {
+          const data = await res.json();
+          debugInfo.attemptUsed = attempt.name;
+          debugInfo.rawResponse = JSON.stringify(data).substring(0, 500);
+          
+          console.log(`[STATUS] Success with ${attempt.name}:`, JSON.stringify(data).substring(0, 200));
+
+          // Special handling for fetchInstances - need to find our instance in the list
+          if (attempt.name === "fetchInstances" && Array.isArray(data)) {
+            const ourInstance = data.find((inst: Record<string, unknown>) => 
+              inst.name === instance.instance_name || 
+              inst.instanceName === instance.instance_name
+            );
+            if (ourInstance) {
+              uazStatus = { instance: ourInstance, ...ourInstance };
+            }
+          } else {
+            uazStatus = data;
+          }
+          
+          if (uazStatus) break;
+        } catch (parseError) {
+          console.error(`[STATUS] Failed to parse response from ${attempt.name}:`, parseError);
+        }
+      } else {
+        const text = await res.text().catch(() => "");
+        console.log(`[STATUS] ${attempt.name} failed with ${res.status}: ${text.substring(0, 100)}`);
+        
+        // Only continue probing for 404/401 errors
+        if (res.status !== 404 && res.status !== 401) {
+          break;
+        }
+      }
+    }
+
+    // Process status and update database
+    let newStatus = instance.status;
+    let phoneNumber = instance.phone_number;
+    
+    if (uazStatus) {
+      const normalized = normalizeUazapiStatus(uazStatus);
+      newStatus = normalized.status;
+      debugInfo.rawResponse = `rawState: ${normalized.rawState}`;
       
-      // Extract phone number when connected
-      const phoneNumber = 
-        uazStatus.instance?.owner ||
-        uazStatus.jid?.split("@")[0] ||
-        uazStatus.instance?.profileName ||
-        null;
+      console.log(`[STATUS] Normalized status: ${normalized.status}, phone: ${normalized.phoneNumber}, raw: ${normalized.rawState}`);
       
-      const formattedPhone = phoneNumber 
-        ? (phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber}`)
-        : null;
+      if (normalized.phoneNumber) {
+        phoneNumber = normalized.phoneNumber.startsWith("+") 
+          ? normalized.phoneNumber 
+          : `+${normalized.phoneNumber}`;
+      }
       
-      if (newStatus !== instance.status || (newStatus === "connected" && formattedPhone)) {
+      // Update database if status changed or we got new phone number
+      if (newStatus !== instance.status || (newStatus === "connected" && phoneNumber !== instance.phone_number)) {
         const updateData: Record<string, unknown> = { 
           status: newStatus,
           last_seen_at: new Date().toISOString(),
@@ -485,8 +607,8 @@ app.get("/status", async (c) => {
         
         if (newStatus === "connected") {
           updateData.connected_at = instance.connected_at || new Date().toISOString();
-          if (formattedPhone) {
-            updateData.phone_number = formattedPhone;
+          if (phoneNumber) {
+            updateData.phone_number = phoneNumber;
           }
         }
         
@@ -495,14 +617,26 @@ app.get("/status", async (c) => {
           .update(updateData)
           .eq("id", instance.id);
         
-        instance.status = newStatus;
+        console.log(`[STATUS] Updated DB: status=${newStatus}, phone=${phoneNumber}`);
       }
+    } else {
+      console.log(`[STATUS] No valid response from UAZAPI, keeping current status: ${instance.status}`);
     }
+
+    // Return updated instance data to frontend
+    const returnInstance = {
+      ...instance,
+      status: newStatus,
+      phone_number: phoneNumber,
+      last_seen_at: new Date().toISOString(),
+      ...(newStatus === "connected" && !instance.connected_at ? { connected_at: new Date().toISOString() } : {}),
+    };
 
     return c.json({
       success: true,
-      instance,
+      instance: returnInstance,
       uazapi: uazStatus,
+      debug: debugInfo,
     }, 200, corsHeaders);
 
   } catch (err) {

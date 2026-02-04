@@ -273,21 +273,29 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
     refreshStatus();
   }, [refreshStatus]);
 
-  // Auto-refresh status - faster polling during QR pending/connecting
+  // Auto-refresh status - adaptive polling based on connection state
   useEffect(() => {
     if (!instance) return;
     
+    let pollInterval: number;
+    
     // During QR pending/connecting, poll every 5 seconds for fast updates
     if (instance.status === "qr_pending" || instance.status === "connecting") {
-      const interval = setInterval(refreshStatus, 5000);
-      return () => clearInterval(interval);
+      pollInterval = 5000;
+    }
+    // When disconnected, poll every 10 seconds to catch reconnections
+    else if (instance.status === "disconnected") {
+      pollInterval = 10000;
+    }
+    // When connected, poll every 60 seconds for health monitoring
+    else if (instance.status === "connected") {
+      pollInterval = 60000;
+    } else {
+      return; // Unknown status, don't poll
     }
     
-    // When connected, poll every 60 seconds for health monitoring
-    if (instance.status === "connected") {
-      const interval = setInterval(refreshStatus, 60000);
-      return () => clearInterval(interval);
-    }
+    const interval = setInterval(refreshStatus, pollInterval);
+    return () => clearInterval(interval);
   }, [instance?.status, refreshStatus]);
 
   return {
