@@ -86,35 +86,35 @@ export default function BrokerWhatsApp() {
             <TabsList className="bg-[#1a1a1d] border border-[#2a2a2e] w-full justify-start overflow-x-auto">
               <TabsTrigger 
                 value="connection" 
-                className="text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+                className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
               >
                 <Wifi className="w-4 h-4" />
                 <span className="hidden sm:inline">Conexão</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="campaigns" 
-                className="text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+                className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
               >
                 <Megaphone className="w-4 h-4" />
                 <span className="hidden sm:inline">Campanhas</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="queue" 
-                className="text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+                className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
               >
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Fila</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="security" 
-                className="text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+                className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
               >
                 <Shield className="w-4 h-4" />
                 <span className="hidden sm:inline">Segurança</span>
               </TabsTrigger>
               <TabsTrigger 
                 value="automation" 
-                className="text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+                className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
               >
                 <Bot className="w-4 h-4" />
                 <span className="hidden sm:inline">Automação</span>
