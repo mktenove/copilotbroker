@@ -11,7 +11,11 @@ const corsHeaders = {
 // UAZAPI Configuration
 // Normalize trailing slash to avoid accidental double slashes in requests
 const UAZAPI_BASE_URL = (Deno.env.get("UAZAPI_INSTANCE_URL") || "").replace(/\/+$/g, "");
+// NOTE: Some UAZAPI deployments require a "master/admin" token to manage instances.
+// We support a dedicated admin token while keeping UAZAPI_TOKEN for backward compatibility.
 const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
+const UAZAPI_ADMIN_TOKEN = Deno.env.get("UAZAPI_ADMIN_TOKEN") || "";
+const UAZAPI_DEFAULT_TOKEN = UAZAPI_ADMIN_TOKEN || UAZAPI_TOKEN;
 
 const buildUazapiHeaders = (token: string, includeJson = false): Record<string, string> => {
   const headers: Record<string, string> = {
@@ -66,7 +70,7 @@ app.options("/*", (c) => {
 // POST /init - Initialize a new UAZAPI instance for broker
 app.post("/init", async (c) => {
   try {
-    if (!UAZAPI_BASE_URL || !UAZAPI_TOKEN) {
+    if (!UAZAPI_BASE_URL || !UAZAPI_DEFAULT_TOKEN) {
       return c.json(
         { error: "UAZAPI not configured" },
         500,
@@ -110,7 +114,8 @@ app.post("/init", async (c) => {
     // Create instance via UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/init`, {
       method: "POST",
-      headers: buildUazapiHeaders(UAZAPI_TOKEN, true),
+      // Prefer admin token if available; fall back to default token
+      headers: buildUazapiHeaders(UAZAPI_DEFAULT_TOKEN, true),
       body: JSON.stringify({
         instanceName,
         qrcode: true,
@@ -121,7 +126,13 @@ app.post("/init", async (c) => {
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
       console.error("UAZAPI Error:", errorText);
-      return c.json({ error: "Failed to create UAZAPI instance", details: errorText }, 500, corsHeaders);
+      return c.json({
+        error: "Failed to create UAZAPI instance",
+        status: uazResponse.status,
+        details: errorText,
+        hint:
+          "A UAZAPI retornou Unauthorized. Confirme se UAZAPI_INSTANCE_URL aponta para a URL base do servidor e se UAZAPI_ADMIN_TOKEN (ou UAZAPI_TOKEN) tem permissão de criar instâncias.",
+      }, 500, corsHeaders);
     }
 
     const uazData = await uazResponse.json();
@@ -135,7 +146,7 @@ app.post("/init", async (c) => {
     try {
       const webhookResponse = await fetch(`${UAZAPI_BASE_URL}/webhook/set/${instanceName}`, {
         method: "POST",
-        headers: buildUazapiHeaders(instanceToken || UAZAPI_TOKEN, true),
+        headers: buildUazapiHeaders(instanceToken || UAZAPI_DEFAULT_TOKEN, true),
         body: JSON.stringify({
           url: webhookUrl,
           webhook_by_events: false,
@@ -222,7 +233,7 @@ app.get("/status", async (c) => {
     // Check UAZAPI status
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`, {
       method: "GET",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
     });
 
     let uazStatus = null;
@@ -295,7 +306,7 @@ app.get("/qrcode", async (c) => {
     // Get QR code from UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connect/${instance.instance_name}`, {
       method: "GET",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
     });
 
     if (!uazResponse.ok) {
@@ -361,7 +372,7 @@ app.post("/logout", async (c) => {
     // Logout from UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`, {
       method: "DELETE",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
     });
 
     if (!uazResponse.ok) {
@@ -424,7 +435,7 @@ app.post("/restart", async (c) => {
     // Restart via UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`, {
       method: "PUT",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
     });
 
     if (!uazResponse.ok) {
