@@ -13,7 +13,6 @@ interface AdminLayoutProps {
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
   onAddLead?: () => void;
-  onImportCsv?: () => void;
   brokers?: { id: string; name: string; slug: string }[];
 }
 
@@ -25,7 +24,6 @@ export function AdminLayout({
   searchTerm,
   onSearchChange,
   onAddLead,
-  onImportCsv,
   brokers,
 }: AdminLayoutProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -38,7 +36,6 @@ export function AdminLayout({
         onTabChange={onTabChange}
         onLogout={onLogout}
         onAddLead={onAddLead}
-        onImportCsv={onImportCsv}
       />
 
       {/* Mobile Bottom Navigation */}
@@ -46,7 +43,6 @@ export function AdminLayout({
         activeTab={activeTab}
         onTabChange={onTabChange}
         onAddLead={onAddLead}
-        onImportCsv={onImportCsv}
         onNotificationsClick={() => setIsNotificationsOpen(true)}
       />
 

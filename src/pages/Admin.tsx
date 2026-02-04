@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Calendar, Phone, RefreshCw, UserCog } from "lucide-react";
+import { Users, Calendar, Phone, RefreshCw, UserCog, FileSpreadsheet } from "lucide-react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import ExportButton from "@/components/admin/ExportButton";
@@ -455,7 +455,6 @@ const Admin = () => {
         searchTerm={currentSearchTerm}
         onSearchChange={handleSearchChange}
         onAddLead={handleAddLead}
-        onImportCsv={handleImportCsv}
         brokers={brokers}
       >
       {activeTab === "crm" ? (
@@ -523,6 +522,13 @@ const Admin = () => {
 
           {/* Actions */}
           <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+            <button
+              onClick={() => setIsCsvImportOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-[#1e1e22] text-[#FFFF00] border border-[#2a2a2e] rounded-lg hover:bg-[#2a2a2e] transition-colors"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              <span className="hidden sm:inline">Importar CSV</span>
+            </button>
             <ExportButton 
               leads={filteredLeads} 
               filename={`leads${filters.brokerFilter !== "all" ? `-${filters.brokerFilter === "enove" ? "enove" : brokers.find(b => b.id === filters.brokerFilter)?.slug || "corretor"}` : ""}${filters.statusFilter.length === 1 ? `-${filters.statusFilter[0]}` : ""}`} 
