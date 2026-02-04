@@ -47,11 +47,10 @@ const uazapiFetchWithAuthFallback = async (
   isAdminEndpoint = false,
   additionalTokens: string[] = [], // Additional tokens to try (e.g., admin token as fallback)
 ): Promise<Response> => {
-  // Prioritize based on endpoint type
-  // Many UAZAPI/Evolution deployments primarily use the `apikey` header.
+  // User confirmed: header key is "token" and admin token is required.
   const styles: UazapiAuthStyle[] = isAdminEndpoint
-    ? ["admintoken", "apikey", "token", "x-api-key", "bearer"]
-    : ["apikey", "token", "admintoken", "x-api-key", "bearer"];
+    ? ["admintoken", "token"]
+    : ["token", "admintoken"];
   
   // Build list of tokens to try: primary token first, then additional tokens
   const tokensToTry = [token.trim(), ...additionalTokens.map(t => t.trim())].filter(Boolean);
@@ -616,6 +615,77 @@ app.get("/qrcode", async (c) => {
       if (lastError && lastError.status !== 401 && lastError.status !== 404) break;
     }
 
+    // If we got 404 or 401 everywhere, the instance likely doesn't exist – try to (re-)create it.
+    if (!okResponse && (lastError?.status === 404 || lastError?.status === 401)) {
+      console.log("[UAZAPI] All QR endpoints returned 404 – attempting to recreate instance...");
+
+      const recreateRes = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}/instance/init`,
+        {
+          method: "POST",
+          includeJson: true,
+          bodyString: JSON.stringify({
+            name: instance.instance_name,
+            systemName: "enove",
+          }),
+        },
+        UAZAPI_DEFAULT_TOKEN,
+        true,
+      );
+
+      if (recreateRes.ok) {
+        const recreateData = await recreateRes.json();
+        console.log("[UAZAPI] Instance recreated:", JSON.stringify(recreateData, null, 2));
+
+        // Update local record with any token returned
+        const newToken =
+          recreateData?.token ||
+          recreateData?.key ||
+          recreateData?.instance?.token ||
+          recreateData?.instance?.key ||
+          instanceToken;
+
+        await supabase
+          .from("broker_whatsapp_instances")
+          .update({
+            instance_token: newToken,
+            status: "qr_pending",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", instance.id);
+
+        // After recreating, try once more to get the QR code via connectionState
+        const retryRes = await uazapiFetchWithAuthFallback(
+          `${UAZAPI_BASE_URL}/instance/connectionState/${instanceNameEnc}`,
+          { method: "GET" },
+          newToken,
+          false,
+          [UAZAPI_DEFAULT_TOKEN],
+        );
+
+        if (retryRes.ok) {
+          const retryData = await retryRes.json();
+          const qr = retryData.instance?.qrcode || retryData.qrcode || retryData.base64;
+          const pair = retryData.instance?.paircode || retryData.pairingCode;
+          return c.json({ success: true, qrcode: qr, pairingCode: pair }, 200, corsHeaders);
+        }
+
+        // If still no QR but instance exists, ask user to try again
+        return c.json(
+          {
+            success: false,
+            error: "Instance recreated but QR code not yet available. Please try again.",
+            recreated: true,
+          },
+          200,
+          corsHeaders,
+        );
+      }
+
+      // Recreate failed – return the original error plus hint
+      console.error("[UAZAPI] Recreate failed:", await recreateRes.text().catch(() => ""));
+    }
+
     if (!okResponse) {
       console.error("UAZAPI QR Error:", lastError?.text);
       return c.json(
@@ -925,13 +995,13 @@ app.post("/sync", async (c) => {
 
     const brokerId = await getBrokerId(supabase, user.id);
     
-    // Try to find instance in UAZAPI by listing all instances
-    const listResponse = await fetch(`${UAZAPI_BASE_URL}/instance/fetchInstances`, {
-      method: "GET",
-      headers: {
-        "admintoken": UAZAPI_ADMIN_TOKEN,
-      },
-    });
+    // Try to find instance in UAZAPI by listing all instances (using "token" header)
+    const listResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/fetchInstances`,
+      { method: "GET" },
+      UAZAPI_DEFAULT_TOKEN,
+      true, // admin endpoint
+    );
 
     if (!listResponse.ok) {
       return c.json({ 
@@ -1004,13 +1074,13 @@ app.get("/debug/instances", async (c) => {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
 
-    // List all instances via UAZAPI admin endpoint
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/fetchInstances`, {
-      method: "GET",
-      headers: {
-        "admintoken": UAZAPI_ADMIN_TOKEN,
-      },
-    });
+    // List all instances via UAZAPI admin endpoint (using "token" header per user feedback)
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/fetchInstances`,
+      { method: "GET" },
+      UAZAPI_DEFAULT_TOKEN,
+      true, // admin endpoint
+    );
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
