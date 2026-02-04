@@ -1,112 +1,202 @@
 
+# Plano: Corrigir Atualização do Status de Conexão WhatsApp
 
-# Plano: Corrigir Endpoints de Conexão UAZAPI
+## Diagnóstico do Problema
 
-## Resumo do Problema
+O QR Code foi criado e escaneado com sucesso (celular mostra "Ativo"), mas a interface web não atualiza o status. A análise revelou dois problemas principais:
 
-As instâncias estão sendo criadas com sucesso na UAZAPI (você confirmou 2 instâncias no painel), porém os endpoints de QR Code e status retornam 404 porque:
+### Problema 1: Campo errado na resposta da UAZAPI
 
-1. O nome da instância salvo localmente pode não corresponder ao identificador usado pela UAZAPI
-2. O endpoint `/instance/connect` precisa do token específico da instância
-3. O formato da URL pode estar incorreto
+Os logs mostram que a UAZAPI retorna:
+```json
+{
+  "connected": true/false,
+  "instance": {
+    "status": "connecting" | "connected" | "disconnected",
+    ...
+  },
+  "response": "Connecting" | "Connected"
+}
+```
 
----
-
-## Alterações Planejadas
-
-### 1. Melhorar Captura de Dados na Criação (`/init`)
-
-Na resposta do `/instance/init`, a UAZAPI retorna o objeto completo da instância. Precisamos capturar:
-- `id` - Identificador único interno
-- `name` - Nome da instância (pode ser diferente do que enviamos)
-- `token` - Token de autenticação da instância
+Porém, o código atual na rota `/status` procura pelo campo `state` em vez de `status`:
 
 ```text
-Antes: Salvávamos apenas o token
-Depois: Salvamos id, name real e token da resposta
+Linha 450-453 (ATUAL):
+  const state = uazStatus.instance?.state || uazStatus.state;
+  const newStatus = state === "open" ? "connected" : ...
+
+DEVERIA SER:
+  const status = uazStatus.connected ? "connected" : 
+                 uazStatus.instance?.status || uazStatus.response?.toLowerCase();
 ```
 
-### 2. Corrigir Endpoint de QR Code
+### Problema 2: Webhook não está recebendo eventos
 
-De acordo com a documentação UAZAPI V2:
+O webhook `whatsapp-webhook` não possui logs, indicando que a UAZAPI não está enviando eventos de conexão. Isso acontece porque:
 
-| Antes | Depois |
-|-------|--------|
-| `GET /instance/connect/{name}` | `POST /instance/connect` (com token no header) |
-| Múltiplas tentativas de endpoint | Endpoint único + token correto |
+1. O webhook pode não ter sido registrado corretamente
+2. A URL do webhook pode estar errada
+3. A UAZAPI pode precisar do token da instância para registrar webhooks
 
-O endpoint `/instance/connect` deve usar o **token da instância** (não o admintoken) no header.
+### Problema 3: Polling muito lento
 
-### 3. Adicionar Sincronização de Nome
-
-Quando a instância já existe no banco local, buscar informações da UAZAPI para garantir que o nome/ID está sincronizado.
+O hook `use-whatsapp-instance.ts` faz polling a cada 30 segundos (linha 274), o que significa que após escanear o QR code, o usuário precisa esperar até 30 segundos para ver a atualização.
 
 ---
 
-## Arquivos a Modificar
+## Alterações Propostas
 
-| Arquivo | Alterações |
-|---------|------------|
-| `supabase/functions/whatsapp-instance-manager/index.ts` | Corrigir parsing da resposta de init, usar endpoint e token corretos para QR code |
+### 1. Corrigir extração de status na rota `/status`
+
+**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`  
+**Linhas:** 449-466
+
+```typescript
+// ANTES (linhas 449-453)
+const state = uazStatus.instance?.state || uazStatus.state;
+const newStatus = state === "open" ? "connected" : 
+                  state === "connecting" ? "connecting" : 
+                  "disconnected";
+
+// DEPOIS
+// A UAZAPI retorna múltiplos indicadores de conexão:
+// - connected: boolean no root
+// - instance.status: "connecting" | "connected" | "disconnected"
+// - response: "Connecting" | "Connected"
+// - loggedIn: boolean
+const isConnected = 
+  uazStatus.connected === true || 
+  uazStatus.loggedIn === true ||
+  uazStatus.instance?.status === "connected" ||
+  uazStatus.response?.toLowerCase() === "connected";
+
+const isConnecting = 
+  uazStatus.instance?.status === "connecting" ||
+  uazStatus.response?.toLowerCase() === "connecting";
+
+const newStatus = isConnected ? "connected" : 
+                  isConnecting ? "connecting" : 
+                  "disconnected";
+```
+
+### 2. Extrair número de telefone quando conectado
+
+**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`  
+**Dentro da mesma lógica de status**
+
+```typescript
+// Também capturar o número de telefone da instância quando conectado
+const phoneNumber = 
+  uazStatus.instance?.owner ||
+  uazStatus.jid?.split("@")[0] ||
+  uazStatus.instance?.profileName ||
+  null;
+
+// Formatar para E.164 se necessário
+const formattedPhone = phoneNumber 
+  ? (phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber}`)
+  : null;
+
+// Incluir phone_number no update
+await supabase
+  .from("broker_whatsapp_instances")
+  .update({ 
+    status: newStatus,
+    phone_number: newStatus === "connected" ? formattedPhone : instance.phone_number,
+    connected_at: newStatus === "connected" ? new Date().toISOString() : instance.connected_at,
+    last_seen_at: new Date().toISOString(),
+  })
+  .eq("id", instance.id);
+```
+
+### 3. Adicionar polling mais rápido durante espera de QR
+
+**Arquivo:** `src/hooks/use-whatsapp-instance.ts`  
+**Linhas:** 271-277
+
+```typescript
+// ANTES
+useEffect(() => {
+  if (instance?.status === "connected" || instance?.status === "connecting" || instance?.status === "qr_pending") {
+    const interval = setInterval(refreshStatus, 30000);
+    return () => clearInterval(interval);
+  }
+}, [instance?.status, refreshStatus]);
+
+// DEPOIS - Polling mais agressivo durante conexão
+useEffect(() => {
+  if (!instance) return;
+  
+  // Durante espera do QR, verificar a cada 5 segundos
+  if (instance.status === "qr_pending" || instance.status === "connecting") {
+    const interval = setInterval(refreshStatus, 5000);
+    return () => clearInterval(interval);
+  }
+  
+  // Quando conectado, verificar a cada 60 segundos
+  if (instance.status === "connected") {
+    const interval = setInterval(refreshStatus, 60000);
+    return () => clearInterval(interval);
+  }
+}, [instance?.status, refreshStatus]);
+```
+
+### 4. Limpar QR Code após conexão bem-sucedida
+
+**Arquivo:** `src/hooks/use-whatsapp-instance.ts`  
+**Na função refreshStatus**
+
+```typescript
+const refreshStatus = useCallback(async () => {
+  try {
+    setIsLoading(true);
+    setError(null);
+    
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${FUNCTION_URL}/status`, {
+      method: "GET",
+      headers,
+    });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to get status");
+    }
+
+    setInstance(data.instance);
+    
+    // Limpar QR code quando conectado com sucesso
+    if (data.instance?.status === "connected") {
+      setQRCode(null);
+    }
+  } catch (err) {
+    // ... error handling
+  } finally {
+    setIsLoading(false);
+  }
+}, []);
+```
 
 ---
 
-## Detalhes Técnicos
+## Resumo das Alterações
 
-### Endpoint `/init` - Melhorar Parsing
-
-```typescript
-const uazData = await uazResponse.json();
-
-// Capturar nome/ID real da instância
-const realInstanceName = uazData?.name || uazData?.instance?.name || instanceName;
-const realInstanceId = uazData?.id || uazData?.instance?.id || null;
-const instanceToken = uazData?.token || uazData?.instance?.token || null;
-
-// Salvar todos os dados no banco
-await supabase.from("broker_whatsapp_instances").upsert({
-  broker_id: brokerId,
-  instance_name: realInstanceName,  // Usar nome retornado pela UAZAPI
-  instance_token: instanceToken,
-  // ... outros campos
-});
-```
-
-### Endpoint `/qrcode` - Usar Token Correto
-
-```typescript
-// Usar token da instância (não admin)
-const response = await fetch(`${UAZAPI_BASE_URL}/instance/connect`, {
-  method: "POST",
-  headers: {
-    "token": instance.instance_token,  // Token específico da instância
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({})
-});
-
-// A resposta contém o QR code
-const data = await response.json();
-return { qrcode: data.qrcode || data.base64, paircode: data.paircode };
-```
-
-### Endpoint de Debug - Listar Instâncias
-
-Adicionar endpoint usando `/instance/fetchInstances` com `admintoken`:
-
-```typescript
-const response = await fetch(`${UAZAPI_BASE_URL}/instance/fetchInstances`, {
-  headers: { "admintoken": UAZAPI_ADMIN_TOKEN }
-});
-```
+| Arquivo | Alteração | Impacto |
+|---------|-----------|---------|
+| `whatsapp-instance-manager/index.ts` | Corrigir campos de status | Status atualiza corretamente |
+| `whatsapp-instance-manager/index.ts` | Extrair número de telefone | Mostra número quando conectado |
+| `use-whatsapp-instance.ts` | Polling de 5s durante QR | Atualização mais rápida |
+| `use-whatsapp-instance.ts` | Limpar QR ao conectar | UX mais limpa |
 
 ---
 
 ## Resultado Esperado
 
 Após as correções:
-1. O fluxo "Iniciar Conexão" criará a instância e salvará os dados corretos
-2. O botão "Novo QR Code" gerará o código usando o token correto da instância
-3. O status da conexão será atualizado corretamente
-4. Sincronização entre banco local e UAZAPI será mantida
 
+1. Ao escanear o QR Code, o status será atualizado para "connected" em até 5 segundos
+2. O número de telefone conectado será exibido na interface
+3. O QR Code desaparecerá automaticamente após a conexão
+4. O card de "Saúde da Conexão" (Health Score) será exibido no lugar do QR Code
