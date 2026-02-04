@@ -17,18 +17,53 @@ const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
 const UAZAPI_ADMIN_TOKEN = Deno.env.get("UAZAPI_ADMIN_TOKEN") || "";
 const UAZAPI_DEFAULT_TOKEN = UAZAPI_ADMIN_TOKEN || UAZAPI_TOKEN;
 
-const buildUazapiHeaders = (token: string, includeJson = false): Record<string, string> => {
-  const headers: Record<string, string> = {
-    // UAZAPI may accept the token in different header names depending on deployment/config.
-    // NOTE: other functions in this repo (notify-new-lead) use `token`, so we send both.
-    token,
-    apikey: token,
-    "x-api-key": token,
-    "X-API-Key": token,
-    Authorization: `Bearer ${token}`,
-  };
+type UazapiAuthStyle = "token" | "apikey" | "bearer" | "x-api-key";
+
+const buildUazapiHeaders = (
+  token: string,
+  includeJson = false,
+  style: UazapiAuthStyle = "token",
+): Record<string, string> => {
+  // Important: some UAZAPI deployments will only check ONE header.
+  // If we send multiple auth headers at once, the server may prioritize the wrong one and return 401.
+  const headers: Record<string, string> = {};
+
+  if (style === "token") headers.token = token;
+  if (style === "apikey") headers.apikey = token;
+  if (style === "x-api-key") headers["x-api-key"] = token;
+  if (style === "bearer") headers.Authorization = `Bearer ${token}`;
+
   if (includeJson) headers["Content-Type"] = "application/json";
   return headers;
+};
+
+const uazapiFetchWithAuthFallback = async (
+  url: string,
+  opts: Omit<RequestInit, "headers"> & { includeJson?: boolean },
+  token: string,
+): Promise<Response> => {
+  const styles: UazapiAuthStyle[] = ["token", "apikey", "x-api-key", "bearer"];
+
+  let lastResponse: Response | null = null;
+  for (const style of styles) {
+    const res = await fetch(url, {
+      ...opts,
+      headers: buildUazapiHeaders(token, Boolean(opts.includeJson), style),
+    });
+
+    if (res.status !== 401) return res;
+
+    // Consume body to avoid resource leaks.
+    try {
+      await res.text();
+    } catch {
+      // ignore
+    }
+    lastResponse = res;
+  }
+
+  // All auth styles returned 401.
+  return lastResponse as Response;
 };
 
 // Supabase Configuration
@@ -112,16 +147,19 @@ app.post("/init", async (c) => {
     const instanceName = `enove_broker_${brokerId.substring(0, 8)}`;
 
     // Create instance via UAZAPI
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/init`, {
-      method: "POST",
-      // Prefer admin token if available; fall back to default token
-      headers: buildUazapiHeaders(UAZAPI_DEFAULT_TOKEN, true),
-      body: JSON.stringify({
-        instanceName,
-        qrcode: true,
-        integration: "WHATSAPP-BAILEYS",
-      }),
-    });
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/init`,
+      {
+        method: "POST",
+        includeJson: true,
+        body: JSON.stringify({
+          instanceName,
+          qrcode: true,
+          integration: "WHATSAPP-BAILEYS",
+        }),
+      },
+      UAZAPI_DEFAULT_TOKEN,
+    );
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
@@ -144,15 +182,19 @@ app.post("/init", async (c) => {
     // Configure webhook for this instance
     const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
     try {
-      const webhookResponse = await fetch(`${UAZAPI_BASE_URL}/webhook/set/${instanceName}`, {
-        method: "POST",
-        headers: buildUazapiHeaders(instanceToken || UAZAPI_DEFAULT_TOKEN, true),
-        body: JSON.stringify({
-          url: webhookUrl,
-          webhook_by_events: false,
-          events: ["messages.upsert", "connection.update", "message.update"]
-        }),
-      });
+      const webhookResponse = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}/webhook/set/${instanceName}`,
+        {
+          method: "POST",
+          includeJson: true,
+          body: JSON.stringify({
+            url: webhookUrl,
+            webhook_by_events: false,
+            events: ["messages.upsert", "connection.update", "message.update"],
+          }),
+        },
+        instanceToken || UAZAPI_DEFAULT_TOKEN,
+      );
       
       if (webhookResponse.ok) {
         console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
@@ -231,10 +273,11 @@ app.get("/status", async (c) => {
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null; status: string; connected_at: string | null };
 
     // Check UAZAPI status
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`, {
-      method: "GET",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
-    });
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
+      { method: "GET" },
+      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    );
 
     let uazStatus = null;
     if (uazResponse.ok) {
@@ -304,10 +347,11 @@ app.get("/qrcode", async (c) => {
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
     // Get QR code from UAZAPI
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connect/${instance.instance_name}`, {
-      method: "GET",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
-    });
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/connect/${instance.instance_name}`,
+      { method: "GET" },
+      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    );
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
@@ -370,10 +414,11 @@ app.post("/logout", async (c) => {
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
     // Logout from UAZAPI
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`, {
-      method: "DELETE",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
-    });
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`,
+      { method: "DELETE" },
+      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    );
 
     if (!uazResponse.ok) {
       console.error("UAZAPI Logout Error:", await uazResponse.text());
@@ -433,10 +478,11 @@ app.post("/restart", async (c) => {
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
     // Restart via UAZAPI
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`, {
-      method: "PUT",
-      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_DEFAULT_TOKEN),
-    });
+    const uazResponse = await uazapiFetchWithAuthFallback(
+      `${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`,
+      { method: "PUT" },
+      instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    );
 
     if (!uazResponse.ok) {
       const errorText = await uazResponse.text();
