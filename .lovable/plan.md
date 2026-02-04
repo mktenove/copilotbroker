@@ -1,89 +1,63 @@
 
-# Plano: Ajustar Ícone do WhatsApp no Admin
+# Plano: Corrigir Loading Infinito na Aba Automação
 
-## Objetivo
+## Diagnóstico
 
-Trocar o ícone do módulo WhatsApp na sidebar do admin para usar o mesmo ícone verde bonito do corretor (`MessageSquare` com `text-green-400`), e posicionar acima do botão Analytics.
+O problema ocorre porque:
+
+1. O usuário `maicon.enove@gmail.com` possui **duas roles**: `admin` e `broker`
+2. O hook `useUserRole` prioriza `admin` sobre `broker`, então define `role = "admin"`
+3. O `brokerId` só é buscado quando `role === "broker"`, ficando `null` para admins
+4. O hook `useAutoMessageRules` verifica `if (!brokerId) return;` e **nunca executa a query**
+5. O estado `isLoading` permanece `true` indefinidamente
+
+## Solução
+
+Modificar o hook `useUserRole` para **sempre buscar o brokerId** quando o usuário tiver a role `broker`, independentemente de também ter a role `admin`.
 
 ---
 
-## Alterações Necessárias
+## Alteração Necessária
 
-### Arquivo: `src/components/admin/AdminSidebar.tsx`
+### Arquivo: `src/hooks/use-user-role.ts`
 
-**1. Trocar o ícone de `Smartphone` para `MessageSquare`:**
-
-```typescript
-// Antes
-import { Smartphone } from "lucide-react";
-
-// Depois  
-import { MessageSquare } from "lucide-react";
-```
-
-**2. Reordenar os itens de navegação:**
-
-Mover o WhatsApp para ficar ANTES do Analytics na lista `NAV_ITEMS`.
+**Mudança na lógica (linhas 50-60):**
 
 ```typescript
-// Antes
-const NAV_ITEMS = [
-  { id: "crm", label: "CRM", icon: LayoutDashboard },
-  { id: "leads", label: "Leads", icon: Users },
-  { id: "brokers", label: "Corretores", icon: Users },
-  { id: "projects", label: "Empreendimentos", icon: Building2 },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-  { id: "whatsapp", label: "WhatsApp", icon: Smartphone },
-];
+// ANTES: Só busca brokerId se role === "broker"
+let brokerId = null;
+if (role === "broker") {
+  const { data: brokerData } = await supabase
+    .from("brokers")
+    .select("id")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  
+  brokerId = brokerData?.id || null;
+}
 
-// Depois
-const NAV_ITEMS = [
-  { id: "crm", label: "CRM", icon: LayoutDashboard },
-  { id: "leads", label: "Leads", icon: Users },
-  { id: "brokers", label: "Corretores", icon: Users },
-  { id: "projects", label: "Empreendimentos", icon: Building2 },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
-];
-```
-
-**3. Aplicar cor verde ao ícone do WhatsApp quando ativo:**
-
-Atualizar a lógica de renderização para aplicar `text-green-400` quando o item for WhatsApp e estiver ativo.
-
-```tsx
-className={cn(
-  "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-  isActive && item.id === "whatsapp"
-    ? "bg-green-500/20 text-green-400"
-    : isActive 
-      ? "bg-primary/20 text-primary" 
-      : "text-muted-foreground hover:text-foreground hover:bg-accent"
-)}
+// DEPOIS: Busca brokerId se o usuário TEM a role "broker" (independente de ter admin também)
+let brokerId = null;
+if (roles.includes("broker")) {  // ← Usar roles.includes em vez de role ===
+  const { data: brokerData } = await supabase
+    .from("brokers")
+    .select("id")
+    .eq("user_id", session.user.id)
+    .maybeSingle();
+  
+  brokerId = brokerData?.id || null;
+}
 ```
 
 ---
 
-## Resultado Visual
+## Por que essa mudança funciona?
 
-```text
-┌────────────────┐
-│     Logo       │
-├────────────────┤
-│    [+ FAB]     │
-├────────────────┤
-│   📊 CRM       │
-│   👥 Leads     │
-│   👥 Corretores│
-│   🏢 Projetos  │
-│   💬 WhatsApp  │ ← Ícone verde (MessageSquare)
-│   📈 Analytics │
-├────────────────┤
-│ 🔔 Notificações│
-│ ⚙️ Config      │
-│ 👤 Avatar/Sair │
-└────────────────┘
-```
+| Cenário | Antes | Depois |
+|---------|-------|--------|
+| Usuário só admin | role="admin", brokerId=null | role="admin", brokerId=null |
+| Usuário só broker | role="broker", brokerId="xxx" | role="broker", brokerId="xxx" |
+| Usuário admin+broker | role="admin", brokerId=**null** | role="admin", brokerId=**"xxx"** |
 
 ---
 
@@ -91,4 +65,12 @@ className={cn(
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/components/admin/AdminSidebar.tsx` | Trocar ícone, reordenar nav items, aplicar cor verde |
+| `src/hooks/use-user-role.ts` | Mudar condição de `role === "broker"` para `roles.includes("broker")` |
+
+---
+
+## Resultado Esperado
+
+- Admin com perfil de corretor terá acesso ao `brokerId`
+- A aba Automação carregará corretamente as regras
+- Todas as funcionalidades que dependem do `brokerId` funcionarão para admins que também são corretores
