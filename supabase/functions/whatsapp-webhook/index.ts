@@ -109,8 +109,8 @@ app.post("/", async (c) => {
     const eventType = payload.event;
     const instanceName = payload.instance;
 
-    // Handle messages.upsert event (new message received)
-    if (eventType === "messages.upsert" || payload.messages) {
+    // Handle messages event (new message received) - UAZAPI uses "messages" not "messages.upsert"
+    if (eventType === "messages" || eventType === "messages.upsert" || payload.messages) {
       const messages = payload.messages || (payload.data ? [payload.data] : []);
       
       for (const msg of messages) {
@@ -247,8 +247,8 @@ app.post("/", async (c) => {
       return c.json({ success: true, event: "messages.upsert" }, 200, corsHeaders);
     }
 
-    // Handle connection.update event
-    if (eventType === "connection.update" && instanceName) {
+    // Handle connection event - UAZAPI uses "connection" not "connection.update"
+    if ((eventType === "connection" || eventType === "connection.update") && instanceName) {
       const state = payload.connection?.state || payload.data?.status;
       
       if (state) {
@@ -283,8 +283,8 @@ app.post("/", async (c) => {
       return c.json({ success: true, event: "connection.update" }, 200, corsHeaders);
     }
 
-    // Handle message status updates (delivered, read, etc.)
-    if (eventType === "message.update" && payload.data) {
+    // Handle message status updates (delivered, read, etc.) - UAZAPI uses "messages_update"
+    if ((eventType === "messages_update" || eventType === "message.update") && payload.data) {
       const messageId = payload.data.key?.id;
       const status = payload.data.status;
       
