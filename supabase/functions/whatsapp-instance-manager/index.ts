@@ -212,19 +212,44 @@ const getSupabaseClient = (authHeader?: string): SupabaseClient<any, any, any> =
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 };
 
-// Get broker ID from user
+// Normalize broker name for UAZAPI instance naming
+// Removes accents, converts to lowercase, replaces spaces with underscores
+const normalizeInstanceName = (name: string): string => {
+  return name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .toLowerCase()
+    .replace(/\s+/g, "_")            // Spaces → underscore
+    .replace(/[^a-z0-9_]/g, "")      // Remove special characters
+    .substring(0, 30);               // Limit length
+};
+
+interface BrokerInfo {
+  id: string;
+  name: string;
+}
+
+// Get broker info (id and name) from user
 // deno-lint-ignore no-explicit-any
-const getBrokerId = async (supabase: SupabaseClient<any, any, any>, userId: string): Promise<string> => {
+const getBrokerInfo = async (supabase: SupabaseClient<any, any, any>, userId: string): Promise<BrokerInfo> => {
   const { data, error } = await supabase
     .from("brokers")
-    .select("id")
+    .select("id, name")
     .eq("user_id", userId)
     .maybeSingle();
   
   if (error || !data) {
     throw new Error("Broker not found");
   }
-  return (data as { id: string }).id;
+  const broker = data as { id: string; name: string };
+  return { id: broker.id, name: broker.name };
+};
+
+// Convenience wrapper that returns just the broker ID (for routes that don't need the name)
+// deno-lint-ignore no-explicit-any
+const getBrokerId = async (supabase: SupabaseClient<any, any, any>, userId: string): Promise<string> => {
+  const info = await getBrokerInfo(supabase, userId);
+  return info.id;
 };
 
 // CORS preflight
@@ -252,7 +277,8 @@ app.post("/init", async (c) => {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
 
-    const brokerId = await getBrokerId(supabase, user.id);
+    const brokerInfo = await getBrokerInfo(supabase, user.id);
+    const brokerId = brokerInfo.id;
     
     // Check if instance already exists
     const { data: existingInstance } = await supabase
@@ -281,8 +307,10 @@ app.post("/init", async (c) => {
       }
     }
 
-    // Generate unique instance name
-    const instanceName = `enove_broker_${brokerId.substring(0, 8)}`;
+    // Generate unique instance name using broker name
+    const safeName = normalizeInstanceName(brokerInfo.name);
+    // Fallback to broker ID if name is empty after normalization
+    const instanceName = safeName ? `enove_${safeName}` : `enove_broker_${brokerId.substring(0, 8)}`;
 
     // Create instance via UAZAPI (admin endpoint)
     const uazResponse = await uazapiFetchWithAuthFallback(
