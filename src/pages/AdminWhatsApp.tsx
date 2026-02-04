@@ -164,11 +164,11 @@ const AdminWhatsApp = () => {
         <div className="space-y-6">
           {/* Header */}
           <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
               <Smartphone className="w-7 h-7" />
               WhatsApp - Atendimento Assistido
             </h1>
-            <p className="text-muted-foreground mt-1">
+            <p className="text-slate-400 mt-1">
               Gerencie conexões e dispare mensagens automatizadas
             </p>
           </div>

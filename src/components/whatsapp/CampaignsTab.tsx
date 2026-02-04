@@ -29,12 +29,12 @@ export function CampaignsTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-foreground">Campanhas</h2>
+        <h2 className="text-lg font-semibold text-white">Campanhas</h2>
         <div className="flex items-center gap-2">
           <Button 
             variant="outline"
             onClick={() => setIsTemplatesOpen(true)}
-            className="bg-card border-border text-foreground hover:bg-accent"
+            className="bg-[#1a1a1d] border-[#2a2a2e] text-white hover:bg-[#2a2a2e]"
           >
             <FileText className="w-4 h-4 mr-2" />
             Templates
