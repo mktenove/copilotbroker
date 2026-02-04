@@ -1,6 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { Plus, MoreHorizontal } from "lucide-react";
+import { Plus, MoreHorizontal, MessageSquare } from "lucide-react";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { KanbanCard } from "./KanbanCard";
 import { cn } from "@/lib/utils";
@@ -8,6 +8,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
@@ -19,6 +20,7 @@ interface KanbanColumnProps {
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
   onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
+  onDispatchWhatsApp?: (status: LeadStatus) => void;
 }
 
 // Status square colors for TaskWhiz style headers
@@ -31,9 +33,10 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onDispatchWhatsApp }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
+  const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
 
   return (
     <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0 min-h-[600px]">
@@ -72,6 +75,18 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="bg-[#1e1e22] border-[#2a2a2e]">
+            {canDispatchWhatsApp && leads.length > 0 && (
+              <>
+                <DropdownMenuItem 
+                  className="text-green-400 focus:bg-green-500/10 focus:text-green-400"
+                  onClick={() => onDispatchWhatsApp?.(status)}
+                >
+                  <MessageSquare className="w-4 h-4 mr-2" />
+                  Disparar WhatsApp ({leads.length})
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-[#2a2a2e]" />
+              </>
+            )}
             <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
               Ordenar por data
             </DropdownMenuItem>
