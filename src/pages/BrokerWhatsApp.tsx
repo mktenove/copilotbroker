@@ -72,7 +72,7 @@ export default function BrokerWhatsApp() {
           <div className="max-w-6xl mx-auto">
             <h1 className="text-xl font-semibold flex items-center gap-2">
               <Wifi className="w-5 h-5 text-green-500" />
-              WhatsApp Dispatcher
+              WhatsApp - Atendimento Assistido
             </h1>
             <p className="text-sm text-slate-400 mt-1">
               Gerencie sua conexão e dispare mensagens automatizadas
