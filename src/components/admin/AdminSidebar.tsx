@@ -8,6 +8,8 @@ import {
   Settings,
   Plus,
   MessageSquare,
+  UserPlus,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -17,6 +19,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { NotificationPanel } from "./NotificationPanel";
 import { SettingsPanel } from "./SettingsPanel";
@@ -27,6 +35,7 @@ interface AdminSidebarProps {
   onTabChange: (tab: string) => void;
   onLogout: () => void;
   onAddLead?: () => void;
+  onImportCsv?: () => void;
 }
 
 const NAV_ITEMS = [
@@ -38,7 +47,7 @@ const NAV_ITEMS = [
   { id: "analytics", label: "Analytics", icon: BarChart3 },
 ];
 
-export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {
+export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead, onImportCsv }: AdminSidebarProps) {
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userInitial, setUserInitial] = useState("A");
@@ -65,26 +74,45 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
           />
         </div>
 
-        {/* FAB - Floating Action Button */}
+        {/* FAB - Floating Action Button with Dropdown */}
         <div className="flex items-center justify-center py-5">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
+          <DropdownMenu>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "w-10 h-10 rounded-full flex items-center justify-center",
+                      "bg-enove-yellow hover:brightness-110 text-black",
+                      "shadow-lg shadow-[hsl(60_100%_50%/0.3)] hover:shadow-[hsl(60_100%_50%/0.5)]",
+                      "transition-all duration-200 hover:scale-105"
+                    )}
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-card border-border text-foreground">
+                Adicionar Lead
+              </TooltipContent>
+            </Tooltip>
+            <DropdownMenuContent side="right" align="start" className="bg-card border-border">
+              <DropdownMenuItem 
                 onClick={onAddLead}
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center",
-                  "bg-enove-yellow hover:brightness-110 text-black",
-                  "shadow-lg shadow-[hsl(60_100%_50%/0.3)] hover:shadow-[hsl(60_100%_50%/0.5)]",
-                  "transition-all duration-200 hover:scale-105"
-                )}
+                className="flex items-center gap-2 cursor-pointer"
               >
-                <Plus className="w-5 h-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
-              Adicionar Lead
-            </TooltipContent>
-          </Tooltip>
+                <UserPlus className="w-4 h-4" />
+                Adicionar Lead
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={onImportCsv}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                Importar CSV
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Main Navigation */}

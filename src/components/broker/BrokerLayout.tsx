@@ -27,6 +27,7 @@ interface BrokerLayoutProps {
   onCopyLink?: () => void;
   onOpenLanding?: () => void;
   onAddLead?: () => void;
+  onImportCsv?: () => void;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
 }
@@ -53,6 +54,7 @@ export function BrokerLayout({
   onCopyLink,
   onOpenLanding,
   onAddLead,
+  onImportCsv,
   searchTerm,
   onSearchChange,
 }: BrokerLayoutProps) {
@@ -78,6 +80,7 @@ export function BrokerLayout({
         onLogout={onLogout}
         onOpenLanding={onOpenLanding}
         onAddLead={onAddLead}
+        onImportCsv={onImportCsv}
         brokerInitial={brokerInitial}
       />
 
@@ -87,6 +90,7 @@ export function BrokerLayout({
         onViewChange={onViewChange}
         onCopyLink={onCopyLink}
         onAddLead={onAddLead}
+        onImportCsv={onImportCsv}
         onNotificationsClick={() => setIsNotificationsOpen(true)}
       />
 
