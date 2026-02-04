@@ -1,169 +1,143 @@
 
 
-## Plano: Gerenciamento da Instância Global de WhatsApp no Painel Admin
+## Plano: Aba "Conexão Global" no Painel Admin de WhatsApp
 
 ### Contexto
 
-O sistema possui **dois tipos de instâncias WhatsApp**:
-
-1. **Instâncias individuais de corretores** - Armazenadas na tabela `broker_whatsapp_instances`, gerenciadas pela edge function `whatsapp-instance-manager`
+O sistema possui dois tipos de instâncias WhatsApp:
+1. **Instâncias individuais de corretores** - Gerenciadas pela edge function `whatsapp-instance-manager`
 2. **Instância global da Enove** - Configurada via variáveis de ambiente (`UAZAPI_INSTANCE_URL`, `UAZAPI_TOKEN`), usada para notificações de leads
 
-A aba "Conexão" no painel admin atualmente usa o mesmo hook dos corretores, que busca a instância vinculada ao broker logado. Como o admin não é um broker, isso não funciona corretamente.
+Atualmente não há interface para o administrador visualizar o status ou gerenciar a conexão da instância global.
 
 ---
 
-### Solução Proposta
+### Solução
 
-#### 1. Nova Edge Function: `whatsapp-global-instance-manager`
-
-Criação de uma edge function dedicada para gerenciar a instância global da Enove, com os endpoints:
-
-| Endpoint | Método | Descrição |
-|----------|--------|-----------|
-| `/status` | GET | Verifica o status da instância global na UAZAPI |
-| `/qrcode` | GET | Obtém QR Code para reconectar a instância global |
-| `/logout` | POST | Desconecta a instância global |
-| `/restart` | POST | Reinicia a instância global |
-
-Esta edge function usará as variáveis de ambiente `UAZAPI_INSTANCE_URL` e `UAZAPI_TOKEN` diretamente.
-
-#### 2. Novo Hook: `use-whatsapp-global-instance.ts`
-
-Similar ao `use-whatsapp-instance.ts`, mas chamando a nova edge function `whatsapp-global-instance-manager`.
-
-Funcionalidades:
-- Verificar status da instância global
-- Exibir QR Code quando desconectada
-- Desconectar/reiniciar
-
-#### 3. Novo Componente: `AdminConnectionTab.tsx`
-
-Componente dedicado para o painel admin que:
-- Mostra o status da instância global (não individual de corretor)
-- Permite conectar/reconectar via QR Code
-- Usa o hook `useWhatsAppGlobalInstance`
-
-#### 4. Correção do `notify-new-lead`
-
-Ajustar o endpoint para usar o formato correto da UAZAPI:
-
-```typescript
-// Antes (incorreto):
-fetch(`${uazapiUrl}/message/text`, ...)
-
-// Depois (correto):
-fetch(`${uazapiUrl}/message/text`, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "token": uazapiToken,
-  },
-  body: JSON.stringify({
-    phone: recipientPhone,
-    message: message,
-  }),
-});
-```
-
-**Importante:** O erro 405 acontece porque o endpoint ou o formato de autenticação está incorreto. A UAZAPI usa o header `token` (não Bearer).
+Adicionar uma nova aba "Conexão Global" entre "Visão Global" e "Conexão" com as mesmas funcionalidades da aba de conexão dos corretores, mas direcionada para a instância global.
 
 ---
 
-### Arquivos a Criar/Modificar
+### Arquivos a Criar
 
-| Arquivo | Ação |
-|---------|------|
-| `supabase/functions/whatsapp-global-instance-manager/index.ts` | Criar |
-| `supabase/config.toml` | Adicionar configuração da nova função |
-| `src/hooks/use-whatsapp-global-instance.ts` | Criar |
-| `src/components/whatsapp/AdminConnectionTab.tsx` | Criar |
-| `src/pages/AdminWhatsApp.tsx` | Modificar para usar `AdminConnectionTab` |
-| `supabase/functions/notify-new-lead/index.ts` | Verificar/corrigir endpoint |
+| Arquivo | Descrição |
+|---------|-----------|
+| `supabase/functions/whatsapp-global-instance-manager/index.ts` | Edge function dedicada para gerenciar a instância global |
+| `src/hooks/use-whatsapp-global-instance.ts` | Hook para interagir com a nova edge function |
+| `src/components/whatsapp/GlobalConnectionTab.tsx` | Componente da aba "Conexão Global" |
+
+### Arquivos a Modificar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/pages/AdminWhatsApp.tsx` | Adicionar a nova aba "Conexão Global" |
+| `src/components/whatsapp/index.ts` | Exportar o novo componente |
 
 ---
 
 ### Detalhes Técnicos
 
-#### Edge Function `whatsapp-global-instance-manager`
+#### 1. Edge Function `whatsapp-global-instance-manager`
 
-```typescript
-// Estrutura principal
-const app = new Hono().basePath("/whatsapp-global-instance-manager");
+A função usará as variáveis de ambiente `UAZAPI_INSTANCE_URL` e `UAZAPI_TOKEN` para gerenciar a instância global. Endpoints:
 
-// Extrai instance name da URL
-// Se UAZAPI_INSTANCE_URL = "https://api.uazapi.com/v2/enove_principal"
-// Então instanceName = "enove_principal"
-const parseInstanceFromUrl = (): { baseUrl: string; instanceName: string } => {
-  const url = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
-  const match = url.match(/^(.+?)\/v2\/([^/]+)$/);
-  if (match) {
-    return { baseUrl: match[1], instanceName: match[2] };
-  }
-  // Fallback: assume URL é a base e precisa de instanceName separado
-  return { baseUrl: url, instanceName: "enove_principal" };
-};
+| Endpoint | Método | Descrição |
+|----------|--------|-----------|
+| `/status` | GET | Verifica o status da instância global |
+| `/qrcode` | GET | Obtém QR Code para reconectar |
+| `/logout` | POST | Desconecta a instância |
+| `/restart` | POST | Reinicia a instância |
 
-// GET /status - Verificar conexão
-app.get("/status", async (c) => {
-  const { baseUrl, instanceName } = parseInstanceFromUrl();
-  const token = Deno.env.get("UAZAPI_TOKEN");
-  
-  const response = await fetch(`${baseUrl}/v2/${instanceName}/instance/status`, {
-    headers: { "token": token },
-  });
-  // ...
-});
-
-// GET /qrcode - Obter QR Code
-app.get("/qrcode", async (c) => {
-  const { baseUrl, instanceName } = parseInstanceFromUrl();
-  const token = Deno.env.get("UAZAPI_TOKEN");
-  
-  const response = await fetch(`${baseUrl}/v2/${instanceName}/instance/connect`, {
-    headers: { "token": token },
-  });
-  // ...
-});
+A função extrairá o nome da instância da URL configurada:
+```text
+UAZAPI_INSTANCE_URL = https://api.uazapi.com/v2/enove_principal
+                                              ^^^^^^^^^^^^^^^^
+                                              instanceName extraído
 ```
 
-#### Hook `useWhatsAppGlobalInstance`
+#### 2. Hook `useWhatsAppGlobalInstance`
 
+Similar ao `useWhatsAppInstance`, mas:
+- Chama a edge function `whatsapp-global-instance-manager`
+- Não precisa de broker_id (é uma instância global)
+- Retorna dados da instância global em formato simplificado
+
+Interface de retorno:
 ```typescript
-const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-global-instance-manager`;
-
-export function useWhatsAppGlobalInstance() {
-  const [status, setStatus] = useState<"connected" | "disconnected" | "qr_pending">("disconnected");
-  const [phoneNumber, setPhoneNumber] = useState<string | null>(null);
-  const [qrCode, setQrCode] = useState<string | null>(null);
-  // ...
-  
-  const refreshStatus = async () => {
-    const res = await fetch(`${FUNCTION_URL}/status`, { headers: await getAuthHeaders() });
-    // ...
-  };
-  
-  return { status, phoneNumber, qrCode, refreshStatus, fetchQRCode, ... };
+interface GlobalInstanceState {
+  status: "connected" | "disconnected" | "connecting" | "qr_pending";
+  phoneNumber: string | null;
+  instanceName: string | null;
+  lastSeenAt: string | null;
 }
+```
+
+#### 3. Componente `GlobalConnectionTab`
+
+Layout similar ao `ConnectionTab`, mostrando:
+- Card de status da conexão global
+- QR Code quando desconectada
+- Botões: "Novo QR Code", "Reiniciar", "Desconectar"
+- Indicador visual diferenciado (cor/ícone) para identificar como instância "global"
+
+#### 4. Alterações em `AdminWhatsApp.tsx`
+
+Adicionar nova aba no `TabsList`:
+```text
+Visão Global | Conexão Global | Conexão | Campanhas | Fila | Segurança | Automação
+             ^^^^^^^^^^^^^^^^
+             Nova aba
+```
+
+A grade passará de 6 para 7 colunas.
+
+---
+
+### Interface da Aba
+
+```text
++------------------------------------------+
+|  🌐 Instância Global                      |
+|  Status: ● Conectada                      |
+|  Número: +55 51 99999-9999                |
+|  Última atividade: há 2 minutos           |
+|                                           |
+|  [Reiniciar] [Desconectar]               |
++------------------------------------------+
+
+ou (se desconectada):
+
++------------------------------------------+
+|  🌐 Instância Global                      |
+|  Status: ○ Desconectada                   |
+|                                           |
+|  +------------------------+               |
+|  |      [QR CODE]        |               |
+|  +------------------------+               |
+|                                           |
+|  [Gerar Novo QR Code]                     |
++------------------------------------------+
 ```
 
 ---
 
-### Fluxo de Notificações Corrigido
+### Fluxo de Funcionamento
 
 ```text
-1. Novo lead cadastrado
-2. Trigger chama notify-new-lead
-3. notify-new-lead usa UAZAPI_INSTANCE_URL + UAZAPI_TOKEN
-4. Mensagem enviada via instância global da Enove
-5. Corretor recebe notificação no WhatsApp
+1. Admin acessa aba "Conexão Global"
+2. Hook chama GET /whatsapp-global-instance-manager/status
+3. Edge function usa UAZAPI_INSTANCE_URL e UAZAPI_TOKEN
+4. Retorna status da instância global
+5. Se desconectada, admin pode gerar QR Code via GET /qrcode
+6. Ao conectar, status atualiza automaticamente (polling)
 ```
 
 ---
 
 ### Benefícios
 
-- **Separação clara**: Instância global (notificações) vs instâncias individuais (campanhas)
-- **Admin tem controle**: Pode reconectar a instância global quando necessário
-- **Não afeta corretores**: Cada corretor continua com sua própria instância para campanhas
+- **Visibilidade**: Admin pode ver se a instância global está funcionando
+- **Controle**: Admin pode reconectar sem acesso direto à UAZAPI
+- **Diagnóstico**: Facilita identificar problemas nas notificações
+- **Separação**: Aba dedicada não interfere com instâncias de corretores
 
