@@ -14,7 +14,7 @@ const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp
 
 export function useWhatsAppGlobalInstance() {
   const [state, setState] = useState<GlobalInstanceState>({
-    status: "disconnected",
+    status: "connected",
     phoneNumber: null,
     instanceName: null,
     lastSeenAt: null,
