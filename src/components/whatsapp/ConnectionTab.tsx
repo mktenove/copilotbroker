@@ -140,7 +140,7 @@ export function ConnectionTab() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex flex-wrap gap-2 pt-4 border-t border-[#2a2a2e]">
+            <div className="flex flex-wrap gap-2 pt-3 border-t border-[#2a2a2e]">
               <Button
                 variant="outline"
                 size="sm"
