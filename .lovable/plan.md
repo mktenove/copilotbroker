@@ -1,115 +1,89 @@
 
-# Plano: Adicionar Módulo WhatsApp Completo para Admin
+# Plano: Ajustar Ícone do WhatsApp no Admin
 
-## Contexto
+## Objetivo
 
-Atualmente, a página `/admin/whatsapp` (`AdminWhatsApp.tsx`) mostra apenas um dashboard com visão global das instâncias dos corretores. O módulo do corretor (`BrokerWhatsApp.tsx`) possui funcionalidades mais completas com abas de Conexão, Campanhas, Fila, Segurança e Automação.
-
-O objetivo é adicionar o módulo completo de WhatsApp para o admin, com todas as funcionalidades disponíveis para corretores, além da visão global já existente.
+Trocar o ícone do módulo WhatsApp na sidebar do admin para usar o mesmo ícone verde bonito do corretor (`MessageSquare` com `text-green-400`), e posicionar acima do botão Analytics.
 
 ---
 
 ## Alterações Necessárias
 
-### Arquivo: `src/pages/AdminWhatsApp.tsx`
+### Arquivo: `src/components/admin/AdminSidebar.tsx`
 
-**Modificações:**
-1. Adicionar sistema de abas similar ao `BrokerWhatsApp.tsx`
-2. Manter a visão global existente como uma aba "Visão Global"
-3. Adicionar novas abas: Conexão (própria do admin), Campanhas, Fila, Segurança, Automação
-4. Renomear título para "WhatsApp - Atendimento Assistido"
-5. Reutilizar os mesmos componentes do corretor (`ConnectionTab`, `CampaignsTab`, etc.)
+**1. Trocar o ícone de `Smartphone` para `MessageSquare`:**
 
----
-
-## Nova Estrutura de Abas
-
-| Aba | Descrição |
-|-----|-----------|
-| **Visão Global** | Dashboard atual com todas as instâncias dos corretores |
-| **Conexão** | Gerenciar instância WhatsApp do admin (opcional) |
-| **Campanhas** | Templates e campanhas para disparo |
-| **Fila** | Fila de mensagens pendentes |
-| **Segurança** | Opt-outs e limites de envio |
-| **Automação** | Regras de primeira mensagem automática |
-
----
-
-## Detalhes Técnicos
-
-### Imports adicionais:
 ```typescript
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone, Bot, Eye } from "lucide-react";
-import { ConnectionTab } from "@/components/whatsapp/ConnectionTab";
-import { CampaignsTab } from "@/components/whatsapp/CampaignsTab";
-import { QueueTab } from "@/components/whatsapp/QueueTab";
-import { SecurityTab } from "@/components/whatsapp/SecurityTab";
-import { AutoMessageTab } from "@/components/whatsapp/AutoMessageTab";
+// Antes
+import { Smartphone } from "lucide-react";
+
+// Depois  
+import { MessageSquare } from "lucide-react";
 ```
 
-### Estrutura de abas:
+**2. Reordenar os itens de navegação:**
+
+Mover o WhatsApp para ficar ANTES do Analytics na lista `NAV_ITEMS`.
+
+```typescript
+// Antes
+const NAV_ITEMS = [
+  { id: "crm", label: "CRM", icon: LayoutDashboard },
+  { id: "leads", label: "Leads", icon: Users },
+  { id: "brokers", label: "Corretores", icon: Users },
+  { id: "projects", label: "Empreendimentos", icon: Building2 },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "whatsapp", label: "WhatsApp", icon: Smartphone },
+];
+
+// Depois
+const NAV_ITEMS = [
+  { id: "crm", label: "CRM", icon: LayoutDashboard },
+  { id: "leads", label: "Leads", icon: Users },
+  { id: "brokers", label: "Corretores", icon: Users },
+  { id: "projects", label: "Empreendimentos", icon: Building2 },
+  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
+  { id: "analytics", label: "Analytics", icon: BarChart3 },
+];
+```
+
+**3. Aplicar cor verde ao ícone do WhatsApp quando ativo:**
+
+Atualizar a lógica de renderização para aplicar `text-green-400` quando o item for WhatsApp e estiver ativo.
+
 ```tsx
-<Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-  <TabsList>
-    <TabsTrigger value="overview">
-      <Eye /> Visão Global
-    </TabsTrigger>
-    <TabsTrigger value="connection">
-      <Wifi /> Conexão
-    </TabsTrigger>
-    <TabsTrigger value="campaigns">
-      <Megaphone /> Campanhas
-    </TabsTrigger>
-    <TabsTrigger value="queue">
-      <Send /> Fila
-    </TabsTrigger>
-    <TabsTrigger value="security">
-      <Shield /> Segurança
-    </TabsTrigger>
-    <TabsTrigger value="automation">
-      <Bot /> Automação
-    </TabsTrigger>
-  </TabsList>
-
-  <TabsContent value="overview">
-    {/* Dashboard atual com stats e tabela de instâncias */}
-  </TabsContent>
-
-  <TabsContent value="connection">
-    <ConnectionTab />
-  </TabsContent>
-
-  {/* ... outras abas ... */}
-</Tabs>
+className={cn(
+  "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+  isActive && item.id === "whatsapp"
+    ? "bg-green-500/20 text-green-400"
+    : isActive 
+      ? "bg-primary/20 text-primary" 
+      : "text-muted-foreground hover:text-foreground hover:bg-accent"
+)}
 ```
 
 ---
 
-## Wireframe da Interface
+## Resultado Visual
 
 ```text
-┌─────────────────────────────────────────────────────────────────────────┐
-│  WhatsApp - Atendimento Assistido                         [Atualizar]  │
-│  Gerencie conexões e dispare mensagens automatizadas                   │
-├─────────────────────────────────────────────────────────────────────────┤
-│  [Visão Global] [Conexão] [Campanhas] [Fila] [Segurança] [Automação]   │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  (conteúdo da aba selecionada)                                         │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────┐
+│     Logo       │
+├────────────────┤
+│    [+ FAB]     │
+├────────────────┤
+│   📊 CRM       │
+│   👥 Leads     │
+│   👥 Corretores│
+│   🏢 Projetos  │
+│   💬 WhatsApp  │ ← Ícone verde (MessageSquare)
+│   📈 Analytics │
+├────────────────┤
+│ 🔔 Notificações│
+│ ⚙️ Config      │
+│ 👤 Avatar/Sair │
+└────────────────┘
 ```
-
----
-
-## Comportamento
-
-1. **Aba "Visão Global"** (padrão): Mostra o dashboard atual com stats de todas as instâncias
-2. **Demais abas**: Reutilizam os componentes do corretor, mas com contexto de admin
-3. O admin pode ter sua própria instância WhatsApp para disparos globais
-4. Templates padrão (broker_id = null) são gerenciados pelo admin na aba Campanhas
-5. Regras de automação do admin podem ser configuradas para envios globais
 
 ---
 
@@ -117,13 +91,4 @@ import { AutoMessageTab } from "@/components/whatsapp/AutoMessageTab";
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/pages/AdminWhatsApp.tsx` | Reestruturar com sistema de abas |
-
----
-
-## Resultado Esperado
-
-- Admin terá acesso às mesmas funcionalidades que os corretores
-- Visão global permanece como primeira aba
-- Navegação consistente entre admin e corretor
-- Nome do módulo padronizado: "WhatsApp - Atendimento Assistido"
+| `src/components/admin/AdminSidebar.tsx` | Trocar ícone, reordenar nav items, aplicar cor verde |
