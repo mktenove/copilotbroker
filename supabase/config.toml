@@ -1,1 +1,13 @@
 project_id = "nckzxwxxtyeydolmdijn"
+
+[functions.whatsapp-instance-manager]
+verify_jwt = false
+
+[functions.whatsapp-message-sender]
+verify_jwt = false
+
+[functions.whatsapp-webhook]
+verify_jwt = false
+
+[functions.notify-new-lead]
+verify_jwt = false
