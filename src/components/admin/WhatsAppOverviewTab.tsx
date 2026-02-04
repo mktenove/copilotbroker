@@ -123,7 +123,7 @@ export function WhatsAppOverviewTab({
         <Button
           variant="outline"
           onClick={() => refetchInstances()}
-          className="bg-card border-border"
+          className="bg-[#1a1a1d] border-[#2a2a2e]"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Atualizar
@@ -132,57 +132,57 @@ export function WhatsAppOverviewTab({
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <Smartphone className="w-6 h-6 text-primary" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Instâncias</p>
-                <p className="text-2xl font-bold text-foreground">{totalInstances}</p>
+                <p className="text-sm text-slate-400">Instâncias</p>
+                <p className="text-2xl font-bold text-white">{totalInstances}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-green-500/10 flex items-center justify-center">
                 <Users className="w-6 h-6 text-green-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Online</p>
-                <p className="text-2xl font-bold text-foreground">{connectedInstances}</p>
+                <p className="text-sm text-slate-400">Online</p>
+                <p className="text-2xl font-bold text-white">{connectedInstances}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center">
                 <Send className="w-6 h-6 text-blue-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Enviados Hoje</p>
-                <p className="text-2xl font-bold text-foreground">{todaySent}</p>
+                <p className="text-sm text-slate-400">Enviados Hoje</p>
+                <p className="text-2xl font-bold text-white">{todaySent}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="pt-6">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center">
                 <MessageSquare className="w-6 h-6 text-purple-500" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Taxa Resp.</p>
-                <p className="text-2xl font-bold text-foreground">{replyRate}%</p>
+                <p className="text-sm text-slate-400">Taxa Resp.</p>
+                <p className="text-2xl font-bold text-white">{replyRate}%</p>
               </div>
             </div>
           </CardContent>
@@ -190,52 +190,52 @@ export function WhatsAppOverviewTab({
       </div>
 
       {/* Instances Table */}
-      <Card className="bg-card border-border">
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
         <CardHeader>
-          <CardTitle className="text-foreground">Instâncias dos Corretores</CardTitle>
+          <CardTitle className="text-white">Instâncias dos Corretores</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoadingInstances ? (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+              <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
             </div>
           ) : instances.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
+            <p className="text-center text-slate-400 py-8">
               Nenhuma instância WhatsApp configurada
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Corretor</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Telefone</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Status</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Enviados</th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-muted-foreground">Aquecimento</th>
-                    <th className="text-right py-3 px-4 text-sm font-medium text-muted-foreground">Ações</th>
+                  <tr className="border-b border-[#2a2a2e]">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Corretor</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Telefone</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Status</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Enviados</th>
+                    <th className="text-left py-3 px-4 text-sm font-medium text-slate-400">Aquecimento</th>
+                    <th className="text-right py-3 px-4 text-sm font-medium text-slate-400">Ações</th>
                   </tr>
                 </thead>
                 <tbody>
                   {instances.map((instance) => (
-                    <tr key={instance.id} className="border-b border-border/50 hover:bg-accent/50">
+                    <tr key={instance.id} className="border-b border-[#2a2a2e]/50 hover:bg-[#2a2a2e]/50">
                       <td className="py-3 px-4">
                         <div>
-                          <p className="text-sm font-medium text-foreground">{instance.broker?.name || "N/A"}</p>
-                          <p className="text-xs text-muted-foreground">{instance.broker?.email}</p>
+                          <p className="text-sm font-medium text-white">{instance.broker?.name || "N/A"}</p>
+                          <p className="text-xs text-slate-400">{instance.broker?.email}</p>
                         </div>
                       </td>
-                      <td className="py-3 px-4 text-sm font-mono text-muted-foreground">
+                      <td className="py-3 px-4 text-sm font-mono text-slate-400">
                         {formatPhone(instance.phone_number)}
                       </td>
                       <td className="py-3 px-4">
                         {getStatusBadge(instance.status, instance.is_paused)}
                       </td>
-                      <td className="py-3 px-4 text-sm text-foreground">
+                      <td className="py-3 px-4 text-sm text-white">
                         {instance.daily_sent_count}/{instance.daily_limit}
                       </td>
                       <td className="py-3 px-4">
-                        <Badge variant="outline" className="border-border">
+                        <Badge variant="outline" className="border-[#2a2a2e]">
                           Dia {instance.warmup_day}/14
                         </Badge>
                       </td>
@@ -270,36 +270,36 @@ export function WhatsAppOverviewTab({
       {/* Charts and Opt-outs */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Global Stats Chart */}
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2">
+            <CardTitle className="text-white flex items-center gap-2">
               📊 Estatísticas Globais (7 dias)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {isLoadingStats ? (
               <div className="flex items-center justify-center h-[200px]">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
               </div>
             ) : (
               <>
                 <div className="flex gap-4 mb-4 text-xs">
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-green-500" />
-                    <span className="text-muted-foreground">
-                      Enviados: <span className="text-foreground font-medium">{globalTotals.sent}</span>
+                    <span className="text-slate-400">
+                      Enviados: <span className="text-white font-medium">{globalTotals.sent}</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-blue-500" />
-                    <span className="text-muted-foreground">
-                      Respostas: <span className="text-foreground font-medium">{globalTotals.replies}</span>
+                    <span className="text-slate-400">
+                      Respostas: <span className="text-white font-medium">{globalTotals.replies}</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <div className="w-3 h-3 rounded-sm bg-red-500" />
-                    <span className="text-muted-foreground">
-                      Falhas: <span className="text-foreground font-medium">{globalTotals.failed}</span>
+                    <span className="text-slate-400">
+                      Falhas: <span className="text-white font-medium">{globalTotals.failed}</span>
                     </span>
                   </div>
                 </div>
@@ -320,11 +320,11 @@ export function WhatsAppOverviewTab({
                       />
                       <Tooltip
                         contentStyle={{
-                          backgroundColor: "hsl(var(--card))",
-                          border: "1px solid hsl(var(--border))",
+                          backgroundColor: "#1a1a1d",
+                          border: "1px solid #2a2a2e",
                           borderRadius: "8px",
                         }}
-                        labelStyle={{ color: "hsl(var(--foreground))" }}
+                        labelStyle={{ color: "#ffffff" }}
                         cursor={{ fill: "rgba(255,255,255,0.05)" }}
                         labelFormatter={(label, payload) => {
                           if (payload && payload.length > 0) {
@@ -345,9 +345,9 @@ export function WhatsAppOverviewTab({
         </Card>
 
         {/* Recent Opt-outs */}
-        <Card className="bg-card border-border">
+        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardHeader>
-            <CardTitle className="text-foreground flex items-center gap-2">
+            <CardTitle className="text-white flex items-center gap-2">
               <Ban className="w-5 h-5 text-red-400" />
               Opt-outs Recentes
               <Badge variant="secondary" className="ml-2">
@@ -358,10 +358,10 @@ export function WhatsAppOverviewTab({
           <CardContent>
             {isLoadingOptouts ? (
               <div className="flex items-center justify-center h-[200px]">
-                <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                <Loader2 className="w-6 h-6 animate-spin text-slate-400" />
               </div>
             ) : optouts.length === 0 ? (
-              <p className="text-center text-muted-foreground py-8">
+              <p className="text-center text-slate-400 py-8">
                 Nenhum opt-out registrado
               </p>
             ) : (
@@ -370,17 +370,17 @@ export function WhatsAppOverviewTab({
                   {optouts.slice(0, 10).map((optout) => (
                     <div
                       key={optout.id}
-                      className="flex items-center justify-between p-3 bg-accent/30 rounded-lg"
+                      className="flex items-center justify-between p-3 bg-[#2a2a2e]/30 rounded-lg"
                     >
                       <div>
-                        <p className="text-sm font-mono text-foreground">
+                        <p className="text-sm font-mono text-white">
                           {formatPhone(optout.phone)}
                         </p>
                         {optout.detected_keyword && (
                           <p className="text-xs text-red-400">"{optout.detected_keyword}"</p>
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
+                      <span className="text-xs text-slate-400">
                         {formatDistanceToNow(new Date(optout.created_at), {
                           addSuffix: true,
                           locale: ptBR,
