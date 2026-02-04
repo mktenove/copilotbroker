@@ -979,10 +979,11 @@ app.post("/logout", async (c) => {
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
     // Try different endpoints and methods (UAZAPI variants use different patterns)
+    // Confirmed correct endpoint first: POST /instance/disconnect
     const logoutAttempts = [
+      { name: "disconnect-post", path: "/instance/disconnect", method: "POST" },
       { name: "logout-post", path: "/instance/logout", method: "POST" },
       { name: "logout-delete", path: "/instance/logout", method: "DELETE" },
-      { name: "disconnect-post", path: "/instance/disconnect", method: "POST" },
     ];
 
     let logoutSuccess = false;
