@@ -447,19 +447,52 @@ app.get("/status", async (c) => {
       uazStatus = await uazResponse.json();
       
       // Update local status based on UAZAPI response
-      const state = uazStatus.instance?.state || uazStatus.state;
-      const newStatus = state === "open" ? "connected" : 
-                        state === "connecting" ? "connecting" : 
+      // UAZAPI V2 returns multiple connection indicators:
+      // - connected: boolean at root
+      // - instance.status: "connecting" | "connected" | "disconnected"
+      // - response: "Connecting" | "Connected"
+      // - loggedIn: boolean
+      const isConnected = 
+        uazStatus.connected === true || 
+        uazStatus.loggedIn === true ||
+        uazStatus.instance?.status === "connected" ||
+        uazStatus.response?.toLowerCase() === "connected";
+
+      const isConnecting = 
+        uazStatus.instance?.status === "connecting" ||
+        uazStatus.response?.toLowerCase() === "connecting";
+
+      const newStatus = isConnected ? "connected" : 
+                        isConnecting ? "connecting" : 
                         "disconnected";
       
-      if (newStatus !== instance.status) {
+      // Extract phone number when connected
+      const phoneNumber = 
+        uazStatus.instance?.owner ||
+        uazStatus.jid?.split("@")[0] ||
+        uazStatus.instance?.profileName ||
+        null;
+      
+      const formattedPhone = phoneNumber 
+        ? (phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber}`)
+        : null;
+      
+      if (newStatus !== instance.status || (newStatus === "connected" && formattedPhone)) {
+        const updateData: Record<string, unknown> = { 
+          status: newStatus,
+          last_seen_at: new Date().toISOString(),
+        };
+        
+        if (newStatus === "connected") {
+          updateData.connected_at = instance.connected_at || new Date().toISOString();
+          if (formattedPhone) {
+            updateData.phone_number = formattedPhone;
+          }
+        }
+        
         await supabase
           .from("broker_whatsapp_instances")
-          .update({ 
-            status: newStatus,
-            connected_at: newStatus === "connected" ? new Date().toISOString() : instance.connected_at,
-            last_seen_at: new Date().toISOString(),
-          })
+          .update(updateData)
           .eq("id", instance.id);
         
         instance.status = newStatus;

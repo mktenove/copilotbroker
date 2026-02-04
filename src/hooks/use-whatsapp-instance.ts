@@ -54,6 +54,11 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
       }
 
       setInstance(data.instance);
+      
+      // Clear QR code when connected
+      if (data.instance?.status === "connected") {
+        setQRCode(null);
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       setError(message);
@@ -268,10 +273,19 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
     refreshStatus();
   }, [refreshStatus]);
 
-  // Auto-refresh status every 30 seconds when connected or connecting
+  // Auto-refresh status - faster polling during QR pending/connecting
   useEffect(() => {
-    if (instance?.status === "connected" || instance?.status === "connecting" || instance?.status === "qr_pending") {
-      const interval = setInterval(refreshStatus, 30000);
+    if (!instance) return;
+    
+    // During QR pending/connecting, poll every 5 seconds for fast updates
+    if (instance.status === "qr_pending" || instance.status === "connecting") {
+      const interval = setInterval(refreshStatus, 5000);
+      return () => clearInterval(interval);
+    }
+    
+    // When connected, poll every 60 seconds for health monitoring
+    if (instance.status === "connected") {
+      const interval = setInterval(refreshStatus, 60000);
       return () => clearInterval(interval);
     }
   }, [instance?.status, refreshStatus]);
