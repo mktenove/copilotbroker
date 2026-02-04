@@ -1,50 +1,123 @@
 
-# Plano: Atualizar Mensagem Padrão de Automação
+# Plano: Corrigir Módulo WhatsApp - Erro de Conexão e Funcionalidades
 
-## Objetivo
+## Diagnóstico
 
-Trocar o texto padrão exibido ao criar uma nova regra de automação de WhatsApp.
+### Problema Principal: Edge Function retorna 404
+
+**Causa raiz identificada:**
+
+O Hono framework está configurado com rotas como `/init` e `/status`, mas a edge function é chamada em:
+- `https://.../functions/v1/whatsapp-instance-manager/status`
+- `https://.../functions/v1/whatsapp-instance-manager/init`
+
+O Hono vê o path completo `/whatsapp-instance-manager/init` e não encontra match com `/init`.
+
+**Evidência dos logs:**
+```text
+OPTIONS | 200 | .../whatsapp-instance-manager/init  ← CORS preflight OK
+POST    | 404 | .../whatsapp-instance-manager/init  ← Rota não encontrada
+```
+
+### Problemas Secundários
+
+1. **React ref warnings** - `QueueTab` e `ErrorLogsCard` recebem refs mas não usam `forwardRef`
+2. **CORS headers incompletos** - Faltam headers que o Supabase client envia
 
 ---
 
-## Alteração Necessária
+## Solução
 
-### Arquivo: `src/types/auto-message.ts`
+### 1. Corrigir rotas do Hono com basePath
 
-**Substituir o valor da constante `DEFAULT_AUTO_MESSAGE`:**
+**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`
 
 ```typescript
 // ANTES
-export const DEFAULT_AUTO_MESSAGE = `Olá {nome_lead}! 👋
+const app = new Hono();
 
-Sou {nome_corretor}, da Enove Incorporadora.
-Vi que você tem interesse no {empreendimento}!
-
-Posso te enviar mais informações?`;
-
-// DEPOIS
-export const DEFAULT_AUTO_MESSAGE = `Oi {nome_lead}, tudo bem? 👋
-Aqui é {nome_corretor}, da Enove Imobiliária!
-
-Vi agora o seu cadastro para fazer parte da lista VIP do *novo condomínio de Estância Velha* e já quis te chamar pra te explicar com calma como vai funcionar! Foi você mesmo que se cadastrou?`;
+// DEPOIS - Adicionar basePath para o nome da função
+const app = new Hono().basePath("/whatsapp-instance-manager");
 ```
 
+Isso faz o Hono entender que:
+- Request para `/whatsapp-instance-manager/init` → rota `/init`
+- Request para `/whatsapp-instance-manager/status` → rota `/status`
+
+### 2. Atualizar CORS headers
+
+**Arquivo:** `supabase/functions/whatsapp-instance-manager/index.ts`
+
+```typescript
+// ANTES
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// DEPOIS - Adicionar headers que o Supabase JS client envia
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+```
+
+### 3. Corrigir React ref warnings (componentes QueueTab e ErrorLogsCard)
+
+Os componentes são usados dentro de `TabsContent` do Radix que passa refs. Preciso verificar como estão sendo usados ou envolver em `forwardRef` se necessário. Isso é um warning menor, não impede o funcionamento.
+
 ---
 
-## Observação
-
-A nova mensagem usa formatação de negrito do WhatsApp (`*texto*`) para destacar "novo condomínio de Estância Velha". Isso funcionará corretamente quando enviado via WhatsApp.
-
----
-
-## Arquivos Afetados
+## Arquivos a Modificar
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `src/types/auto-message.ts` | Atualizar texto de `DEFAULT_AUTO_MESSAGE` |
+| `supabase/functions/whatsapp-instance-manager/index.ts` | Adicionar `.basePath()` e atualizar CORS headers |
 
 ---
 
 ## Resultado Esperado
 
-Ao clicar em "Nova Regra" na aba Automação, o campo de mensagem virá preenchido com o novo texto padrão.
+Após a correção:
+- **GET /status** → Retorna status da instância ou `null` se não configurada
+- **POST /init** → Cria nova instância UAZAPI e salva no banco
+- **GET /qrcode** → Retorna QR code para pareamento
+- **POST /logout** → Desconecta a instância
+- **POST /restart** → Reinicia a instância
+- **POST /pause** → Pausa/retoma envios
+- **POST /settings** → Atualiza configurações de limites
+
+---
+
+## Fluxo de Teste
+
+```text
+1. Usuário clica "Iniciar Conexão"
+2. Frontend chama POST /whatsapp-instance-manager/init
+3. Edge function cria instância no UAZAPI
+4. Salva registro em broker_whatsapp_instances
+5. Retorna dados da instância
+6. Frontend mostra QR code para escanear
+```
+
+---
+
+## Detalhes Técnicos
+
+**Mudança no Hono (linha 4):**
+
+```typescript
+// Criar app com basePath que corresponde ao nome da função
+const app = new Hono().basePath("/whatsapp-instance-manager");
+```
+
+**Mudança nos CORS headers (linhas 6-9):**
+
+```typescript
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+```
+
+Isso garante compatibilidade total com o cliente Supabase JS que adiciona esses headers automaticamente.
