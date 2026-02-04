@@ -190,14 +190,15 @@ app.post("/init", async (c) => {
     const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
     try {
       const webhookResponse = await uazapiFetchWithAuthFallback(
-        `${UAZAPI_BASE_URL}/webhook/set/${instanceName}`,
+        `${UAZAPI_BASE_URL}/webhook`,
         {
           method: "POST",
           includeJson: true,
           bodyString: JSON.stringify({
             url: webhookUrl,
-            webhook_by_events: false,
-            events: ["messages.upsert", "connection.update", "message.update"],
+            enabled: true,
+            events: ["messages", "connection", "messages_update"],
+            excludeMessages: ["wasSentByApi"],
           }),
         },
         instanceToken || UAZAPI_DEFAULT_TOKEN,
