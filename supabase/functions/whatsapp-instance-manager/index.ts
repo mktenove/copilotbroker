@@ -513,10 +513,11 @@ app.get("/status", async (c) => {
     };
 
     const statusAttempts: StatusAttempt[] = [
+      // Endpoint correto confirmado pelo usuário - retorna: connected, connecting, disconnected
+      { name: "status", path: `/instance/status`, isAdmin: false },
+      // Fallbacks caso a API mude
       { name: "connectionState", path: `/instance/connectionState/${instanceNameEnc}`, isAdmin: false },
-      { name: "connection-state-kebab", path: `/instance/connection-state/${instanceNameEnc}`, isAdmin: false },
-      { name: "connect", path: `/instance/connect/${instanceNameEnc}`, isAdmin: false },
-      { name: "fetchInstances", path: `/instance/fetchInstances`, isAdmin: true }, // Admin endpoint - filter by name
+      { name: "fetchInstances", path: `/instance/fetchInstances`, isAdmin: true },
     ];
 
     let uazStatus: Record<string, unknown> | null = null;
