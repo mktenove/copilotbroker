@@ -43,21 +43,31 @@ const uazapiFetchWithAuthFallback = async (
   token: string,
 ): Promise<Response> => {
   const styles: UazapiAuthStyle[] = ["token", "apikey", "x-api-key", "bearer"];
+  
+  // Sanitize token
+  const cleanToken = token.trim();
+
+  console.log(`[UAZAPI] Attempting request to: ${url}`);
+  console.log(`[UAZAPI] Token length: ${cleanToken.length}, Token preview: ${cleanToken.substring(0, 8)}...`);
 
   let lastResponseBody = "";
   let lastStatus = 401;
   let lastStatusText = "Unauthorized";
 
   for (const style of styles) {
+    const headers = buildUazapiHeaders(cleanToken, Boolean(opts.includeJson), style);
+    console.log(`[UAZAPI] Trying auth style: ${style}, headers: ${JSON.stringify(Object.keys(headers))}`);
+    
     const fetchOpts: RequestInit = {
       method: opts.method,
-      headers: buildUazapiHeaders(token, Boolean(opts.includeJson), style),
+      headers,
     };
     if (opts.bodyString) {
       fetchOpts.body = opts.bodyString;
     }
 
     const res = await fetch(url, fetchOpts);
+    console.log(`[UAZAPI] Response status: ${res.status} for style: ${style}`);
 
     if (res.status !== 401) return res;
 
@@ -66,11 +76,14 @@ const uazapiFetchWithAuthFallback = async (
     lastStatusText = res.statusText;
     try {
       lastResponseBody = await res.text();
+      console.log(`[UAZAPI] 401 response body: ${lastResponseBody.substring(0, 200)}`);
     } catch {
       lastResponseBody = "Unauthorized";
     }
   }
 
+  console.error(`[UAZAPI] All auth styles failed for URL: ${url}`);
+  
   // All auth styles returned 401 - return a new Response with the stored body
   return new Response(lastResponseBody, {
     status: lastStatus,
