@@ -46,9 +46,7 @@ export const replaceAutoMessageVariables = (
 };
 
 // Default message template
-export const DEFAULT_AUTO_MESSAGE = `Olá {nome_lead}! 👋
+export const DEFAULT_AUTO_MESSAGE = `Oi {nome_lead}, tudo bem? 👋
+Aqui é {nome_corretor}, da Enove Imobiliária!
 
-Sou {nome_corretor}, da Enove Incorporadora.
-Vi que você tem interesse no {empreendimento}!
-
-Posso te enviar mais informações?`;
+Vi agora o seu cadastro para fazer parte da lista VIP do *novo condomínio de Estância Velha* e já quis te chamar pra te explicar com calma como vai funcionar! Foi você mesmo que se cadastrou?`;
