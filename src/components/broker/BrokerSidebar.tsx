@@ -1,14 +1,8 @@
-import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare, UserPlus, FileSpreadsheet } from "lucide-react";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
 import { NotificationPanel } from "@/components/admin/NotificationPanel";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 
 interface BrokerSidebarProps {
   viewMode: "kanban" | "list";
@@ -16,7 +10,6 @@ interface BrokerSidebarProps {
   onLogout: () => void;
   onOpenLanding?: () => void;
   onAddLead?: () => void;
-  onImportCsv?: () => void;
   brokerInitial?: string;
 }
 
@@ -31,7 +24,6 @@ export function BrokerSidebar({
   onLogout,
   onOpenLanding,
   onAddLead,
-  onImportCsv,
   brokerInitial = "C",
 }: BrokerSidebarProps) {
   const navigate = useNavigate();
@@ -45,34 +37,15 @@ export function BrokerSidebar({
         <img src={logoEnoveMini} alt="Enove" className="h-8 w-8 object-contain" />
       </div>
 
-      {/* Add Lead FAB with Dropdown */}
+      {/* Add Lead FAB */}
       <div className="flex items-center justify-center py-3">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FFFF00] hover:brightness-110 text-black shadow-lg shadow-[hsl(60_100%_50%/0.3)] transition-all duration-200 active:scale-95"
-              title="Adicionar Lead"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent side="right" align="start" className="bg-card border-border">
-            <DropdownMenuItem 
-              onClick={onAddLead}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <UserPlus className="w-4 h-4" />
-              Adicionar Lead
-            </DropdownMenuItem>
-            <DropdownMenuItem 
-              onClick={onImportCsv}
-              className="flex items-center gap-2 cursor-pointer"
-            >
-              <FileSpreadsheet className="w-4 h-4" />
-              Importar CSV
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <button
+          onClick={onAddLead}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FFFF00] hover:brightness-110 text-black shadow-lg shadow-[hsl(60_100%_50%/0.3)] transition-all duration-200 active:scale-95"
+          title="Adicionar Lead"
+        >
+          <Plus className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Navigation */}

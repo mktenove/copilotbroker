@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Search, RefreshCw, Building2, ArrowRight, AlertCircle } from "lucide-react";
+import { Users, Search, RefreshCw, Building2, ArrowRight, AlertCircle, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -173,7 +173,6 @@ const BrokerAdmin = () => {
         onViewChange={setViewMode}
         onLogout={handleLogout}
         onAddLead={handleAddLead}
-        onImportCsv={handleImportCsv}
         searchTerm={viewMode === "list" ? searchTerm : undefined}
         onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
       >
@@ -292,6 +291,13 @@ const BrokerAdmin = () => {
 
           {/* Actions */}
           <div className="flex gap-2 mb-6">
+            <button
+              onClick={() => setIsCsvImportOpen(true)}
+              className="flex items-center justify-center gap-2 px-4 py-3 bg-card text-primary border border-border rounded-lg hover:bg-accent transition-colors"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              <span>Importar CSV</span>
+            </button>
             <button
               onClick={fetchLeads}
               disabled={isLoading}
