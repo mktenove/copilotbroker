@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.notify-new-lead]
 verify_jwt = false
+
+[functions.auto-first-message]
+verify_jwt = false

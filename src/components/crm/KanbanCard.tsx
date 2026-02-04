@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { OriginCombobox } from "./OriginCombobox";
 import { InactivationCombobox } from "./InactivationCombobox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -165,7 +166,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         )}
       >
         <div className="p-3">
-          {/* Row 1: Project Name + Date/Time */}
+          {/* Row 1: Project Name + Date/Time + Auto Message Badge */}
           <div className="flex items-start justify-between gap-2 mb-2.5">
             <div className="flex flex-wrap items-center gap-1.5">
               {/* Project Name Tag */}
@@ -187,10 +188,39 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               )}
             </div>
 
-            {/* Date + Time */}
-            <span className="text-[10px] text-slate-500 shrink-0">
-              {createdAtWithTime}
-            </span>
+            {/* Auto Message Badge + Date/Time */}
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Auto First Message Status Badge */}
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    {lead.auto_first_message_sent ? (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 text-[9px] font-medium">
+                        <CheckCircle2 className="w-3 h-3" />
+                        1ª msg
+                      </span>
+                    ) : lead.attribution?.landing_page === "admin_manual" ? (
+                      <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-500/20 text-slate-400 text-[9px] font-medium">
+                        <Lock className="w-3 h-3" />
+                        Manual
+                      </span>
+                    ) : null}
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-[#1e1e22] border-[#2a2a2e] text-xs">
+                    {lead.auto_first_message_sent ? (
+                      <span className="text-emerald-300">Primeira mensagem automática enviada</span>
+                    ) : lead.attribution?.landing_page === "admin_manual" ? (
+                      <span className="text-slate-300">Origem manual - sem automação</span>
+                    ) : null}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {/* Date + Time */}
+              <span className="text-[10px] text-slate-500">
+                {createdAtWithTime}
+              </span>
+            </div>
           </div>
 
           {/* Row 2: Lead Name */}

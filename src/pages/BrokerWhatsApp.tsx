@@ -5,11 +5,12 @@ import { useUserRole } from "@/hooks/use-user-role";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { BrokerSidebar } from "@/components/broker/BrokerSidebar";
 import { BrokerBottomNav } from "@/components/broker/BrokerBottomNav";
-import { Loader2, Wifi, Send, Shield, Megaphone } from "lucide-react";
+import { Loader2, Wifi, Send, Shield, Megaphone, Bot } from "lucide-react";
 import { ConnectionTab } from "@/components/whatsapp/ConnectionTab";
 import { CampaignsTab } from "@/components/whatsapp/CampaignsTab";
 import { QueueTab } from "@/components/whatsapp/QueueTab";
 import { SecurityTab } from "@/components/whatsapp/SecurityTab";
+import { AutoMessageTab } from "@/components/whatsapp/AutoMessageTab";
 
 export default function BrokerWhatsApp() {
   const navigate = useNavigate();
@@ -111,6 +112,13 @@ export default function BrokerWhatsApp() {
                 <Shield className="w-4 h-4" />
                 <span className="hidden sm:inline">Segurança</span>
               </TabsTrigger>
+              <TabsTrigger 
+                value="automation" 
+                className="data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white flex items-center gap-2"
+              >
+                <Bot className="w-4 h-4" />
+                <span className="hidden sm:inline">Automação</span>
+              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="connection" className="mt-6">
@@ -127,6 +135,10 @@ export default function BrokerWhatsApp() {
 
             <TabsContent value="security" className="mt-6">
               <SecurityTab />
+            </TabsContent>
+
+            <TabsContent value="automation" className="mt-6">
+              <AutoMessageTab />
             </TabsContent>
           </Tabs>
         </div>

@@ -154,7 +154,15 @@ const GVFormSection = ({
 
       if (error) throw error;
 
-      await trackLeadAttribution(leadId, projectId);
+      // Track lead attribution - marca como landing_page
+      await trackLeadAttribution(leadId, projectId, "landing_page");
+      
+      // Trigger auto first message (non-blocking)
+      supabase.functions.invoke("auto-first-message", {
+        body: { leadId },
+      }).catch((err) => {
+        console.warn("Auto first message trigger failed:", err);
+      });
 
       // GA4 conversion event
       if (typeof window.gtag === "function") {

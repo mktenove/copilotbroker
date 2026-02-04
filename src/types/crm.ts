@@ -32,6 +32,10 @@ export interface CRMLead {
   inactivated_by: string | null;
   broker_id: string | null;
   project_id: string | null;
+  // Auto first message tracking
+  auto_first_message_sent?: boolean;
+  auto_first_message_at?: string | null;
+  // Relations
   broker?: {
     id: string;
     name: string;
@@ -42,6 +46,10 @@ export interface CRMLead {
     name: string;
     slug: string;
     city: string;
+  } | null;
+  // Attribution for checking origin type
+  attribution?: {
+    landing_page?: string;
   } | null;
 }
 
