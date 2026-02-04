@@ -48,9 +48,10 @@ const uazapiFetchWithAuthFallback = async (
   additionalTokens: string[] = [], // Additional tokens to try (e.g., admin token as fallback)
 ): Promise<Response> => {
   // Prioritize based on endpoint type
-  const styles: UazapiAuthStyle[] = isAdminEndpoint 
-    ? ["admintoken", "token", "apikey", "x-api-key", "bearer"]
-    : ["token", "admintoken", "apikey", "x-api-key", "bearer"];
+  // Many UAZAPI/Evolution deployments primarily use the `apikey` header.
+  const styles: UazapiAuthStyle[] = isAdminEndpoint
+    ? ["admintoken", "apikey", "token", "x-api-key", "bearer"]
+    : ["apikey", "token", "admintoken", "x-api-key", "bearer"];
   
   // Build list of tokens to try: primary token first, then additional tokens
   const tokensToTry = [token.trim(), ...additionalTokens.map(t => t.trim())].filter(Boolean);
@@ -81,19 +82,48 @@ const uazapiFetchWithAuthFallback = async (
 
       // Success! Return immediately
       if (res.ok) return res;
-      
-      // Only continue fallback on auth errors (401) or not found (404 - some UAZAPI versions return this for wrong token)
-      if (res.status !== 401 && res.status !== 404) return res;
 
-      // Store response info before consuming body
+      // Store response info (we may need to decide whether to keep falling back)
       lastStatus = res.status;
       lastStatusText = res.statusText;
       try {
         lastResponseBody = await res.text();
         console.log(`[UAZAPI] ${res.status} response body: ${lastResponseBody.substring(0, 200)}`);
       } catch {
-        lastResponseBody = "Unauthorized";
+        lastResponseBody = "";
       }
+
+      // Keep falling back ONLY on auth-ish failures.
+      // Many deployments return 404 for wrong endpoints (not auth), so we should stop early.
+      if (res.status === 401) {
+        continue;
+      }
+
+      if (res.status === 404) {
+        const body = (lastResponseBody || "").toLowerCase();
+        const looksLikeAuthIssue =
+          body.includes("invalid token") ||
+          body.includes("missing token") ||
+          body.includes("unauthorized");
+
+        if (looksLikeAuthIssue) {
+          continue;
+        }
+
+        // 404 that doesn't look like auth -> return immediately (endpoint likely wrong)
+        return new Response(lastResponseBody, {
+          status: lastStatus,
+          statusText: lastStatusText,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      // Other non-auth errors: return immediately
+      return new Response(lastResponseBody, {
+        status: lastStatus,
+        statusText: lastStatusText,
+        headers: { "Content-Type": "application/json" },
+      });
     }
   }
 
@@ -105,6 +135,66 @@ const uazapiFetchWithAuthFallback = async (
     statusText: lastStatusText,
     headers: { "Content-Type": "application/json" },
   });
+};
+
+// UAZAPI deployments vary; some expose endpoints under /api or /api/v2.
+// We keep the configured base URL, but also try common prefixes when needed.
+const getUazapiBaseVariants = (): string[] => {
+  const base = UAZAPI_BASE_URL;
+  if (!base) return [];
+  const variants = [
+    base,
+    `${base}/api`,
+    `${base}/api/v1`,
+    `${base}/api/v2`,
+    `${base}/v1`,
+    `${base}/v2`,
+  ];
+  // de-dup + strip trailing slashes
+  return Array.from(new Set(variants.map((v) => v.replace(/\/+$/g, ""))));
+};
+
+let UAZAPI_RESOLVED_BASE: string | null = null;
+let UAZAPI_RESOLVED_AT = 0;
+
+// Try to resolve which base prefix this deployment uses by probing an admin endpoint.
+// This prevents slow multi-base probing on every QR request.
+const resolveUazapiBase = async (): Promise<string> => {
+  const now = Date.now();
+  if (UAZAPI_RESOLVED_BASE && now - UAZAPI_RESOLVED_AT < 10 * 60 * 1000) {
+    return UAZAPI_RESOLVED_BASE;
+  }
+
+  const bases = getUazapiBaseVariants();
+  for (const base of bases) {
+    try {
+      const res = await uazapiFetchWithAuthFallback(
+        `${base}/instance/fetchInstances`,
+        { method: "GET" },
+        UAZAPI_DEFAULT_TOKEN,
+        true,
+      );
+
+      if (res.ok) {
+        UAZAPI_RESOLVED_BASE = base;
+        UAZAPI_RESOLVED_AT = now;
+        console.log(`[UAZAPI] Resolved base URL: ${base}`);
+        return base;
+      }
+
+      // If it clearly doesn't exist here, keep searching.
+      if (res.status === 404 || res.status === 405) {
+        continue;
+      }
+    } catch {
+      // ignore and continue
+    }
+  }
+
+  // Fallback to configured base
+  UAZAPI_RESOLVED_BASE = UAZAPI_BASE_URL;
+  UAZAPI_RESOLVED_AT = now;
+  return UAZAPI_BASE_URL;
 };
 
 // Supabase Configuration
@@ -434,36 +524,130 @@ app.get("/qrcode", async (c) => {
     console.log(`[UAZAPI] Getting QR code for instance: ${instance.instance_name}`);
     console.log(`[UAZAPI] Using instance token: ${instanceToken.substring(0, 8)}...`);
 
-    // === FIXED: Use /instance/connectionState which returns QR code in response ===
-    // The logs show this endpoint returns the QR code at response.instance.qrcode
-    // Try with instance token first, fallback to admin token
-    const uazResponse = await uazapiFetchWithAuthFallback(
-      `${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`,
-      { method: "GET" },
-      instanceToken,
-      false, // Instance endpoint, not admin
-      [UAZAPI_DEFAULT_TOKEN], // Fallback to admin token if instance token fails
-    );
+    // === IMPORTANT: Endpoint variations across UAZAPI/Evolution deployments ===
+    // Some deployments expose QR generation at:
+    //   GET /instance/connect/{instance}  (auth header often "apikey")
+    // Others return QR within:
+    //   GET /instance/connectionState/{instance}
+    // We'll try connect first (most common for QR), then fallback.
+    type QrAttempt = {
+      name: string;
+      path: string;
+      opts: Omit<RequestInit, "headers"> & { includeJson?: boolean; bodyString?: string };
+    };
 
-    console.log(`[UAZAPI] ConnectionState response status: ${uazResponse.status}`);
+    const instanceNameEnc = encodeURIComponent(instance.instance_name);
+    const attempts: QrAttempt[] = [
+      {
+        name: "connect_get",
+        path: `/instance/connect/${instanceNameEnc}`,
+        opts: { method: "GET" },
+      },
+      // Some deployments use the instance name as a query parameter instead of a path param
+      {
+        name: "connect_get_q_instance",
+        path: `/instance/connect?instance=${instanceNameEnc}`,
+        opts: { method: "GET" },
+      },
+      {
+        name: "connect_get_q_name",
+        path: `/instance/connect?name=${instanceNameEnc}`,
+        opts: { method: "GET" },
+      },
+      {
+        name: "connection_state",
+        path: `/instance/connectionState/${instanceNameEnc}`,
+        opts: { method: "GET" },
+      },
+      {
+        name: "connection_state_kebab",
+        path: `/instance/connection-state/${instanceNameEnc}`,
+        opts: { method: "GET" },
+      },
+      // Some variants accept POST /instance/connect with instance name in the body
+      {
+        name: "connect_post",
+        path: `/instance/connect`,
+        opts: {
+          method: "POST",
+          includeJson: true,
+          bodyString: JSON.stringify({ name: instance.instance_name, instance: instance.instance_name }),
+        },
+      },
+    ];
 
-    if (!uazResponse.ok) {
-      const errorText = await uazResponse.text();
-      console.error("UAZAPI QR Error:", errorText);
-      
-      return c.json({ 
-        error: "Failed to get QR code", 
-        details: errorText,
-        hint: "Verifique se a instância foi criada corretamente e se o token está válido.",
-      }, 500, corsHeaders);
+    let okResponse: Response | null = null;
+    let lastError: { status: number; text: string; attempt: string } | null = null;
+
+    const resolvedBase = await resolveUazapiBase();
+    const baseVariants = resolvedBase ? [resolvedBase] : getUazapiBaseVariants();
+
+    for (const attempt of attempts) {
+      for (const base of baseVariants) {
+        const url = `${base}${attempt.path}`;
+        console.log(`[UAZAPI] QR attempt: ${attempt.name} -> ${url}`);
+
+        const res = await uazapiFetchWithAuthFallback(
+          url,
+          attempt.opts,
+          instanceToken,
+          false,
+          [UAZAPI_DEFAULT_TOKEN],
+        );
+
+        console.log(`[UAZAPI] ${attempt.name} status: ${res.status}`);
+
+        if (res.ok) {
+          okResponse = res;
+          break;
+        }
+
+        const text = await res.text().catch(() => "");
+        lastError = { status: res.status, text, attempt: `${attempt.name}@${base}` };
+
+        // If it's a hard error, stop trying other bases/endpoints.
+        if (res.status !== 401 && res.status !== 404) {
+          break;
+        }
+      }
+
+      if (okResponse) break;
+      // If last error was a hard error, stop trying other endpoints too.
+      if (lastError && lastError.status !== 401 && lastError.status !== 404) break;
     }
 
-    const qrData = await uazResponse.json();
+    if (!okResponse) {
+      console.error("UAZAPI QR Error:", lastError?.text);
+      return c.json(
+        {
+          error: "Failed to get QR code",
+          details: lastError?.text || "",
+          status: lastError?.status,
+          attempt: lastError?.attempt,
+          hint: "Verifique se a instância foi criada corretamente e se o token está válido.",
+        },
+        500,
+        corsHeaders,
+      );
+    }
+
+    const qrData = await okResponse.json();
     console.log("[UAZAPI] QR Response:", JSON.stringify(qrData, null, 2));
 
-    // Extract QR code from response - UAZAPI returns it in instance.qrcode
-    const qrcode = qrData.instance?.qrcode || qrData.qrcode || qrData.base64 || qrData.code;
-    const pairingCode = qrData.instance?.paircode || qrData.pairingCode || qrData.paircode;
+    // Extract QR code from response - multiple shapes across providers
+    // Prefer image/base64 fields first; keep "code" as a last resort.
+    const qrcode =
+      qrData.instance?.qrcode ||
+      qrData.qrcode ||
+      qrData.qrCode ||
+      qrData.base64 ||
+      qrData.image ||
+      qrData.code;
+    const pairingCode =
+      qrData.instance?.paircode ||
+      qrData.pairingCode ||
+      qrData.paircode ||
+      qrData.pairing_code;
 
     if (!qrcode) {
       console.log("[UAZAPI] No QR code in response, instance may already be connected");
