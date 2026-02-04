@@ -44,14 +44,15 @@ const uazapiFetchWithAuthFallback = async (
 ): Promise<Response> => {
   const styles: UazapiAuthStyle[] = ["token", "apikey", "x-api-key", "bearer"];
 
-  let lastResponse: Response | null = null;
+  let lastResponseBody = "";
+  let lastStatus = 401;
+  let lastStatusText = "Unauthorized";
+
   for (const style of styles) {
-    // Build fresh request options each time - body can only be consumed once per request
     const fetchOpts: RequestInit = {
       method: opts.method,
       headers: buildUazapiHeaders(token, Boolean(opts.includeJson), style),
     };
-    // Use bodyString to allow re-sending the body on retry
     if (opts.bodyString) {
       fetchOpts.body = opts.bodyString;
     }
@@ -60,17 +61,22 @@ const uazapiFetchWithAuthFallback = async (
 
     if (res.status !== 401) return res;
 
-    // Consume body to avoid resource leaks.
+    // Store response info before consuming body
+    lastStatus = res.status;
+    lastStatusText = res.statusText;
     try {
-      await res.text();
+      lastResponseBody = await res.text();
     } catch {
-      // ignore
+      lastResponseBody = "Unauthorized";
     }
-    lastResponse = res;
   }
 
-  // All auth styles returned 401.
-  return lastResponse as Response;
+  // All auth styles returned 401 - return a new Response with the stored body
+  return new Response(lastResponseBody, {
+    status: lastStatus,
+    statusText: lastStatusText,
+    headers: { "Content-Type": "application/json" },
+  });
 };
 
 // Supabase Configuration
