@@ -1,551 +1,288 @@
 
-# Disparador WhatsApp - Plano Completo de Implementação
+# Fase 2: Sistema de Campanhas + Integração Kanban
 
-## Visão Geral da Arquitetura
+## Resumo
 
-Sistema multi-tenant de disparo de mensagens via UAZAPI, com cada corretor tendo sua própria instância WhatsApp conectada via QR Code, fila de envio inteligente com anti-block, e integração total com o Kanban existente.
-
----
-
-## 1. Estrutura do Banco de Dados
-
-### 1.1 Tabela: `broker_whatsapp_instances`
-Armazena a conexão WhatsApp de cada corretor.
-
-```sql
-CREATE TABLE broker_whatsapp_instances (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID NOT NULL REFERENCES brokers(id) ON DELETE CASCADE,
-  instance_name TEXT NOT NULL UNIQUE,
-  instance_token TEXT, -- Token da instância UAZAPI
-  status TEXT NOT NULL DEFAULT 'disconnected', -- disconnected, connecting, connected, qr_pending
-  phone_number TEXT,
-  last_seen_at TIMESTAMPTZ,
-  connected_at TIMESTAMPTZ,
-  risk_score INTEGER DEFAULT 0, -- 0-100
-  daily_sent_count INTEGER DEFAULT 0,
-  hourly_sent_count INTEGER DEFAULT 0,
-  warmup_stage TEXT DEFAULT 'new', -- new, warming, normal
-  warmup_day INTEGER DEFAULT 1, -- Dia atual do aquecimento
-  hourly_limit INTEGER DEFAULT 30, -- Limite por hora (começa baixo)
-  daily_limit INTEGER DEFAULT 150, -- Limite por dia (começa baixo)
-  working_hours_start TIME DEFAULT '09:00',
-  working_hours_end TIME DEFAULT '21:00',
-  is_paused BOOLEAN DEFAULT false,
-  pause_reason TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now(),
-  UNIQUE(broker_id)
-);
-```
-
-### 1.2 Tabela: `whatsapp_message_templates`
-Templates de mensagens para campanhas.
-
-```sql
-CREATE TABLE whatsapp_message_templates (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID REFERENCES brokers(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  content TEXT NOT NULL, -- Suporta {nome}, {empreendimento}, {corretor_nome}
-  category TEXT DEFAULT 'geral', -- geral, follow_up, info, docs
-  is_active BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 1.3 Tabela: `whatsapp_campaigns`
-Campanhas de disparo (conjunto de mensagens para leads).
-
-```sql
-CREATE TABLE whatsapp_campaigns (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID NOT NULL REFERENCES brokers(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  template_id UUID REFERENCES whatsapp_message_templates(id),
-  custom_message TEXT, -- Mensagem customizada se não usar template
-  target_status TEXT[], -- Status do Kanban alvo (ex: ['new', 'info_sent'])
-  project_id UUID REFERENCES projects(id),
-  status TEXT DEFAULT 'draft', -- draft, scheduled, running, paused, completed, cancelled
-  total_leads INTEGER DEFAULT 0,
-  sent_count INTEGER DEFAULT 0,
-  failed_count INTEGER DEFAULT 0,
-  reply_count INTEGER DEFAULT 0,
-  scheduled_at TIMESTAMPTZ,
-  started_at TIMESTAMPTZ,
-  completed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 1.4 Tabela: `whatsapp_message_queue`
-Fila de mensagens para envio.
-
-```sql
-CREATE TABLE whatsapp_message_queue (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID NOT NULL REFERENCES brokers(id) ON DELETE CASCADE,
-  campaign_id UUID REFERENCES whatsapp_campaigns(id) ON DELETE SET NULL,
-  lead_id UUID REFERENCES leads(id) ON DELETE CASCADE,
-  phone TEXT NOT NULL,
-  message TEXT NOT NULL,
-  status TEXT DEFAULT 'queued', -- queued, scheduled, sending, sent, failed, cancelled, paused_by_system
-  scheduled_at TIMESTAMPTZ NOT NULL,
-  sent_at TIMESTAMPTZ,
-  attempts INTEGER DEFAULT 0,
-  max_attempts INTEGER DEFAULT 3,
-  error_code TEXT,
-  error_message TEXT,
-  uazapi_message_id TEXT,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 1.5 Tabela: `whatsapp_optouts`
-Leads que solicitaram opt-out.
-
-```sql
-CREATE TABLE whatsapp_optouts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  phone TEXT NOT NULL UNIQUE,
-  reason TEXT,
-  detected_keyword TEXT,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-```
-
-### 1.6 Tabela: `whatsapp_daily_stats`
-Estatísticas diárias por corretor.
-
-```sql
-CREATE TABLE whatsapp_daily_stats (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  broker_id UUID NOT NULL REFERENCES brokers(id) ON DELETE CASCADE,
-  date DATE NOT NULL,
-  sent_count INTEGER DEFAULT 0,
-  failed_count INTEGER DEFAULT 0,
-  reply_count INTEGER DEFAULT 0,
-  optout_count INTEGER DEFAULT 0,
-  error_count INTEGER DEFAULT 0,
-  UNIQUE(broker_id, date)
-);
-```
-
-### 1.7 RLS Policies
-Cada corretor vê apenas seus dados; admin vê tudo.
+Implementar a funcionalidade completa de campanhas de disparo WhatsApp, permitindo que corretores selecionem leads por status do Kanban, criem templates de mensagem com variáveis dinâmicas, e disparem mensagens automatizadas com intervalo randômico de 60-240 segundos.
 
 ---
 
-## 2. Edge Functions (Backend)
+## O que será implementado
 
-### 2.1 `whatsapp-instance-manager`
-Gerencia instâncias UAZAPI por corretor.
+1. **Modal de Nova Campanha** - Interface para criar campanhas selecionando leads por status do Kanban
+2. **Templates de Mensagem** - CRUD de templates com variáveis `{nome}`, `{empreendimento}`, `{corretor_nome}`
+3. **Botão no Kanban** - Ação rápida "Disparar WhatsApp" em cada coluna
+4. **Fila de Envio Funcional** - Listagem real das mensagens agendadas/enviadas
+5. **Hook de Campanhas** - Gerenciamento de estado e operações CRUD
+6. **Edge Function de Envio** - Processador de fila com intervalo randômico
+
+---
+
+## Arquivos a criar
+
+| Arquivo | Função |
+|---------|--------|
+| `src/components/whatsapp/NewCampaignSheet.tsx` | Modal/Sheet para criar nova campanha |
+| `src/components/whatsapp/TemplateSelector.tsx` | Seletor de templates com prévia |
+| `src/components/whatsapp/LeadStatusSelector.tsx` | Seletor de status do Kanban |
+| `src/components/whatsapp/MessagePreview.tsx` | Prévia da mensagem com variáveis substituídas |
+| `src/components/whatsapp/CampaignCard.tsx` | Card individual de campanha na listagem |
+| `src/components/whatsapp/TemplatesSheet.tsx` | Modal para gerenciar templates |
+| `src/hooks/use-whatsapp-campaigns.ts` | Hook para campanhas |
+| `src/hooks/use-whatsapp-queue.ts` | Hook para fila de envio |
+| `supabase/functions/whatsapp-message-sender/index.ts` | Edge function processadora da fila |
+
+---
+
+## Arquivos a modificar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/components/whatsapp/CampaignsTab.tsx` | Adicionar funcionalidade real de campanhas |
+| `src/components/whatsapp/QueueTab.tsx` | Listagem real da fila com dados do banco |
+| `src/components/crm/KanbanColumn.tsx` | Adicionar botão "Disparar WhatsApp" |
+| `src/components/whatsapp/index.ts` | Exportar novos componentes |
+
+---
+
+## Detalhamento Técnico
+
+### 1. NewCampaignSheet.tsx
 
 ```text
-Endpoints:
-POST /init      - Cria instância para o corretor
-GET /status     - Retorna status da instância
-GET /qrcode     - Retorna QR Code para pareamento
-POST /logout    - Desconecta a instância
-POST /restart   - Reinicia a instância
+Interface:
+┌─────────────────────────────────────────┐
+│  Nova Campanha                    [X]   │
+├─────────────────────────────────────────┤
+│  Nome da campanha: [____________]       │
+│                                         │
+│  Selecionar leads:                      │
+│  [x] Novos Leads (15)                   │
+│  [ ] Informações Enviadas (8)           │
+│  [ ] Aguardando Dados (12)              │
+│                                         │
+│  Filtrar por projeto: [Todos    ▼]      │
+│                                         │
+│  Total de leads selecionados: 15        │
+│                                         │
+│  ─────────────────────────────────────  │
+│                                         │
+│  Mensagem:                              │
+│  [Template ▼] ou [Escrever própria]     │
+│                                         │
+│  Prévia:                                │
+│  ┌───────────────────────────────────┐  │
+│  │ Olá João! Temos novidades sobre   │  │
+│  │ o GoldenView que podem te...      │  │
+│  └───────────────────────────────────┘  │
+│                                         │
+│  [Cancelar]        [Iniciar Campanha]   │
+└─────────────────────────────────────────┘
 ```
 
-### 2.2 `whatsapp-message-sender`
-Processa a fila de mensagens.
+### 2. use-whatsapp-campaigns.ts
 
-```text
-Funcionalidades:
-- Cron job a cada minuto
-- Processa mensagens da fila por corretor
-- Intervalo randômico 60-240s + jitter 0-5s
-- Valida limites antes de enviar
-- Marca opt-out automaticamente
-- Registra em lead_interactions
+```typescript
+interface UseWhatsAppCampaignsReturn {
+  campaigns: WhatsAppCampaign[];
+  isLoading: boolean;
+  createCampaign: (data: CreateCampaignData) => Promise<void>;
+  pauseCampaign: (id: string) => Promise<void>;
+  resumeCampaign: (id: string) => Promise<void>;
+  cancelCampaign: (id: string) => Promise<void>;
+  templates: WhatsAppMessageTemplate[];
+  createTemplate: (data: CreateTemplateData) => Promise<void>;
+  updateTemplate: (id: string, data: Partial<CreateTemplateData>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
+}
 ```
 
-### 2.3 `whatsapp-safety-engine`
-Motor de segurança anti-block.
+### 3. use-whatsapp-queue.ts
 
-```text
-Funcionalidades:
-- Monitora taxa de erro
-- Pausa automaticamente em risco
-- Reseta contadores diários
-- Gerencia warmup progressivo
-- Detecta palavras de opt-out
+```typescript
+interface UseWhatsAppQueueReturn {
+  queue: WhatsAppMessageQueue[];
+  stats: {
+    queued: number;
+    sent: number;
+    failed: number;
+    replies: number;
+  };
+  isLoading: boolean;
+  cancelMessage: (id: string) => Promise<void>;
+  retryMessage: (id: string) => Promise<void>;
+  nextSendIn: number | null; // segundos até próximo envio
+}
 ```
 
-### 2.4 `whatsapp-webhook`
-Recebe eventos da UAZAPI.
+### 4. whatsapp-message-sender (Edge Function)
+
+Lógica do processador de fila:
 
 ```text
-Eventos:
-- Mensagem recebida (detecta opt-out)
-- Status da conexão alterado
-- Confirmação de entrega
+1. Buscar mensagens com status 'queued' ou 'scheduled'
+2. Para cada corretor com mensagens pendentes:
+   a. Verificar se instância está conectada
+   b. Verificar limites (hora/dia)
+   c. Verificar se não está pausado
+   d. Verificar horário de trabalho
+   e. Verificar opt-out do telefone
+3. Enviar UMA mensagem por corretor por execução
+4. Calcular próximo intervalo: random(60-240s) + jitter(0-5s)
+5. Agendar próxima mensagem com scheduled_at = now + intervalo
+6. Atualizar contadores (hourly_sent_count, daily_sent_count)
+7. Registrar em lead_interactions
+```
+
+### 5. Integração com KanbanColumn
+
+Adicionar ícone de WhatsApp no menu da coluna:
+
+```tsx
+<DropdownMenuItem 
+  className="text-green-400 focus:bg-green-500/10"
+  onClick={() => onDispatchWhatsApp?.(status)}
+>
+  <MessageSquare className="w-4 h-4 mr-2" />
+  Disparar WhatsApp
+</DropdownMenuItem>
 ```
 
 ---
 
-## 3. Componentes Frontend
-
-### 3.1 Nova Página: `/corretor/whatsapp`
-Página principal do módulo WhatsApp com 4 abas.
-
-### 3.2 Estrutura de Componentes
+## Fluxo de Criação de Campanha
 
 ```text
-src/pages/
-  BrokerWhatsApp.tsx          # Página principal
-
-src/components/whatsapp/
-  index.ts                     # Barrel exports
-  
-  # Aba Conexão
-  ConnectionTab.tsx            # Status e QR Code
-  ConnectionStatusCard.tsx     # Card de status visual
-  QRCodeDisplay.tsx           # Exibe QR com timer
-  
-  # Aba Campanhas
-  CampaignsTab.tsx            # Lista de campanhas
-  CampaignCard.tsx            # Card de campanha
-  NewCampaignSheet.tsx        # Criar nova campanha
-  CampaignDetailSheet.tsx     # Detalhes e métricas
-  LeadSelector.tsx            # Seletor de leads por status
-  ContactUploader.tsx         # Upload de lista CSV
-  
-  # Aba Fila de Envio
-  QueueTab.tsx                # Tabela da fila
-  QueueFilters.tsx            # Filtros avançados
-  MessagePreview.tsx          # Prévia da mensagem
-  
-  # Aba Segurança
-  SecurityTab.tsx             # Central anti-block
-  RiskScoreCard.tsx           # Score de risco visual
-  LimitsSettings.tsx          # Configuração de limites
-  WarmupProgress.tsx          # Progresso do aquecimento
-  KillSwitch.tsx              # Botão de emergência
-  
-  # Templates
-  TemplatesSheet.tsx          # Gerenciar templates
-  TemplateEditor.tsx          # Editor de template
-  VariablesPicker.tsx         # Seletor de variáveis
-  
-  # Shared
-  WhatsAppStatusBadge.tsx     # Badge de status
-  MessageStats.tsx            # Estatísticas inline
-
-src/hooks/
-  use-whatsapp-instance.ts    # Hook para instância
-  use-whatsapp-queue.ts       # Hook para fila
-  use-whatsapp-campaigns.ts   # Hook para campanhas
-  use-whatsapp-stats.ts       # Hook para métricas
+1. Corretor clica "Nova Campanha" ou "Disparar WhatsApp" no Kanban
+2. Abre sheet com seletor de status/leads
+3. Corretor escolhe template ou escreve mensagem
+4. Sistema mostra prévia com variáveis substituídas
+5. Corretor confirma
+6. Sistema:
+   a. Cria registro na tabela whatsapp_campaigns
+   b. Para cada lead selecionado:
+      - Valida telefone (E.164)
+      - Verifica opt-out
+      - Substitui variáveis na mensagem
+      - Insere na whatsapp_message_queue com scheduled_at escalonado
+   c. Atualiza total_leads na campanha
+7. UI mostra progresso na aba Campanhas e Fila
 ```
 
 ---
 
-## 4. UI/UX Design Premium
+## Cálculo de Intervalo Randômico
 
-### 4.1 Aba Conexão
-```text
-┌─────────────────────────────────────────────────────────┐
-│  ⚡ Conexão WhatsApp                                    │
-├─────────────────────────────────────────────────────────┤
-│  ┌─────────────────────────────────────────────────┐    │
-│  │                                                 │    │
-│  │   ┌─────────┐      Status: 🟢 Conectado        │    │
-│  │   │ QR CODE │      Número: +55 51 99999-9999   │    │
-│  │   │         │      Conectado há: 3 dias        │    │
-│  │   └─────────┘      Última atividade: 2 min     │    │
-│  │                                                 │    │
-│  │   [🔄 Atualizar]  [🚪 Desconectar]             │    │
-│  │                                                 │    │
-│  └─────────────────────────────────────────────────┘    │
-│                                                         │
-│  ┌─ Score de Saúde ────────────────────────────────┐    │
-│  │  ████████░░░░░░░░░░░░  75/100 Bom               │    │
-│  │  Enviados hoje: 45/150  │  Esta hora: 12/30    │    │
-│  └──────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 4.2 Aba Campanhas
-```text
-┌─────────────────────────────────────────────────────────┐
-│  📢 Campanhas                        [+ Nova Campanha]  │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌─ Campanha Ativa ─────────────────────────────────┐   │
-│  │  🟢 Follow-up Novos Leads                        │   │
-│  │  Alvo: Novos Leads │ 45 enviados │ 3 respostas  │   │
-│  │  ████████████████░░░░  80% concluído            │   │
-│  │  [⏸ Pausar]  [📊 Detalhes]                      │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌─ Rascunho ───────────────────────────────────────┐   │
-│  │  ⚪ Promoção GoldenView                          │   │
-│  │  Alvo: Dados Recebidos │ 28 leads               │   │
-│  │  [▶ Iniciar]  [✏️ Editar]  [🗑️]                 │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 4.3 Aba Fila
-```text
-┌─────────────────────────────────────────────────────────┐
-│  📬 Fila de Envio                   Próximo em: 2:34   │
-├─────────────────────────────────────────────────────────┤
-│  [🔍 Buscar...]  [Status ▼]  [Campanha ▼]  [📥 CSV]   │
-├─────────────────────────────────────────────────────────┤
-│  📱 João Silva          │ Agendado │ 14:32 │ Novos     │
-│  📱 Maria Santos        │ Enviado  │ 14:28 │ Novos     │
-│  ⚠️ Pedro Oliveira      │ Falhou   │ 14:25 │ Novos     │
-│  📱 Ana Costa           │ Na fila  │ ─     │ Follow-up │
-└─────────────────────────────────────────────────────────┘
-```
-
-### 4.4 Aba Segurança
-```text
-┌─────────────────────────────────────────────────────────┐
-│  🛡️ Central de Segurança                               │
-├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌─ 🚨 BOTÃO DE EMERGÊNCIA ─────────────────────────┐   │
-│  │        [ ⛔ PARAR TODOS OS ENVIOS ]              │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌─ Aquecimento ────────────────────────────────────┐   │
-│  │  Dia 5 de 14 │ Limite atual: 150/dia             │   │
-│  │  ████████████░░░░░░░░░░  Progresso               │   │
-│  │  Meta final: 300 mensagens/dia                   │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌─ Limites Configuráveis ──────────────────────────┐   │
-│  │  Limite por hora:  [30] ────────○────── [60]     │   │
-│  │  Limite por dia:   [150] ───────○─────── [300]   │   │
-│  │  Horário de envio: [09:00] até [21:00]           │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌─ Regras Anti-Spam Ativas ────────────────────────┐   │
-│  │  ✓ Intervalo 60-240s entre mensagens             │   │
-│  │  ✓ Máx. 2 links por mensagem                     │   │
-│  │  ✓ Deduplicação (não repetir no mesmo dia)       │   │
-│  │  ✓ Opt-out automático por palavras-chave         │   │
-│  │  ✓ Pausa em 5 erros consecutivos                 │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 5. Integração com Kanban
-
-### 5.1 Botão em Cada Coluna
-Adicionar ação "📲 Disparar WhatsApp" em `KanbanColumn.tsx`.
-
-```text
-┌─ Novos Leads (15) ──────────────────┐
-│  [📲 Disparar WhatsApp]   [+]       │
-├─────────────────────────────────────┤
-│  ...cards...                        │
-```
-
-### 5.2 Modal de Disparo Rápido
-Ao clicar, abre modal para:
-- Escolher template ou escrever mensagem
-- Ver prévia com variáveis substituídas
-- Confirmar quantidade de leads
-- Agendar ou iniciar imediatamente
-
----
-
-## 6. Lógica de Segurança Anti-Block
-
-### 6.1 Warmup Progressivo (14 dias)
-```text
-Dia 1-3:   30 msgs/dia,  15/hora
-Dia 4-7:   60 msgs/dia,  25/hora
-Dia 8-10:  100 msgs/dia, 35/hora
-Dia 11-14: 150 msgs/dia, 45/hora
-Após:      250 msgs/dia, 60/hora (máximo recomendado)
-```
-
-### 6.2 Regras de Pausa Automática
-- 5 erros consecutivos de envio
-- Taxa de opt-out > 5% no dia
-- Desconexão da instância
-- Fora do horário configurado
-- Rate limit da UAZAPI atingido
-
-### 6.3 Palavras-chave de Opt-out
-```text
-"pare", "parar", "sair", "remover", "cancelar", 
-"spam", "bloquear", "não quero", "nao quero",
-"stop", "remove", "unsubscribe"
-```
-
-### 6.4 Intervalo Randômico Real
 ```javascript
-const getNextInterval = () => {
-  const base = Math.floor(Math.random() * 180) + 60; // 60-240s
-  const jitter = Math.floor(Math.random() * 5); // 0-5s extra
-  return base + jitter;
+// Para N leads, calcular tempo estimado
+const calculateEstimatedTime = (leadCount: number): string => {
+  const avgInterval = 150; // média entre 60 e 240
+  const totalSeconds = leadCount * avgInterval;
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  return hours > 0 ? `~${hours}h ${minutes}min` : `~${minutes}min`;
+};
+
+// Ao agendar cada mensagem
+const scheduleMessages = async (leads, campaignId, message) => {
+  let currentTime = new Date();
+  
+  for (const lead of leads) {
+    // Intervalo randômico 60-240s + jitter 0-5s
+    const interval = Math.floor(Math.random() * 180) + 60 + Math.floor(Math.random() * 5);
+    currentTime = new Date(currentTime.getTime() + interval * 1000);
+    
+    await insertQueueItem({
+      lead_id: lead.id,
+      phone: formatPhoneE164(lead.whatsapp),
+      message: replaceVariables(message, lead),
+      campaign_id: campaignId,
+      scheduled_at: currentTime.toISOString(),
+      status: 'scheduled'
+    });
+  }
 };
 ```
 
 ---
 
-## 7. Navegação e Rotas
+## Templates Padrão (Seed)
 
-### 7.1 Nova Rota
-```tsx
-// App.tsx
-<Route path="/corretor/whatsapp" element={<BrokerWhatsApp />} />
+```typescript
+const DEFAULT_TEMPLATES = [
+  {
+    name: "Primeiro contato",
+    content: "Olá {nome}! Sou {corretor_nome}, da Enove Incorporadora. Vi que você tem interesse no {empreendimento}. Posso te enviar mais informações?",
+    category: "geral"
+  },
+  {
+    name: "Follow-up 1",
+    content: "Oi {nome}! Passando para saber se teve tempo de ver as informações do {empreendimento}. Posso ajudar com alguma dúvida?",
+    category: "follow_up"
+  },
+  {
+    name: "Solicitar documentos",
+    content: "Olá {nome}! Para avançarmos no processo do {empreendimento}, preciso de alguns documentos. Posso te explicar quais são?",
+    category: "docs"
+  }
+];
 ```
-
-### 7.2 Item na Sidebar
-Adicionar ícone MessageSquare na `BrokerSidebar.tsx`.
 
 ---
 
-## 8. Painel Administrativo (Admin)
+## Validações de Segurança
 
-### 8.1 Nova Página: `/admin/whatsapp`
-Visão global de todos os corretores.
+Antes de criar campanha:
+1. Verificar se corretor tem instância conectada
+2. Verificar se não está pausado
+3. Verificar se há saldo diário disponível
+4. Filtrar telefones em opt-out
+5. Filtrar telefones já contatados hoje
+
+---
+
+## UI da Fila de Envio (QueueTab atualizado)
 
 ```text
 ┌─────────────────────────────────────────────────────────┐
-│  📊 Painel WhatsApp - Administrador                    │
+│  📬 Fila de Envio                   Próximo em: 2:34   │
 ├─────────────────────────────────────────────────────────┤
-│                                                         │
-│  ┌─ Resumo Geral ───────────────────────────────────┐   │
-│  │  🟢 5 conectados  │  🔴 2 desconectados          │   │
-│  │  📤 234 enviados hoje  │  ⚠️ 3 pausados          │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  ┌─ Por Corretor ───────────────────────────────────┐   │
-│  │  João Silva    │ 🟢 │ 45/150 │ 3 erros │ Normal  │   │
-│  │  Maria Santos  │ 🟢 │ 28/150 │ 0 erros │ Normal  │   │
-│  │  Pedro Costa   │ 🔴 │ 0/150  │ ─       │ Offline │   │
-│  │  Ana Oliveira  │ 🟡 │ 12/150 │ 5 erros │ Pausado │   │
-│  └──────────────────────────────────────────────────┘   │
-│                                                         │
-│  [ ⛔ PAUSAR TODOS ]                                    │
-│                                                         │
+│  [🔍 Buscar...]  [Status ▼]  [Campanha ▼]              │
+├─────────────────────────────────────────────────────────┤
+│  Nome          │ Status    │ Horário │ Campanha        │
+│  ─────────────────────────────────────────────────────  │
+│  João Silva    │ 🟡 Agend. │ 14:32   │ Follow-up Novos │
+│  Maria Santos  │ 🟢 Env.   │ 14:28   │ Follow-up Novos │
+│  Pedro Costa   │ 🔴 Falhou │ 14:25   │ Follow-up Novos │
+│  Ana Oliveira  │ ⏳ Na fila│ ─       │ Follow-up Novos │
 └─────────────────────────────────────────────────────────┘
+│  ┌──────┐ ┌──────┐ ┌──────┐ ┌──────┐                   │
+│  │  24  │ │  45  │ │   3  │ │   2  │                   │
+│  │Fila  │ │Enviad│ │Falhas│ │Resp. │                   │
+│  └──────┘ └──────┘ └──────┘ └──────┘                   │
 ```
 
 ---
 
-## 9. Fluxo de Implementação (Ordem)
+## Ordem de Implementação
 
-### Fase 1: Fundação
-1. Criar tabelas no banco de dados
-2. Configurar RLS policies
-3. Criar edge function `whatsapp-instance-manager`
-
-### Fase 2: Conexão
-4. Criar página `BrokerWhatsApp.tsx`
-5. Implementar `ConnectionTab.tsx` com QR Code
-6. Adicionar item na sidebar do corretor
-
-### Fase 3: Fila e Envio
-7. Criar edge function `whatsapp-message-sender`
-8. Implementar `QueueTab.tsx`
-9. Criar lógica de intervalo randômico
-
-### Fase 4: Campanhas
-10. Implementar `CampaignsTab.tsx`
-11. Criar `NewCampaignSheet.tsx`
-12. Integrar com Kanban (botão por coluna)
-
-### Fase 5: Segurança
-13. Criar edge function `whatsapp-safety-engine`
-14. Implementar `SecurityTab.tsx`
-15. Configurar warmup progressivo
-16. Adicionar opt-out automático
-
-### Fase 6: Admin e Métricas
-17. Criar página admin `/admin/whatsapp`
-18. Implementar métricas e relatórios
-19. Adicionar logs em `lead_interactions`
+1. Criar hooks `use-whatsapp-campaigns.ts` e `use-whatsapp-queue.ts`
+2. Criar componentes auxiliares (TemplateSelector, LeadStatusSelector, MessagePreview)
+3. Criar NewCampaignSheet.tsx
+4. Atualizar CampaignsTab.tsx com listagem real
+5. Atualizar QueueTab.tsx com dados reais
+6. Criar edge function `whatsapp-message-sender`
+7. Adicionar botão no KanbanColumn.tsx
+8. Testar fluxo completo
 
 ---
 
-## 10. Secrets Necessários (Já Configurados)
+## Resultado Esperado
 
-Os secrets UAZAPI já existem no projeto:
-- `UAZAPI_INSTANCE_URL` - URL base da API
-- `UAZAPI_TOKEN` - Token de autenticação
-
-Para instâncias por corretor, cada instância terá seu próprio token salvo na tabela `broker_whatsapp_instances`.
-
----
-
-## 11. Arquivos a Criar
-
-```text
-# Banco de Dados
-supabase/migrations/XXXX_whatsapp_dispatcher.sql
-
-# Edge Functions
-supabase/functions/whatsapp-instance-manager/index.ts
-supabase/functions/whatsapp-message-sender/index.ts
-supabase/functions/whatsapp-safety-engine/index.ts
-supabase/functions/whatsapp-webhook/index.ts
-
-# Páginas
-src/pages/BrokerWhatsApp.tsx
-src/pages/AdminWhatsApp.tsx
-
-# Componentes (15+ arquivos)
-src/components/whatsapp/...
-
-# Hooks (4 arquivos)
-src/hooks/use-whatsapp-instance.ts
-src/hooks/use-whatsapp-queue.ts
-src/hooks/use-whatsapp-campaigns.ts
-src/hooks/use-whatsapp-stats.ts
-
-# Types
-src/types/whatsapp.ts
-
-# Modificações
-src/App.tsx (novas rotas)
-src/components/broker/BrokerSidebar.tsx (novo item)
-src/components/crm/KanbanColumn.tsx (botão disparar)
-```
-
----
-
-## 12. Estimativa de Complexidade
-
-| Fase | Componentes | Estimativa |
-|------|-------------|------------|
-| Fundação | 6 tabelas + RLS | 1 iteração |
-| Conexão | 5 componentes + edge function | 2 iterações |
-| Fila | 4 componentes + edge function | 2 iterações |
-| Campanhas | 6 componentes + integração | 2 iterações |
-| Segurança | 5 componentes + edge function | 2 iterações |
-| Admin | 3 componentes + página | 1 iteração |
-
-**Total estimado: 10-12 iterações de desenvolvimento**
-
----
-
-## 13. Resultado Final
-
-Um sistema profissional de disparo WhatsApp que:
-
-- Permite cada corretor conectar seu próprio número via QR Code
-- Dispara mensagens com intervalo randômico 60-240s
-- Protege contra block com warmup, limites e opt-out
-- Integra diretamente com o Kanban existente
-- Oferece métricas completas e auditoria
-- Design premium consistente com o resto do CRM
-- Painel admin para gestão global
+Após esta fase, o corretor poderá:
+- Criar campanhas selecionando leads por status do Kanban
+- Usar templates prontos ou escrever mensagens personalizadas
+- Ver prévia da mensagem antes de enviar
+- Acompanhar o progresso na aba de Campanhas
+- Visualizar a fila de envio em tempo real
+- Disparar diretamente de uma coluna do Kanban
