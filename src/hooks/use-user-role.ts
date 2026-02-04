@@ -47,9 +47,9 @@ export const useUserRole = () => {
           role = "broker";
         }
 
-        // Se for corretor, buscar o broker_id
+        // Buscar broker_id se o usuário TEM a role "broker" (independente de ter admin também)
         let brokerId = null;
-        if (role === "broker") {
+        if (roles.includes("broker")) {
           const { data: brokerData } = await (supabase
             .from("brokers" as any)
             .select("id")
