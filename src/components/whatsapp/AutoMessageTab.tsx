@@ -68,24 +68,6 @@ export function AutoMessageTab() {
         </Button>
       </div>
 
-      {/* Info Alerts */}
-      <div className="space-y-3">
-        <Alert className="bg-blue-500/10 border-blue-500/30">
-          <Info className="w-4 h-4 text-blue-400" />
-          <AlertDescription className="text-blue-300 text-sm">
-            Esta mensagem é enviada <strong>automaticamente</strong> quando um lead se cadastra via 
-            landing page do empreendimento. É uma confirmação de atendimento, não um robô de respostas.
-          </AlertDescription>
-        </Alert>
-
-        <Alert className="bg-red-500/10 border-red-500/30">
-          <XCircle className="w-4 h-4 text-red-400" />
-          <AlertDescription className="text-red-300 text-sm">
-            Leads adicionados manualmente ou importados <strong>NUNCA</strong> recebem mensagem automática.
-          </AlertDescription>
-        </Alert>
-      </div>
-
       {/* Rules List */}
       {rules.length === 0 ? (
         <div className="text-center py-12 bg-[#1a1a1d] rounded-xl border border-[#2a2a2e]">
@@ -176,6 +158,24 @@ export function AutoMessageTab() {
           ))}
         </div>
       )}
+
+      {/* Info Alerts - Moved to bottom */}
+      <div className="space-y-3">
+        <Alert className="bg-blue-500/10 border-blue-500/30">
+          <Info className="w-4 h-4 text-blue-400" />
+          <AlertDescription className="text-blue-300 text-sm">
+            Esta mensagem é enviada <strong>automaticamente</strong> quando um lead se cadastra via 
+            landing page do empreendimento. É uma confirmação de atendimento, não um robô de respostas.
+          </AlertDescription>
+        </Alert>
+
+        <Alert className="bg-red-500/10 border-red-500/30">
+          <XCircle className="w-4 h-4 text-red-400" />
+          <AlertDescription className="text-red-300 text-sm">
+            Leads adicionados manualmente ou importados <strong>NUNCA</strong> recebem mensagem automática.
+          </AlertDescription>
+        </Alert>
+      </div>
 
       {/* Editor Sheet */}
       <AutoMessageRuleEditor
