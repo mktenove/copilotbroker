@@ -17,6 +17,7 @@ import {
   Bot,
   Eye
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useWhatsAppGlobalStats } from "@/hooks/use-whatsapp-stats";
 import { useWhatsAppOptouts } from "@/hooks/use-whatsapp-optouts";
 import { format, parseISO } from "date-fns";
@@ -163,40 +164,52 @@ const AdminWhatsApp = () => {
       >
         <div className="space-y-6">
           {/* Header */}
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-              <Smartphone className="w-7 h-7" />
-              WhatsApp - Atendimento Assistido
-            </h1>
-            <p className="text-slate-400 mt-1">
-              Gerencie conexões e dispare mensagens automatizadas
-            </p>
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                <Smartphone className="w-7 h-7" />
+                WhatsApp - Atendimento Assistido
+              </h1>
+              <p className="text-slate-400 mt-1">
+                Gerencie conexões e dispare mensagens automatizadas
+              </p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => refetchInstances()}
+              disabled={isLoadingInstances}
+              className="border-[#2a2a2e] text-slate-400 hover:bg-[#2a2a2e] hover:text-white"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingInstances ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
           </div>
 
           {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex bg-[#1a1a1d] border border-[#2a2a2e]">
-              <TabsTrigger value="overview" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="overview" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Eye className="w-4 h-4" />
                 <span className="hidden sm:inline">Visão Global</span>
               </TabsTrigger>
-              <TabsTrigger value="connection" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="connection" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Wifi className="w-4 h-4" />
                 <span className="hidden sm:inline">Conexão</span>
               </TabsTrigger>
-              <TabsTrigger value="campaigns" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="campaigns" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Megaphone className="w-4 h-4" />
                 <span className="hidden sm:inline">Campanhas</span>
               </TabsTrigger>
-              <TabsTrigger value="queue" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="queue" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Fila</span>
               </TabsTrigger>
-              <TabsTrigger value="security" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="security" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Shield className="w-4 h-4" />
                 <span className="hidden sm:inline">Segurança</span>
               </TabsTrigger>
-              <TabsTrigger value="automation" className="gap-2 text-slate-300 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+              <TabsTrigger value="automation" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Bot className="w-4 h-4" />
                 <span className="hidden sm:inline">Automação</span>
               </TabsTrigger>
