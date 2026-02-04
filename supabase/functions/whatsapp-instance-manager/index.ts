@@ -110,6 +110,32 @@ app.post("/init", async (c) => {
     // Get instance token from response
     const instanceToken = uazData.hash || uazData.instance?.apikey || null;
 
+    // Configure webhook for this instance
+    const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+    try {
+      const webhookResponse = await fetch(`${UAZAPI_BASE_URL}/webhook/set/${instanceName}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "apikey": instanceToken || UAZAPI_TOKEN,
+        },
+        body: JSON.stringify({
+          url: webhookUrl,
+          webhook_by_events: false,
+          events: ["messages.upsert", "connection.update", "message.update"]
+        }),
+      });
+      
+      if (webhookResponse.ok) {
+        console.log(`Webhook configured for ${instanceName}: ${webhookUrl}`);
+      } else {
+        console.error("Failed to configure webhook:", await webhookResponse.text());
+      }
+    } catch (webhookErr) {
+      console.error("Webhook configuration error:", webhookErr);
+      // Continue anyway - webhook can be configured manually
+    }
+
     // Upsert broker instance record
     const { data: instance, error: dbError } = await supabase
       .from("broker_whatsapp_instances")
@@ -132,6 +158,7 @@ app.post("/init", async (c) => {
       success: true,
       instance,
       uazapi: uazData,
+      webhookConfigured: webhookUrl,
     }, 200, corsHeaders);
 
   } catch (err) {
