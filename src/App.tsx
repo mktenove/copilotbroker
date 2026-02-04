@@ -21,6 +21,7 @@ import Admin from "./pages/Admin";
 import BrokerAdmin from "./pages/BrokerAdmin";
 import BrokerProjects from "./pages/BrokerProjects";
 import BrokerSignup from "./pages/BrokerSignup";
+import BrokerWhatsApp from "./pages/BrokerWhatsApp";
 import Termos from "./pages/Termos";
 import NotFound from "./pages/NotFound";
 
@@ -57,6 +58,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
             <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
+            <Route path="/corretor/whatsapp" element={<BrokerWhatsApp />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/corretor/admin" element={<BrokerAdmin />} />
             <Route path="/termos" element={<Termos />} />
