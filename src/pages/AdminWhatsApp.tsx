@@ -24,7 +24,7 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 import { WhatsAppOverviewTab } from "@/components/admin/WhatsAppOverviewTab";
-import { AdminConnectionTab } from "@/components/whatsapp/AdminConnectionTab";
+import { ConnectionTab } from "@/components/whatsapp/ConnectionTab";
 import { CampaignsTab } from "@/components/whatsapp/CampaignsTab";
 import { QueueTab } from "@/components/whatsapp/QueueTab";
 import { SecurityTab } from "@/components/whatsapp/SecurityTab";
@@ -230,7 +230,7 @@ const AdminWhatsApp = () => {
             </TabsContent>
 
             <TabsContent value="connection" className="mt-6">
-              <AdminConnectionTab />
+              <ConnectionTab />
             </TabsContent>
 
             <TabsContent value="campaigns" className="mt-6">
