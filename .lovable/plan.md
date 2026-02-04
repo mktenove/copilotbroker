@@ -1,103 +1,150 @@
 
-## Objetivo
-Alterar a criação de instâncias WhatsApp para usar o **nome do corretor** no lugar do formato atual `enove_broker_{id}`.
+
+## Correção: Botões Atualizar, Reiniciar e Desconectar
+
+### Problema Identificado
+
+Os logs mostram claramente o erro:
+```
+UAZAPI Logout Error: {"code":405,"message":"Method Not Allowed.","data":{}}
+```
+
+**Causas:**
+1. O endpoint `/instance/logout` está sendo chamado com método `DELETE`, mas a UAZAPI espera outro método (provavelmente `POST`)
+2. O endpoint `/instance/restart` está usando `PUT`, que também pode estar incorreto
+3. Não está usando o sistema de fallback com múltiplos estilos de autenticação que funciona para o `/status`
 
 ---
 
-## Exemplo
+### Solução Proposta
 
-| Antes | Depois |
-|-------|--------|
-| `enove_broker_68db81c3` | `enove_maicon` |
-| `enove_broker_4272e89e` | `enove_marcio_cardoso` |
+Corrigir os endpoints `/logout` e `/restart` para:
+1. Usar o método HTTP correto (provavelmente `POST`)
+2. Usar a função `uazapiFetchWithAuthFallback` que faz tentativas com diferentes headers
+3. Seguir o mesmo padrão do `/status` que está funcionando
 
 ---
 
-## Alterações Técnicas
+### Alterações Técnicas
 
-### 1. Criar função auxiliar para normalizar nome
+#### Arquivo: `supabase/functions/whatsapp-instance-manager/index.ts`
 
-Nomes de instâncias UAZAPI precisam ser seguros (sem espaços, acentos ou caracteres especiais). Vamos criar uma função que:
-- Remove acentos (ex: "Márcio" → "marcio")
-- Converte para minúsculas
-- Substitui espaços por underscore
-- Remove caracteres especiais
-- Limita o tamanho para evitar nomes muito longos
+**1. Corrigir rota `/logout` (linhas 982-991):**
 
 ```typescript
-const normalizeInstanceName = (name: string): string => {
-  return name
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "") // Remove acentos
-    .toLowerCase()
-    .replace(/\s+/g, "_")            // Espaços → underscore
-    .replace(/[^a-z0-9_]/g, "")      // Remove caracteres especiais
-    .substring(0, 30);               // Limita tamanho
-};
+// ANTES:
+const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout`, {
+  method: "DELETE",
+  headers: {
+    "token": instance.instance_token || "",
+  },
+});
+
+// DEPOIS:
+// Try different endpoints and methods (UAZAPI variants use different patterns)
+const logoutAttempts = [
+  { name: "logout-post", path: "/instance/logout", method: "POST" },
+  { name: "logout-delete", path: "/instance/logout", method: "DELETE" },
+  { name: "disconnect-post", path: "/instance/disconnect", method: "POST" },
+];
+
+let logoutSuccess = false;
+
+for (const attempt of logoutAttempts) {
+  console.log(`[LOGOUT] Trying: ${attempt.method} ${attempt.path}`);
+  const uazResponse = await uazapiFetchWithAuthFallback(
+    `${UAZAPI_BASE_URL}${attempt.path}`,
+    { method: attempt.method },
+    instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    false,
+    [UAZAPI_DEFAULT_TOKEN],
+  );
+
+  if (uazResponse.ok) {
+    console.log(`[LOGOUT] Success with ${attempt.name}`);
+    logoutSuccess = true;
+    break;
+  }
+  
+  // 405 = wrong method, try next. Other errors = stop.
+  if (uazResponse.status !== 405 && uazResponse.status !== 404) {
+    console.error(`[LOGOUT] Failed with ${uazResponse.status}`);
+    break;
+  }
+}
 ```
 
-### 2. Modificar `getBrokerId` para retornar nome também
+**2. Corrigir rota `/restart` (linhas 1047-1058):**
 
-**Antes:**
 ```typescript
-const getBrokerId = async (...): Promise<string> => {
-  // ...select("id")...
-  return data.id;
-};
-```
+// ANTES:
+const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart`, {
+  method: "PUT",
+  headers: {
+    "token": instance.instance_token || "",
+  },
+});
 
-**Depois:**
-```typescript
-interface BrokerInfo {
-  id: string;
-  name: string;
+// DEPOIS:
+const restartAttempts = [
+  { name: "restart-post", path: "/instance/restart", method: "POST" },
+  { name: "restart-put", path: "/instance/restart", method: "PUT" },
+  { name: "reconnect-post", path: "/instance/reconnect", method: "POST" },
+];
+
+let restartSuccess = false;
+let restartError = "";
+
+for (const attempt of restartAttempts) {
+  console.log(`[RESTART] Trying: ${attempt.method} ${attempt.path}`);
+  const uazResponse = await uazapiFetchWithAuthFallback(
+    `${UAZAPI_BASE_URL}${attempt.path}`,
+    { method: attempt.method },
+    instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+    false,
+    [UAZAPI_DEFAULT_TOKEN],
+  );
+
+  if (uazResponse.ok) {
+    console.log(`[RESTART] Success with ${attempt.name}`);
+    restartSuccess = true;
+    break;
+  }
+  
+  restartError = await uazResponse.text().catch(() => "");
+  if (uazResponse.status !== 405 && uazResponse.status !== 404) {
+    break;
+  }
 }
 
-const getBrokerInfo = async (...): Promise<BrokerInfo> => {
-  // ...select("id, name")...
-  return { id: data.id, name: data.name };
-};
-```
-
-### 3. Atualizar geração do nome da instância
-
-**Antes:**
-```typescript
-const brokerId = await getBrokerId(supabase, user.id);
-const instanceName = `enove_broker_${brokerId.substring(0, 8)}`;
-```
-
-**Depois:**
-```typescript
-const brokerInfo = await getBrokerInfo(supabase, user.id);
-const safeName = normalizeInstanceName(brokerInfo.name);
-const instanceName = `enove_${safeName}`;
+if (!restartSuccess) {
+  return c.json({ error: "Failed to restart", details: restartError }, 500, corsHeaders);
+}
 ```
 
 ---
 
-## Exemplos de Conversão
-
-| Nome do Corretor | Nome da Instância |
-|-----------------|-------------------|
-| Maicon | `enove_maicon` |
-| Márcio Cardoso | `enove_marcio_cardoso` |
-| Kely Monique | `enove_kely_monique` |
-| VILSON SILVA | `enove_vilson_silva` |
-| Bibiana Malheiros | `enove_bibiana_malheiros` |
-
----
-
-## Arquivos a serem alterados
+### Resumo dos Arquivos
 
 | Arquivo | Alteração |
 |---------|-----------|
-| `supabase/functions/whatsapp-instance-manager/index.ts` | Adicionar `normalizeInstanceName()`, modificar `getBrokerId` → `getBrokerInfo`, atualizar geração de nome |
+| `supabase/functions/whatsapp-instance-manager/index.ts` | Corrigir `/logout` e `/restart` para usar fallback de métodos HTTP e autenticação |
 
 ---
 
-## Observações
+### Resultado Esperado
 
-1. **Instâncias existentes não serão afetadas** - A mudança só se aplica a novas instâncias criadas
-2. **Unicidade garantida** - Cada corretor só pode ter uma instância, então nomes como "enove_maicon" serão únicos
-3. **Fallback seguro** - Se o nome vier vazio, podemos usar o ID como fallback
+Após a correção:
+1. **Botão "Atualizar"** - já funciona (usa `/status` corrigido)
+2. **Botão "Desconectar"** - tentará POST primeiro, depois DELETE, com fallback de auth
+3. **Botão "Reiniciar"** - tentará POST primeiro, depois PUT, com fallback de auth
+
+---
+
+### Pergunta para o usuário
+
+Se você tiver acesso à documentação da UAZAPI ou ao dashboard, pode confirmar qual é o endpoint correto para desconectar a instância? Endpoints comuns são:
+- `POST /instance/logout`
+- `DELETE /instance/logout` 
+- `POST /instance/disconnect`
+
