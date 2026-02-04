@@ -5,6 +5,80 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper function to send message via UAZAPI with endpoint fallback
+const sendMessageViaUAZAPI = async (
+  uazapiUrl: string,
+  uazapiToken: string,
+  phone: string,
+  message: string
+): Promise<{ success: boolean; error?: string; endpoint?: string }> => {
+  const cleanPhone = phone.replace(/\D/g, "");
+  const baseUrl = uazapiUrl.replace(/\/$/, "");
+  
+  // Lista de endpoints e payloads para tentar
+  const attempts = [
+    {
+      endpoint: "/send/text",
+      payload: { phone: cleanPhone, message }
+    },
+    {
+      endpoint: "/chat/send/text",
+      payload: { Phone: cleanPhone, Body: message }
+    },
+    {
+      endpoint: "/message/sendText",
+      payload: { number: cleanPhone, text: message }
+    },
+    {
+      endpoint: "/message/text",
+      payload: { phone: cleanPhone, message }
+    }
+  ];
+
+  for (const attempt of attempts) {
+    try {
+      const url = `${baseUrl}${attempt.endpoint}`;
+      console.log(`Tentando: POST ${url}`);
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "token": uazapiToken,
+        },
+        body: JSON.stringify(attempt.payload),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log(`✅ Sucesso com endpoint: ${attempt.endpoint}`);
+        return { success: true, endpoint: attempt.endpoint };
+      }
+      
+      // 405 = endpoint errado, tentar próximo
+      if (response.status === 405) {
+        console.log(`Endpoint ${attempt.endpoint} retornou 405, tentando próximo...`);
+        continue;
+      }
+      
+      // 404 = endpoint não existe, tentar próximo
+      if (response.status === 404) {
+        console.log(`Endpoint ${attempt.endpoint} retornou 404, tentando próximo...`);
+        continue;
+      }
+      
+      // Outros erros podem ser problemas reais
+      console.error(`Erro no endpoint ${attempt.endpoint}:`, result);
+      
+    } catch (err) {
+      console.error(`Exceção no endpoint ${attempt.endpoint}:`, err);
+    }
+  }
+  
+  return { success: false, error: "Nenhum endpoint de envio funcionou" };
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -98,27 +172,14 @@ Deno.serve(async (req) => {
 
     console.log(`Enviando mensagem para ${recipientPhone} via UAZAPI`);
 
-    // Formato correto conforme documentação UAZAPI - usando header "token"
-    const response = await fetch(`${uazapiUrl}/message/text`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "token": uazapiToken,
-      },
-      body: JSON.stringify({
-        phone: recipientPhone,
-        message: message,
-      }),
-    });
-
-    const result = await response.json();
-    console.log("Resposta UAZAPI:", result);
+    // Usar função com fallback para múltiplos endpoints
+    const sendResult = await sendMessageViaUAZAPI(uazapiUrl, uazapiToken, recipientPhone, message);
 
     // Log the notification attempt
     if (leadId) {
-      const logNotes = response.ok
-        ? `✅ Notificação enviada para ${recipientName} (${recipientPhone})`
-        : `❌ Falha ao enviar para ${recipientName}: ${JSON.stringify(result)}`;
+      const logNotes = sendResult.success
+        ? `✅ Notificação enviada para ${recipientName} (${recipientPhone}) via ${sendResult.endpoint}`
+        : `❌ Falha ao enviar para ${recipientName}: ${sendResult.error}`;
 
       await supabase.from("lead_interactions").insert({
         lead_id: leadId,
@@ -129,11 +190,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!response.ok) {
-      console.error("Erro UAZAPI:", result);
+    if (!sendResult.success) {
+      console.error("Erro ao enviar notificação:", sendResult.error);
       return new Response(
-        JSON.stringify({ success: false, error: result }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: response.status }
+        JSON.stringify({ success: false, error: sendResult.error }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
@@ -142,6 +203,7 @@ Deno.serve(async (req) => {
         success: true,
         recipient: recipientName,
         phone: recipientPhone,
+        endpoint: sendResult.endpoint,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

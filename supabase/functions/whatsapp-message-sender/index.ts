@@ -61,43 +61,83 @@ const formatPhoneForUAZAPI = (phone: string): string => {
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
 
-// Send message via UAZAPI
+// Send message via UAZAPI with endpoint fallback
 const sendMessageViaUAZAPI = async (
   instanceName: string,
   instanceToken: string | null,
   phone: string,
   messageText: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
-  try {
-    // Formato correto conforme documentação UAZAPI - usando header "token"
-    const response = await fetch(`${UAZAPI_BASE_URL}/message/text`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "token": instanceToken || UAZAPI_TOKEN,
-      },
-      body: JSON.stringify({
-        phone: formatPhoneForUAZAPI(phone),
-        message: messageText,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("UAZAPI Send Error:", errorText);
-      return { success: false, error: errorText };
+  const cleanPhone = formatPhoneForUAZAPI(phone);
+  const token = instanceToken || UAZAPI_TOKEN;
+  const baseUrl = UAZAPI_BASE_URL.replace(/\/$/, "");
+  
+  // Lista de endpoints e payloads para tentar
+  const attempts = [
+    {
+      endpoint: "/send/text",
+      payload: { phone: cleanPhone, message: messageText }
+    },
+    {
+      endpoint: "/chat/send/text",
+      payload: { Phone: cleanPhone, Body: messageText }
+    },
+    {
+      endpoint: "/message/sendText",
+      payload: { number: cleanPhone, text: messageText }
+    },
+    {
+      endpoint: "/message/text",
+      payload: { phone: cleanPhone, message: messageText }
     }
+  ];
 
-    const result = await response.json();
-    return { 
-      success: true, 
-      messageId: result.key?.id || result.messageId || null 
-    };
-  } catch (err) {
-    const error = err as Error;
-    console.error("UAZAPI Error:", error.message);
-    return { success: false, error: error.message };
+  for (const attempt of attempts) {
+    try {
+      const url = `${baseUrl}${attempt.endpoint}`;
+      console.log(`Tentando: POST ${url}`);
+      
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "token": token,
+        },
+        body: JSON.stringify(attempt.payload),
+      });
+
+      const result = await response.json();
+      
+      if (response.ok) {
+        console.log(`✅ Sucesso com endpoint: ${attempt.endpoint}`);
+        return { 
+          success: true, 
+          messageId: result.key?.id || result.messageId || null 
+        };
+      }
+      
+      // 405 = endpoint errado, tentar próximo
+      if (response.status === 405) {
+        console.log(`Endpoint ${attempt.endpoint} retornou 405, tentando próximo...`);
+        continue;
+      }
+      
+      // 404 = endpoint não existe, tentar próximo
+      if (response.status === 404) {
+        console.log(`Endpoint ${attempt.endpoint} retornou 404, tentando próximo...`);
+        continue;
+      }
+      
+      // Outros erros podem ser problemas reais
+      console.error(`Erro no endpoint ${attempt.endpoint}:`, result);
+      
+    } catch (err) {
+      const error = err as Error;
+      console.error(`Exceção no endpoint ${attempt.endpoint}:`, error.message);
+    }
   }
+  
+  return { success: false, error: "Nenhum endpoint de envio funcionou" };
 };
 
 // Interface for instance data
