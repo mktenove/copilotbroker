@@ -67,8 +67,8 @@ const normalizeStatus = (uazapiStatus: string): string => {
 };
 
 // CORS preflight
-app.options("/*", (c) => {
-  return c.text("", 204, corsHeaders);
+app.options("/*", () => {
+  return new Response(null, { status: 204, headers: corsHeaders });
 });
 
 // GET /status - Check global instance status
