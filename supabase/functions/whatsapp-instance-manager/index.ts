@@ -978,16 +978,43 @@ app.post("/logout", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Logout from UAZAPI using instance token
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout`, {
-      method: "DELETE",
-      headers: {
-        "token": instance.instance_token || "",
-      },
-    });
+    // Try different endpoints and methods (UAZAPI variants use different patterns)
+    const logoutAttempts = [
+      { name: "logout-post", path: "/instance/logout", method: "POST" },
+      { name: "logout-delete", path: "/instance/logout", method: "DELETE" },
+      { name: "disconnect-post", path: "/instance/disconnect", method: "POST" },
+    ];
 
-    if (!uazResponse.ok) {
-      console.error("UAZAPI Logout Error:", await uazResponse.text());
+    let logoutSuccess = false;
+
+    for (const attempt of logoutAttempts) {
+      console.log(`[LOGOUT] Trying: ${attempt.method} ${attempt.path}`);
+      const uazResponse = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}${attempt.path}`,
+        { method: attempt.method },
+        instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+        false,
+        [UAZAPI_DEFAULT_TOKEN],
+      );
+
+      if (uazResponse.ok) {
+        console.log(`[LOGOUT] Success with ${attempt.name}`);
+        logoutSuccess = true;
+        break;
+      }
+
+      const responseText = await uazResponse.text().catch(() => "");
+      console.log(`[LOGOUT] ${attempt.name} failed with ${uazResponse.status}: ${responseText.substring(0, 100)}`);
+      
+      // 405 = wrong method, 404 = wrong endpoint, try next
+      if (uazResponse.status !== 405 && uazResponse.status !== 404) {
+        console.error(`[LOGOUT] Stopping attempts due to status ${uazResponse.status}`);
+        break;
+      }
+    }
+
+    if (!logoutSuccess) {
+      console.warn("[LOGOUT] All attempts failed, but proceeding with local disconnect");
     }
 
     // Update local status
@@ -1043,18 +1070,44 @@ app.post("/restart", async (c) => {
 
     const instance = instanceData as { id: string; instance_name: string; instance_token: string | null };
 
-    // Restart via UAZAPI using instance token
-    const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart`, {
-      method: "PUT",
-      headers: {
-        "token": instance.instance_token || "",
-      },
-    });
+    // Try different endpoints and methods (UAZAPI variants use different patterns)
+    const restartAttempts = [
+      { name: "restart-post", path: "/instance/restart", method: "POST" },
+      { name: "restart-put", path: "/instance/restart", method: "PUT" },
+      { name: "reconnect-post", path: "/instance/reconnect", method: "POST" },
+    ];
 
-    if (!uazResponse.ok) {
-      const errorText = await uazResponse.text();
-      console.error("UAZAPI Restart Error:", errorText);
-      return c.json({ error: "Failed to restart", details: errorText }, 500, corsHeaders);
+    let restartSuccess = false;
+    let restartError = "";
+
+    for (const attempt of restartAttempts) {
+      console.log(`[RESTART] Trying: ${attempt.method} ${attempt.path}`);
+      const uazResponse = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}${attempt.path}`,
+        { method: attempt.method },
+        instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+        false,
+        [UAZAPI_DEFAULT_TOKEN],
+      );
+
+      if (uazResponse.ok) {
+        console.log(`[RESTART] Success with ${attempt.name}`);
+        restartSuccess = true;
+        break;
+      }
+
+      restartError = await uazResponse.text().catch(() => "");
+      console.log(`[RESTART] ${attempt.name} failed with ${uazResponse.status}: ${restartError.substring(0, 100)}`);
+      
+      // 405 = wrong method, 404 = wrong endpoint, try next
+      if (uazResponse.status !== 405 && uazResponse.status !== 404) {
+        console.error(`[RESTART] Stopping attempts due to status ${uazResponse.status}`);
+        break;
+      }
+    }
+
+    if (!restartSuccess) {
+      return c.json({ error: "Failed to restart", details: restartError }, 500, corsHeaders);
     }
 
     // Update status
