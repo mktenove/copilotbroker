@@ -1,80 +1,44 @@
 
-## Atualização de Cores - WhatsApp Atendimento Assistido
+
+## Correção da Barra de Tabs - AdminWhatsApp
 
 ### Problema Identificado
 
-Os componentes da sessão WhatsApp estão usando uma **mistura inconsistente** de:
-- **Cores hardcoded do dark theme**: `#1a1a1d`, `#2a2a2e`, `#0f0f12` (corretas)
-- **Variáveis semânticas**: `bg-card`, `text-foreground`, `border-border`, `bg-accent` (podem puxar tons marrom/bege do tema claro)
-
-Isso causa a aparência inconsistente que você observou.
-
----
+A `TabsList` e os `TabsTrigger` na página `/admin/whatsapp` não possuem classes de cor hardcoded, fazendo com que herdem as variáveis CSS semânticas (`bg-muted`, `text-muted-foreground`, `bg-background`, `text-foreground`) que estão com tons marrons do tema antigo.
 
 ### Solução
 
-Padronizar **todos** os componentes WhatsApp para usar as cores fixas do design novo:
+Adicionar as mesmas classes de cores fixas do dark theme que já estão implementadas na página do corretor (`BrokerWhatsApp.tsx`).
 
-| Elemento | Cor Atual (problemática) | Cor Nova (padronizada) |
-|----------|-------------------------|----------------------|
-| Background cards | `bg-card` | `bg-[#1a1a1d]` |
-| Bordas | `border-border` | `border-[#2a2a2e]` |
-| Texto principal | `text-foreground` | `text-white` |
-| Texto secundário | `text-muted-foreground` | `text-slate-400` |
-| Backgrounds profundos | - | `bg-[#0f0f12]` ou `bg-[#141417]` |
-| Hover states | `hover:bg-accent` | `hover:bg-[#2a2a2e]` |
+### Alterações
 
----
+**Arquivo:** `src/pages/AdminWhatsApp.tsx`
 
-### Arquivos a Atualizar
-
-#### 1. `src/components/whatsapp/CampaignsTab.tsx`
-- Substituir `text-foreground` → `text-white`
-- Substituir `bg-card border-border` → `bg-[#1a1a1d] border-[#2a2a2e]`
-- Substituir `hover:bg-accent` → `hover:bg-[#2a2a2e]`
-
-#### 2. `src/components/whatsapp/SecurityTab.tsx`
-- Substituir todas as instâncias de `bg-card border-border` → `bg-[#1a1a1d] border-[#2a2a2e]`
-- Substituir `text-foreground` → `text-white`
-- Substituir `text-muted-foreground` → `text-slate-400`
-
-#### 3. `src/pages/AdminWhatsApp.tsx`
-- Substituir `text-foreground` → `text-white`
-- Substituir `text-muted-foreground` → `text-slate-400`
-
-#### 4. `src/components/admin/WhatsAppOverviewTab.tsx`
-- Substituir todas as variáveis semânticas por cores fixas do dark theme
-- `bg-card` → `bg-[#1a1a1d]`
-- `border-border` → `border-[#2a2a2e]`
-- `text-foreground` → `text-white`
-- `text-muted-foreground` → `text-slate-400`
-- `bg-accent/30` → `bg-[#2a2a2e]/30`
-- `hover:bg-accent/50` → `hover:bg-[#2a2a2e]/50`
-
-#### 5. `src/pages/BrokerWhatsApp.tsx`
-- Já está correto (usa cores hardcoded)
-
----
-
-### Paleta Padrão do Dark Theme Admin
-
-```text
---background-base:    #0d0d0f  ou  #0f0f12
---card-surface:       #1a1a1d
---card-elevated:      #1e1e22
---border:             #2a2a2e
---border-hover:       #3a3a3e
---text-primary:       white
---text-secondary:     slate-400
---text-muted:         slate-500
---accent-primary:     primary (amarelo Enove)
+**TabsList (linha 178):**
+```
+Antes:  className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex"
+Depois: className="grid w-full grid-cols-6 lg:w-auto lg:inline-flex bg-[#1a1a1d] border border-[#2a2a2e]"
 ```
 
----
+**Cada TabsTrigger (linhas 179-202):**
+Adicionar classes de hover e estado ativo com cores fixas:
+```
+Antes:  className="gap-2"
+Depois: className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white"
+```
+
+### Paleta de Cores Aplicada
+
+| Elemento | Cor |
+|----------|-----|
+| TabsList background | `#1a1a1d` |
+| TabsList border | `#2a2a2e` |
+| Tab texto inativo | `text-slate-400` |
+| Tab ativo background | `#2a2a2e` |
+| Tab ativo texto | `text-white` |
+| Tab hover texto | `text-white` |
 
 ### Resultado Esperado
 
-Após as alterações:
-- Todos os componentes WhatsApp terão o **mesmo visual dark consistente**
-- Não haverá mais tons marrons herdados do tema claro
-- A interface ficará visualmente alinhada com o resto do painel administrativo
+A barra de tabs terá o mesmo visual dark consistente do resto do painel, sem mais tons marrons.
+
