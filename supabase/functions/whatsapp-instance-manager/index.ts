@@ -9,8 +9,19 @@ const corsHeaders = {
 };
 
 // UAZAPI Configuration
-const UAZAPI_BASE_URL = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+// Normalize trailing slash to avoid accidental double slashes in requests
+const UAZAPI_BASE_URL = (Deno.env.get("UAZAPI_INSTANCE_URL") || "").replace(/\/+$/g, "");
 const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
+
+const buildUazapiHeaders = (token: string, includeJson = false): Record<string, string> => {
+  const headers: Record<string, string> = {
+    // UAZAPI may accept the token in different header names depending on deployment/config.
+    apikey: token,
+    Authorization: `Bearer ${token}`,
+  };
+  if (includeJson) headers["Content-Type"] = "application/json";
+  return headers;
+};
 
 // Supabase Configuration
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
@@ -51,6 +62,14 @@ app.options("/*", (c) => {
 // POST /init - Initialize a new UAZAPI instance for broker
 app.post("/init", async (c) => {
   try {
+    if (!UAZAPI_BASE_URL || !UAZAPI_TOKEN) {
+      return c.json(
+        { error: "UAZAPI not configured" },
+        500,
+        corsHeaders,
+      );
+    }
+
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
@@ -87,10 +106,7 @@ app.post("/init", async (c) => {
     // Create instance via UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/init`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "apikey": UAZAPI_TOKEN,
-      },
+      headers: buildUazapiHeaders(UAZAPI_TOKEN, true),
       body: JSON.stringify({
         instanceName,
         qrcode: true,
@@ -115,10 +131,7 @@ app.post("/init", async (c) => {
     try {
       const webhookResponse = await fetch(`${UAZAPI_BASE_URL}/webhook/set/${instanceName}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "apikey": instanceToken || UAZAPI_TOKEN,
-        },
+        headers: buildUazapiHeaders(instanceToken || UAZAPI_TOKEN, true),
         body: JSON.stringify({
           url: webhookUrl,
           webhook_by_events: false,
@@ -171,6 +184,10 @@ app.post("/init", async (c) => {
 // GET /status - Get instance status
 app.get("/status", async (c) => {
   try {
+    if (!UAZAPI_BASE_URL) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
@@ -201,9 +218,7 @@ app.get("/status", async (c) => {
     // Check UAZAPI status
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connectionState/${instance.instance_name}`, {
       method: "GET",
-      headers: {
-        "apikey": instance.instance_token || UAZAPI_TOKEN,
-      },
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
     });
 
     let uazStatus = null;
@@ -246,6 +261,10 @@ app.get("/status", async (c) => {
 // GET /qrcode - Get QR code for pairing
 app.get("/qrcode", async (c) => {
   try {
+    if (!UAZAPI_BASE_URL) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
@@ -272,9 +291,7 @@ app.get("/qrcode", async (c) => {
     // Get QR code from UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/connect/${instance.instance_name}`, {
       method: "GET",
-      headers: {
-        "apikey": instance.instance_token || UAZAPI_TOKEN,
-      },
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
     });
 
     if (!uazResponse.ok) {
@@ -310,6 +327,10 @@ app.get("/qrcode", async (c) => {
 // POST /logout - Disconnect instance
 app.post("/logout", async (c) => {
   try {
+    if (!UAZAPI_BASE_URL) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
@@ -336,9 +357,7 @@ app.post("/logout", async (c) => {
     // Logout from UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/logout/${instance.instance_name}`, {
       method: "DELETE",
-      headers: {
-        "apikey": instance.instance_token || UAZAPI_TOKEN,
-      },
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
     });
 
     if (!uazResponse.ok) {
@@ -371,6 +390,10 @@ app.post("/logout", async (c) => {
 // POST /restart - Restart instance
 app.post("/restart", async (c) => {
   try {
+    if (!UAZAPI_BASE_URL) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
@@ -397,9 +420,7 @@ app.post("/restart", async (c) => {
     // Restart via UAZAPI
     const uazResponse = await fetch(`${UAZAPI_BASE_URL}/instance/restart/${instance.instance_name}`, {
       method: "PUT",
-      headers: {
-        "apikey": instance.instance_token || UAZAPI_TOKEN,
-      },
+      headers: buildUazapiHeaders(instance.instance_token || UAZAPI_TOKEN),
     });
 
     if (!uazResponse.ok) {
