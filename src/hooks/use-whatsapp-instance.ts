@@ -16,6 +16,7 @@ interface UseWhatsAppInstanceReturn {
   fetchQRCode: () => Promise<void>;
   logout: () => Promise<void>;
   restart: () => Promise<void>;
+  deleteInstance: () => Promise<void>;
   togglePause: (pause: boolean, reason?: string) => Promise<void>;
   updateSettings: (settings: Partial<Pick<BrokerWhatsAppInstance, 'hourly_limit' | 'daily_limit' | 'working_hours_start' | 'working_hours_end'>>) => Promise<void>;
 }
@@ -206,6 +207,42 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
     }
   }, [refreshStatus, toast]);
 
+  const deleteInstance = useCallback(async () => {
+    try {
+      setIsLoading(true);
+
+      const headers = await getAuthHeaders();
+      const response = await fetch(`${FUNCTION_URL}/delete`, {
+        method: "DELETE",
+        headers,
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to delete instance");
+      }
+
+      // Clear local state
+      setInstance(null);
+      setQRCode(null);
+      
+      toast({
+        title: "Instância deletada",
+        description: "A instância WhatsApp foi removida completamente.",
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      toast({
+        title: "Erro ao deletar",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
   const togglePause = useCallback(async (pause: boolean, reason?: string) => {
     try {
       const headers = await getAuthHeaders();
@@ -309,6 +346,7 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
     fetchQRCode,
     logout,
     restart,
+    deleteInstance,
     togglePause,
     updateSettings,
   };

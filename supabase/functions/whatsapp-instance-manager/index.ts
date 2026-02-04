@@ -1132,6 +1132,104 @@ app.post("/restart", async (c) => {
   }
 });
 
+// DELETE /delete - Delete instance permanently
+app.delete("/delete", async (c) => {
+  try {
+    if (!UAZAPI_BASE_URL) {
+      return c.json({ error: "UAZAPI not configured" }, 500, corsHeaders);
+    }
+
+    const authHeader = c.req.header("Authorization");
+    const supabase = getSupabaseClient(authHeader);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return c.json({ error: "Unauthorized" }, 401, corsHeaders);
+    }
+
+    const brokerId = await getBrokerId(supabase, user.id);
+
+    // Get broker instance
+    const { data: instanceData } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("*")
+      .eq("broker_id", brokerId)
+      .maybeSingle();
+
+    if (!instanceData) {
+      return c.json({ error: "No instance to delete" }, 400, corsHeaders);
+    }
+
+    const instance = instanceData as { 
+      id: string; 
+      instance_name: string; 
+      instance_token: string | null 
+    };
+
+    // Try different delete endpoints (UAZAPI variants)
+    const deleteAttempts = [
+      { name: "delete", path: "/instance/delete", method: "DELETE" },
+      { name: "delete-with-name", path: `/instance/delete/${instance.instance_name}`, method: "DELETE" },
+      { name: "delete-post", path: "/instance/delete", method: "POST" },
+    ];
+
+    let deleteSuccess = false;
+
+    for (const attempt of deleteAttempts) {
+      console.log(`[DELETE] Trying: ${attempt.method} ${attempt.path}`);
+      const uazResponse = await uazapiFetchWithAuthFallback(
+        `${UAZAPI_BASE_URL}${attempt.path}`,
+        { method: attempt.method },
+        instance.instance_token || UAZAPI_DEFAULT_TOKEN,
+        false,
+        [UAZAPI_DEFAULT_TOKEN],
+      );
+
+      if (uazResponse.ok) {
+        console.log(`[DELETE] Success with ${attempt.name}`);
+        deleteSuccess = true;
+        break;
+      }
+
+      const responseText = await uazResponse.text().catch(() => "");
+      console.log(`[DELETE] ${attempt.name} failed with ${uazResponse.status}: ${responseText.substring(0, 100)}`);
+      
+      // 405 = wrong method, 404 = wrong endpoint, try next
+      if (uazResponse.status !== 405 && uazResponse.status !== 404) {
+        console.error(`[DELETE] Stopping attempts due to status ${uazResponse.status}`);
+        break;
+      }
+    }
+
+    // Even if UAZAPI delete fails, delete local record
+    // (instance may have been manually deleted from UAZAPI)
+    
+    // Delete related data first (message queue, stats, etc.)
+    await supabase
+      .from("whatsapp_message_queue")
+      .delete()
+      .eq("broker_id", brokerId);
+
+    // Delete the instance record
+    await supabase
+      .from("broker_whatsapp_instances")
+      .delete()
+      .eq("id", instance.id);
+
+    return c.json({
+      success: true,
+      message: deleteSuccess 
+        ? "Instance deleted from UAZAPI and database" 
+        : "Instance deleted from database (UAZAPI may have already been deleted)",
+    }, 200, corsHeaders);
+
+  } catch (err) {
+    const error = err as Error;
+    console.error("Delete Error:", error);
+    return c.json({ error: error.message }, 500, corsHeaders);
+  }
+});
+
 // POST /pause - Pause/unpause sending
 app.post("/pause", async (c) => {
   try {

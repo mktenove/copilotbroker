@@ -5,7 +5,18 @@ import { HealthScoreCard } from "./HealthScoreCard";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, RefreshCw, Power, RotateCcw, Wifi, AlertTriangle } from "lucide-react";
+import { Loader2, RefreshCw, Power, RotateCcw, Wifi, AlertTriangle, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -21,6 +32,7 @@ export function ConnectionTab() {
     fetchQRCode,
     logout,
     restart,
+    deleteInstance,
   } = useWhatsAppInstance();
 
   if (isLoading && !instance) {
@@ -179,6 +191,39 @@ export function ConnectionTab() {
                     <Power className="w-4 h-4 mr-2" />
                     Desconectar
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Deletar
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Deletar instância?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                          Esta ação é irreversível. A instância será removida permanentemente 
+                          e você precisará criar uma nova conexão do zero.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]">
+                          Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={deleteInstance}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Deletar permanentemente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
             </div>
