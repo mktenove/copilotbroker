@@ -142,7 +142,31 @@ app.get("/status", async (c) => {
       }, 200, corsHeaders);
     }
 
-    const response = await makeRequest("/instance/status");
+    // If we have a recently created instance, use its token for status check
+    let response: Response;
+    
+    if (lastCreatedInstance) {
+      console.log(`🔍 Verificando status da instância criada: ${lastCreatedInstance.name}`);
+      
+      try {
+        response = await fetch(`${config.baseUrl}/instance/status`, {
+          headers: {
+            "Content-Type": "application/json",
+            "token": lastCreatedInstance.token,
+          },
+        });
+        
+        if (response.status === 401) {
+          console.log("⚠️ Token armazenado inválido, tentando com tokens de ambiente...");
+          response = await makeRequest("/instance/status");
+        }
+      } catch {
+        response = await makeRequest("/instance/status");
+      }
+    } else {
+      response = await makeRequest("/instance/status");
+    }
+    
     const responseText = await response.text();
     
     console.log(`📨 Status response (${response.status}):`, responseText);
@@ -152,14 +176,14 @@ app.get("/status", async (c) => {
       if (response.status === 401 || response.status === 404) {
         return c.json({ 
           status: "disconnected",
-          instanceName: config.instanceName,
+          instanceName: lastCreatedInstance?.name || config.instanceName,
           needsInit: true,
           error: "Instância não encontrada ou token inválido - crie uma nova instância"
         }, 200, corsHeaders);
       }
       return c.json({ 
         status: "disconnected",
-        instanceName: config.instanceName,
+        instanceName: lastCreatedInstance?.name || config.instanceName,
         error: `UAZAPI retornou ${response.status}`
       }, 200, corsHeaders);
     }
@@ -170,7 +194,7 @@ app.get("/status", async (c) => {
     } catch {
       return c.json({ 
         status: "disconnected",
-        instanceName: config.instanceName,
+        instanceName: lastCreatedInstance?.name || config.instanceName,
         error: "Resposta inválida da UAZAPI"
       }, 200, corsHeaders);
     }
@@ -205,7 +229,7 @@ app.get("/status", async (c) => {
 
     return c.json({
       status: connectionStatus,
-      instanceName: config.instanceName,
+      instanceName: lastCreatedInstance?.name || config.instanceName,
       phoneNumber,
       profileName,
       lastSeenAt: new Date().toISOString(),
