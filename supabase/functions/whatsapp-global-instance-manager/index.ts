@@ -289,65 +289,30 @@ app.post("/restart", async (c) => {
   }
 });
 
-// DELETE /delete - Remove instance completely
-app.delete("/delete", async (c) => {
+// POST /clear-session - Disconnect and clear session
+app.post("/clear-session", async (c) => {
   try {
     const config = getConfig();
     if (!config) {
       return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
 
-    console.log("🗑️ Removendo instância global...");
+    console.log("🧹 Limpando sessão da instância global...");
     
-    // Try to disconnect first (may fail if already disconnected)
-    try {
-      await makeRequest("/instance/disconnect", "POST");
-      console.log("✅ Instância desconectada");
-    } catch {
-      console.log("⚠️ Não foi possível desconectar (pode já estar desconectada)");
-    }
+    // Disconnect the instance
+    const response = await makeRequest("/instance/disconnect", "POST");
+    const responseText = await response.text();
     
-    // Try to delete the instance from UAZAPI
-    // UAZAPI v2: DELETE /instance/delete
-    try {
-      const deleteResponse = await makeRequest("/instance/delete", "DELETE");
-      const deleteText = await deleteResponse.text();
-      console.log(`📨 Delete response (${deleteResponse.status}):`, deleteText);
-      
-      if (deleteResponse.ok) {
-        return c.json({ 
-          success: true, 
-          message: "Instância removida com sucesso" 
-        }, 200, corsHeaders);
-      }
-    } catch {
-      console.log("⚠️ Endpoint DELETE /instance/delete não disponível");
-    }
-    
-    // Try alternative endpoint POST /instance/destroy
-    try {
-      const destroyResponse = await makeRequest("/instance/destroy", "POST");
-      const destroyText = await destroyResponse.text();
-      console.log(`📨 Destroy response (${destroyResponse.status}):`, destroyText);
-      
-      if (destroyResponse.ok) {
-        return c.json({ 
-          success: true, 
-          message: "Instância removida com sucesso" 
-        }, 200, corsHeaders);
-      }
-    } catch {
-      console.log("⚠️ Endpoint POST /instance/destroy não disponível");
-    }
+    console.log(`📨 Disconnect response (${response.status}):`, responseText);
 
-    // If all deletion endpoints failed, just report disconnection
+    // Even if disconnect fails (already disconnected), we consider it a success
     return c.json({ 
       success: true, 
-      message: "Instância desconectada (remoção completa pode não estar disponível na API)" 
+      message: "Sessão limpa com sucesso" 
     }, 200, corsHeaders);
 
   } catch (error) {
-    console.error("❌ Erro ao remover instância:", error);
+    console.error("❌ Erro ao limpar sessão:", error);
     return c.json({ 
       error: error instanceof Error ? error.message : "Erro desconhecido" 
     }, 500, corsHeaders);

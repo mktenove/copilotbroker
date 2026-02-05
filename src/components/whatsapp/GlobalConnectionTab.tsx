@@ -34,7 +34,7 @@ export function GlobalConnectionTab() {
     fetchQRCode,
     logout,
     restart,
-    deleteInstance,
+    clearSession,
   } = useWhatsAppGlobalInstance();
 
   if (isLoading && !status) {
@@ -181,25 +181,25 @@ export function GlobalConnectionTab() {
                 </>
               )}
 
-              {/* Delete Instance Button - always visible */}
+              {/* Clear Session Button - always visible */}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
                     disabled={isLoading}
-                    className="border-red-600/50 text-red-500 hover:bg-red-600/20"
+                    className="border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    Remover Instância
+                    Limpar Sessão
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent className="bg-[#1a1a1d] border-[#2a2a2e]">
                   <AlertDialogHeader>
-                    <AlertDialogTitle className="text-white">Remover Instância Global</AlertDialogTitle>
+                    <AlertDialogTitle className="text-white">Limpar Sessão Global</AlertDialogTitle>
                     <AlertDialogDescription className="text-slate-400">
-                      Tem certeza que deseja remover a instância global? Isso irá desconectar a sessão
-                      do WhatsApp e pode ser necessário escanear o QR Code novamente para reconectar.
+                      Tem certeza que deseja limpar a sessão da instância global? Isso irá desconectar
+                      o WhatsApp e será necessário escanear o QR Code novamente para reconectar.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -207,10 +207,10 @@ export function GlobalConnectionTab() {
                       Cancelar
                     </AlertDialogCancel>
                     <AlertDialogAction
-                      onClick={deleteInstance}
-                      className="bg-red-600 text-white hover:bg-red-700"
+                      onClick={clearSession}
+                      className="bg-orange-600 text-white hover:bg-orange-700"
                     >
-                      Remover
+                      Limpar Sessão
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
