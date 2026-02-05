@@ -1,107 +1,104 @@
 
-# Correção: QR Code para Instância Global WhatsApp
 
-## Diagnóstico do Problema
+# Correção do QR Code e Redesign da Aba Conexão Global
 
-Ao analisar os logs e o código, identifiquei as seguintes causas:
+## Problema Identificado
 
-1. **Erro 401 "Invalid token"**: Todas as chamadas para UAZAPI estao retornando 401, indicando que o token configurado esta invalido ou expirado
+Analisando os logs da edge function, identifiquei a causa raiz:
 
-2. **Instância foi excluída**: Voce deletou todas as instancias no painel UAZAPI, entao a instancia global nao existe mais
-
-3. **Arquitetura incompleta**: A edge function `whatsapp-global-instance-manager` tenta usar endpoints como `/instance/connect` e `/instance/status` que pressupõem que a instancia JA EXISTE. Porem, apos a exclusao, e necessario CRIAR a instancia primeiro
-
-4. **Falta de endpoint de inicializacao**: Diferentemente do `whatsapp-instance-manager` (para corretores), que possui um endpoint `/init` completo, a versao global nao tem essa capacidade
-
----
-
-## Solucao Proposta
-
-### Fluxo Corrigido
-
-```text
-+------------------+     +-------------------+     +------------------+
-|   Usuario clica  | --> | Verificar se      | --> | Instancia existe?|
-|  "Gerar QR Code" |     | instancia existe  |     +--------+---------+
-+------------------+     +-------------------+              |
-                                                   SIM      |      NAO
-                                              +-------------+-------------+
-                                              |                           |
-                                              v                           v
-                                    +------------------+     +------------------------+
-                                    | POST /instance/  |     | POST /instance/init    |
-                                    | connect          |     | (criar instancia nova) |
-                                    +--------+---------+     +------------+-----------+
-                                             |                            |
-                                             +------------+---------------+
-                                                          |
-                                                          v
-                                               +---------------------+
-                                               | Retornar QR Code    |
-                                               | para o frontend     |
-                                               +---------------------+
 ```
+📨 Init response (200): {"instance":{"token":"b22d514d-7808-435d-926a-9982a70e05b8","qrcode":"","name":"enove_global_1770334538997"...}
+📨 Status after init (401): {"code":401,"message":"Missing token."}
+```
+
+A instancia e criada com sucesso e retorna um **novo token** (`b22d514d-7808-435d-926a-9982a70e05b8`), porem:
+
+1. O campo `qrcode` esta vazio no momento da criacao (comportamento normal da UAZAPI)
+2. O sistema tenta obter o QR Code usando os **tokens antigos** (das variaveis de ambiente), que nao sao validos para a nova instancia
+3. Para obter o QR Code, e necessario chamar `/instance/connectionState/{nome_da_instancia}` usando o **token retornado pela criacao**
+
+## Solucao
+
+### 1. Edge Function - Fluxo Corrigido
+
+Atualizar `whatsapp-global-instance-manager/index.ts`:
+
+a) **Endpoint `/init`**: Apos criar a instancia, chamar `/instance/connectionState/{name}` com o novo token para obter o QR Code
+
+b) **Endpoint `/qrcode`**: Usar o token retornado pela criacao (armazenado em memoria ou banco) para obter o QR
+
+c) **Adicionar endpoint auxiliar**: Armazenar temporariamente o token da ultima instancia criada para uso nas proximas chamadas
+
+### 2. Redesign do Layout (Igual a Aba Conexao)
+
+A aba de corretores (`ConnectionTab.tsx`) tem um design mais limpo com:
+- Grid de 2 colunas: Status a esquerda, QR Code a direita
+- Card de status sem excesso de botoes
+- QR Code em destaque quando necessario
+
+Aplicar o mesmo design na aba global:
+- Remover o card informativo do topo (muito texto)
+- Simplificar os botoes de acao
+- Mostrar o QR Code de forma mais proeminente
+- Interface mais direta e focada
 
 ---
 
 ## Alteracoes Tecnicas
 
-### 1. Edge Function (`whatsapp-global-instance-manager`)
+### Arquivo 1: `supabase/functions/whatsapp-global-instance-manager/index.ts`
 
-**Arquivo**: `supabase/functions/whatsapp-global-instance-manager/index.ts`
+```text
+Mudancas:
+1. Armazenar o token e nome da ultima instancia criada em variaveis globais
+2. No /init: Apos criar, chamar /instance/connectionState/{name} com o novo token
+3. No /qrcode: Usar o token armazenado (da ultima instancia criada) em vez dos tokens antigos
+4. Adicionar delay antes de buscar QR (UAZAPI leva ~2s para gerar)
+5. Tentar multiplos endpoints: /instance/connectionState/{name}, /instance/connect
+```
 
-**Mudancas**:
+Fluxo corrigido do /init:
+```
+1. Criar instancia via POST /instance/init (admintoken)
+2. Extrair token retornado
+3. Aguardar 2 segundos
+4. Chamar GET /instance/connectionState/{name} com novo token
+5. Retornar QR Code
+```
 
-a) **Adicionar suporte ao UAZAPI_ADMIN_TOKEN**: Para criar instancias, a UAZAPI exige o token administrativo, nao o token da instancia
+### Arquivo 2: `src/hooks/use-whatsapp-global-instance.ts`
 
-b) **Novo endpoint POST `/init`**: Criar uma nova instancia via UAZAPI usando `POST /instance/init` com admintoken
+```text
+Mudancas:
+1. Guardar o token retornado pela criacao
+2. Passar o token nas chamadas subsequentes de /qrcode
+3. Melhorar tratamento de erros
+```
 
-c) **Endpoint `/qrcode` inteligente**: 
-   - Primeiro tenta conectar a instancia existente
-   - Se falhar com 401/404, automaticamente cria uma nova instancia via `/init`
-   - Retorna o QR code apos criar/conectar
+### Arquivo 3: `src/components/whatsapp/GlobalConnectionTab.tsx`
 
-d) **Fallback de autenticacao**: Similar ao `whatsapp-instance-manager`, tentar diferentes estilos de header (admintoken, token)
+```text
+Mudancas (redesign igual ConnectionTab):
+1. Remover card azul informativo do topo
+2. Simplificar para grid 2 colunas: Status | QR Code
+3. Mover botoes para dentro do card de status
+4. Card de QR mais limpo e em destaque
+5. Remover card "Sobre a Instância Global" (informacao excessiva)
+```
 
-### 2. Hook React (`use-whatsapp-global-instance`)
-
-**Arquivo**: `src/hooks/use-whatsapp-global-instance.ts`
-
-**Mudancas**:
-
-- Adicionar novo metodo `initInstance()` para criar instancia manualmente
-- Melhorar `fetchQRCode()` para mostrar mensagens de erro mais claras
-
-### 3. Interface (`GlobalConnectionTab`)
-
-**Arquivo**: `src/components/whatsapp/GlobalConnectionTab.tsx`
-
-**Mudancas**:
-
-- Adicionar botao "Criar Nova Instância" visível quando status = desconectado e houver erro de autenticacao
-- Melhorar feedback visual durante processo de criacao
-
----
-
-## Pre-requisitos - Verificar Tokens
-
-**IMPORTANTE**: Antes da implementacao funcionar, voce precisa confirmar que os secrets estao corretos:
-
-| Secret | Descricao | Como obter |
-|--------|-----------|------------|
-| `UAZAPI_ADMIN_TOKEN` | Token administrativo do painel UAZAPI | Painel admin UAZAPI -> Configuracoes -> Token Admin |
-| `UAZAPI_INSTANCE_URL` | URL base da UAZAPI (ex: `https://enove.uazapi.com`) | Seu painel UAZAPI |
-| `UAZAPI_TOKEN` | Token da instancia (sera gerado ao criar) | Retornado apos criar instancia |
-
----
-
-## Arquivos a Modificar
-
-| Arquivo | Alteracao Principal |
-|---------|---------------------|
-| `supabase/functions/whatsapp-global-instance-manager/index.ts` | Adicionar `/init` endpoint e autenticacao com admintoken |
-| `src/hooks/use-whatsapp-global-instance.ts` | Adicionar `initInstance()` |
-| `src/components/whatsapp/GlobalConnectionTab.tsx` | Botao "Criar Instância" e melhor UX |
+Layout final:
+```
++--------------------------------+--------------------------------+
+|  Status da Conexão Global      |  QR Code                       |
+|  ─────────────────────────     |  ─────────────────────────     |
+|  [Status Badge]                |  [Imagem QR Code]              |
+|  Instancia: enove_global_xxx   |                                |
+|  Ultima verificacao: 2min      |  Escaneie com WhatsApp         |
+|                                |                                |
+|  [Atualizar] [Gerar QR]        |  [Atualizar QR Code]           |
+|  [Limpar Sessao]               |                                |
++--------------------------------+--------------------------------+
+```
 
 ---
 
@@ -109,7 +106,8 @@ d) **Fallback de autenticacao**: Similar ao `whatsapp-instance-manager`, tentar 
 
 Apos as alteracoes:
 
-1. Voce podera clicar em "Criar Nova Instância" no painel
-2. O sistema criara uma nova instancia na UAZAPI usando o admintoken
-3. O QR Code sera exibido automaticamente para voce escanear
-4. Apos escanear, a instancia ficara conectada e pronta para notificacoes
+1. Ao clicar em "Criar Nova Instancia", o sistema criara a instancia E retornara o QR Code automaticamente
+2. Interface mais limpa e consistente com a aba de corretores
+3. Fluxo simplificado: menos cliques para conectar
+4. Tokens gerenciados corretamente entre criacao e obtencao de QR
+
