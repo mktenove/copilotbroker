@@ -152,6 +152,39 @@ export function useWhatsAppGlobalInstance() {
     }
   }, [getAuthHeaders, refreshStatus]);
 
+  const deleteInstance = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const headers = await getAuthHeaders();
+      
+      const response = await fetch(`${FUNCTION_URL}/delete`, {
+        method: "DELETE",
+        headers,
+      });
+      const data = await response.json();
+
+      if (data.error) {
+        toast.error(data.error);
+        return;
+      }
+
+      toast.success("Instância removida com sucesso");
+      setQrCode(null);
+      setState({
+        status: "disconnected",
+        phoneNumber: null,
+        instanceName: null,
+        lastSeenAt: null,
+        error: null,
+      });
+    } catch (error) {
+      console.error("Failed to delete instance:", error);
+      toast.error("Erro ao remover instância");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getAuthHeaders]);
+
   // Initial status fetch
   useEffect(() => {
     refreshStatus();
@@ -186,5 +219,6 @@ export function useWhatsAppGlobalInstance() {
     fetchQRCode,
     logout,
     restart,
+    deleteInstance,
   };
 }

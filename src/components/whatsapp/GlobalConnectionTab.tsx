@@ -5,7 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -23,6 +34,7 @@ export function GlobalConnectionTab() {
     fetchQRCode,
     logout,
     restart,
+    deleteInstance,
   } = useWhatsAppGlobalInstance();
 
   if (isLoading && !status) {
@@ -168,6 +180,41 @@ export function GlobalConnectionTab() {
                   </Button>
                 </>
               )}
+
+              {/* Delete Instance Button - always visible */}
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={isLoading}
+                    className="border-red-600/50 text-red-500 hover:bg-red-600/20"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Remover Instância
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-white">Remover Instância Global</AlertDialogTitle>
+                    <AlertDialogDescription className="text-slate-400">
+                      Tem certeza que deseja remover a instância global? Isso irá desconectar a sessão
+                      do WhatsApp e pode ser necessário escanear o QR Code novamente para reconectar.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="bg-[#2a2a2e] text-slate-300 border-[#3a3a3e] hover:bg-[#3a3a3e]">
+                      Cancelar
+                    </AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={deleteInstance}
+                      className="bg-red-600 text-white hover:bg-red-700"
+                    >
+                      Remover
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardContent>
         </Card>
