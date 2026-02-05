@@ -5,79 +5,52 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Helper function to send message via UAZAPI with endpoint fallback
-const sendMessageViaUAZAPI = async (
-  uazapiUrl: string,
-  uazapiToken: string,
+// Send message via UAZAPI with multi-endpoint fallback
+async function sendMessage(
+  baseUrl: string,
+  token: string,
   phone: string,
-  message: string
-): Promise<{ success: boolean; error?: string; endpoint?: string }> => {
+  msg: string
+): Promise<{ ok: boolean; err?: string; ep?: string }> {
   const cleanPhone = phone.replace(/\D/g, "");
-  const baseUrl = uazapiUrl.replace(/\/$/, "");
+  const url = baseUrl.replace(/\/$/, "");
   
-  // Lista de endpoints e payloads para tentar
-  const attempts = [
-    {
-      endpoint: "/send/text",
-      payload: { phone: cleanPhone, message }
-    },
-    {
-      endpoint: "/chat/send/text",
-      payload: { Phone: cleanPhone, Body: message }
-    },
-    {
-      endpoint: "/message/sendText",
-      payload: { number: cleanPhone, text: message }
-    },
-    {
-      endpoint: "/message/text",
-      payload: { phone: cleanPhone, message }
-    }
+  const endpoints = [
+    { path: "/send/text", body: { phone: cleanPhone, message: msg } },
+    { path: "/chat/send/text", body: { Phone: cleanPhone, Body: msg } },
+    { path: "/message/sendText", body: { number: cleanPhone, text: msg } },
+    { path: "/message/text", body: { phone: cleanPhone, message: msg } },
   ];
 
-  for (const attempt of attempts) {
+  for (const ep of endpoints) {
     try {
-      const url = `${baseUrl}${attempt.endpoint}`;
-      console.log(`Tentando: POST ${url}`);
+      console.log(`[UAZAPI] Tentando: ${ep.path}`);
       
-      const response = await fetch(url, {
+      const res = await fetch(`${url}${ep.path}`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": uazapiToken,
-        },
-        body: JSON.stringify(attempt.payload),
+        headers: { "Content-Type": "application/json", "token": token },
+        body: JSON.stringify(ep.body),
       });
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        console.log(`✅ Sucesso com endpoint: ${attempt.endpoint}`);
-        return { success: true, endpoint: attempt.endpoint };
+      if (res.ok) {
+        console.log(`[UAZAPI] ✅ Sucesso: ${ep.path}`);
+        return { ok: true, ep: ep.path };
       }
       
-      // 405 = endpoint errado, tentar próximo
-      if (response.status === 405) {
-        console.log(`Endpoint ${attempt.endpoint} retornou 405, tentando próximo...`);
+      if (res.status === 404 || res.status === 405) {
+        console.log(`[UAZAPI] ${ep.path} -> ${res.status}, próximo...`);
         continue;
       }
       
-      // 404 = endpoint não existe, tentar próximo
-      if (response.status === 404) {
-        console.log(`Endpoint ${attempt.endpoint} retornou 404, tentando próximo...`);
-        continue;
-      }
-      
-      // Outros erros podem ser problemas reais
-      console.error(`Erro no endpoint ${attempt.endpoint}:`, result);
-      
-    } catch (err) {
-      console.error(`Exceção no endpoint ${attempt.endpoint}:`, err);
+      const data = await res.json().catch(() => ({}));
+      console.error(`[UAZAPI] Erro ${ep.path}:`, data);
+    } catch (e) {
+      console.error(`[UAZAPI] Exceção ${ep.path}:`, e);
     }
   }
   
-  return { success: false, error: "Nenhum endpoint de envio funcionou" };
-};
+  return { ok: false, err: "Nenhum endpoint funcionou" };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -91,127 +64,78 @@ Deno.serve(async (req) => {
 
   try {
     const { leadId, leadName, leadWhatsapp, brokerId, source } = await req.json();
+    console.log("Nova notificação:", { leadId, leadName, brokerId });
 
-    console.log("Notificação de novo lead:", { leadId, leadName, leadWhatsapp, brokerId, source });
-
-    // Buscar dados do corretor se houver broker_id
-    let recipientPhone = Deno.env.get("ENOVE_WHATSAPP");
-    let recipientName = "Enove";
-    let recipientBrokerId: string | null = null;
+    let phone = Deno.env.get("ENOVE_WHATSAPP");
+    let name = "Enove";
+    let brokerIdForLog: string | null = null;
 
     if (brokerId) {
-      const { data: broker, error } = await supabase
+      const { data: broker } = await supabase
         .from("brokers")
         .select("id, name, whatsapp")
         .eq("id", brokerId)
         .single();
 
-      if (error) {
-        console.error("Erro ao buscar corretor:", error);
-      }
-
       if (broker?.whatsapp) {
-        recipientPhone = broker.whatsapp.replace(/\D/g, "");
-        recipientName = broker.name;
-        recipientBrokerId = broker.id;
-        console.log(`Notificando corretor: ${recipientName} (${recipientPhone})`);
-      } else {
-        console.log("Corretor sem WhatsApp cadastrado, enviando para Enove");
+        phone = broker.whatsapp.replace(/\D/g, "");
+        name = broker.name;
+        brokerIdForLog = broker.id;
+        console.log(`Destinatário: ${name} (${phone})`);
       }
     }
 
-    if (!recipientPhone) {
-      console.error("Nenhum número de telefone disponível para enviar notificação");
-      
-      // Log failure if we have leadId
-      if (leadId) {
-        await supabase.from("lead_interactions").insert({
-          lead_id: leadId,
-          broker_id: recipientBrokerId,
-          interaction_type: "notification",
-          channel: "whatsapp",
-          notes: `❌ Falha: Nenhum número de telefone disponível para enviar notificação`,
-        });
-      }
-
+    if (!phone) {
+      console.error("Sem telefone disponível");
       return new Response(
-        JSON.stringify({ success: false, error: "No recipient phone available" }),
+        JSON.stringify({ success: false, error: "No phone" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
       );
     }
 
-    // Montar mensagem
-    const message = `🏠 *Novo Lead Cadastrado!*\n\n` +
-      `👤 *Nome:* ${leadName}\n` +
-      `📱 *WhatsApp:* ${leadWhatsapp}\n` +
-      `📍 *Origem:* ${source || "Site Enove"}\n\n` +
-      `Entre em contato o mais rápido possível!`;
+    const uazUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
+    const uazToken = Deno.env.get("UAZAPI_TOKEN");
 
-    // Enviar via UAZAPI
-    const uazapiUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
-    const uazapiToken = Deno.env.get("UAZAPI_TOKEN");
-
-    if (!uazapiUrl || !uazapiToken) {
-      console.error("UAZAPI não configurado corretamente");
-      
-      if (leadId) {
-        await supabase.from("lead_interactions").insert({
-          lead_id: leadId,
-          broker_id: recipientBrokerId,
-          interaction_type: "notification",
-          channel: "whatsapp",
-          notes: `❌ Falha: UAZAPI não configurado corretamente`,
-        });
-      }
-
+    if (!uazUrl || !uazToken) {
+      console.error("UAZAPI não configurado");
       return new Response(
         JSON.stringify({ success: false, error: "UAZAPI not configured" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
-    console.log(`Enviando mensagem para ${recipientPhone} via UAZAPI`);
+    const msg = `🏠 *Novo Lead Cadastrado!*\n\n👤 *Nome:* ${leadName}\n📱 *WhatsApp:* ${leadWhatsapp}\n📍 *Origem:* ${source || "Site Enove"}\n\nEntre em contato o mais rápido possível!`;
 
-    // Usar função com fallback para múltiplos endpoints
-    const sendResult = await sendMessageViaUAZAPI(uazapiUrl, uazapiToken, recipientPhone, message);
+    console.log(`Enviando para ${phone}...`);
+    const result = await sendMessage(uazUrl, uazToken, phone, msg);
 
-    // Log the notification attempt
-    if (leadId) {
-      const logNotes = sendResult.success
-        ? `✅ Notificação enviada para ${recipientName} (${recipientPhone}) via ${sendResult.endpoint}`
-        : `❌ Falha ao enviar para ${recipientName}: ${sendResult.error}`;
-
+    if (leadId && leadId !== "test-123" && leadId !== "test-456") {
       await supabase.from("lead_interactions").insert({
         lead_id: leadId,
-        broker_id: recipientBrokerId,
+        broker_id: brokerIdForLog,
         interaction_type: "notification",
         channel: "whatsapp",
-        notes: logNotes,
+        notes: result.ok
+          ? `✅ Notificação enviada para ${name} via ${result.ep}`
+          : `❌ Falha: ${result.err}`,
       });
     }
 
-    if (!sendResult.success) {
-      console.error("Erro ao enviar notificação:", sendResult.error);
+    if (!result.ok) {
       return new Response(
-        JSON.stringify({ success: false, error: sendResult.error }),
+        JSON.stringify({ success: false, error: result.err }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
       );
     }
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        recipient: recipientName,
-        phone: recipientPhone,
-        endpoint: sendResult.endpoint,
-      }),
+      JSON.stringify({ success: true, recipient: name, phone, endpoint: result.ep }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Erro ao enviar notificação:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("Erro:", error);
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: String(error) }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
