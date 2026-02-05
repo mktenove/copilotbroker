@@ -3,7 +3,7 @@
  * 
  * Envia notificação de novo lead para o corretor via WhatsApp usando a instância global.
  * 
- * Documentação UAZAPI:
+ * Documentação UAZAPI v2:
  * - Endpoint: POST /send/text
  * - Auth: Header "token" com o token da instância
  * - Payload: { number: "5511999999999", text: "mensagem" }
@@ -27,6 +27,13 @@ Deno.serve(async (req) => {
     const instanceUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
     const instanceToken = Deno.env.get("UAZAPI_TOKEN");
     const fallbackPhone = Deno.env.get("ENOVE_WHATSAPP");
+
+    console.log("🔧 Configuração:", {
+      hasInstanceUrl: !!instanceUrl,
+      hasInstanceToken: !!instanceToken,
+      hasFallbackPhone: !!fallbackPhone,
+      instanceUrlPreview: instanceUrl ? instanceUrl.substring(0, 50) + "..." : null,
+    });
 
     if (!instanceUrl || !instanceToken) {
       console.error("❌ UAZAPI não configurado - UAZAPI_INSTANCE_URL ou UAZAPI_TOKEN ausente");
@@ -74,12 +81,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Format phone number (remove non-digits, ensure proper format)
+    // Format phone number (remove non-digits)
     const cleanPhone = recipientPhone.replace(/\D/g, "");
     console.log(`📱 Enviando para: ${cleanPhone}`);
 
     // Build notification message
-    const message = `🏠 *Novo Lead Cadastrado!*
+    const messageText = `🏠 *Novo Lead Cadastrado!*
 
 👤 *Nome:* ${leadName}
 📱 *WhatsApp:* ${leadWhatsapp}
@@ -87,14 +94,22 @@ Deno.serve(async (req) => {
 
 Entre em contato o mais rápido possível!`;
 
-    // Build API URL - Remove trailing slash and add endpoint
+    // Build API URL - UAZAPI v2 format
+    // A URL base deve ser algo como: https://enove.uazapi.com
+    // O endpoint é: POST /send/text
     const baseUrl = instanceUrl.replace(/\/$/, "");
     const apiUrl = `${baseUrl}/send/text`;
 
-    console.log(`🌐 Chamando UAZAPI: ${apiUrl}`);
+    console.log(`🌐 Chamando UAZAPI:`, {
+      url: apiUrl,
+      method: "POST",
+      hasToken: !!instanceToken,
+      tokenPreview: instanceToken ? instanceToken.substring(0, 10) + "..." : null,
+    });
 
-    // Send message via UAZAPI
+    // Send message via UAZAPI v2
     // Documentação: POST /send/text com header "token"
+    // Payload: { number, text }
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -103,12 +118,12 @@ Entre em contato o mais rápido possível!`;
       },
       body: JSON.stringify({
         number: cleanPhone,
-        text: message,
+        text: messageText,
       }),
     });
 
     const responseText = await response.text();
-    console.log(`📨 Resposta UAZAPI (${response.status}):`, responseText);
+    console.log(`📨 Resposta UAZAPI (${response.status}):`, responseText.substring(0, 500));
 
     // Parse response
     let responseData: Record<string, unknown> = {};
@@ -118,7 +133,7 @@ Entre em contato o mais rápido possível!`;
       console.log("⚠️ Resposta não é JSON válido");
     }
 
-    // Check for success
+    // Check for success - UAZAPI v2 retorna 200 para sucesso
     const isSuccess = response.ok && !responseData.error;
 
     // Log interaction (skip for test leads)
@@ -130,17 +145,21 @@ Entre em contato o mais rápido possível!`;
         channel: "whatsapp",
         notes: isSuccess
           ? `✅ Notificação enviada para ${recipientName}`
-          : `❌ Falha ao enviar: ${responseData.error || response.statusText}`,
+          : `❌ Falha ao enviar: ${JSON.stringify(responseData.error || response.statusText)}`,
       });
     }
 
     if (!isSuccess) {
-      console.error("❌ Falha ao enviar mensagem:", responseData);
+      console.error("❌ Falha ao enviar mensagem:", {
+        status: response.status,
+        error: responseData.error || responseData,
+      });
       return new Response(
         JSON.stringify({ 
           success: false, 
           error: responseData.error || response.statusText,
-          status: response.status 
+          status: response.status,
+          url: apiUrl,
         }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
