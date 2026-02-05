@@ -1,116 +1,66 @@
 
-## Plano: Corrigir Endpoint de Envio de Mensagem nas Notificações
+# Correção do Botão "Remover Instância" - WhatsApp Global
 
-### Problema Identificado
+## Resumo do Problema
 
-A edge function `notify-new-lead` retorna erro **405 Method Not Allowed** ao tentar enviar mensagens via UAZAPI. O log mostra:
-```
-Erro UAZAPI: { code: 405, message: "Method Not Allowed.", data: {} }
-```
+O botão "Remover Instância" não funciona devido a dois problemas:
 
-O endpoint `/message/text` usado na função não é reconhecido pela API.
+1. **Erro de CORS**: A edge function não permite o método DELETE nas requisições HTTP, causando "Failed to fetch" no navegador
+2. **API UAZAPI não suporta deleção**: A API UAZAPI não possui endpoint para deletar/destruir uma instância - apenas desconectar
 
-### Análise Técnica
+## Solução Proposta
 
-1. **A função `notify-new-lead`** usa:
-   - Endpoint: `POST ${UAZAPI_INSTANCE_URL}/message/text`
-   - Payload: `{ phone, message }`
+Como a UAZAPI não suporta remoção de instâncias (apenas desconexão), vamos:
 
-2. **A UAZAPI** pode usar diferentes formatos de endpoint dependendo da versão:
-   - `/chat/send/text` (wuzapi style)
-   - `/send/text` (uazapiGO v2)
-   - `/message/sendText`
+1. **Renomear a funcionalidade** para "Desconectar e Limpar Sessão" ou similar - refletindo o que realmente acontece
+2. **Alterar para usar POST** em vez de DELETE - evitando problemas de CORS e alinhando com a API UAZAPI
+3. **Usar o endpoint `/instance/disconnect`** que já existe e funciona
 
-3. **O status da instância funciona** porque usa o endpoint `/status` corretamente.
+---
 
-### Solução Proposta
+## Detalhes Técnicos
 
-Refatorar a função `notify-new-lead` para:
+### 1. Edge Function (`whatsapp-global-instance-manager`)
 
-1. **Testar múltiplos endpoints** até encontrar um que funcione
-2. **Usar diferentes formatos de payload** compatíveis com cada endpoint
-3. **Adicionar logs detalhados** para diagnóstico
+**Problema atual:**
+- CORS headers não incluem DELETE
+- Endpoints `/instance/delete` e `/instance/destroy` não existem na UAZAPI
 
-### Código a Modificar
+**Correção:**
+- Remover a rota DELETE `/delete`
+- Criar rota POST `/clear-session` que apenas chama `/instance/disconnect`
+- Atualizar CORS headers para consistencia
 
-**Arquivo:** `supabase/functions/notify-new-lead/index.ts`
+### 2. Hook (`use-whatsapp-global-instance`)
 
-Substituir a chamada direta por uma função com fallback para múltiplos endpoints:
+**Correção:**
+- Renomear `deleteInstance` para `clearSession`
+- Alterar de DELETE para POST
+- Atualizar o endpoint para `/clear-session`
 
-```typescript
-const sendMessageViaUAZAPI = async (
-  uazapiUrl: string,
-  uazapiToken: string,
-  phone: string,
-  message: string
-): Promise<{ success: boolean; error?: string }> => {
-  const cleanPhone = phone.replace(/\D/g, "");
-  
-  // Lista de endpoints e payloads para tentar
-  const attempts = [
-    {
-      endpoint: "/send/text",
-      payload: { phone: cleanPhone, message }
-    },
-    {
-      endpoint: "/chat/send/text",
-      payload: { Phone: cleanPhone, Body: message }
-    },
-    {
-      endpoint: "/message/sendText",
-      payload: { number: cleanPhone, text: message }
-    }
-  ];
+### 3. Componente (`GlobalConnectionTab`)
 
-  for (const attempt of attempts) {
-    try {
-      const url = `${uazapiUrl.replace(/\/$/, "")}${attempt.endpoint}`;
-      console.log(`Tentando: POST ${url}`);
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": uazapiToken,
-        },
-        body: JSON.stringify(attempt.payload),
-      });
+**Correção:**
+- Renomear botao de "Remover Instância" para "Limpar Sessão"
+- Atualizar textos do dialog de confirmacao
+- Chamar `clearSession` em vez de `deleteInstance`
 
-      const result = await response.json();
-      
-      if (response.ok) {
-        console.log(`Sucesso com endpoint: ${attempt.endpoint}`);
-        return { success: true };
-      }
-      
-      // 405 = endpoint errado, tentar próximo
-      if (response.status === 405) {
-        console.log(`Endpoint ${attempt.endpoint} retornou 405, tentando próximo...`);
-        continue;
-      }
-      
-      // Outros erros podem ser problemas reais
-      console.error(`Erro no endpoint ${attempt.endpoint}:`, result);
-      
-    } catch (err) {
-      console.error(`Exceção no endpoint ${attempt.endpoint}:`, err);
-    }
-  }
-  
-  return { success: false, error: "Nenhum endpoint de envio funcionou" };
-};
-```
+---
 
-### Arquivos a Modificar
+## Arquivos a Modificar
 
-| Arquivo | Alteração |
+| Arquivo | Alteracao |
 |---------|-----------|
-| `supabase/functions/notify-new-lead/index.ts` | Adicionar função com fallback para múltiplos endpoints |
-| `supabase/functions/whatsapp-message-sender/index.ts` | Aplicar a mesma correção (se necessário) |
+| `supabase/functions/whatsapp-global-instance-manager/index.ts` | Substituir DELETE `/delete` por POST `/clear-session` |
+| `src/hooks/use-whatsapp-global-instance.ts` | Renomear funcao e alterar metodo HTTP |
+| `src/components/whatsapp/GlobalConnectionTab.tsx` | Atualizar textos e chamada de funcao |
 
-### Teste Após Correção
+---
 
-1. A função será re-deployada automaticamente
-2. Testar criando um novo lead atribuído a um corretor
-3. Verificar os logs para confirmar qual endpoint funcionou
-4. Confirmar recebimento da notificação no WhatsApp do corretor
+## Resultado Esperado
+
+Apos as alteracoes:
+- O botao "Limpar Sessão" ira desconectar a instancia global do WhatsApp
+- A interface refletira corretamente que a sessao foi encerrada
+- Nenhum erro de CORS ou "Failed to fetch"
+- Funcionalidade alinhada com o que a API UAZAPI realmente oferece
