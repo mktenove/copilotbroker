@@ -29,6 +29,9 @@ interface Config {
   instanceName: string;
 }
 
+// Store last created instance info for subsequent calls
+let lastCreatedInstance: { name: string; token: string } | null = null;
+
 // Get configuration from environment
 const getConfig = (): Config | null => {
   const url = Deno.env.get("UAZAPI_INSTANCE_URL");
@@ -238,7 +241,7 @@ app.post("/init", async (c) => {
       },
       body: JSON.stringify({
         name: instanceName,
-        token: config.adminToken, // Use admin token as instance token initially
+        token: config.adminToken,
       }),
     });
 
@@ -277,10 +280,16 @@ app.post("/init", async (c) => {
         // Continue anyway
       }
 
+      const newToken = createData.token as string || 
+                       (createData.instance as Record<string, unknown>)?.token as string || 
+                       config.adminToken;
+      
+      lastCreatedInstance = { name: instanceName, token: newToken };
+
       return c.json({
         success: true,
         instanceName,
-        token: createData.token || null,
+        token: newToken,
         message: "Instância criada via /instance/create"
       }, 200, corsHeaders);
     }
@@ -292,17 +301,74 @@ app.post("/init", async (c) => {
       // Continue anyway
     }
 
-    // Extract new token if provided
+    // Extract new token from response
+    const instanceData = initData.instance as Record<string, unknown> | undefined;
     const newToken = initData.token as string || 
-                     (initData.instance as Record<string, unknown>)?.token as string ||
+                     instanceData?.token as string ||
+                     config.adminToken;
+    
+    const returnedName = instanceData?.name as string || instanceName;
+    
+    // Store for subsequent calls
+    lastCreatedInstance = { name: returnedName, token: newToken };
+    console.log(`✅ Instância criada: ${returnedName}, token: ${newToken.substring(0, 8)}...`);
+
+    // Wait for UAZAPI to generate QR
+    console.log("⏳ Aguardando 2s para QR Code ser gerado...");
+    await new Promise(resolve => setTimeout(resolve, 2000));
+
+    // Try to fetch QR code using the NEW token
+    let qrCode: string | null = null;
+    
+    // Try connectionState endpoint first
+    const qrEndpoints = [
+      `/instance/connectionState/${returnedName}`,
+      `/instance/connect`,
+      `/instance/qrcode`,
+    ];
+
+    for (const endpoint of qrEndpoints) {
+      try {
+        console.log(`🔍 Tentando obter QR via: ${endpoint}`);
+        const qrResponse = await fetch(`${config.baseUrl}${endpoint}`, {
+          method: endpoint.includes("connect") ? "POST" : "GET",
+          headers: {
+            "Content-Type": "application/json",
+            "token": newToken,
+          },
+        });
+
+        const qrText = await qrResponse.text();
+        console.log(`📨 QR response (${qrResponse.status}):`, qrText.substring(0, 200));
+
+        if (qrResponse.ok) {
+          try {
+            const qrData = JSON.parse(qrText);
+            qrCode = qrData.qrcode || 
+                     qrData.qr || 
+                     qrData.base64 ||
+                     (qrData.instance as Record<string, unknown>)?.qrcode as string ||
                      null;
+            
+            if (qrCode) {
+              console.log(`✅ QR Code obtido via ${endpoint}`);
+              break;
+            }
+          } catch {
+            // Try next endpoint
+          }
+        }
+      } catch (err) {
+        console.error(`❌ Erro ao buscar QR via ${endpoint}:`, err);
+      }
+    }
 
     return c.json({
       success: true,
-      instanceName,
+      instanceName: returnedName,
       token: newToken,
-      qrCode: initData.qrcode || (initData.instance as Record<string, unknown>)?.qrcode || null,
-      message: "Instância criada com sucesso"
+      qrCode,
+      message: qrCode ? "Instância criada com QR Code" : "Instância criada, aguarde para QR Code"
     }, 200, corsHeaders);
 
   } catch (error) {
@@ -313,7 +379,7 @@ app.post("/init", async (c) => {
   }
 });
 
-// GET /qrcode - Get QR code for connection (smart: creates if needed)
+// GET /qrcode - Get QR code for connection (smart: uses stored token or creates new instance)
 app.get("/qrcode", async (c) => {
   try {
     const config = getConfig();
@@ -321,7 +387,52 @@ app.get("/qrcode", async (c) => {
       return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
 
-    // First, try to connect existing instance
+    // If we have a recently created instance, use its token
+    if (lastCreatedInstance) {
+      console.log(`🔄 Usando token da instância criada: ${lastCreatedInstance.name}`);
+      
+      const qrEndpoints = [
+        `/instance/connectionState/${lastCreatedInstance.name}`,
+        `/instance/connect`,
+      ];
+
+      for (const endpoint of qrEndpoints) {
+        try {
+          console.log(`🔍 Buscando QR via: ${endpoint}`);
+          const qrResponse = await fetch(`${config.baseUrl}${endpoint}`, {
+            method: endpoint.includes("connect") ? "POST" : "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "token": lastCreatedInstance.token,
+            },
+          });
+
+          const qrText = await qrResponse.text();
+          console.log(`📨 QR response (${qrResponse.status}):`, qrText.substring(0, 200));
+
+          if (qrResponse.ok) {
+            try {
+              const qrData = JSON.parse(qrText);
+              const qrCode = qrData.qrcode || 
+                             qrData.qr || 
+                             qrData.base64 ||
+                             (qrData.instance as Record<string, unknown>)?.qrcode as string ||
+                             null;
+              
+              if (qrCode) {
+                return c.json({ qrCode, instanceName: lastCreatedInstance.name }, 200, corsHeaders);
+              }
+            } catch {
+              // Try next endpoint
+            }
+          }
+        } catch (err) {
+          console.error(`❌ Erro ao buscar QR via ${endpoint}:`, err);
+        }
+      }
+    }
+
+    // Fallback: try to connect existing instance with env tokens
     console.log("🔗 Tentando conectar instância existente...");
     const connectResponse = await makeRequest("/instance/connect", "POST");
     const connectText = await connectResponse.text();
@@ -364,32 +475,34 @@ app.get("/qrcode", async (c) => {
         // Continue
       }
 
-      const qrCode = initData.qrcode || 
-                     (initData.instance as Record<string, unknown>)?.qrcode ||
-                     null;
-
-      if (qrCode) {
-        return c.json({ qrCode, instanceName, newInstance: true }, 200, corsHeaders);
-      }
-
-      // Try to get QR code from status after init
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const instanceData = initData.instance as Record<string, unknown> | undefined;
+      const newToken = initData.token as string || 
+                       instanceData?.token as string ||
+                       config.adminToken;
       
-      const statusResponse = await fetch(`${config.baseUrl}/instance/status`, {
+      const returnedName = instanceData?.name as string || instanceName;
+      
+      // Store for subsequent calls
+      lastCreatedInstance = { name: returnedName, token: newToken };
+
+      // Wait and fetch QR
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const qrResponse = await fetch(`${config.baseUrl}/instance/connectionState/${returnedName}`, {
         headers: {
           "Content-Type": "application/json",
-          "admintoken": config.adminToken,
+          "token": newToken,
         },
       });
       
-      const statusText = await statusResponse.text();
-      console.log(`📨 Status after init (${statusResponse.status}):`, statusText);
+      const qrText = await qrResponse.text();
+      console.log(`📨 QR after init (${qrResponse.status}):`, qrText.substring(0, 200));
 
       try {
-        const statusData = JSON.parse(statusText);
-        const statusQr = statusData.qrcode || statusData.instance?.qrcode;
-        if (statusQr) {
-          return c.json({ qrCode: statusQr, instanceName, newInstance: true }, 200, corsHeaders);
+        const qrData = JSON.parse(qrText);
+        const qrCode = qrData.qrcode || qrData.qr || qrData.base64 || null;
+        if (qrCode) {
+          return c.json({ qrCode, instanceName: returnedName, newInstance: true }, 200, corsHeaders);
         }
       } catch {
         // No QR
@@ -397,7 +510,7 @@ app.get("/qrcode", async (c) => {
 
       return c.json({ 
         error: "Instância criada mas QR Code não disponível ainda - tente novamente",
-        instanceName,
+        instanceName: returnedName,
         newInstance: true
       }, 200, corsHeaders);
     }
@@ -458,6 +571,9 @@ app.post("/logout", async (c) => {
     const responseText = await response.text();
     
     console.log(`📨 Disconnect response (${response.status}):`, responseText);
+
+    // Clear stored instance
+    lastCreatedInstance = null;
 
     if (!response.ok) {
       return c.json({ 
@@ -525,6 +641,9 @@ app.post("/clear-session", async (c) => {
     const responseText = await response.text();
     
     console.log(`📨 Disconnect response (${response.status}):`, responseText);
+
+    // Clear stored instance
+    lastCreatedInstance = null;
 
     // Even if disconnect fails (already disconnected), we consider it a success
     return c.json({ 
