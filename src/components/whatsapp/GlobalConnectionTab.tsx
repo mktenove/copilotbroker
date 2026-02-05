@@ -4,7 +4,6 @@ import { QRCodeDisplay } from "./QRCodeDisplay";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -16,7 +15,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle, Trash2, Plus } from "lucide-react";
+import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle, Trash2, Plus, Wifi } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -52,70 +51,60 @@ export function GlobalConnectionTab() {
   const needsQR = status === "qr_pending" || status === "disconnected";
   const showCreateButton = needsInit || (status === "disconnected" && error);
 
-  return (
-    <div className="space-y-6">
-      {/* Header Info Card */}
-      <Card className="bg-gradient-to-r from-blue-500/10 to-cyan-500/10 border-blue-500/20">
-        <CardContent className="py-4">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center">
-              <Globe className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <p className="font-medium text-blue-200">Instância Global da Enove</p>
-              <p className="text-sm text-blue-200/70">
-                Usada para enviar notificações de novos leads aos corretores
-              </p>
-            </div>
-            <Badge 
-              variant="outline" 
-              className="ml-auto border-blue-500/30 text-blue-300"
-            >
-              Sistema
-            </Badge>
+  // No instance yet - show init card (similar to ConnectionTab)
+  if (needsInit && !qrCode) {
+    return (
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e] max-w-lg mx-auto">
+        <CardHeader className="text-center">
+          <div className="w-16 h-16 rounded-full bg-blue-500/10 flex items-center justify-center mx-auto mb-4">
+            <Globe className="w-8 h-8 text-blue-500" />
           </div>
+          <CardTitle className="text-white">Conectar Instância Global</CardTitle>
+          <CardDescription>
+            Configure a instância global da Enove para enviar notificações de novos leads aos corretores.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex justify-center">
+          <Button
+            onClick={initInstance}
+            disabled={isInitializing}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            {isInitializing ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Wifi className="w-4 h-4 mr-2" />
+            )}
+            Iniciar Conexão
+          </Button>
         </CardContent>
       </Card>
+    );
+  }
 
-      {/* Error Alert with Create Button */}
+  return (
+    <div className="space-y-6">
+      {/* Error Alert */}
       {error && (
         <Alert variant="destructive" className="border-red-500/30 bg-red-500/10">
           <AlertTriangle className="h-4 w-4" />
           <AlertTitle>Erro ao verificar status</AlertTitle>
-          <AlertDescription className="flex items-center justify-between flex-wrap gap-2">
+          <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <div className="flex gap-2">
-              {showCreateButton && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={initInstance}
-                  disabled={isInitializing}
-                  className="border-green-500/30 text-green-400 hover:bg-green-500/10"
-                >
-                  {isInitializing ? (
-                    <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                  ) : (
-                    <Plus className="w-3 h-3 mr-1" />
-                  )}
-                  Criar Nova Instância
-                </Button>
-              )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={refreshStatus}
-                className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-              >
-                <RefreshCw className="w-3 h-3 mr-1" />
-                Atualizar
-              </Button>
-            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={refreshStatus}
+              className="ml-2 border-red-500/30 text-red-400 hover:bg-red-500/10"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Atualizar
+            </Button>
           </AlertDescription>
         </Alert>
       )}
 
-      {/* Main Connection Cards */}
+      {/* Main Connection Card */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Status Card */}
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
@@ -124,9 +113,11 @@ export function GlobalConnectionTab() {
               <Globe className="w-5 h-5 text-blue-400" />
               Status da Conexão Global
             </CardTitle>
-            <CardDescription>
-              Instância: {instanceName || "Não configurada"}
-            </CardDescription>
+            {instanceName && (
+              <CardDescription>
+                Instância: {instanceName}
+              </CardDescription>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
             <ConnectionStatusCard status={status} />
@@ -150,49 +141,20 @@ export function GlobalConnectionTab() {
 
             {/* Action Buttons */}
             <div className="flex flex-wrap gap-2 pt-3 border-t border-[#2a2a2e]">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={refreshStatus}
-                disabled={isLoading}
-                className="border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Atualizar
-              </Button>
-
-              {/* Create New Instance Button - prominent when needed */}
-              {showCreateButton && !error && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={initInstance}
-                  disabled={isInitializing}
-                  className="border-green-500/30 text-green-400 hover:bg-green-500/10"
-                >
-                  {isInitializing ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <Plus className="w-4 h-4 mr-2" />
-                  )}
-                  Criar Nova Instância
-                </Button>
-              )}
-
-              {needsQR && !needsInit && (
+              {needsQR && (
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={fetchQRCode}
                   disabled={isLoadingQR}
-                  className="border-blue-500/30 text-blue-400 hover:bg-blue-500/10"
+                  className="border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]"
                 >
                   {isLoadingQR ? (
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   ) : (
                     <RefreshCw className="w-4 h-4 mr-2" />
                   )}
-                  Gerar QR Code
+                  Novo QR Code
                 </Button>
               )}
               
@@ -218,114 +180,52 @@ export function GlobalConnectionTab() {
                     <Power className="w-4 h-4 mr-2" />
                     Desconectar
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isLoading}
+                        className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Limpar Sessão
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-white">Limpar sessão global?</AlertDialogTitle>
+                        <AlertDialogDescription className="text-slate-400">
+                          Esta ação irá desconectar a instância e limpar a sessão. 
+                          Você precisará escanear o QR Code novamente.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]">
+                          Cancelar
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={clearSession}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Limpar Sessão
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </>
               )}
-
-              {/* Clear Session Button - always visible */}
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isLoading}
-                    className="border-orange-500/50 text-orange-400 hover:bg-orange-500/20"
-                  >
-                    <Trash2 className="w-4 h-4 mr-2" />
-                    Limpar Sessão
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent className="bg-[#1a1a1d] border-[#2a2a2e]">
-                  <AlertDialogHeader>
-                    <AlertDialogTitle className="text-white">Limpar Sessão Global</AlertDialogTitle>
-                    <AlertDialogDescription className="text-slate-400">
-                      Tem certeza que deseja limpar a sessão da instância global? Isso irá desconectar
-                      o WhatsApp e será necessário escanear o QR Code novamente para reconectar.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel className="bg-[#2a2a2e] text-slate-300 border-[#3a3a3e] hover:bg-[#3a3a3e]">
-                      Cancelar
-                    </AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={clearSession}
-                      className="bg-orange-600 text-white hover:bg-orange-700"
-                    >
-                      Limpar Sessão
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
             </div>
           </CardContent>
         </Card>
 
-        {/* QR Code or Connected Info */}
+        {/* QR Code or Connected Info Card */}
         {needsQR ? (
-          qrCode ? (
-            <QRCodeDisplay 
-              qrCode={qrCode} 
-              isLoading={isLoadingQR} 
-              onRefresh={fetchQRCode} 
-            />
-          ) : (
-            <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-              <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  📱 Conectar WhatsApp
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="text-center py-8">
-                  <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
-                    <Globe className="w-10 h-10 text-blue-400" />
-                  </div>
-                  {needsInit ? (
-                    <>
-                      <p className="text-slate-300 text-lg font-medium">
-                        Instância não encontrada
-                      </p>
-                      <p className="text-slate-500 text-sm mt-2 mb-4">
-                        Clique no botão abaixo para criar uma nova instância
-                      </p>
-                      <Button
-                        onClick={initInstance}
-                        disabled={isInitializing}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        {isInitializing ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <Plus className="w-4 h-4 mr-2" />
-                        )}
-                        Criar Nova Instância
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <p className="text-slate-300 text-lg font-medium">
-                        Gere o QR Code para conectar
-                      </p>
-                      <p className="text-slate-500 text-sm mt-2 mb-4">
-                        Escaneie com o WhatsApp do número da Enove
-                      </p>
-                      <Button
-                        onClick={fetchQRCode}
-                        disabled={isLoadingQR}
-                        className="bg-blue-600 hover:bg-blue-700"
-                      >
-                        {isLoadingQR ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        ) : (
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                        )}
-                        Gerar QR Code
-                      </Button>
-                    </>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )
+          <QRCodeDisplay 
+            qrCode={qrCode} 
+            isLoading={isLoadingQR} 
+            onRefresh={fetchQRCode} 
+          />
         ) : (
           <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
             <CardHeader>
@@ -349,23 +249,6 @@ export function GlobalConnectionTab() {
           </Card>
         )}
       </div>
-
-      {/* Info about global instance */}
-      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-        <CardHeader>
-          <CardTitle className="text-white text-base">Sobre a Instância Global</CardTitle>
-        </CardHeader>
-        <CardContent className="text-sm text-slate-400 space-y-2">
-          <p>
-            Esta é a instância central do sistema, usada exclusivamente para notificações automáticas.
-          </p>
-          <ul className="list-disc list-inside space-y-1 text-slate-500">
-            <li>Envia alertas quando novos leads são cadastrados</li>
-            <li>Notifica corretores sobre leads atribuídos</li>
-            <li>Separada das instâncias individuais de cada corretor</li>
-          </ul>
-        </CardContent>
-      </Card>
     </div>
   );
 }
