@@ -61,7 +61,8 @@ const formatPhoneForUAZAPI = (phone: string): string => {
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
 
-// Send message via UAZAPI with endpoint fallback
+// Send message via UAZAPI
+// Documentação oficial: POST /send/text com { number, text } e header "token"
 const sendMessageViaUAZAPI = async (
   instanceName: string,
   instanceToken: string | null,
@@ -70,74 +71,67 @@ const sendMessageViaUAZAPI = async (
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   const cleanPhone = formatPhoneForUAZAPI(phone);
   const token = instanceToken || UAZAPI_TOKEN;
-  const baseUrl = UAZAPI_BASE_URL.replace(/\/$/, "");
   
-  // Lista de endpoints e payloads para tentar
-  const attempts = [
-    {
-      endpoint: "/send/text",
-      payload: { phone: cleanPhone, message: messageText }
-    },
-    {
-      endpoint: "/chat/send/text",
-      payload: { Phone: cleanPhone, Body: messageText }
-    },
-    {
-      endpoint: "/message/sendText",
-      payload: { number: cleanPhone, text: messageText }
-    },
-    {
-      endpoint: "/message/text",
-      payload: { phone: cleanPhone, message: messageText }
-    }
-  ];
-
-  for (const attempt of attempts) {
-    try {
-      const url = `${baseUrl}${attempt.endpoint}`;
-      console.log(`Tentando: POST ${url}`);
-      
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "token": token,
-        },
-        body: JSON.stringify(attempt.payload),
-      });
-
-      const result = await response.json();
-      
-      if (response.ok) {
-        console.log(`✅ Sucesso com endpoint: ${attempt.endpoint}`);
-        return { 
-          success: true, 
-          messageId: result.key?.id || result.messageId || null 
-        };
-      }
-      
-      // 405 = endpoint errado, tentar próximo
-      if (response.status === 405) {
-        console.log(`Endpoint ${attempt.endpoint} retornou 405, tentando próximo...`);
-        continue;
-      }
-      
-      // 404 = endpoint não existe, tentar próximo
-      if (response.status === 404) {
-        console.log(`Endpoint ${attempt.endpoint} retornou 404, tentando próximo...`);
-        continue;
-      }
-      
-      // Outros erros podem ser problemas reais
-      console.error(`Erro no endpoint ${attempt.endpoint}:`, result);
-      
-    } catch (err) {
-      const error = err as Error;
-      console.error(`Exceção no endpoint ${attempt.endpoint}:`, error.message);
-    }
+  // Build instance URL from instance name or use global URL
+  // Format: https://{instance_name}.uazapi.com or use configured base URL
+  let baseUrl = UAZAPI_BASE_URL;
+  if (instanceName && !UAZAPI_BASE_URL.includes(instanceName)) {
+    // If instance has its own subdomain
+    baseUrl = `https://${instanceName}.uazapi.com`;
   }
+  baseUrl = baseUrl.replace(/\/$/, "");
   
-  return { success: false, error: "Nenhum endpoint de envio funcionou" };
+  const apiUrl = `${baseUrl}/send/text`;
+  console.log(`📤 Enviando para ${cleanPhone} via ${apiUrl}`);
+  
+  try {
+    // Documentação UAZAPI: POST /send/text
+    // Header: "token" (não Authorization Bearer)
+    // Body: { number: "5511999999999", text: "mensagem" }
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "token": token,
+      },
+      body: JSON.stringify({
+        number: cleanPhone,
+        text: messageText,
+      }),
+    });
+
+    const responseText = await response.text();
+    console.log(`📨 Resposta (${response.status}):`, responseText);
+
+    if (!response.ok) {
+      return { 
+        success: false, 
+        error: `HTTP ${response.status}: ${responseText}` 
+      };
+    }
+
+    let result: Record<string, unknown> = {};
+    try {
+      result = JSON.parse(responseText);
+    } catch {
+      // Response might not be JSON
+    }
+
+    if (result.error) {
+      return { success: false, error: String(result.error) };
+    }
+
+    console.log(`✅ Mensagem enviada com sucesso`);
+    return { 
+      success: true, 
+      messageId: String(result.id || result.messageid || result.key?.id || "") 
+    };
+    
+  } catch (err) {
+    const error = err as Error;
+    console.error(`❌ Erro ao enviar:`, error.message);
+    return { success: false, error: error.message };
+  }
 };
 
 // Interface for instance data

@@ -1,57 +1,70 @@
+/**
+ * Edge Function: whatsapp-global-instance-manager
+ * 
+ * Gerencia a instância global do WhatsApp (Enove) para notificações do sistema.
+ * 
+ * Documentação UAZAPI:
+ * - GET /instance/status: Verifica status da conexão
+ * - POST /instance/connect: Inicia conexão (gera QR code)
+ * - POST /instance/disconnect: Desconecta a instância
+ * - Auth: Header "token" com o token da instância
+ */
+
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
 
 const app = new Hono().basePath("/whatsapp-global-instance-manager");
 
-// Get instance config from environment
-const getInstanceConfig = (): { instanceUrl: string; instanceName: string } | null => {
-  const url = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+// Get configuration from environment
+const getConfig = () => {
+  const url = Deno.env.get("UAZAPI_INSTANCE_URL");
   const token = Deno.env.get("UAZAPI_TOKEN");
   
   if (!url || !token) {
-    console.log("Missing config - UAZAPI_INSTANCE_URL:", !!url, "UAZAPI_TOKEN:", !!token);
     return null;
   }
   
-  // Extract instance name from URL
+  // Extract instance name from URL (e.g., https://enove.uazapi.com -> enove)
   let instanceName = "enove";
   try {
     const urlObj = new URL(url);
     const hostParts = urlObj.hostname.split(".");
-    if (hostParts.length >= 2 && hostParts[1].includes("uazapi")) {
+    if (hostParts.length >= 2) {
       instanceName = hostParts[0];
     }
   } catch {
-    console.log("Could not parse URL");
+    // Keep default
   }
   
-  return { instanceUrl: url, instanceName };
+  return { 
+    baseUrl: url.replace(/\/$/, ""), 
+    token, 
+    instanceName 
+  };
 };
 
-// Make UAZAPI request with token header
-const makeUazapiRequest = async (
+// Make UAZAPI request with proper authentication
+const makeRequest = async (
   endpoint: string,
   method: string = "GET",
   body?: unknown
 ): Promise<Response> => {
-  const config = getInstanceConfig();
-  if (!config) throw new Error("UAZAPI not configured");
+  const config = getConfig();
+  if (!config) throw new Error("UAZAPI não configurado");
 
-  const token = Deno.env.get("UAZAPI_TOKEN")!;
-  const url = `${config.instanceUrl.replace(/\/$/, "")}${endpoint}`;
-  
-  console.log(`Making request: ${method} ${url}`);
+  const url = `${config.baseUrl}${endpoint}`;
+  console.log(`🌐 ${method} ${url}`);
 
   const options: RequestInit = {
     method,
     headers: {
       "Content-Type": "application/json",
-      "token": token,
+      "token": config.token,
     },
   };
 
@@ -62,167 +75,217 @@ const makeUazapiRequest = async (
   return fetch(url, options);
 };
 
-// Normalize status from various UAZAPI response formats
-const normalizeStatus = (rawStatus: unknown): string => {
-  const statusStr = String(rawStatus || "disconnected").toLowerCase();
-  const connected = ["open", "online", "active", "connected"];
-  if (connected.includes(statusStr)) return "connected";
-  if (statusStr === "qr_pending" || statusStr === "qrcode") return "qr_pending";
-  return "disconnected";
-};
-
-// Extract status from UAZAPI response (handles multiple response formats)
-const extractStatusFromResponse = (data: Record<string, unknown>): { 
-  status: string; 
-  phoneNumber: string | null; 
-  instanceName: string | null;
-} => {
-  // Format 1: { status: { checked_instance: { connection_status, name } } }
-  const checkedInstance = (data?.status as Record<string, unknown>)?.checked_instance as Record<string, unknown> | undefined;
-  if (checkedInstance) {
-    return {
-      status: String(checkedInstance.connection_status || "disconnected"),
-      phoneNumber: null,
-      instanceName: String(checkedInstance.name || null),
-    };
-  }
-  
-  // Format 2: { instance: { state, phoneNumber } }
-  const instance = data?.instance as Record<string, unknown> | undefined;
-  if (instance) {
-    return {
-      status: String(instance.state || instance.status || "disconnected"),
-      phoneNumber: String(instance.phoneNumber || instance.phone || null),
-      instanceName: String(instance.name || null),
-    };
-  }
-  
-  // Format 3: { state, phoneNumber }
-  return {
-    status: String(data?.state || data?.status || data?.connection_status || "disconnected"),
-    phoneNumber: String(data?.phoneNumber || data?.phone || null),
-    instanceName: String(data?.name || null),
-  };
-};
-
-// CORS preflight
-app.options("/*", () => {
-  return new Response(null, { status: 204, headers: corsHeaders });
+// CORS preflight handler
+app.options("/*", (c) => {
+  return c.body(null, 204, corsHeaders);
 });
 
-// GET /status - Check global instance status
+// GET /status - Check instance status
 app.get("/status", async (c) => {
   try {
-    const config = getInstanceConfig();
+    const config = getConfig();
     if (!config) {
-      return c.json({ error: "Global instance not configured" }, 500, corsHeaders);
+      return c.json({ 
+        status: "disconnected", 
+        error: "Instância global não configurada" 
+      }, 200, corsHeaders);
     }
 
-    // The /status endpoint works according to logs
-    const response = await makeUazapiRequest("/status");
+    const response = await makeRequest("/instance/status");
+    const responseText = await response.text();
     
+    console.log(`📨 Status response (${response.status}):`, responseText);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Status request failed:", response.status, errorText);
       return c.json({ 
         status: "disconnected",
         instanceName: config.instanceName,
-        error: `UAZAPI returned ${response.status}`
+        error: `UAZAPI retornou ${response.status}`
       }, 200, corsHeaders);
     }
+
+    let data: Record<string, unknown> = {};
+    try {
+      data = JSON.parse(responseText);
+    } catch {
+      return c.json({ 
+        status: "disconnected",
+        instanceName: config.instanceName,
+        error: "Resposta inválida da UAZAPI"
+      }, 200, corsHeaders);
+    }
+
+    // Extract status from response
+    // Possible formats:
+    // 1. { instance: { status: "connected" } }
+    // 2. { status: { connected: true } }
+    // 3. { instance: { id, status, profileName, ... } }
+    const instance = data.instance as Record<string, unknown> | undefined;
+    const statusObj = data.status as Record<string, unknown> | undefined;
     
-    const data = await response.json();
-    console.log("Status response:", JSON.stringify(data));
+    let connectionStatus = "disconnected";
+    let phoneNumber: string | null = null;
+    let profileName: string | null = null;
     
-    const extracted = extractStatusFromResponse(data);
+    if (instance) {
+      const rawStatus = String(instance.status || "").toLowerCase();
+      if (rawStatus === "connected" || rawStatus === "open" || rawStatus === "online") {
+        connectionStatus = "connected";
+      } else if (rawStatus === "connecting") {
+        connectionStatus = "connecting";
+      }
+      phoneNumber = instance.phone as string || null;
+      profileName = instance.profileName as string || null;
+    }
     
+    if (statusObj?.connected === true || statusObj?.loggedIn === true) {
+      connectionStatus = "connected";
+    }
+
+    // Check if QR code is present (means we're waiting for scan)
+    if (instance?.qrcode || data.qrcode) {
+      connectionStatus = "qr_pending";
+    }
+
     return c.json({
-      status: normalizeStatus(extracted.status),
-      instanceName: extracted.instanceName || config.instanceName,
-      phoneNumber: extracted.phoneNumber,
-      rawStatus: extracted.status,
+      status: connectionStatus,
+      instanceName: config.instanceName,
+      phoneNumber,
+      profileName,
       lastSeenAt: new Date().toISOString(),
     }, 200, corsHeaders);
+
   } catch (error) {
-    console.error("Status error:", error);
+    console.error("❌ Erro ao verificar status:", error);
     return c.json({ 
       status: "disconnected",
-      error: error instanceof Error ? error.message : "Unknown error"
+      error: error instanceof Error ? error.message : "Erro desconhecido"
     }, 200, corsHeaders);
   }
 });
 
-// GET /qrcode
+// GET /qrcode - Get QR code for connection
 app.get("/qrcode", async (c) => {
   try {
-    const config = getInstanceConfig();
+    const config = getConfig();
     if (!config) {
-      return c.json({ error: "Global instance not configured" }, 500, corsHeaders);
+      return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
 
-    // Try common QR endpoints
-    const endpoints = ["/qrcode", "/qr", "/connect"];
+    // First, initiate connection to get QR code
+    // POST /instance/connect triggers QR code generation
+    const connectResponse = await makeRequest("/instance/connect", "POST");
+    const connectText = await connectResponse.text();
     
-    for (const endpoint of endpoints) {
+    console.log(`📨 Connect response (${connectResponse.status}):`, connectText);
+
+    let connectData: Record<string, unknown> = {};
+    try {
+      connectData = JSON.parse(connectText);
+    } catch {
+      // Try getting status which might have QR code
+    }
+
+    // Check for QR code in connect response
+    let qrCode = connectData.qrcode as string || 
+                 (connectData.instance as Record<string, unknown>)?.qrcode as string ||
+                 null;
+
+    // If no QR code in connect response, check status
+    if (!qrCode) {
+      const statusResponse = await makeRequest("/instance/status");
+      const statusText = await statusResponse.text();
+      
       try {
-        const response = await makeUazapiRequest(endpoint);
-        
-        if (response.ok) {
-          const data = await response.json();
-          const qrCode = data?.qrcode || data?.qr || data?.base64 || data?.qr_code || null;
-          if (qrCode) {
-            return c.json({ qrCode }, 200, corsHeaders);
-          }
-        }
-      } catch (err) {
-        console.log(`QR endpoint ${endpoint} failed:`, err);
+        const statusData = JSON.parse(statusText);
+        qrCode = statusData.qrcode || 
+                 statusData.instance?.qrcode || 
+                 null;
+      } catch {
+        // No QR code available
       }
     }
-    
-    return c.json({ error: "Could not get QR code - instance may already be connected" }, 200, corsHeaders);
+
+    if (!qrCode) {
+      return c.json({ 
+        error: "QR Code não disponível - instância pode já estar conectada" 
+      }, 200, corsHeaders);
+    }
+
+    return c.json({ qrCode }, 200, corsHeaders);
+
   } catch (error) {
-    console.error("QR error:", error);
-    return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500, corsHeaders);
+    console.error("❌ Erro ao obter QR code:", error);
+    return c.json({ 
+      error: error instanceof Error ? error.message : "Erro desconhecido" 
+    }, 500, corsHeaders);
   }
 });
 
-// POST /logout
+// POST /logout - Disconnect instance
 app.post("/logout", async (c) => {
   try {
-    const endpoints = ["/logout", "/disconnect"];
-    
-    for (const endpoint of endpoints) {
-      try {
-        const response = await makeUazapiRequest(endpoint, "POST");
-        if (response.ok) {
-          return c.json({ success: true, message: "Instance disconnected" }, 200, corsHeaders);
-        }
-      } catch (err) {
-        console.log(`Logout endpoint ${endpoint} failed:`, err);
-      }
+    const config = getConfig();
+    if (!config) {
+      return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
+
+    // POST /instance/disconnect
+    const response = await makeRequest("/instance/disconnect", "POST");
+    const responseText = await response.text();
     
-    return c.json({ error: "Could not disconnect" }, 500, corsHeaders);
+    console.log(`📨 Disconnect response (${response.status}):`, responseText);
+
+    if (!response.ok) {
+      return c.json({ 
+        error: `Falha ao desconectar: ${response.status}` 
+      }, 500, corsHeaders);
+    }
+
+    return c.json({ 
+      success: true, 
+      message: "Instância desconectada com sucesso" 
+    }, 200, corsHeaders);
+
   } catch (error) {
-    console.error("Logout error:", error);
-    return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500, corsHeaders);
+    console.error("❌ Erro ao desconectar:", error);
+    return c.json({ 
+      error: error instanceof Error ? error.message : "Erro desconhecido" 
+    }, 500, corsHeaders);
   }
 });
 
-// POST /restart
+// POST /restart - Restart instance
 app.post("/restart", async (c) => {
   try {
-    const response = await makeUazapiRequest("/restart", "POST");
-    
-    if (response.ok) {
-      return c.json({ success: true, message: "Instance restarted" }, 200, corsHeaders);
+    const config = getConfig();
+    if (!config) {
+      return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
+
+    // Disconnect first, then reconnect
+    console.log("🔄 Reiniciando instância...");
     
-    const errorText = await response.text();
-    return c.json({ error: `Could not restart: ${errorText}` }, 500, corsHeaders);
+    await makeRequest("/instance/disconnect", "POST");
+    
+    // Wait a bit before reconnecting
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    const connectResponse = await makeRequest("/instance/connect", "POST");
+    const connectText = await connectResponse.text();
+    
+    console.log(`📨 Reconnect response (${connectResponse.status}):`, connectText);
+
+    return c.json({ 
+      success: true, 
+      message: "Instância reiniciada" 
+    }, 200, corsHeaders);
+
   } catch (error) {
-    console.error("Restart error:", error);
-    return c.json({ error: error instanceof Error ? error.message : "Unknown error" }, 500, corsHeaders);
+    console.error("❌ Erro ao reiniciar:", error);
+    return c.json({ 
+      error: error instanceof Error ? error.message : "Erro desconhecido" 
+    }, 500, corsHeaders);
   }
 });
 
