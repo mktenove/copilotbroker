@@ -8,21 +8,24 @@ interface GlobalInstanceState {
   instanceName: string | null;
   lastSeenAt: string | null;
   error: string | null;
+  needsInit: boolean;
 }
 
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-global-instance-manager`;
 
 export function useWhatsAppGlobalInstance() {
   const [state, setState] = useState<GlobalInstanceState>({
-    status: "connected",
+    status: "disconnected",
     phoneNumber: null,
     instanceName: null,
     lastSeenAt: null,
     error: null,
+    needsInit: false,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -45,6 +48,7 @@ export function useWhatsAppGlobalInstance() {
           ...prev,
           status: "disconnected",
           error: data.error,
+          needsInit: data.needsInit || false,
         }));
         return;
       }
@@ -61,18 +65,59 @@ export function useWhatsAppGlobalInstance() {
         phoneNumber: data.phoneNumber || null,
         instanceName: data.instanceName || null,
         lastSeenAt: data.lastSeenAt || null,
-        error: null,
+        error: data.error || null,
+        needsInit: data.needsInit || false,
       });
     } catch (error) {
       console.error("Failed to refresh global instance status:", error);
       setState(prev => ({
         ...prev,
         error: error instanceof Error ? error.message : "Erro ao verificar status",
+        needsInit: true,
       }));
     } finally {
       setIsLoading(false);
     }
   }, [getAuthHeaders, qrCode]);
+
+  const initInstance = useCallback(async () => {
+    try {
+      setIsInitializing(true);
+      const headers = await getAuthHeaders();
+      
+      toast.info("Criando nova instância...");
+      
+      const response = await fetch(`${FUNCTION_URL}/init`, {
+        method: "POST",
+        headers,
+      });
+      const data = await response.json();
+
+      if (data.error) {
+        toast.error(data.error);
+        return false;
+      }
+
+      toast.success("Instância criada! Gerando QR Code...");
+      
+      // If QR code was returned, set it
+      if (data.qrCode) {
+        setQrCode(data.qrCode);
+        setState(prev => ({ ...prev, status: "qr_pending", needsInit: false }));
+      } else {
+        // Fetch QR code separately
+        await fetchQRCode();
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Failed to init instance:", error);
+      toast.error("Erro ao criar instância");
+      return false;
+    } finally {
+      setIsInitializing(false);
+    }
+  }, [getAuthHeaders]);
 
   const fetchQRCode = useCallback(async () => {
     try {
@@ -83,13 +128,25 @@ export function useWhatsAppGlobalInstance() {
       const data = await response.json();
 
       if (data.error) {
-        toast.error(data.error);
+        // If needs init, show specific message
+        if (data.needsInit) {
+          toast.error("Instância não existe. Clique em 'Criar Nova Instância' primeiro.");
+          setState(prev => ({ ...prev, needsInit: true }));
+        } else {
+          toast.error(data.error);
+        }
         return;
       }
 
       if (data.qrCode) {
         setQrCode(data.qrCode);
-        setState(prev => ({ ...prev, status: "qr_pending" }));
+        setState(prev => ({ ...prev, status: "qr_pending", needsInit: false }));
+        
+        if (data.newInstance) {
+          toast.success("Nova instância criada! Escaneie o QR Code.");
+        }
+      } else {
+        toast.warning("QR Code não disponível - tente novamente");
       }
     } catch (error) {
       console.error("Failed to fetch QR code:", error);
@@ -176,6 +233,7 @@ export function useWhatsAppGlobalInstance() {
         instanceName: null,
         lastSeenAt: null,
         error: null,
+        needsInit: true,
       });
     } catch (error) {
       console.error("Failed to clear session:", error);
@@ -199,7 +257,7 @@ export function useWhatsAppGlobalInstance() {
         ? 5000 
         : state.status === "connected" 
           ? 60000 
-          : 10000;
+          : 15000;
 
     interval = setInterval(refreshStatus, pollInterval);
 
@@ -212,10 +270,13 @@ export function useWhatsAppGlobalInstance() {
     instanceName: state.instanceName,
     lastSeenAt: state.lastSeenAt,
     error: state.error,
+    needsInit: state.needsInit,
     isLoading,
     qrCode,
     isLoadingQR,
+    isInitializing,
     refreshStatus,
+    initInstance,
     fetchQRCode,
     logout,
     restart,
