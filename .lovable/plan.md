@@ -1,113 +1,85 @@
 
 
-# Correção do QR Code e Redesign da Aba Conexão Global
+# Plano: Atualizar Notificações para Usar Token Persistido
 
 ## Problema Identificado
 
-Analisando os logs da edge function, identifiquei a causa raiz:
+A função de notificação `notify-new-lead` ainda usa tokens das variáveis de ambiente (`UAZAPI_TOKEN`), que estão desatualizados. A nova instância que você conectou gerou um novo token (`984cd567-f34b-4528-a5bf-7fb70dd4f869`) que está salvo no banco, mas a função não está consultando essa tabela.
+
+**Resultado:** Erro 405 (Method Not Allowed) ao tentar enviar notificações.
+
+## Solução
+
+Atualizar a edge function `notify-new-lead` para buscar o token da tabela `global_whatsapp_config` antes de enviar mensagens, usando a mesma lógica implementada no `whatsapp-global-instance-manager`.
+
+## Alterações Necessárias
+
+### 1. Atualizar `supabase/functions/notify-new-lead/index.ts`
+
+```text
+Adicionar lógica para:
+1. Buscar instância ativa da tabela global_whatsapp_config
+2. Usar o instance_token e instance_name do banco
+3. Fallback para variáveis de ambiente se não houver registro no banco
+4. Construir URL dinâmica baseada no nome da instância
+```
+
+**Fluxo atualizado:**
 
 ```
-📨 Init response (200): {"instance":{"token":"b22d514d-7808-435d-926a-9982a70e05b8","qrcode":"","name":"enove_global_1770334538997"...}
-📨 Status after init (401): {"code":401,"message":"Missing token."}
+┌─────────────────────────────────────────────────────────────┐
+│                  notify-new-lead                             │
+├─────────────────────────────────────────────────────────────┤
+│  1. Receber dados do lead (nome, whatsapp, broker_id)       │
+│                         ↓                                    │
+│  2. Buscar token em global_whatsapp_config                  │
+│     └─ Se não existir, usar UAZAPI_TOKEN (env)              │
+│                         ↓                                    │
+│  3. Construir URL: UAZAPI_BASE_URL + instance_name          │
+│                         ↓                                    │
+│  4. Enviar mensagem via POST /send/text                     │
+│     └─ Header: token = instance_token do banco              │
+│                         ↓                                    │
+│  5. Registrar resultado em lead_interactions                │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-A instancia e criada com sucesso e retorna um **novo token** (`b22d514d-7808-435d-926a-9982a70e05b8`), porem:
+### 2. Atualizar status da instância no banco
 
-1. O campo `qrcode` esta vazio no momento da criacao (comportamento normal da UAZAPI)
-2. O sistema tenta obter o QR Code usando os **tokens antigos** (das variaveis de ambiente), que nao sao validos para a nova instancia
-3. Para obter o QR Code, e necessario chamar `/instance/connectionState/{nome_da_instancia}` usando o **token retornado pela criacao**
-
-## Solucao
-
-### 1. Edge Function - Fluxo Corrigido
-
-Atualizar `whatsapp-global-instance-manager/index.ts`:
-
-a) **Endpoint `/init`**: Apos criar a instancia, chamar `/instance/connectionState/{name}` com o novo token para obter o QR Code
-
-b) **Endpoint `/qrcode`**: Usar o token retornado pela criacao (armazenado em memoria ou banco) para obter o QR
-
-c) **Adicionar endpoint auxiliar**: Armazenar temporariamente o token da ultima instancia criada para uso nas proximas chamadas
-
-### 2. Redesign do Layout (Igual a Aba Conexao)
-
-A aba de corretores (`ConnectionTab.tsx`) tem um design mais limpo com:
-- Grid de 2 colunas: Status a esquerda, QR Code a direita
-- Card de status sem excesso de botoes
-- QR Code em destaque quando necessario
-
-Aplicar o mesmo design na aba global:
-- Remover o card informativo do topo (muito texto)
-- Simplificar os botoes de acao
-- Mostrar o QR Code de forma mais proeminente
-- Interface mais direta e focada
+Também vou garantir que quando a instância conectar, o status seja atualizado para `connected` na tabela `global_whatsapp_config`.
 
 ---
 
-## Alteracoes Tecnicas
+## Detalhes Técnicos
 
-### Arquivo 1: `supabase/functions/whatsapp-global-instance-manager/index.ts`
-
-```text
-Mudancas:
-1. Armazenar o token e nome da ultima instancia criada em variaveis globais
-2. No /init: Apos criar, chamar /instance/connectionState/{name} com o novo token
-3. No /qrcode: Usar o token armazenado (da ultima instancia criada) em vez dos tokens antigos
-4. Adicionar delay antes de buscar QR (UAZAPI leva ~2s para gerar)
-5. Tentar multiplos endpoints: /instance/connectionState/{name}, /instance/connect
+**Código para buscar token do banco:**
+```typescript
+const getStoredGlobalInstance = async () => {
+  const { data } = await supabase
+    .from("global_whatsapp_config")
+    .select("instance_name, instance_token, status")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .single();
+  return data;
+};
 ```
 
-Fluxo corrigido do /init:
-```
-1. Criar instancia via POST /instance/init (admintoken)
-2. Extrair token retornado
-3. Aguardar 2 segundos
-4. Chamar GET /instance/connectionState/{name} com novo token
-5. Retornar QR Code
-```
-
-### Arquivo 2: `src/hooks/use-whatsapp-global-instance.ts`
-
-```text
-Mudancas:
-1. Guardar o token retornado pela criacao
-2. Passar o token nas chamadas subsequentes de /qrcode
-3. Melhorar tratamento de erros
-```
-
-### Arquivo 3: `src/components/whatsapp/GlobalConnectionTab.tsx`
-
-```text
-Mudancas (redesign igual ConnectionTab):
-1. Remover card azul informativo do topo
-2. Simplificar para grid 2 colunas: Status | QR Code
-3. Mover botoes para dentro do card de status
-4. Card de QR mais limpo e em destaque
-5. Remover card "Sobre a Instância Global" (informacao excessiva)
-```
-
-Layout final:
-```
-+--------------------------------+--------------------------------+
-|  Status da Conexão Global      |  QR Code                       |
-|  ─────────────────────────     |  ─────────────────────────     |
-|  [Status Badge]                |  [Imagem QR Code]              |
-|  Instancia: enove_global_xxx   |                                |
-|  Ultima verificacao: 2min      |  Escaneie com WhatsApp         |
-|                                |                                |
-|  [Atualizar] [Gerar QR]        |  [Atualizar QR Code]           |
-|  [Limpar Sessao]               |                                |
-+--------------------------------+--------------------------------+
+**Lógica de fallback:**
+```typescript
+const storedInstance = await getStoredGlobalInstance();
+const token = storedInstance?.instance_token || Deno.env.get("UAZAPI_TOKEN");
+const baseUrl = storedInstance 
+  ? `${Deno.env.get("UAZAPI_INSTANCE_URL")?.replace(/\/[^\/]+$/, '')}/${storedInstance.instance_name}`
+  : Deno.env.get("UAZAPI_INSTANCE_URL");
 ```
 
 ---
 
 ## Resultado Esperado
 
-Apos as alteracoes:
-
-1. Ao clicar em "Criar Nova Instancia", o sistema criara a instancia E retornara o QR Code automaticamente
-2. Interface mais limpa e consistente com a aba de corretores
-3. Fluxo simplificado: menos cliques para conectar
-4. Tokens gerenciados corretamente entre criacao e obtencao de QR
+Após a implementação:
+- Notificações usarão o token correto do banco de dados
+- O sistema funcionará mesmo após reconexões/novos QR Codes
+- Fallback para variáveis de ambiente mantém compatibilidade
 
