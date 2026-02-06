@@ -2,10 +2,10 @@
  * Edge Function: notify-new-lead
  * 
  * Envia notificação de novo lead para o corretor via WhatsApp usando a instância global.
- * Agora busca o token do banco de dados (global_whatsapp_config) para persistência.
+ * Busca o token do banco de dados (global_whatsapp_config) para persistência.
  * 
  * Documentação UAZAPI v2:
- * - Endpoint: POST /send/text
+ * - Endpoint: POST /{instance_name}/send/text
  * - Auth: Header "token" com o token da instância
  * - Payload: { number: "5511999999999", text: "mensagem" }
  */
@@ -17,34 +17,33 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface GlobalWhatsAppConfig {
-  instance_name: string;
-  instance_token: string;
-  status: string | null;
-}
-
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
-  try {
-    // Initialize Supabase client first (needed for fetching stored config)
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
+  // Initialize Supabase client
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+  );
 
+  // Variables for logging
+  let leadId: string | null = null;
+  let brokerIdForLog: string | null = null;
+  let recipientName = "Enove";
+
+  try {
     // Fetch stored global instance from database
     const { data: storedInstance, error: fetchError } = await supabase
       .from("global_whatsapp_config")
       .select("instance_name, instance_token, status")
       .order("created_at", { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
-    if (fetchError && fetchError.code !== "PGRST116") {
+    if (fetchError) {
       console.warn("⚠️ Erro ao buscar configuração do banco:", fetchError.message);
     }
 
@@ -55,9 +54,18 @@ Deno.serve(async (req) => {
       hasToken: !!storedInstance?.instance_token,
     });
 
-    // Determine instance URL and token
-    // Priority: Database > Environment Variables
-    const baseApiUrl = Deno.env.get("UAZAPI_INSTANCE_URL")?.replace(/\/[^\/]+\/?$/, "") || "";
+    // Get base URL from environment (e.g., "https://enove.uazapi.com" or "https://enove.uazapi.com/old_instance")
+    const envInstanceUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+    
+    // Extract just the origin (protocol + host) from the URL
+    let baseApiUrl: string;
+    try {
+      baseApiUrl = new URL(envInstanceUrl).origin;
+    } catch {
+      // If URL parsing fails, try to extract manually
+      baseApiUrl = envInstanceUrl.replace(/\/[^\/]+\/?$/, "");
+    }
+
     let instanceUrl: string;
     let instanceToken: string;
 
@@ -68,7 +76,7 @@ Deno.serve(async (req) => {
       console.log("✅ Usando token persistido do banco de dados");
     } else {
       // Fallback to environment variables
-      instanceUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+      instanceUrl = envInstanceUrl;
       instanceToken = Deno.env.get("UAZAPI_TOKEN") || "";
       console.log("⚠️ Fallback para variáveis de ambiente");
     }
@@ -76,7 +84,8 @@ Deno.serve(async (req) => {
     const fallbackPhone = Deno.env.get("ENOVE_WHATSAPP");
 
     console.log("🔧 Configuração final:", {
-      instanceUrl: instanceUrl ? instanceUrl.substring(0, 50) + "..." : null,
+      baseApiUrl,
+      instanceUrl: instanceUrl ? instanceUrl.substring(0, 60) + "..." : null,
       hasInstanceToken: !!instanceToken,
       tokenPreview: instanceToken ? instanceToken.substring(0, 10) + "..." : null,
       hasFallbackPhone: !!fallbackPhone,
@@ -91,13 +100,17 @@ Deno.serve(async (req) => {
     }
 
     // Parse request body
-    const { leadId, leadName, leadWhatsapp, brokerId, source } = await req.json();
+    const body = await req.json();
+    leadId = body.leadId;
+    const leadName = body.leadName;
+    const leadWhatsapp = body.leadWhatsapp;
+    const brokerId = body.brokerId;
+    const source = body.source;
+    
     console.log("📥 Notificação recebida:", { leadId, leadName, leadWhatsapp, brokerId, source });
 
     // Determine recipient
     let recipientPhone = fallbackPhone;
-    let recipientName = "Enove";
-    let brokerIdForLog: string | null = null;
 
     if (brokerId) {
       const { data: broker } = await supabase
@@ -116,6 +129,18 @@ Deno.serve(async (req) => {
 
     if (!recipientPhone) {
       console.error("❌ Nenhum telefone disponível para notificação");
+      
+      // Log the failure
+      if (leadId && !leadId.startsWith("test-")) {
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          broker_id: brokerIdForLog,
+          interaction_type: "notification",
+          channel: "whatsapp",
+          notes: `❌ Falha: Nenhum telefone disponível para notificação`,
+        });
+      }
+      
       return new Response(
         JSON.stringify({ success: false, error: "Nenhum telefone disponível" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -135,7 +160,7 @@ Deno.serve(async (req) => {
 
 Entre em contato o mais rápido possível!`;
 
-    // Build API URL - UAZAPI v2 format
+    // Build API URL - UAZAPI v2 format: /{instance_name}/send/text
     const apiUrl = `${instanceUrl.replace(/\/$/, "")}/send/text`;
 
     console.log(`🌐 Chamando UAZAPI:`, {
@@ -144,8 +169,6 @@ Entre em contato o mais rápido possível!`;
     });
 
     // Send message via UAZAPI v2
-    // Documentação: POST /send/text com header "token"
-    // Payload: { number, text }
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -174,7 +197,7 @@ Entre em contato o mais rápido possível!`;
 
     // Log interaction (skip for test leads)
     if (leadId && !leadId.startsWith("test-")) {
-      await supabase.from("lead_interactions").insert({
+      const { error: insertError } = await supabase.from("lead_interactions").insert({
         lead_id: leadId,
         broker_id: brokerIdForLog,
         interaction_type: "notification",
@@ -183,6 +206,12 @@ Entre em contato o mais rápido possível!`;
           ? `✅ Notificação enviada para ${recipientName}`
           : `❌ Falha ao enviar: ${JSON.stringify(responseData.error || response.statusText)}`,
       });
+      
+      if (insertError) {
+        console.error("❌ Erro ao registrar interação:", insertError);
+      } else {
+        console.log("✅ Interação registrada com sucesso");
+      }
     }
 
     if (!isSuccess) {
@@ -215,6 +244,23 @@ Entre em contato o mais rápido possível!`;
 
   } catch (error) {
     console.error("❌ Erro na função:", error);
+    
+    // Try to log the error even when the function crashes
+    if (leadId && !leadId.startsWith("test-")) {
+      try {
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          broker_id: brokerIdForLog,
+          interaction_type: "notification",
+          channel: "whatsapp",
+          notes: `❌ Erro no sistema: ${String(error).substring(0, 200)}`,
+        });
+        console.log("✅ Erro registrado no histórico do lead");
+      } catch (logError) {
+        console.error("❌ Falha ao registrar erro:", logError);
+      }
+    }
+    
     return new Response(
       JSON.stringify({ success: false, error: String(error) }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
