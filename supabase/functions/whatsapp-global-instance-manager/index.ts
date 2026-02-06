@@ -2,6 +2,7 @@
  * Edge Function: whatsapp-global-instance-manager
  * 
  * Gerencia a instância global do WhatsApp (Enove) para notificações do sistema.
+ * Persiste credenciais no banco de dados para sobreviver a restarts da função.
  * 
  * Documentação UAZAPI:
  * - GET /instance/status: Verifica status da conexão
@@ -12,6 +13,7 @@
  */
 
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,8 +31,119 @@ interface Config {
   instanceName: string;
 }
 
-// Store last created instance info for subsequent calls
-let lastCreatedInstance: { name: string; token: string } | null = null;
+interface StoredInstance {
+  id: string;
+  instance_name: string;
+  instance_token: string;
+  phone_number: string | null;
+  status: string;
+}
+
+// Get Supabase client with service role for DB operations
+const getSupabaseClient = () => {
+  const supabaseUrl = Deno.env.get("SUPABASE_URL");
+  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  
+  if (!supabaseUrl || !supabaseServiceKey) {
+    console.error("❌ SUPABASE_URL ou SUPABASE_SERVICE_ROLE_KEY não configurados");
+    return null;
+  }
+  
+  return createClient(supabaseUrl, supabaseServiceKey);
+};
+
+// Get stored instance from database
+const getStoredInstance = async (): Promise<StoredInstance | null> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return null;
+  
+  try {
+    const { data, error } = await supabase
+      .from("global_whatsapp_config")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+    
+    if (error) {
+      if (error.code === "PGRST116") {
+        // No rows found
+        return null;
+      }
+      console.error("❌ Erro ao buscar instância do banco:", error);
+      return null;
+    }
+    
+    return data as StoredInstance;
+  } catch (err) {
+    console.error("❌ Erro ao buscar instância:", err);
+    return null;
+  }
+};
+
+// Save instance to database
+const saveInstance = async (instanceName: string, instanceToken: string, phoneNumber?: string): Promise<boolean> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return false;
+  
+  try {
+    // First, delete any existing config
+    await supabase.from("global_whatsapp_config").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    
+    // Insert new config
+    const { error } = await supabase
+      .from("global_whatsapp_config")
+      .insert({
+        instance_name: instanceName,
+        instance_token: instanceToken,
+        phone_number: phoneNumber || null,
+        status: "disconnected",
+      });
+    
+    if (error) {
+      console.error("❌ Erro ao salvar instância:", error);
+      return false;
+    }
+    
+    console.log(`✅ Instância salva no banco: ${instanceName}`);
+    return true;
+  } catch (err) {
+    console.error("❌ Erro ao salvar instância:", err);
+    return false;
+  }
+};
+
+// Update instance status in database
+const updateInstanceStatus = async (status: string, phoneNumber?: string): Promise<void> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  
+  try {
+    const updateData: Record<string, unknown> = { status };
+    if (phoneNumber) updateData.phone_number = phoneNumber;
+    
+    await supabase
+      .from("global_whatsapp_config")
+      .update(updateData)
+      .order("created_at", { ascending: false })
+      .limit(1);
+  } catch (err) {
+    console.error("❌ Erro ao atualizar status:", err);
+  }
+};
+
+// Clear instance from database
+const clearStoredInstance = async (): Promise<void> => {
+  const supabase = getSupabaseClient();
+  if (!supabase) return;
+  
+  try {
+    await supabase.from("global_whatsapp_config").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    console.log("🧹 Instância removida do banco");
+  } catch (err) {
+    console.error("❌ Erro ao limpar instância:", err);
+  }
+};
 
 // Get configuration from environment
 const getConfig = (): Config | null => {
@@ -61,6 +174,32 @@ const getConfig = (): Config | null => {
     instanceToken: instanceToken || null,
     instanceName 
   };
+};
+
+// Make UAZAPI request with specific token
+const makeRequestWithToken = async (
+  baseUrl: string,
+  endpoint: string,
+  token: string,
+  method: string = "GET",
+  body?: unknown
+): Promise<Response> => {
+  const url = `${baseUrl}${endpoint}`;
+  console.log(`🌐 ${method} ${url}`);
+  
+  const options: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "token": token,
+    },
+  };
+
+  if (body && method !== "GET") {
+    options.body = JSON.stringify(body);
+  }
+
+  return await fetch(url, options);
 };
 
 // Make UAZAPI request with authentication fallback
@@ -142,31 +281,83 @@ app.get("/status", async (c) => {
       }, 200, corsHeaders);
     }
 
-    // If we have a recently created instance, use its token for status check
-    let response: Response;
+    // First, check if we have a stored instance in the database
+    const storedInstance = await getStoredInstance();
     
-    if (lastCreatedInstance) {
-      console.log(`🔍 Verificando status da instância criada: ${lastCreatedInstance.name}`);
+    if (storedInstance) {
+      console.log(`🔍 Verificando status da instância salva: ${storedInstance.instance_name}`);
       
       try {
-        response = await fetch(`${config.baseUrl}/instance/status`, {
-          headers: {
-            "Content-Type": "application/json",
-            "token": lastCreatedInstance.token,
-          },
-        });
+        const response = await makeRequestWithToken(
+          config.baseUrl,
+          "/instance/status",
+          storedInstance.instance_token
+        );
         
-        if (response.status === 401) {
-          console.log("⚠️ Token armazenado inválido, tentando com tokens de ambiente...");
-          response = await makeRequest("/instance/status");
+        const responseText = await response.text();
+        console.log(`📨 Status response (${response.status}):`, responseText);
+
+        if (response.ok) {
+          let data: Record<string, unknown> = {};
+          try {
+            data = JSON.parse(responseText);
+          } catch {
+            // Continue
+          }
+
+          // Extract status
+          const instance = data.instance as Record<string, unknown> | undefined;
+          const statusObj = data.status as Record<string, unknown> | undefined;
+          
+          let connectionStatus = "disconnected";
+          let phoneNumber: string | null = storedInstance.phone_number;
+          let profileName: string | null = null;
+          
+          if (instance) {
+            const rawStatus = String(instance.status || "").toLowerCase();
+            if (rawStatus === "connected" || rawStatus === "open" || rawStatus === "online") {
+              connectionStatus = "connected";
+            } else if (rawStatus === "connecting") {
+              connectionStatus = "connecting";
+            }
+            phoneNumber = instance.phone as string || phoneNumber;
+            profileName = instance.profileName as string || null;
+          }
+          
+          if (statusObj?.connected === true || statusObj?.loggedIn === true) {
+            connectionStatus = "connected";
+          }
+
+          // Check if QR code is present (means we're waiting for scan)
+          if (instance?.qrcode || data.qrcode) {
+            connectionStatus = "qr_pending";
+          }
+
+          // Update status in DB
+          await updateInstanceStatus(connectionStatus, phoneNumber || undefined);
+
+          return c.json({
+            status: connectionStatus,
+            instanceName: storedInstance.instance_name,
+            phoneNumber,
+            profileName,
+            lastSeenAt: new Date().toISOString(),
+          }, 200, corsHeaders);
         }
-      } catch {
-        response = await makeRequest("/instance/status");
+        
+        // If 401, token might be invalid - clear stored instance
+        if (response.status === 401) {
+          console.log("⚠️ Token armazenado inválido, limpando...");
+          await clearStoredInstance();
+        }
+      } catch (err) {
+        console.error("❌ Erro ao verificar instância salva:", err);
       }
-    } else {
-      response = await makeRequest("/instance/status");
     }
-    
+
+    // Fallback: try with environment tokens
+    console.log("🔄 Tentando com tokens de ambiente...");
+    const response = await makeRequest("/instance/status");
     const responseText = await response.text();
     
     console.log(`📨 Status response (${response.status}):`, responseText);
@@ -176,14 +367,14 @@ app.get("/status", async (c) => {
       if (response.status === 401 || response.status === 404) {
         return c.json({ 
           status: "disconnected",
-          instanceName: lastCreatedInstance?.name || config.instanceName,
+          instanceName: config.instanceName,
           needsInit: true,
           error: "Instância não encontrada ou token inválido - crie uma nova instância"
         }, 200, corsHeaders);
       }
       return c.json({ 
         status: "disconnected",
-        instanceName: lastCreatedInstance?.name || config.instanceName,
+        instanceName: config.instanceName,
         error: `UAZAPI retornou ${response.status}`
       }, 200, corsHeaders);
     }
@@ -194,7 +385,7 @@ app.get("/status", async (c) => {
     } catch {
       return c.json({ 
         status: "disconnected",
-        instanceName: lastCreatedInstance?.name || config.instanceName,
+        instanceName: config.instanceName,
         error: "Resposta inválida da UAZAPI"
       }, 200, corsHeaders);
     }
@@ -229,7 +420,7 @@ app.get("/status", async (c) => {
 
     return c.json({
       status: connectionStatus,
-      instanceName: lastCreatedInstance?.name || config.instanceName,
+      instanceName: config.instanceName,
       phoneNumber,
       profileName,
       lastSeenAt: new Date().toISOString(),
@@ -308,7 +499,8 @@ app.post("/init", async (c) => {
                        (createData.instance as Record<string, unknown>)?.token as string || 
                        config.adminToken;
       
-      lastCreatedInstance = { name: instanceName, token: newToken };
+      // Save to database
+      await saveInstance(instanceName, newToken);
 
       return c.json({
         success: true,
@@ -333,8 +525,8 @@ app.post("/init", async (c) => {
     
     const returnedName = instanceData?.name as string || instanceName;
     
-    // Store for subsequent calls
-    lastCreatedInstance = { name: returnedName, token: newToken };
+    // Save to database for persistence
+    await saveInstance(returnedName, newToken);
     console.log(`✅ Instância criada: ${returnedName}, token: ${newToken.substring(0, 8)}...`);
 
     // Wait for UAZAPI to generate QR
@@ -354,13 +546,7 @@ app.post("/init", async (c) => {
     for (const endpoint of qrEndpoints) {
       try {
         console.log(`🔍 Tentando obter QR via: ${endpoint}`);
-        const qrResponse = await fetch(`${config.baseUrl}${endpoint}`, {
-          method: endpoint.includes("connect") ? "POST" : "GET",
-          headers: {
-            "Content-Type": "application/json",
-            "token": newToken,
-          },
-        });
+        const qrResponse = await makeRequestWithToken(config.baseUrl, endpoint, newToken, endpoint.includes("connect") ? "POST" : "GET");
 
         const qrText = await qrResponse.text();
         console.log(`📨 QR response (${qrResponse.status}):`, qrText.substring(0, 200));
@@ -411,25 +597,26 @@ app.get("/qrcode", async (c) => {
       return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
 
-    // If we have a recently created instance, use its token
-    if (lastCreatedInstance) {
-      console.log(`🔄 Usando token da instância criada: ${lastCreatedInstance.name}`);
+    // Check for stored instance in database
+    const storedInstance = await getStoredInstance();
+    
+    if (storedInstance) {
+      console.log(`🔄 Usando token salvo: ${storedInstance.instance_name}`);
       
       const qrEndpoints = [
-        `/instance/connectionState/${lastCreatedInstance.name}`,
+        `/instance/connectionState/${storedInstance.instance_name}`,
         `/instance/connect`,
       ];
 
       for (const endpoint of qrEndpoints) {
         try {
           console.log(`🔍 Buscando QR via: ${endpoint}`);
-          const qrResponse = await fetch(`${config.baseUrl}${endpoint}`, {
-            method: endpoint.includes("connect") ? "POST" : "GET",
-            headers: {
-              "Content-Type": "application/json",
-              "token": lastCreatedInstance.token,
-            },
-          });
+          const qrResponse = await makeRequestWithToken(
+            config.baseUrl,
+            endpoint,
+            storedInstance.instance_token,
+            endpoint.includes("connect") ? "POST" : "GET"
+          );
 
           const qrText = await qrResponse.text();
           console.log(`📨 QR response (${qrResponse.status}):`, qrText.substring(0, 200));
@@ -444,11 +631,18 @@ app.get("/qrcode", async (c) => {
                              null;
               
               if (qrCode) {
-                return c.json({ qrCode, instanceName: lastCreatedInstance.name }, 200, corsHeaders);
+                return c.json({ qrCode, instanceName: storedInstance.instance_name }, 200, corsHeaders);
               }
             } catch {
               // Try next endpoint
             }
+          }
+          
+          // If 401, token might be invalid
+          if (qrResponse.status === 401) {
+            console.log("⚠️ Token salvo inválido, limpando...");
+            await clearStoredInstance();
+            break;
           }
         } catch (err) {
           console.error(`❌ Erro ao buscar QR via ${endpoint}:`, err);
@@ -506,18 +700,17 @@ app.get("/qrcode", async (c) => {
       
       const returnedName = instanceData?.name as string || instanceName;
       
-      // Store for subsequent calls
-      lastCreatedInstance = { name: returnedName, token: newToken };
+      // Save to database
+      await saveInstance(returnedName, newToken);
 
       // Wait and fetch QR
       await new Promise(resolve => setTimeout(resolve, 2000));
       
-      const qrResponse = await fetch(`${config.baseUrl}/instance/connectionState/${returnedName}`, {
-        headers: {
-          "Content-Type": "application/json",
-          "token": newToken,
-        },
-      });
+      const qrResponse = await makeRequestWithToken(
+        config.baseUrl,
+        `/instance/connectionState/${returnedName}`,
+        newToken
+      );
       
       const qrText = await qrResponse.text();
       console.log(`📨 QR after init (${qrResponse.status}):`, qrText.substring(0, 200));
@@ -591,13 +784,26 @@ app.post("/logout", async (c) => {
       return c.json({ error: "Instância global não configurada" }, 500, corsHeaders);
     }
 
-    const response = await makeRequest("/instance/disconnect", "POST");
-    const responseText = await response.text();
+    // Get stored instance to use correct token
+    const storedInstance = await getStoredInstance();
     
+    let response: Response;
+    if (storedInstance) {
+      response = await makeRequestWithToken(
+        config.baseUrl,
+        "/instance/disconnect",
+        storedInstance.instance_token,
+        "POST"
+      );
+    } else {
+      response = await makeRequest("/instance/disconnect", "POST");
+    }
+    
+    const responseText = await response.text();
     console.log(`📨 Disconnect response (${response.status}):`, responseText);
 
-    // Clear stored instance
-    lastCreatedInstance = null;
+    // Clear stored instance from database
+    await clearStoredInstance();
 
     if (!response.ok) {
       return c.json({ 
@@ -628,15 +834,22 @@ app.post("/restart", async (c) => {
 
     console.log("🔄 Reiniciando instância...");
     
-    await makeRequest("/instance/disconnect", "POST");
+    // Get stored instance
+    const storedInstance = await getStoredInstance();
     
-    // Wait a bit before reconnecting
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    const connectResponse = await makeRequest("/instance/connect", "POST");
-    const connectText = await connectResponse.text();
-    
-    console.log(`📨 Reconnect response (${connectResponse.status}):`, connectText);
+    if (storedInstance) {
+      await makeRequestWithToken(config.baseUrl, "/instance/disconnect", storedInstance.instance_token, "POST");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const connectResponse = await makeRequestWithToken(config.baseUrl, "/instance/connect", storedInstance.instance_token, "POST");
+      const connectText = await connectResponse.text();
+      console.log(`📨 Reconnect response (${connectResponse.status}):`, connectText);
+    } else {
+      await makeRequest("/instance/disconnect", "POST");
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      const connectResponse = await makeRequest("/instance/connect", "POST");
+      const connectText = await connectResponse.text();
+      console.log(`📨 Reconnect response (${connectResponse.status}):`, connectText);
+    }
 
     return c.json({ 
       success: true, 
@@ -661,13 +874,21 @@ app.post("/clear-session", async (c) => {
 
     console.log("🧹 Limpando sessão da instância global...");
     
-    const response = await makeRequest("/instance/disconnect", "POST");
-    const responseText = await response.text();
+    // Get stored instance
+    const storedInstance = await getStoredInstance();
     
-    console.log(`📨 Disconnect response (${response.status}):`, responseText);
+    if (storedInstance) {
+      const response = await makeRequestWithToken(config.baseUrl, "/instance/disconnect", storedInstance.instance_token, "POST");
+      const responseText = await response.text();
+      console.log(`📨 Disconnect response (${response.status}):`, responseText);
+    } else {
+      const response = await makeRequest("/instance/disconnect", "POST");
+      const responseText = await response.text();
+      console.log(`📨 Disconnect response (${response.status}):`, responseText);
+    }
 
-    // Clear stored instance
-    lastCreatedInstance = null;
+    // Clear stored instance from database
+    await clearStoredInstance();
 
     // Even if disconnect fails (already disconnected), we consider it a success
     return c.json({ 

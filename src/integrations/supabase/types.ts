@@ -309,6 +309,36 @@ export type Database = {
         }
         Relationships: []
       }
+      global_whatsapp_config: {
+        Row: {
+          created_at: string
+          id: string
+          instance_name: string
+          instance_token: string
+          phone_number: string | null
+          status: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_name: string
+          instance_token: string
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_name?: string
+          instance_token?: string
+          phone_number?: string | null
+          status?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lead_attribution: {
         Row: {
           created_at: string
