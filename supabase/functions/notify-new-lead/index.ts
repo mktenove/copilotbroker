@@ -2,6 +2,7 @@
  * Edge Function: notify-new-lead
  * 
  * Envia notificação de novo lead para o corretor via WhatsApp usando a instância global.
+ * Agora busca o token do banco de dados (global_whatsapp_config) para persistência.
  * 
  * Documentação UAZAPI v2:
  * - Endpoint: POST /send/text
@@ -16,6 +17,12 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+interface GlobalWhatsAppConfig {
+  instance_name: string;
+  instance_token: string;
+  status: string | null;
+}
+
 Deno.serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -23,20 +30,60 @@ Deno.serve(async (req) => {
   }
 
   try {
-    // Configuração da instância global
-    const instanceUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
-    const instanceToken = Deno.env.get("UAZAPI_TOKEN");
+    // Initialize Supabase client first (needed for fetching stored config)
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    // Fetch stored global instance from database
+    const { data: storedInstance, error: fetchError } = await supabase
+      .from("global_whatsapp_config")
+      .select("instance_name, instance_token, status")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError && fetchError.code !== "PGRST116") {
+      console.warn("⚠️ Erro ao buscar configuração do banco:", fetchError.message);
+    }
+
+    console.log("🔧 Configuração encontrada no banco:", {
+      hasStoredInstance: !!storedInstance,
+      instanceName: storedInstance?.instance_name || null,
+      status: storedInstance?.status || null,
+      hasToken: !!storedInstance?.instance_token,
+    });
+
+    // Determine instance URL and token
+    // Priority: Database > Environment Variables
+    const baseApiUrl = Deno.env.get("UAZAPI_INSTANCE_URL")?.replace(/\/[^\/]+\/?$/, "") || "";
+    let instanceUrl: string;
+    let instanceToken: string;
+
+    if (storedInstance?.instance_token && storedInstance?.instance_name) {
+      // Use stored configuration from database
+      instanceUrl = `${baseApiUrl}/${storedInstance.instance_name}`;
+      instanceToken = storedInstance.instance_token;
+      console.log("✅ Usando token persistido do banco de dados");
+    } else {
+      // Fallback to environment variables
+      instanceUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+      instanceToken = Deno.env.get("UAZAPI_TOKEN") || "";
+      console.log("⚠️ Fallback para variáveis de ambiente");
+    }
+
     const fallbackPhone = Deno.env.get("ENOVE_WHATSAPP");
 
-    console.log("🔧 Configuração:", {
-      hasInstanceUrl: !!instanceUrl,
+    console.log("🔧 Configuração final:", {
+      instanceUrl: instanceUrl ? instanceUrl.substring(0, 50) + "..." : null,
       hasInstanceToken: !!instanceToken,
+      tokenPreview: instanceToken ? instanceToken.substring(0, 10) + "..." : null,
       hasFallbackPhone: !!fallbackPhone,
-      instanceUrlPreview: instanceUrl ? instanceUrl.substring(0, 50) + "..." : null,
     });
 
     if (!instanceUrl || !instanceToken) {
-      console.error("❌ UAZAPI não configurado - UAZAPI_INSTANCE_URL ou UAZAPI_TOKEN ausente");
+      console.error("❌ UAZAPI não configurado - URL ou Token ausente");
       return new Response(
         JSON.stringify({ success: false, error: "UAZAPI não configurado" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -46,12 +93,6 @@ Deno.serve(async (req) => {
     // Parse request body
     const { leadId, leadName, leadWhatsapp, brokerId, source } = await req.json();
     console.log("📥 Notificação recebida:", { leadId, leadName, leadWhatsapp, brokerId, source });
-
-    // Initialize Supabase client
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-    );
 
     // Determine recipient
     let recipientPhone = fallbackPhone;
@@ -95,16 +136,11 @@ Deno.serve(async (req) => {
 Entre em contato o mais rápido possível!`;
 
     // Build API URL - UAZAPI v2 format
-    // A URL base deve ser algo como: https://enove.uazapi.com
-    // O endpoint é: POST /send/text
-    const baseUrl = instanceUrl.replace(/\/$/, "");
-    const apiUrl = `${baseUrl}/send/text`;
+    const apiUrl = `${instanceUrl.replace(/\/$/, "")}/send/text`;
 
     console.log(`🌐 Chamando UAZAPI:`, {
       url: apiUrl,
       method: "POST",
-      hasToken: !!instanceToken,
-      tokenPreview: instanceToken ? instanceToken.substring(0, 10) + "..." : null,
     });
 
     // Send message via UAZAPI v2
@@ -171,7 +207,8 @@ Entre em contato o mais rápido possível!`;
         success: true, 
         recipient: recipientName, 
         phone: cleanPhone,
-        messageId: responseData.id || responseData.messageid
+        messageId: responseData.id || responseData.messageid,
+        source: storedInstance ? "database" : "env_fallback"
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
