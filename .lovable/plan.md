@@ -1,85 +1,50 @@
 
 
-# Plano: Atualizar Notificações para Usar Token Persistido
+# Corrigir Edge Function da Conexao Global
 
-## Problema Identificado
+## Problema Raiz
 
-A função de notificação `notify-new-lead` ainda usa tokens das variáveis de ambiente (`UAZAPI_TOKEN`), que estão desatualizados. A nova instância que você conectou gerou um novo token (`984cd567-f34b-4528-a5bf-7fb70dd4f869`) que está salvo no banco, mas a função não está consultando essa tabela.
+A edge function `whatsapp-global-instance-manager` **nao esta deployada** no servidor. O teste direto retorna `404 - Requested function was not found`, o que causa todos os erros "Failed to fetch" e "Erro ao criar instancia" na interface.
 
-**Resultado:** Erro 405 (Method Not Allowed) ao tentar enviar notificações.
+## Evidencias
 
-## Solução
+- Teste direto via curl: `{"code":"NOT_FOUND","message":"Requested function was not found"}`
+- Zero logs de execucao no analytics (a funcao nunca rodou)
+- Console do frontend mostra "Failed to fetch" a cada 15 segundos (polling)
+- A tabela `global_whatsapp_config` tem um registro salvo mas com status "disconnected"
 
-Atualizar a edge function `notify-new-lead` para buscar o token da tabela `global_whatsapp_config` antes de enviar mensagens, usando a mesma lógica implementada no `whatsapp-global-instance-manager`.
+## Solucao
 
-## Alterações Necessárias
+### Passo 1: Fazer deploy da edge function
 
-### 1. Atualizar `supabase/functions/notify-new-lead/index.ts`
+Deployar a funcao `whatsapp-global-instance-manager` que ja existe no codigo mas nao esta no servidor.
 
-```text
-Adicionar lógica para:
-1. Buscar instância ativa da tabela global_whatsapp_config
-2. Usar o instance_token e instance_name do banco
-3. Fallback para variáveis de ambiente se não houver registro no banco
-4. Construir URL dinâmica baseada no nome da instância
-```
+### Passo 2: Testar a funcao apos deploy
 
-**Fluxo atualizado:**
+Executar uma chamada GET no endpoint `/status` para verificar se a funcao responde corretamente e consegue se comunicar com a UAZAPI usando o token salvo no banco (`984cd567-f34b-4528-a5bf-7fb70dd4f869`).
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                  notify-new-lead                             │
-├─────────────────────────────────────────────────────────────┤
-│  1. Receber dados do lead (nome, whatsapp, broker_id)       │
-│                         ↓                                    │
-│  2. Buscar token em global_whatsapp_config                  │
-│     └─ Se não existir, usar UAZAPI_TOKEN (env)              │
-│                         ↓                                    │
-│  3. Construir URL: UAZAPI_BASE_URL + instance_name          │
-│                         ↓                                    │
-│  4. Enviar mensagem via POST /send/text                     │
-│     └─ Header: token = instance_token do banco              │
-│                         ↓                                    │
-│  5. Registrar resultado em lead_interactions                │
-└─────────────────────────────────────────────────────────────┘
-```
+### Passo 3: Verificar e corrigir possiveis erros no codigo
 
-### 2. Atualizar status da instância no banco
-
-Também vou garantir que quando a instância conectar, o status seja atualizado para `connected` na tabela `global_whatsapp_config`.
-
----
-
-## Detalhes Técnicos
-
-**Código para buscar token do banco:**
-```typescript
-const getStoredGlobalInstance = async () => {
-  const { data } = await supabase
-    .from("global_whatsapp_config")
-    .select("instance_name, instance_token, status")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .single();
-  return data;
-};
-```
-
-**Lógica de fallback:**
-```typescript
-const storedInstance = await getStoredGlobalInstance();
-const token = storedInstance?.instance_token || Deno.env.get("UAZAPI_TOKEN");
-const baseUrl = storedInstance 
-  ? `${Deno.env.get("UAZAPI_INSTANCE_URL")?.replace(/\/[^\/]+$/, '')}/${storedInstance.instance_name}`
-  : Deno.env.get("UAZAPI_INSTANCE_URL");
-```
-
----
+Se apos o deploy a funcao ainda apresentar erros, analisar os logs para identificar problemas como:
+- URL da UAZAPI mal formada
+- Token invalido
+- Erros de importacao do Hono ou Supabase
 
 ## Resultado Esperado
 
-Após a implementação:
-- Notificações usarão o token correto do banco de dados
-- O sistema funcionará mesmo após reconexões/novos QR Codes
-- Fallback para variáveis de ambiente mantém compatibilidade
+- A funcao responde corretamente ao endpoint `/status`
+- A interface "Conexao Global" para de mostrar "Erro ao criar instancia"
+- O status da instancia reflete o estado real da conexao na UAZAPI
+
+## Detalhes Tecnicos
+
+O codigo da funcao usa o framework Hono com basePath `/whatsapp-global-instance-manager` e tem os seguintes endpoints:
+- `GET /status` - Verifica status via token salvo no banco ou fallback para env vars
+- `POST /init` - Cria nova instancia via admintoken
+- `GET /qrcode` - Obtem QR code para conexao
+- `POST /logout` - Desconecta a instancia
+- `POST /restart` - Reinicia a instancia
+- `POST /clear-session` - Limpa sessao e remove do banco
+
+A configuracao em `supabase/config.toml` ja existe com `verify_jwt = false`.
 
