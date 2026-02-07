@@ -488,7 +488,7 @@ export function CsvImportModal({
                   </table>
                 </div>
                 {parseResult.errorCount > 0 && (
-                  <div className="flex items-start gap-2 text-xs text-amber-500 bg-amber-500/10 p-2 rounded-lg">
+                  <div className="flex items-start gap-2 text-xs text-yellow-500 bg-yellow-500/10 p-2 rounded-lg">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                     <span>
                       {parseResult.errorCount} linha(s) com erros serão
