@@ -70,7 +70,6 @@ export function AutoMessageRuleEditor({
       
       setLoadingProjects(true);
       try {
-        // Fetch projects for this broker
         const { data: brokerProjects } = await supabase
           .from("broker_projects")
           .select("project:projects(id, name)")
@@ -84,7 +83,6 @@ export function AutoMessageRuleEditor({
           setProjects(projectsList);
         }
 
-        // Fetch broker name
         const { data: broker } = await supabase
           .from("brokers")
           .select("name")
@@ -92,7 +90,7 @@ export function AutoMessageRuleEditor({
           .single();
         
         if (broker) {
-          setBrokerName(broker.name.split(" ")[0]); // First name only
+          setBrokerName(broker.name.split(" ")[0]);
         }
       } catch (error) {
         console.error("Error fetching data:", error);
@@ -121,7 +119,7 @@ export function AutoMessageRuleEditor({
 
   // Check if project already has a rule (for new rules only)
   const projectHasRule = useMemo(() => {
-    if (editingRule) return false; // Don't check when editing
+    if (editingRule) return false;
     const targetProjectId = projectId === "all" ? null : projectId;
     return rules.some(r => r.project_id === targetProjectId);
   }, [projectId, rules, editingRule]);
@@ -137,9 +135,7 @@ export function AutoMessageRuleEditor({
   }, [messageContent, projectId, projects, brokerName]);
 
   const handleSubmit = async () => {
-    if (!messageContent.trim()) {
-      return;
-    }
+    if (!messageContent.trim()) return;
 
     const data = {
       project_id: projectId === "all" ? null : projectId,
@@ -166,7 +162,7 @@ export function AutoMessageRuleEditor({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="bg-[#1a1a1d] border-[#2a2a2e] w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className="bg-[#1a1a1d] border-[#2a2a2e] w-full sm:max-w-lg overflow-y-auto pb-24 sm:pb-6">
         <SheetHeader className="space-y-1">
           <SheetTitle className="text-white">
             {editingRule ? "Editar Regra" : "Nova Regra de Automação"}
@@ -181,12 +177,12 @@ export function AutoMessageRuleEditor({
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6 mt-6">
+          <div className="space-y-5 sm:space-y-6 mt-6">
             {/* Project Selection */}
             <div className="space-y-2">
               <Label className="text-slate-300">Empreendimento</Label>
               <Select value={projectId} onValueChange={setProjectId}>
-                <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white">
+                <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
                   <SelectValue placeholder="Selecione o empreendimento" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
@@ -234,10 +230,10 @@ export function AutoMessageRuleEditor({
                 value={messageContent}
                 onChange={(e) => setMessageContent(e.target.value)}
                 placeholder="Digite sua mensagem..."
-                className="bg-[#141417] border-[#2a2a2e] text-white min-h-[150px] resize-none"
+                className="bg-[#141417] border-[#2a2a2e] text-white min-h-[120px] sm:min-h-[150px] resize-none"
               />
               
-              {/* Variables */}
+              {/* Variables - larger touch targets on mobile */}
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-xs text-slate-500">Variáveis:</span>
                 {["nome_lead", "nome_corretor", "empreendimento"].map((v) => (
@@ -245,7 +241,7 @@ export function AutoMessageRuleEditor({
                     key={v}
                     type="button"
                     onClick={() => handleInsertVariable(v)}
-                    className="px-2 py-0.5 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors"
+                    className="px-3 py-1.5 sm:px-2 sm:py-0.5 text-xs bg-primary/20 text-primary rounded hover:bg-primary/30 transition-colors min-h-[36px] sm:min-h-0"
                   >
                     {`{${v}}`}
                   </button>
@@ -256,7 +252,7 @@ export function AutoMessageRuleEditor({
             {/* Preview */}
             <div className="space-y-2">
               <Label className="text-slate-300">Preview</Label>
-              <div className="bg-[#075e54] rounded-lg p-4 relative">
+              <div className="bg-[#075e54] rounded-2xl p-4 relative">
                 <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center">
                   <MessageCircle className="w-3.5 h-3.5 text-white" />
                 </div>
@@ -275,20 +271,20 @@ export function AutoMessageRuleEditor({
               </AlertDescription>
             </Alert>
 
-            {/* Actions */}
-            <div className="flex gap-3 pt-4">
+            {/* Actions - sticky on mobile */}
+            <div className="flex gap-3 pt-4 sticky bottom-0 bg-[#1a1a1d] pb-4 -mx-6 px-6 border-t border-[#2a2a2e] z-10 sm:static sm:mx-0 sm:px-0 sm:border-t-0 sm:pb-0">
               <Button
                 variant="outline"
                 onClick={onClose}
                 disabled={isSaving}
-                className="flex-1 border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e]"
+                className="flex-1 border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e] min-h-[44px] sm:min-h-0"
               >
                 Cancelar
               </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={isSaving || !messageContent.trim() || projectHasRule}
-                className="flex-1"
+                className="flex-1 min-h-[44px] sm:min-h-0"
               >
                 {isSaving ? (
                   <>
