@@ -1,71 +1,71 @@
 
-
-# Correcao do Kanban: Remover `awaiting_docs` do Fluxo de 4 Colunas
+# Padronizacao de Cores: Eliminar Tons Quentes do CRM
 
 ## Problema
 
-O Kanban deve ter apenas 4 colunas (`new` -> `info_sent` -> `docs_received` -> `registered`), mas a logica de avanco de status inclui `awaiting_docs` como etapa intermediaria. Quando um lead avanca de `info_sent`, ele vai para `awaiting_docs` -- um status sem coluna visivel -- e desaparece.
+Varios componentes do painel CRM/Admin ainda usam CSS variables genericas (`bg-popover`, `bg-card`, `border-border`, `bg-background`, `bg-muted`) que no dark mode resolvem para tons quentes/marrom (HSL matiz 20-40). Isso causa inconsistencia visual com o restante do layout que ja usa a paleta neutra fria hardcoded.
 
-Existem **4 leads presos** no status `awaiting_docs` que estao invisiveis:
-- Jonathan
-- Teste (x2)
-- Maicon Jackson
+## Arquivos Afetados e Mudancas
 
-## Solucao
+### 1. `src/components/crm/KanbanBoard.tsx` (3 pontos)
 
-### 1. Migrar leads presos (SQL)
+| Linha | Antes | Depois |
+|---|---|---|
+| 243 | `hover:bg-muted` | `hover:bg-[#2a2a2e]` |
+| 256 | `bg-popover border-border` | `bg-[#1e1e22] border-[#2a2a2e]` |
+| 274 | `bg-popover border-border` | `bg-[#1e1e22] border-[#2a2a2e]` |
 
-Mover os 4 leads com status `awaiting_docs` para `info_sent` para que voltem a aparecer no Kanban.
+### 2. `src/components/crm/InactivationPicker.tsx` (2 pontos)
 
-### 2. Arquivo: `src/components/crm/KanbanBoard.tsx`
+| Linha | Antes | Depois |
+|---|---|---|
+| 92 | `hover:bg-muted/50` | `hover:bg-[#2a2a2e]/50` |
+| 95 | `border-border bg-card` | `border-[#2a2a2e] bg-[#1e1e22]` |
 
-**Linha 140** - Remover `awaiting_docs` dos status validos no drag-and-drop:
-```
-De: ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered', 'inactive']
-Para: ['new', 'info_sent', 'docs_received', 'registered', 'inactive']
-```
+### 3. `src/components/crm/OriginQuickPicker.tsx` (1 ponto)
 
-**Linha 203** - Remover `awaiting_docs` da ordem de avanco:
-```
-De: ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered']
-Para: ['new', 'info_sent', 'docs_received', 'registered']
-```
+| Linha | Antes | Depois |
+|---|---|---|
+| 141 | `bg-background` (DrawerContent) | `bg-[#0f0f12]` |
 
-### 3. Arquivo: `src/components/crm/KanbanCard.tsx`
+### 4. `src/components/admin/CsvImportModal.tsx` (12 pontos)
 
-**Linha 33** - Remover `awaiting_docs` da ordem de status no card:
-```
-De: ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered']
-Para: ['new', 'info_sent', 'docs_received', 'registered']
-```
+- **Linha 327**: DialogContent `bg-card border-border` para `bg-[#1e1e22] border-[#2a2a2e]`
+- **Linha 394**: Drop zone `border-border` para `border-[#2a2a2e]`
+- **Linha 452**: Tabela preview `border border-border` para `border border-[#2a2a2e]`
+- **Linha 454**: `bg-muted/50` para `bg-[#2a2a2e]/50`
+- **Linha 469**: `border-t border-border` para `border-t border-[#2a2a2e]`
+- **Linhas 510, 531, 553**: SelectTrigger `bg-background border-border` para `bg-[#141417] border-[#2a2a2e]`
+- **Linhas 513, 534, 556**: SelectContent `bg-popover border-border` para `bg-[#1e1e22] border-[#2a2a2e]`
 
-**Linha 60** - Remover `awaiting_docs` do mapa de progresso e ajustar percentuais para 4 etapas:
-```
-new: 10 -> 15
-info_sent: 35 -> 40
-docs_received: 80 -> 70
-registered: 100 (sem mudanca)
-```
+### 5. `src/components/admin/BrokerManagement.tsx` (5 pontos)
 
-**Linha 70** - Remover `awaiting_docs` do mapa de cores de progresso (manter so as 4 colunas + inactive).
+- **Linha 420**: Input `bg-background border border-border` para `bg-[#141417] border border-[#2a2a2e]`
+- **Linha 438**: Input email: mesma troca
+- **Linha 460**: Container projetos `border border-border ... bg-background` para `border border-[#2a2a2e] ... bg-[#141417]`
+- **Linha 463**: Label hover `hover:bg-muted` para `hover:bg-[#2a2a2e]`
 
-### 4. Arquivo: `src/components/crm/LeadDetailSheet.tsx`
+### 6. `src/components/admin/LeadsAdvancedFilters.tsx` (2 pontos)
 
-**Linhas 152-158** - O botao "Solicitar Documentos" avanca para `awaiting_docs`. Alterar para avancar para `docs_received` ou remover o avanco automatico (manter apenas como nota/interacao).
+- **Linha 164**: `hover:bg-muted` para `hover:bg-[#2a2a2e]`
+- **Linha 231**: `hover:bg-muted` para `hover:bg-[#2a2a2e]`
 
-**Linhas 395 e 421** - Condicoes que verificam `lead.status === "awaiting_docs"` para exibir o checklist de documentos. Ajustar para funcionar sem esse status.
+### 7. Componentes UI base (DrawerContent e DialogContent) -- SEM ALTERACAO
 
-### 5. Arquivos que mantem `awaiting_docs` (sem alteracao necessaria)
+Os componentes `drawer.tsx`, `dialog.tsx`, `select.tsx` e `popover.tsx` usam CSS variables como padrao, mas como sao compartilhados por todo o app (landing pages tambem), nao devem ser alterados. As correcoes sao feitas inline nos componentes do CRM/Admin que os utilizam.
 
-- `src/types/crm.ts` - O tipo `LeadStatus` e o `STATUS_CONFIG` devem manter `awaiting_docs` pois existe como enum no banco. Nao quebra nada.
-- `src/components/crm/KanbanColumn.tsx` - O `STATUS_SQUARE_COLORS` pode manter a entrada (nunca sera renderizada, mas nao causa erro).
-- `src/components/admin/LeadsAdvancedFilters.tsx` e `AnalyticsDashboard.tsx` - Mantem para filtros e analytics historicos.
-- `src/components/whatsapp/NewCampaignSheet.tsx` - Mantem para campanhas WhatsApp.
+## Paleta de Referencia
+
+| Elemento | Cor |
+|---|---|
+| Fundo pagina | `#0f0f12` |
+| Cards / dropdowns / dialogs | `#1e1e22` |
+| Bordas | `#2a2a2e` |
+| Inputs / fundo profundo | `#141417` |
+| Hover sutil | `#2a2a2e` |
 
 ## Resultado Esperado
 
-- Kanban com 4 colunas: **Novos** | **Info Enviadas** | **Dados Recebidos** | **Cadastrado**
-- Avanco de status pula direto de `info_sent` para `docs_received`
-- Drag-and-drop funciona corretamente entre as 4 colunas
-- Os 4 leads presos voltam a aparecer
-- O checklist de documentos continua funcionando na coluna `docs_received`
+- Todos os dropdowns (Select), dialogs, drawers, inputs e hovers no CRM/Admin usarao a paleta neutra fria
+- Nenhum componente mostrara o fundo cinza quente ao ser aberto
+- Componentes UI base permanecem intactos para nao impactar landing pages
