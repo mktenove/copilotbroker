@@ -1,131 +1,119 @@
 
-
-# Redesign Mobile-First da Aba "Automacao"
+# Redesign Mobile-First da Aba "Fila de Envio"
 
 ## Diagnostico UX/UI Atual
 
 ### Problemas identificados no mobile:
 
-1. **Header congestionado**: O titulo "Automacao de Primeira Mensagem" + subtitulo + botao "Nova Regra" ficam em uma unica linha horizontal que nao cabe em telas pequenas. O botao pode ficar comprimido ou quebrar o layout.
+1. **Header em linha unica**: O titulo "Fila de Envio" e o contador "Proximo envio em: X:XX" dividem a mesma linha horizontal, causando overflow ou texto comprimido em telas < 390px.
 
-2. **Cards de regra com acoes horizontais**: As acoes (Switch + Editar + Excluir) ficam alinhadas horizontalmente ao lado do conteudo, competindo por espaco em telas < 390px. Isso causa truncamento ou overflow.
+2. **Stats grid ocupa espaco excessivo**: Os 4 cards de estatisticas (Na fila, Enviados, Falhas, Respostas) empilham verticalmente no mobile (1 por linha), consumindo quase toda a viewport antes do usuario ver qualquer mensagem da fila.
 
-3. **Badges e status em linha**: As tags de empreendimento + status ativo ficam lado a lado, podendo colidir em telas estreitas.
+3. **Cards de mensagem com layout horizontal apertado**: Cada card tenta alinhar nome + badge + horario + botao de acao em uma unica linha horizontal. Em telas estreitas, os elementos competem por espaco e o botao de cancelar/retry pode ficar difícil de tocar.
 
-4. **Alertas informativos ocupam espaco excessivo**: Os dois alertas (azul e vermelho) no rodape consomem area valiosa no mobile, empurrando o conteudo principal para baixo.
+4. **Sem safe-area para bottom nav**: O conteudo pode ficar escondido atras da barra de navegacao inferior.
 
-5. **Empty state generico**: O estado vazio nao aproveita bem o espaco vertical do mobile.
-
-6. **Editor Sheet nao otimizado**: O SheetContent usa `sm:max-w-lg` mas no mobile ocupa toda a tela sem considerar a safe-area inferior (bottom nav sobrepoe o botao de acao).
+5. **Empty state nao otimizado**: O estado vazio nao aproveita a altura disponivel no mobile.
 
 ---
 
 ## Solucao Proposta
 
-### Filosofia de Design
-- **Mobile-first**: Cada decisao comeca pela experiencia em 390px
-- **Thumb-friendly**: Acoes principais na zona de alcance do polegar
-- **Hierarquia clara**: Informacao mais importante primeiro, detalhes sob demanda
-- **Consistencia**: Manter o dark theme e os padroes visuais ja estabelecidos
+### 1. Header responsivo com countdown em destaque
 
----
+- Mobile: stack vertical -- titulo na primeira linha, countdown abaixo com fundo destacado (pill com bg)
+- Desktop: manter lado a lado
+- O countdown ganha mais destaque visual: um "pill" com fundo escuro e borda, icone de timer pulsante
 
-## Mudancas Detalhadas
+### 2. Stats compactos em linha unica (2x2 grid)
 
-### Arquivo 1: `src/components/whatsapp/AutoMessageTab.tsx`
+- Substituir os 4 cards separados por um grid 2x2 no mobile (`grid-cols-2`) e 4 colunas no desktop (`sm:grid-cols-4`)
+- Cards menores: reduzir padding vertical, manter apenas numero + label
+- Isso reduz o espaco consumido pela metade no mobile
 
-**Header responsivo:**
-- Mobile: titulo em uma linha, subtitulo abaixo, botao "Nova Regra" em largura total abaixo do texto (stack vertical)
-- Desktop: manter layout horizontal atual
-- Usar `flex-col sm:flex-row` para adaptar
+### 3. Cards de mensagem reestruturados
 
-**Cards de regra reestruturados (mobile):**
-- Layout vertical: badge do empreendimento + status no topo
-- Preview da mensagem no meio
-- Meta info (delay) abaixo
-- Linha de acoes separada no rodape do card: Switch a esquerda, botoes "Editar" e "Excluir" a direita (apenas icones no mobile, com texto visivel no desktop)
-- Adicionar gestos visuais: todo o card e clicavel para editar, swipe visual sugerido pelo layout
+**Pendentes (mobile):**
+- Layout vertical dentro do card
+- Linha 1: nome do lead (truncado) + badge de status
+- Linha 2: nome da campanha + horario agendado
+- Linha 3 (separada por borda): botao de cancelar alinhado a direita, com icone + texto "Cancelar" para melhor affordance
 
-**Alertas compactados:**
-- Substituir os 2 alertas separados por um unico bloco colapsavel (Collapsible) com titulo "Como funciona?" e icone de chevron
-- No mobile, iniciar colapsado para economizar espaco
-- No desktop, manter expandido por padrao
+**Historico (mobile):**
+- Layout vertical similar
+- Linha 1: icone de status + nome do lead + badge
+- Linha 2: mensagem de erro (se falhou) ou horario de envio
+- Linha 3: botao retry para mensagens com falha
 
-**Empty state melhorado:**
-- Icone maior e mais expressivo
-- Texto mais curto e direto
-- Botao CTA em destaque com largura total no mobile
+### 4. Secao de historico com limite e "ver mais"
 
-### Arquivo 2: `src/components/whatsapp/AutoMessageRuleEditor.tsx`
+- Manter o slice(0, 20) mas adicionar um indicador visual quando ha mais mensagens
+- Separador visual mais claro entre Pendentes e Historico
 
-**Sheet otimizado para mobile:**
-- Adicionar `pb-24` (padding-bottom) para evitar que a bottom nav sobreponha os botoes de acao
-- Botoes de acao (Cancelar/Salvar) fixos no rodape do sheet com `sticky bottom-0`
-- Melhorar espacamento dos campos do formulario para touch targets de 44px minimo
-- Botoes de variaveis com tamanho maior no mobile (min-h-[36px]) para facilitar o toque
-- Preview do WhatsApp com bordas arredondadas maiores e padding adequado
+### 5. Bottom padding para safe-area
+
+- Adicionar `pb-20` ao container principal para evitar sobreposicao com a bottom nav
 
 ---
 
 ## Detalhes Tecnicos
 
-### AutoMessageTab.tsx - Mudancas especificas:
+### Arquivo: `src/components/whatsapp/QueueTab.tsx`
 
+**Header (linhas 49-55):**
 ```text
-HEADER (linhas 52-69):
-  Antes:  flex items-center justify-between (horizontal sempre)
-  Depois: flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between
-
-BOTAO "Nova Regra" (linhas 65-68):
-  Antes:  Dentro do header, alinhado a direita
-  Depois: w-full sm:w-auto (largura total no mobile)
-
-CARD DE REGRA (linhas 87-158):
-  Antes:  flex items-start justify-between gap-4 (conteudo + acoes lado a lado)
-  Depois: flex flex-col (stack vertical)
-           -> Topo: badge + status
-           -> Meio: preview da mensagem
-           -> Rodape: flex items-center justify-between
-              -> Esquerda: Switch + delay info
-              -> Direita: botoes icone (Pencil, Trash2)
-
-ACOES DO CARD:
-  Antes:  Botoes com texto "Editar" e "Excluir"
-  Depois: Mobile: apenas icones (Pencil w-4 h-4, Trash2 w-4 h-4) com tooltip
-          Desktop: manter texto via hidden sm:inline
-
-ALERTAS (linhas 163-178):
-  Antes:  2 Alerts separados sempre visiveis
-  Depois: Collapsible com trigger "Saiba como funciona"
-          CollapsibleContent contem os 2 alertas
-          Usa estado aberto por padrao no desktop (sm:), fechado no mobile
+Antes:  flex items-center justify-between (tudo horizontal)
+Depois: flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between
+        Countdown em pill: bg-[#1a1a1d] border border-[#2a2a2e] rounded-full px-3 py-1
 ```
 
-### AutoMessageRuleEditor.tsx - Mudancas especificas:
-
+**Stats Grid (linhas 58-83):**
 ```text
-SHEET CONTENT (linha 169):
-  Adicionar: pb-24 md:pb-6 para safe-area da bottom nav
+Antes:  grid gap-4 md:grid-cols-4 (1 coluna no mobile = 4 cards empilhados)
+Depois: grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4
+        Cards com py-3 em vez de py-4 (mais compactos)
+```
 
-BOTOES DE ACAO (linhas 279-304):
-  Antes:  Inline no flow do formulario
-  Depois: sticky bottom-0 bg-[#1a1a1d] pt-4 border-t border-[#2a2a2e]
-          z-10 para ficar acima do scroll
+**Cards pendentes (linhas 104-141):**
+```text
+Antes:  flex items-center gap-4 p-3 (horizontal, tudo em uma linha)
+Depois: flex flex-col p-3 (vertical no mobile)
+        Topo: flex items-center justify-between
+          -> Esquerda: nome do lead (truncado)
+          -> Direita: badge de status
+        Meio: flex items-center justify-between mt-1
+          -> Esquerda: nome da campanha (text-xs)
+          -> Direita: horario (text-xs)
+        Rodape: flex justify-end mt-2 pt-2 border-t border-[#2a2a2e]
+          -> Botao cancelar com texto visivel no mobile
+```
 
-BOTOES DE VARIAVEIS (linhas 241-253):
-  Antes:  px-2 py-0.5 text-xs
-  Depois: px-3 py-1.5 text-xs sm:px-2 sm:py-0.5 (touch targets maiores no mobile)
+**Cards historico (linhas 148-204):**
+```text
+Antes:  flex items-center gap-4 (horizontal)
+Depois: flex flex-col p-3 (vertical no mobile)
+        Topo: flex items-center gap-2
+          -> Icone de status (check/alerta/x)
+          -> Nome do lead (flex-1, truncado)
+          -> Badge de status
+        Meio (condicional): erro ou horario
+        Rodape (condicional): botao retry para falhas
+          -> Botao com texto "Tentar novamente" no mobile
+```
 
-CAMPOS DO FORMULARIO:
-  Textarea min-h: 150px -> 120px no mobile (mais espaco para o resto)
+**Container principal (linha 48):**
+```text
+Antes:  space-y-6
+Depois: space-y-4 sm:space-y-6 pb-20 sm:pb-0
+        (espacamento menor no mobile + safe-area)
 ```
 
 ---
 
 ## Resultado Esperado
 
-- No mobile (390px): layout limpo, vertical, com acoes acessiveis pelo polegar
-- Alertas informativos escondidos por padrao, disponiveis sob demanda
-- Cards de regra compactos com acoes claras na parte inferior
-- Editor Sheet com botoes de salvar sempre visiveis (sticky)
-- No desktop: experiencia mantida sem regressoes visuais
+- No mobile (390px): stats em 2x2 ocupam metade do espaco anterior
+- Header com countdown em pill destacado, facil de ler
+- Cards de mensagem verticais com acoes claras e acessiveis pelo polegar
+- Safe-area para bottom nav -- conteudo nao fica escondido
+- No desktop: layout preservado sem regressoes visuais
