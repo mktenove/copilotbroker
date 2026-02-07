@@ -3,9 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Users, Search, RefreshCw, Building2, ArrowRight, AlertCircle, FileSpreadsheet } from "lucide-react";
+import { Search, RefreshCw, Building2, ArrowRight, AlertCircle, FileSpreadsheet } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Progress } from "@/components/ui/progress";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
 import LeadsTable from "@/components/admin/LeadsTable";
@@ -176,61 +175,55 @@ const BrokerAdmin = () => {
         searchTerm={viewMode === "list" ? searchTerm : undefined}
         onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
       >
-      {/* Compact Projects Summary Card */}
+      {/* Premium Projects Summary Card */}
       {broker && (
         <div 
           onClick={() => navigate("/corretor/empreendimentos")}
           className={cn(
-            "bg-card border rounded-xl p-4 mb-6 cursor-pointer transition-colors group",
+            "bg-gradient-to-r from-card to-card/80 border rounded-xl p-4 mb-6 cursor-pointer transition-all duration-300 group",
             pendingCount > 0 
-              ? "border-yellow-500/50 hover:border-yellow-500" 
-              : "border-border hover:border-primary/50"
+              ? "border-yellow-500/30 hover:border-yellow-500/60" 
+              : "border-border/50 hover:border-primary/30"
           )}
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className={cn(
-                "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                pendingCount > 0 ? "bg-yellow-500/10" : "bg-primary/10"
-              )}>
-                <Building2 className={cn(
-                  "w-5 h-5",
-                  pendingCount > 0 ? "text-yellow-500" : "text-primary"
-                )} />
-              </div>
+              <Building2 className={cn(
+                "w-5 h-5 shrink-0",
+                pendingCount > 0 ? "text-yellow-500/70" : "text-muted-foreground/50"
+              )} />
               <div>
-                <p className="text-sm font-medium text-white">Seus Empreendimentos</p>
+                <p className="text-sm font-medium text-foreground">Seus Empreendimentos</p>
                 {isProjectsLoading ? (
                   <p className="text-xs text-muted-foreground">Carregando...</p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    {brokerProjects.length} de {totalProjects} ativos
+                    <span className="text-foreground font-semibold">{brokerProjects.length}</span> de {totalProjects} ativos
                   </p>
                 )}
               </div>
             </div>
             <ArrowRight className={cn(
-              "w-5 h-5 transition-colors",
+              "w-4 h-4 transition-all duration-300 group-hover:translate-x-1",
               pendingCount > 0 
-                ? "text-yellow-500 group-hover:text-yellow-400" 
-                : "text-muted-foreground group-hover:text-primary"
+                ? "text-yellow-500/60 group-hover:text-yellow-400" 
+                : "text-muted-foreground/40 group-hover:text-primary"
             )} />
           </div>
 
-          {/* Progress Bar */}
+          {/* Custom Ultra-thin Progress Bar */}
           {!isProjectsLoading && totalProjects > 0 && (
-            <Progress 
-              value={(brokerProjects.length / totalProjects) * 100} 
-              className={cn(
-                "h-1.5 mb-2",
-                pendingCount > 0 && "[&>div]:bg-yellow-500"
-              )}
-            />
+            <div className="h-[2px] w-full bg-border/30 rounded-full overflow-hidden mb-2">
+              <div 
+                className="h-full bg-gradient-to-r from-primary via-yellow-400 to-primary rounded-full transition-all duration-500"
+                style={{ width: `${(brokerProjects.length / totalProjects) * 100}%` }}
+              />
+            </div>
           )}
 
           {/* Pending Alert */}
           {!isProjectsLoading && pendingCount > 0 && (
-            <div className="flex items-center gap-2 text-yellow-500 text-xs">
+            <div className="flex items-center gap-2 text-yellow-500/80 text-xs">
               <AlertCircle className="w-3.5 h-3.5" />
               <span>
                 {pendingCount === 1 
@@ -242,29 +235,28 @@ const BrokerAdmin = () => {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Premium Stats Cards */}
       <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
-        <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-muted-foreground">Novos</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{newLeads.length}</p>
-            </div>
-          </div>
+        <div className={cn(
+          "bg-card/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 transition-colors duration-300",
+          newLeads.length > 0 ? "border-primary/20" : "border-border/50"
+        )}>
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/70">
+            Novos Leads
+          </p>
+          <div className="w-8 h-px bg-primary/40 my-2 sm:my-3" />
+          <p className="text-3xl sm:text-4xl font-light text-foreground tracking-tight">
+            {newLeads.length}
+          </p>
         </div>
-        <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs sm:text-sm text-muted-foreground">Total</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">{leads.length}</p>
-            </div>
-          </div>
+        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 sm:p-6">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/70">
+            Total de Leads
+          </p>
+          <div className="w-8 h-px bg-primary/40 my-2 sm:my-3" />
+          <p className="text-3xl sm:text-4xl font-light text-foreground tracking-tight">
+            {leads.length}
+          </p>
         </div>
       </div>
 
