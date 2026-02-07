@@ -45,8 +45,9 @@ const AppHead = () => {
       {/* Theme Color */}
       <meta name="theme-color" content={themeColor} />
       
-      {/* Apple Touch Icon */}
-      <link rel="apple-touch-icon" href="/favicon-enove.jpg" />
+      {/* Favicon & Apple Touch Icon */}
+      <link rel="icon" type="image/png" href="/favicon-enove.png" />
+      <link rel="apple-touch-icon" href="/favicon-enove.png" />
     </Helmet>
   );
 };
