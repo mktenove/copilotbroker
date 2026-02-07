@@ -41,15 +41,21 @@ const getSupabaseClient = () => {
   return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 };
 
-// Check if current time is within working hours
+// Check if current time is within working hours (using BRT = UTC-3)
 const isWithinWorkingHours = (startTime: string, endTime: string): boolean => {
   const now = new Date();
+  // Convert UTC to BRT (UTC-3) — same logic used in auto-first-message
+  const brtOffset = -3;
+  const brtDate = new Date(now.getTime() + (brtOffset * 60 * 60 * 1000));
+  
   const [startHour, startMin] = startTime.split(":").map(Number);
   const [endHour, endMin] = endTime.split(":").map(Number);
   
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const currentMinutes = brtDate.getUTCHours() * 60 + brtDate.getUTCMinutes();
   const startMinutes = startHour * 60 + startMin;
   const endMinutes = endHour * 60 + endMin;
+  
+  console.log(`⏰ BRT time: ${brtDate.getUTCHours()}:${String(brtDate.getUTCMinutes()).padStart(2, '0')} | Window: ${startTime}-${endTime}`);
   
   return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
 };
@@ -323,6 +329,11 @@ app.post("/process", async (c) => {
 
         // Register interaction if lead_id exists
         if (queueMsg.lead_id) {
+          const isAutoFirstMessage = !queueMsg.campaign_id;
+          const notePrefix = isAutoFirstMessage 
+            ? "✅ 1ª mensagem automática enviada com sucesso" 
+            : "✅ Mensagem enviada via WhatsApp";
+          
           await supabase
             .from("lead_interactions")
             .insert({
@@ -330,7 +341,7 @@ app.post("/process", async (c) => {
               broker_id: instance.broker_id,
               interaction_type: "contact_attempt",
               channel: "whatsapp",
-              notes: `Mensagem enviada via WhatsApp: ${queueMsg.message.substring(0, 100)}...`
+              notes: `${notePrefix}: ${queueMsg.message.substring(0, 80)}...`
             });
         }
 
@@ -430,6 +441,28 @@ app.post("/process", async (c) => {
                     .eq("id", queueMsg.campaign_id);
                 }
               });
+          }
+
+          // Register failure interaction in lead history
+          if (queueMsg.lead_id) {
+            const isAutoFirstMessage = !queueMsg.campaign_id;
+            const notePrefix = isAutoFirstMessage 
+              ? "❌ Falha no envio da 1ª mensagem automática" 
+              : "❌ Falha no envio via WhatsApp";
+            
+            try {
+              await supabase
+                .from("lead_interactions")
+                .insert({
+                  lead_id: queueMsg.lead_id,
+                  broker_id: instance.broker_id,
+                  interaction_type: "contact_attempt",
+                  channel: "whatsapp",
+                  notes: `${notePrefix}: ${sendResult.error || "Erro desconhecido"}. Tentativas: ${newAttempts}/${queueMsg.max_attempts}`
+                });
+            } catch (interactionErr) {
+              console.error("Failed to log error interaction:", interactionErr);
+            }
           }
         }
 
