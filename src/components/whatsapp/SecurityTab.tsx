@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Input } from "@/components/ui/input";
 import { useWhatsAppInstance } from "@/hooks/use-whatsapp-instance";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,8 @@ export function SecurityTab() {
   const { instance, togglePause, updateSettings } = useWhatsAppInstance();
   const [hourlyLimit, setHourlyLimit] = useState(instance?.hourly_limit || 30);
   const [dailyLimit, setDailyLimit] = useState(instance?.daily_limit || 150);
+  const [workStart, setWorkStart] = useState(instance?.working_hours_start || "09:00");
+  const [workEnd, setWorkEnd] = useState(instance?.working_hours_end || "21:00");
 
   // Fetch broker ID
   const { data: broker } = useQuery({
@@ -38,6 +41,8 @@ export function SecurityTab() {
     if (instance) {
       setHourlyLimit(instance.hourly_limit || 30);
       setDailyLimit(instance.daily_limit || 150);
+      setWorkStart(instance.working_hours_start || "09:00");
+      setWorkEnd(instance.working_hours_end || "21:00");
     }
   }, [instance]);
 
@@ -51,6 +56,8 @@ export function SecurityTab() {
     await updateSettings({
       hourly_limit: hourlyLimit,
       daily_limit: dailyLimit,
+      working_hours_start: workStart,
+      working_hours_end: workEnd,
     });
   };
 
@@ -162,6 +169,26 @@ export function SecurityTab() {
             />
           </div>
 
+          {/* Working Hours */}
+          <div className="space-y-3">
+            <span className="text-sm text-slate-400">Horário de envio</span>
+            <div className="flex items-center gap-3">
+              <Input
+                type="time"
+                value={workStart}
+                onChange={(e) => setWorkStart(e.target.value)}
+                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
+              />
+              <span className="text-slate-400 text-sm">até</span>
+              <Input
+                type="time"
+                value={workEnd}
+                onChange={(e) => setWorkEnd(e.target.value)}
+                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
+              />
+            </div>
+          </div>
+
           <Button 
             onClick={handleSaveSettings}
             className="w-full"
@@ -187,7 +214,7 @@ export function SecurityTab() {
               "Deduplicação (não repetir no mesmo dia)",
               "Opt-out automático por palavras-chave",
               "Pausa em 5 erros consecutivos",
-              "Horário de envio: 09:00 - 21:00",
+              `Horário de envio: ${workStart.slice(0, 5)} - ${workEnd.slice(0, 5)}`,
             ].map((rule, i) => (
               <li key={i} className="flex items-center gap-2 text-sm">
                 <Check className="w-4 h-4 text-green-400 shrink-0" />
