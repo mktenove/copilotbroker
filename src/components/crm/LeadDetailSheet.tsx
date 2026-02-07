@@ -151,11 +151,11 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
     await addInteraction("document_request", {
       notes: "Documentos solicitados ao cliente",
       oldStatus: lead.status,
-      newStatus: "awaiting_docs",
+      newStatus: "docs_received",
       createdBy: userId || undefined
     });
-    await onStatusChange(lead.id, lead.status, "awaiting_docs");
-    toast.success("Marcado como aguardando documentos!");
+    await onStatusChange(lead.id, lead.status, "docs_received");
+    toast.success("Dados solicitados - movido para Dados Recebidos!");
   };
 
   const handleMarkDocsReceived = async () => {
@@ -392,7 +392,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                 </Button>
               )}
 
-              {lead.status === "awaiting_docs" && allDocumentsReceived && (
+              {lead.status === "docs_received" && !allDocumentsReceived && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -418,7 +418,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
           </div>
 
           {/* Document Checklist */}
-          {(lead.status === "awaiting_docs" || lead.status === "docs_received") && (
+          {(lead.status === "info_sent" || lead.status === "docs_received") && (
             <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4">
               <DocumentChecklist
                 documents={documents}

@@ -137,7 +137,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     const leadId = active.id as string;
     
     // Valid status values
-    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered', 'inactive'];
+    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered', 'inactive'];
     
     let newStatus: LeadStatus;
     
@@ -200,7 +200,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
   };
 
   const handleAdvanceStatus = async (leadId: string, currentStatus: LeadStatus) => {
-    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered'];
+    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
     const currentIndex = STATUS_ORDER.indexOf(currentStatus);
     if (currentIndex === -1 || currentIndex >= STATUS_ORDER.length - 1) return;
     
