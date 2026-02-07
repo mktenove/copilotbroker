@@ -240,7 +240,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
           disabled={isLoading}
           className={cn(
             "hidden md:flex items-center justify-center w-9 h-9 shrink-0 rounded-lg",
-            "text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
+            "text-muted-foreground hover:text-foreground hover:bg-[#2a2a2e] transition-all"
           )}
         >
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
@@ -253,7 +253,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
               <Building2 className="w-4 h-4 text-slate-500 shrink-0" />
               <SelectValue placeholder="Empreend." className="truncate" />
             </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
+            <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
               <SelectItem value="all">Todos</SelectItem>
               {projects.map(project => (
                 <SelectItem key={project.id} value={project.id}>
@@ -271,7 +271,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
               <Users className="w-4 h-4 text-slate-500" />
               <SelectValue placeholder="Corretor" />
             </SelectTrigger>
-            <SelectContent className="bg-popover border-border">
+            <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
               <SelectItem value="all">Corretor</SelectItem>
               <SelectItem value="enove">Enove (Direto)</SelectItem>
               {brokers.map(broker => (

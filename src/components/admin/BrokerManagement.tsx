@@ -417,7 +417,7 @@ const BrokerManagement = () => {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+                  className="w-full px-4 py-3 bg-[#141417] border border-[#2a2a2e] rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
                   placeholder="Nome do corretor"
                 />
                 {!editingBroker && formData.name && (
@@ -435,7 +435,7 @@ const BrokerManagement = () => {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
+                  className="w-full px-4 py-3 bg-[#141417] border border-[#2a2a2e] rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 disabled:opacity-50"
                   placeholder="email@exemplo.com"
                   disabled={!!editingBroker}
                 />
@@ -457,10 +457,10 @@ const BrokerManagement = () => {
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Empreendimentos
                 </label>
-                <div className="space-y-2 max-h-40 overflow-y-auto border border-border rounded-lg p-3 bg-background">
+                <div className="space-y-2 max-h-40 overflow-y-auto border border-[#2a2a2e] rounded-lg p-3 bg-[#141417]">
                   {projects.length > 0 ? (
                     projects.map(project => (
-                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted p-1 rounded">
+                      <label key={project.id} className="flex items-center gap-2 cursor-pointer hover:bg-[#2a2a2e] p-1 rounded">
                         <Checkbox
                           checked={selectedProjects.includes(project.id)}
                           onCheckedChange={() => toggleProject(project.id)}

@@ -138,7 +138,7 @@ export function OriginQuickPicker({
 
   return (
     <Drawer open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DrawerContent className="max-h-[85vh] bg-background">
+      <DrawerContent className="max-h-[85vh] bg-[#0f0f12]">
         <DrawerHeader className="pb-3 border-b border-slate-700/50">
           <DrawerTitle className="flex items-center gap-2 text-foreground">
             <MapPin className="w-5 h-5 text-primary" />

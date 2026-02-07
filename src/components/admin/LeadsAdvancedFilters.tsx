@@ -161,7 +161,7 @@ const LeadsAdvancedFilters = ({
                   {STATUS_OPTIONS.map((status) => (
                     <label
                       key={status}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer"
                     >
                       <Checkbox
                         checked={filters.statusFilter.includes(status)}
@@ -228,7 +228,7 @@ const LeadsAdvancedFilters = ({
                   {LEAD_ORIGINS.map((origin) => (
                     <label
                       key={origin.key}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-muted cursor-pointer"
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer"
                     >
                       <Checkbox
                         checked={filters.originFilter.includes(origin.key)}
