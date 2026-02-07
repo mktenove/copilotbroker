@@ -168,7 +168,7 @@ const BrokerProjects = () => {
 
   if (isRoleLoading || isLoading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
@@ -191,7 +191,7 @@ const BrokerProjects = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/corretor/admin")}
-            className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+            className="p-2 rounded-lg hover:bg-[#2a2a2e] text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
@@ -206,10 +206,10 @@ const BrokerProjects = () => {
         <div className="flex gap-2">
           {brokerProjects.length > 1 && (
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
               onClick={copyAllUrls}
-              className="text-xs"
+              className="text-xs bg-[#1e1e22] border border-[#2a2a2e] hover:bg-[#2a2a2e]"
             >
               <ClipboardList className="w-4 h-4 mr-1" />
               Copiar todos
@@ -224,7 +224,7 @@ const BrokerProjects = () => {
                   Adicionar
                 </Button>
               </DialogTrigger>
-              <DialogContent className="bg-card border-border">
+              <DialogContent className="bg-[#1e1e22] border-[#2a2a2e]">
                 <DialogHeader>
                   <DialogTitle className="text-foreground">
                     Adicionar Empreendimentos
@@ -238,7 +238,7 @@ const BrokerProjects = () => {
                     {unassociatedProjects.map((project) => (
                       <label
                         key={project.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-background border border-border cursor-pointer hover:border-primary/30 transition-colors"
+                        className="flex items-center gap-3 p-3 rounded-lg bg-[#141417] border border-[#2a2a2e] cursor-pointer hover:border-primary/30 transition-colors"
                       >
                         <Checkbox
                           checked={selectedProjectIds.includes(project.id)}
@@ -277,19 +277,17 @@ const BrokerProjects = () => {
 
       {/* Pending Projects Banner */}
       {pendingCount > 0 && (
-        <div className="bg-gradient-to-r from-yellow-500/10 to-yellow-600/10 border border-yellow-500/30 rounded-xl p-4 mb-6">
+        <div className="bg-[#1e1e22] border border-yellow-500/30 rounded-lg p-3 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
-                <Sparkles className="w-5 h-5 text-yellow-500" />
-              </div>
+              <Sparkles className="w-4 h-4 text-yellow-500 shrink-0" />
               <div>
-                <p className="font-medium text-foreground">
+                <p className="text-sm font-medium text-foreground">
                   {pendingCount === 1 
                     ? "Novo empreendimento disponível!" 
                     : `${pendingCount} novos empreendimentos disponíveis!`}
                 </p>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-xs text-muted-foreground">
                   {pendingCount === 1 
                     ? "Adicione à sua carteira e comece a captar leads" 
                     : "Adicione à sua carteira e amplie sua captação"}
@@ -297,8 +295,9 @@ const BrokerProjects = () => {
               </div>
             </div>
             <Button 
+              size="sm"
               onClick={() => setIsAddDialogOpen(true)}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black shrink-0"
+              className="bg-yellow-500 hover:bg-yellow-600 text-black shrink-0 text-xs"
             >
               <Plus className="w-4 h-4 mr-1" />
               Adicionar agora
@@ -310,7 +309,7 @@ const BrokerProjects = () => {
       {/* Projects Grid */}
       <div className="grid gap-3 mb-6">
         {brokerProjects.length === 0 ? (
-          <div className="bg-card border border-border rounded-xl p-8 text-center">
+          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-8 text-center">
             <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <p className="text-muted-foreground mb-4">
               Você ainda não está associado a nenhum empreendimento.
@@ -326,23 +325,21 @@ const BrokerProjects = () => {
           brokerProjects.map((bp) => (
             <div
               key={bp.id}
-              className="bg-card border border-border rounded-xl p-4 hover:border-primary/30 transition-colors"
+              className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-3 hover:border-primary/30 transition-colors"
             >
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
+              <div className="flex items-start gap-3">
+                <Building2 className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
                 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground truncate">
+                    <h3 className="font-semibold text-foreground truncate text-sm">
                       {bp.project.name}
                     </h3>
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded shrink-0">
+                    <span className="text-[10px] text-muted-foreground bg-[#2a2a2e] px-1.5 py-0.5 rounded shrink-0">
                       {bp.project.city}
                     </span>
                   </div>
-                  <code className="text-xs text-muted-foreground break-all block">
+                  <code className="text-[11px] text-muted-foreground/70 break-all block">
                     {window.location.origin}{bp.url}
                   </code>
                 </div>
@@ -350,29 +347,29 @@ const BrokerProjects = () => {
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => copyUrl(bp.url)}
-                    className="p-2 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
                     title="Copiar link"
                   >
                     {copiedUrl === bp.url ? (
-                      <Check className="w-4 h-4" />
+                      <Check className="w-3.5 h-3.5" />
                     ) : (
-                      <Copy className="w-4 h-4" />
+                      <Copy className="w-3.5 h-3.5" />
                     )}
                   </button>
                   <button
                     onClick={() => openLanding(bp.url)}
-                    className="p-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="p-1.5 rounded-md bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
                     title="Abrir landing page"
                   >
-                    <ExternalLink className="w-4 h-4" />
+                    <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                   <button
                     onClick={() => setProjectToRemove(bp.id)}
                     disabled={isSaving}
-                    className="p-2 rounded-lg bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors disabled:opacity-50"
+                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                     title="Remover empreendimento"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
@@ -382,15 +379,15 @@ const BrokerProjects = () => {
       </div>
 
       {/* Slug Editor */}
-      <div className="bg-card border border-border rounded-xl p-4">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-3">
+        <div className="flex items-center gap-2 mb-3">
           <LinkIcon className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold text-foreground">Seu Link Personalizado</h3>
+          <h3 className="text-sm font-semibold text-foreground">Seu Link Personalizado</h3>
         </div>
 
         <div className="space-y-3">
           <div>
-            <Label className="text-sm text-muted-foreground mb-2 block">
+            <Label className="text-xs text-muted-foreground mb-2 block">
               Slug (usado em todos os links)
             </Label>
             <div className="flex gap-2">
@@ -401,7 +398,7 @@ const BrokerProjects = () => {
                   setEditingSlug(e.target.value);
                 }}
                 placeholder="seu-nome"
-                className="bg-background"
+                className="bg-[#141417] border-[#2a2a2e]"
               />
               {isSlugEditing && (
                 <Button
@@ -417,7 +414,7 @@ const BrokerProjects = () => {
               )}
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground/70">
             Este slug será usado em todos os seus links de empreendimentos.
             Alterar aqui atualizará automaticamente todos os links.
           </p>
@@ -426,7 +423,7 @@ const BrokerProjects = () => {
 
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={!!projectToRemove} onOpenChange={() => setProjectToRemove(null)}>
-        <AlertDialogContent className="bg-card border-border">
+        <AlertDialogContent className="bg-[#1e1e22] border-[#2a2a2e]">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Remover Empreendimento</AlertDialogTitle>
             <AlertDialogDescription>
