@@ -180,10 +180,10 @@ const BrokerAdmin = () => {
         <div 
           onClick={() => navigate("/corretor/empreendimentos")}
           className={cn(
-            "bg-gradient-to-r from-card to-card/80 border rounded-xl p-4 mb-6 cursor-pointer transition-all duration-300 group",
+            "bg-[#1e1e22] border rounded-lg p-3 mb-4 cursor-pointer transition-all duration-300 group",
             pendingCount > 0 
               ? "border-yellow-500/30 hover:border-yellow-500/60" 
-              : "border-border/50 hover:border-primary/30"
+              : "border-[#2a2a2e]/50 hover:border-primary/30"
           )}
         >
           <div className="flex items-center justify-between mb-3">
@@ -236,25 +236,25 @@ const BrokerAdmin = () => {
       )}
 
       {/* Premium Stats Cards */}
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 mb-4">
         <div className={cn(
-          "bg-card/80 backdrop-blur-sm border rounded-xl p-4 sm:p-6 transition-colors duration-300",
-          newLeads.length > 0 ? "border-primary/20" : "border-border/50"
+          "bg-[#1e1e22]/80 border rounded-lg p-3 sm:p-4 transition-colors duration-300",
+          newLeads.length > 0 ? "border-primary/20" : "border-[#2a2a2e]/50"
         )}>
-          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/70">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/60">
             Novos Leads
           </p>
-          <div className="w-8 h-px bg-primary/40 my-2 sm:my-3" />
-          <p className="text-3xl sm:text-4xl font-light text-foreground tracking-tight">
+          <div className="w-6 h-px bg-primary/30 my-1.5 sm:my-2" />
+          <p className="text-2xl sm:text-3xl font-light text-foreground tracking-tight">
             {newLeads.length}
           </p>
         </div>
-        <div className="bg-card/80 backdrop-blur-sm border border-border/50 rounded-xl p-4 sm:p-6">
-          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/70">
+        <div className="bg-[#1e1e22]/80 border border-[#2a2a2e]/50 rounded-lg p-3 sm:p-4">
+          <p className="text-[10px] sm:text-xs uppercase tracking-widest text-muted-foreground/60">
             Total de Leads
           </p>
-          <div className="w-8 h-px bg-primary/40 my-2 sm:my-3" />
-          <p className="text-3xl sm:text-4xl font-light text-foreground tracking-tight">
+          <div className="w-6 h-px bg-primary/30 my-1.5 sm:my-2" />
+          <p className="text-2xl sm:text-3xl font-light text-foreground tracking-tight">
             {leads.length}
           </p>
         </div>
