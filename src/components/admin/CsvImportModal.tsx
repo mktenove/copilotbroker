@@ -324,7 +324,7 @@ export function CsvImportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="bg-card border-border text-foreground sm:max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] text-foreground sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <FileSpreadsheet className="w-5 h-5 text-primary" />
@@ -391,7 +391,7 @@ export function CsvImportModal({
                 "border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-colors",
                 isDragging
                   ? "border-primary bg-primary/5"
-                  : "border-border hover:border-primary/50",
+                  : "border-[#2a2a2e] hover:border-primary/50",
                 parseResult && "border-primary bg-primary/5"
               )}
             >
@@ -449,9 +449,9 @@ export function CsvImportModal({
                   Prévia ({Math.min(5, parseResult.leads.length)} de{" "}
                   {parseResult.leads.length}):
                 </Label>
-                <div className="border border-border rounded-lg overflow-hidden">
+                <div className="border border-[#2a2a2e] rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
-                    <thead className="bg-muted/50">
+                    <thead className="bg-[#2a2a2e]/50">
                       <tr>
                         <th className="text-left p-2 text-muted-foreground font-medium">
                           Nome
@@ -466,7 +466,7 @@ export function CsvImportModal({
                     </thead>
                     <tbody>
                       {previewLeads.map((lead, index) => (
-                        <tr key={index} className="border-t border-border">
+                        <tr key={index} className="border-t border-[#2a2a2e]">
                           <td className="p-2 text-foreground truncate max-w-[120px]">
                             {lead.name || "(vazio)"}
                           </td>
@@ -507,10 +507,10 @@ export function CsvImportModal({
                   Empreendimento <span className="text-destructive">*</span>
                 </Label>
                 <Select value={projectId} onValueChange={setProjectId}>
-                  <SelectTrigger className="bg-background border-border">
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
                     <SelectValue placeholder="Selecione o empreendimento" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
+                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                     {projects.map((project) => (
                       <SelectItem
                         key={project.id}
@@ -528,10 +528,10 @@ export function CsvImportModal({
               <div className="space-y-2">
                 <Label className="text-muted-foreground">Origem padrão</Label>
                 <Select value={origin} onValueChange={setOrigin}>
-                  <SelectTrigger className="bg-background border-border">
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
                     <SelectValue placeholder="Selecione a origem" />
                   </SelectTrigger>
-                  <SelectContent className="bg-popover border-border">
+                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                     {ORIGIN_OPTIONS.map((option) => (
                       <SelectItem
                         key={option.value}
@@ -550,10 +550,10 @@ export function CsvImportModal({
                 <div className="space-y-2">
                   <Label className="text-muted-foreground">Corretor</Label>
                   <Select value={brokerId} onValueChange={setBrokerId}>
-                    <SelectTrigger className="bg-background border-border">
+                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
                       <SelectValue placeholder="Selecione o corretor" />
                     </SelectTrigger>
-                    <SelectContent className="bg-popover border-border">
+                    <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                       <SelectItem
                         value="enove"
                         className="focus:bg-accent focus:text-accent-foreground"

@@ -89,10 +89,10 @@ export function InactivationPicker({
                 disabled={isLoading}
                 className={cn(
                   "flex items-center gap-2 p-3 rounded-lg border text-left transition-all",
-                  "hover:border-primary/50 hover:bg-muted/50",
+                  "hover:border-primary/50 hover:bg-[#2a2a2e]/50",
                   selectedReason === reason.key
                     ? "border-primary bg-primary/10 ring-1 ring-primary"
-                    : "border-border bg-card"
+                    : "border-[#2a2a2e] bg-[#1e1e22]"
                 )}
               >
                 <span className="text-lg shrink-0">{reason.icon}</span>
