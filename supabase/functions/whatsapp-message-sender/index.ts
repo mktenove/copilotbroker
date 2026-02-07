@@ -78,14 +78,14 @@ const sendMessageViaUAZAPI = async (
   const cleanPhone = formatPhoneForUAZAPI(phone);
   const token = instanceToken || UAZAPI_TOKEN;
   
-  // Build instance URL from instance name or use global URL
-  // Format: https://{instance_name}.uazapi.com or use configured base URL
-  let baseUrl = UAZAPI_BASE_URL;
-  if (instanceName && !UAZAPI_BASE_URL.includes(instanceName)) {
-    // If instance has its own subdomain
-    baseUrl = `https://${instanceName}.uazapi.com`;
+  // UAZAPI v2: always use the base URL origin, instances are identified by token header
+  let baseUrl = UAZAPI_BASE_URL.replace(/\/$/, "");
+  try {
+    const urlObj = new URL(baseUrl);
+    baseUrl = urlObj.origin;
+  } catch {
+    // If URL parsing fails, use as-is
   }
-  baseUrl = baseUrl.replace(/\/$/, "");
   
   const apiUrl = `${baseUrl}/send/text`;
   console.log(`📤 Enviando para ${cleanPhone} via ${apiUrl}`);
