@@ -1,23 +1,26 @@
 
 
-# Reordenar Abas: Seguranca apos Automacao
+# Limpar Tela Inicial do Corretor
 
-## Mudanca
+## O que sera removido
 
-Trocar a ordem das abas "Seguranca" e "Automacao" no painel WhatsApp Admin.
+Tres elementos serao removidos da pagina `BrokerAdmin.tsx` para deixar a interface mais limpa:
 
-**Ordem atual:** Visao Global > Conexao Global > Conexao > Campanhas > Fila > **Seguranca** > **Automacao**
+1. **Card "Seus Empreendimentos"** (linhas 178-236) - O bloco clicavel que mostra quantos empreendimentos o corretor tem, com barra de progresso e alerta de pendentes. O acesso a empreendimentos continua disponivel pelo menu lateral (icone Building2).
 
-**Nova ordem:** Visao Global > Conexao Global > Conexao > Campanhas > Fila > **Automacao** > **Seguranca**
+2. **Cards "Novos Leads" e "Total de Leads"** (linhas 238-261) - Os dois cards de estatisticas que exibem contagem de novos leads e total de leads. Essa informacao ja e visivel no proprio Kanban/lista.
 
-## Arquivo Afetado
+## O que permanece
 
-`src/pages/AdminWhatsApp.tsx` - unico arquivo que precisa ser alterado.
+- Kanban Board (ou Lista, dependendo do modo de visualizacao)
+- Botao de adicionar lead
+- Busca, importacao CSV e tabela no modo lista
+- Menu lateral com todos os links de navegacao (incluindo Empreendimentos)
 
-Duas areas serao reordenadas:
+## Arquivo afetado
 
-1. **TabsTrigger** (botoes das abas): mover o trigger de "Automacao" para antes de "Seguranca"
-2. **TabsContent** (conteudo das abas): mover o conteudo de "Automacao" para antes de "Seguranca"
+`src/pages/BrokerAdmin.tsx` - remocao dos blocos JSX e limpeza de imports nao utilizados (`Building2`, `ArrowRight`, `AlertCircle`, `useBrokerProjects`, `newLeads`).
 
-Nenhuma outra mudanca necessaria - apenas reposicionamento de blocos JSX existentes.
+## Resultado
 
+A tela do corretor abrira direto no Kanban/Lista sem cards intermediarios, proporcionando uma experiencia mais limpa e focada.
