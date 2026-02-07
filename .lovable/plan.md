@@ -1,45 +1,42 @@
 
 
-# Corrigir Visibilidade do QR Code na Conexao do Corretor
+# Horario de Disparo Configuravel pelo Corretor
 
-## Problema
+## Situacao Atual
 
-Quando o corretor clica em "Iniciar Conexao", o QR Code aparece por alguns segundos e depois desaparece. Isso acontece porque:
+O backend **ja suporta** horarios configuraveis por corretor:
+- A tabela `broker_whatsapp_instances` tem as colunas `working_hours_start` (default 09:00) e `working_hours_end` (default 21:00)
+- O endpoint `POST /settings` do `whatsapp-instance-manager` aceita `working_hours_start` e `working_hours_end`
+- O `whatsapp-message-sender` valida via `isWithinWorkingHours()` antes de enviar
+- O hook `updateSettings` no frontend ja aceita esses campos
 
-1. A instancia e criada com status `qr_pending` e o QR Code e exibido corretamente
-2. O polling de status (a cada 5 segundos) consulta a UAZAPI, que retorna `"connecting"`
-3. O normalizador mapeia `"connecting"` para o status interno `"connecting"`
-4. A interface so mostra o QR Code quando o status e `"qr_pending"` ou `"disconnected"`, entao o QR desaparece e mostra o card de "Saude" no lugar
+O unico problema e que **nao existe UI** para o corretor alterar esses horarios. A aba Seguranca mostra "Horario de envio: 09:00 - 21:00" de forma fixa.
 
-## Correcao
+## Alteracoes
 
-### 1. Incluir "connecting" na logica de exibicao do QR Code (`ConnectionTab.tsx`)
+### 1. Adicionar campos de horario na `SecurityTab.tsx`
 
-Na linha que decide se mostra o QR Code ou o card de saude, adicionar `"connecting"` ao conjunto de status que exibem o QR:
+Dentro do card "Limites de Envio", adicionar dois campos de horario (tipo `<input type="time">`) para inicio e fim do expediente:
 
-```text
-ANTES:  needsQR = status === "qr_pending" || status === "disconnected"
-DEPOIS: needsQR = status === "qr_pending" || status === "connecting" || status === "disconnected"
-```
+- Campo "Inicio do expediente" - valor inicial vindo de `instance.working_hours_start`
+- Campo "Fim do expediente" - valor inicial vindo de `instance.working_hours_end`
+- Ambos incluidos no `handleSaveSettings` junto com os limites de envio
 
-Isso faz sentido porque na UAZAPI, `"connecting"` significa exatamente "QR Code esta disponivel, aguardando escaneamento".
+### 2. Atualizar o `handleSaveSettings`
 
-### 2. Atualizar texto de status no `ConnectionStatusCard.tsx`
+Incluir `working_hours_start` e `working_hours_end` na chamada de `updateSettings()` que ja existe.
 
-O status `"connecting"` exibe "Estabelecendo conexao..." mas na realidade o usuario precisa escanear o QR Code. Ajustar a mensagem para algo como "Escaneie o QR Code para conectar".
+### 3. Atualizar a regra anti-spam exibida
 
-### 3. Atualizar polling adaptativo no hook `use-whatsapp-instance.ts`
+Trocar o texto fixo "Horario de envio: 09:00 - 21:00" pelo horario real configurado pelo corretor, lido de `instance.working_hours_start` e `instance.working_hours_end`.
 
-O polling para `"connecting"` ja esta com 5 segundos (igual ao `qr_pending`), o que e correto. Nenhuma mudanca necessaria aqui.
+## Arquivo a Alterar
 
-## Arquivos a Alterar
-
-- `src/components/whatsapp/ConnectionTab.tsx` - Adicionar `"connecting"` ao check `needsQR`
-- `src/components/whatsapp/ConnectionStatusCard.tsx` - Ajustar mensagem do status `"connecting"` para orientar o usuario a escanear o QR Code
+- `src/components/whatsapp/SecurityTab.tsx` - Adicionar inputs de horario e atualizar texto dinamico
 
 ## Resultado Esperado
 
-- O QR Code permanece visivel enquanto o status for `connecting` (aguardando escaneamento)
-- Quando o usuario escanear o QR, o status muda para `connected` e o QR desaparece automaticamente
-- A mensagem de status orienta o usuario corretamente
+- O corretor pode definir o horario de inicio e fim dos disparos (ex: 08:00 - 20:00)
+- Os valores sao salvos no banco e respeitados pelo processador de fila
+- A regra anti-spam exibe o horario real configurado
 
