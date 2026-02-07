@@ -26,6 +26,134 @@ const STATUS_BADGE: Record<QueueStatus, { label: string; variant: "default" | "s
   paused_by_system: { label: "Pausado", variant: "outline" },
 };
 
+function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: number; replies: number } }) {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardContent className="py-3 sm:py-4 text-center">
+          <p className="text-2xl font-bold text-white">{stats.queued}</p>
+          <p className="text-xs text-slate-500">Na fila</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardContent className="py-3 sm:py-4 text-center">
+          <p className="text-2xl font-bold text-green-400">{stats.sent}</p>
+          <p className="text-xs text-slate-500">Enviados</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardContent className="py-3 sm:py-4 text-center">
+          <p className="text-2xl font-bold text-red-400">{stats.failed}</p>
+          <p className="text-xs text-slate-500">Falhas</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardContent className="py-3 sm:py-4 text-center">
+          <p className="text-2xl font-bold text-blue-400">{stats.replies}</p>
+          <p className="text-xs text-slate-500">Respostas</p>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id: string) => void }) {
+  const statusConfig = STATUS_BADGE[message.status as QueueStatus];
+  return (
+    <div className="flex flex-col p-3 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e]">
+      {/* Top: Lead name + Badge */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-white font-medium truncate flex-1 min-w-0">
+          {message.lead?.name || message.phone}
+        </p>
+        <Badge variant={statusConfig.variant} className="text-xs flex-shrink-0">
+          {statusConfig.label}
+        </Badge>
+      </div>
+      {/* Middle: Campaign + Time */}
+      <div className="flex items-center justify-between mt-1">
+        <p className="text-xs text-slate-500 truncate flex-1 min-w-0">
+          {message.campaign?.name}
+        </p>
+        <p className="text-xs text-slate-500 flex-shrink-0">
+          <Clock className="w-3 h-3 inline mr-1" />
+          {format(new Date(message.scheduled_at), "HH:mm")}
+        </p>
+      </div>
+      {/* Bottom: Cancel action */}
+      <div className="flex justify-end mt-2 pt-2 border-t border-[#2a2a2e]">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 text-slate-400 hover:text-red-400 gap-1.5"
+          onClick={() => onCancel(message.id)}
+        >
+          <XCircle className="w-4 h-4" />
+          <span className="text-xs">Cancelar</span>
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: string) => void }) {
+  const statusConfig = STATUS_BADGE[message.status as QueueStatus];
+  const isFailed = message.status === "failed";
+  return (
+    <div
+      className={cn(
+        "flex flex-col p-3 rounded-lg border",
+        isFailed
+          ? "bg-red-500/5 border-red-500/20"
+          : "bg-[#1a1a1d] border-[#2a2a2e]"
+      )}
+    >
+      {/* Top: Icon + Lead name + Badge */}
+      <div className="flex items-center gap-2">
+        <div className="flex-shrink-0">
+          {message.status === "sent" ? (
+            <CheckCircle className="w-5 h-5 text-green-400" />
+          ) : isFailed ? (
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+          ) : (
+            <XCircle className="w-5 h-5 text-slate-400" />
+          )}
+        </div>
+        <p className="text-sm text-white font-medium truncate flex-1 min-w-0">
+          {message.lead?.name || message.phone}
+        </p>
+        <Badge variant={statusConfig.variant} className="text-xs flex-shrink-0">
+          {statusConfig.label}
+        </Badge>
+      </div>
+      {/* Middle: Error or time */}
+      {(isFailed && message.error_message) ? (
+        <p className="text-xs text-red-400 truncate mt-1 ml-7">
+          {message.error_message}
+        </p>
+      ) : message.sent_at ? (
+        <p className="text-xs text-slate-500 mt-1 ml-7">
+          Enviado às {format(new Date(message.sent_at), "HH:mm")}
+        </p>
+      ) : null}
+      {/* Bottom: Retry for failed */}
+      {isFailed && (
+        <div className="flex justify-end mt-2 pt-2 border-t border-[#2a2a2e]">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-8 text-slate-400 hover:text-primary gap-1.5"
+            onClick={() => onRetry(message.id)}
+          >
+            <RefreshCw className="w-4 h-4" />
+            <span className="text-xs">Tentar novamente</span>
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function QueueTab() {
   const { queue, stats, isLoading, formatNextSendIn, cancelMessage, retryMessage } = useWhatsAppQueue();
 
@@ -45,42 +173,19 @@ export function QueueTab() {
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6 pb-20 sm:pb-0">
+      {/* Header */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold text-white">Fila de Envio</h2>
-        <div className="flex items-center gap-2 text-sm text-slate-400">
-          <Timer className="w-4 h-4" />
-          Próximo envio em: <span className="font-mono text-primary">{formatNextSendIn()}</span>
+        <div className="flex items-center gap-2 text-sm text-slate-400 bg-[#1a1a1d] border border-[#2a2a2e] rounded-full px-3 py-1.5 w-fit">
+          <Timer className="w-4 h-4 animate-pulse text-primary" />
+          <span>Próximo envio em:</span>
+          <span className="font-mono text-primary font-medium">{formatNextSendIn()}</span>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 md:grid-cols-4">
-        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-          <CardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-white">{stats.queued}</p>
-            <p className="text-xs text-slate-500">Na fila</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-          <CardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-green-400">{stats.sent}</p>
-            <p className="text-xs text-slate-500">Enviados</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-          <CardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-red-400">{stats.failed}</p>
-            <p className="text-xs text-slate-500">Falhas</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-          <CardContent className="py-4 text-center">
-            <p className="text-2xl font-bold text-blue-400">{stats.replies}</p>
-            <p className="text-xs text-slate-500">Respostas</p>
-          </CardContent>
-        </Card>
-      </div>
+      <QueueStats stats={stats} />
 
       {queue.length === 0 ? (
         /* Empty State */
@@ -102,41 +207,13 @@ export function QueueTab() {
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-slate-400">Pendentes ({pendingMessages.length})</h3>
               <div className="space-y-2">
-                {pendingMessages.map((message) => {
-                  const statusConfig = STATUS_BADGE[message.status as QueueStatus];
-                  return (
-                    <div
-                      key={message.id}
-                      className="flex items-center gap-4 p-3 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e]"
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate">
-                          {message.lead?.name || message.phone}
-                        </p>
-                        <p className="text-xs text-slate-500 truncate">
-                          {message.campaign?.name}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={statusConfig.variant} className="text-xs">
-                          {statusConfig.label}
-                        </Badge>
-                        <p className="text-xs text-slate-500 mt-1">
-                          <Clock className="w-3 h-3 inline mr-1" />
-                          {format(new Date(message.scheduled_at), "HH:mm")}
-                        </p>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-slate-400 hover:text-red-400"
-                        onClick={() => cancelMessage(message.id)}
-                      >
-                        <XCircle className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
+                {pendingMessages.map((message) => (
+                  <PendingMessageCard
+                    key={message.id}
+                    message={message}
+                    onCancel={cancelMessage}
+                  />
+                ))}
               </div>
             </div>
           )}
@@ -146,61 +223,18 @@ export function QueueTab() {
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-slate-400">Histórico ({completedMessages.length})</h3>
               <div className="space-y-2">
-                {completedMessages.slice(0, 20).map((message) => {
-                  const statusConfig = STATUS_BADGE[message.status as QueueStatus];
-                  const isFailed = message.status === "failed";
-                  return (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex items-center gap-4 p-3 rounded-lg border",
-                        isFailed 
-                          ? "bg-red-500/5 border-red-500/20" 
-                          : "bg-[#1a1a1d] border-[#2a2a2e]"
-                      )}
-                    >
-                      <div className="flex-shrink-0">
-                        {message.status === "sent" ? (
-                          <CheckCircle className="w-5 h-5 text-green-400" />
-                        ) : isFailed ? (
-                          <AlertTriangle className="w-5 h-5 text-red-400" />
-                        ) : (
-                          <XCircle className="w-5 h-5 text-slate-400" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-white font-medium truncate">
-                          {message.lead?.name || message.phone}
-                        </p>
-                        {isFailed && message.error_message && (
-                          <p className="text-xs text-red-400 truncate">
-                            {message.error_message}
-                          </p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <Badge variant={statusConfig.variant} className="text-xs">
-                          {statusConfig.label}
-                        </Badge>
-                        {message.sent_at && (
-                          <p className="text-xs text-slate-500 mt-1">
-                            {format(new Date(message.sent_at), "HH:mm")}
-                          </p>
-                        )}
-                      </div>
-                      {isFailed && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-slate-400 hover:text-primary"
-                          onClick={() => retryMessage(message.id)}
-                        >
-                          <RefreshCw className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  );
-                })}
+                {completedMessages.slice(0, 20).map((message) => (
+                  <HistoryMessageCard
+                    key={message.id}
+                    message={message}
+                    onRetry={retryMessage}
+                  />
+                ))}
+                {completedMessages.length > 20 && (
+                  <p className="text-xs text-slate-500 text-center py-2">
+                    Mostrando 20 de {completedMessages.length} mensagens
+                  </p>
+                )}
               </div>
             </div>
           )}
