@@ -75,7 +75,7 @@ export function ConnectionTab() {
   }
 
   const isConnected = instance.status === "connected";
-  const needsQR = instance.status === "qr_pending" || instance.status === "disconnected";
+  const needsQR = instance.status === "qr_pending" || instance.status === "connecting" || instance.status === "disconnected";
 
   return (
     <div className="space-y-6">
