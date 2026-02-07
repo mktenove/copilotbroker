@@ -30,7 +30,7 @@ interface KanbanCardProps {
 }
 
 // Status order for advancement
-const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'awaiting_docs', 'docs_received', 'registered'];
+const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
 const getNextStatus = (currentStatus: LeadStatus): LeadStatus | null => {
   const currentIndex = STATUS_ORDER.indexOf(currentStatus);
@@ -55,10 +55,9 @@ const ORIGIN_COLORS: Record<string, string> = {
 
 // Progress percentage by status
 const STATUS_PROGRESS: Record<string, number> = {
-  new: 10,
-  info_sent: 35,
-  awaiting_docs: 55,
-  docs_received: 80,
+  new: 15,
+  info_sent: 40,
+  docs_received: 70,
   registered: 100,
   inactive: 0
 };
@@ -67,7 +66,6 @@ const STATUS_PROGRESS: Record<string, number> = {
 const PROGRESS_COLORS: Record<string, string> = {
   new: "bg-blue-500",
   info_sent: "bg-enove-yellow",
-  awaiting_docs: "bg-enove-yellow",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
   inactive: "bg-red-500"
