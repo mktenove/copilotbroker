@@ -79,7 +79,7 @@ export function ErrorLogsCard({ brokerId }: ErrorLogsCardProps) {
     <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
       <CardHeader className="pb-3">
         <CardTitle className="text-white flex items-center gap-2">
-          <AlertTriangle className="w-5 h-5 text-amber-400" />
+          <AlertTriangle className="w-5 h-5 text-yellow-400" />
           Últimos Erros de Envio
         </CardTitle>
       </CardHeader>
@@ -94,14 +94,14 @@ export function ErrorLogsCard({ brokerId }: ErrorLogsCardProps) {
               {errorLogs.map((log) => (
                 <div
                   key={log.id}
-                  className="p-3 bg-[#0f0f12] rounded-lg border-l-2 border-amber-500/50"
+                  className="p-3 bg-[#0f0f12] rounded-lg border-l-2 border-yellow-500/50"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-white truncate">
                         {log.lead?.name || formatPhone(log.phone)}
                       </p>
-                      <p className="text-xs text-amber-400 mt-0.5">
+                      <p className="text-xs text-yellow-400 mt-0.5">
                         {getErrorLabel(log.error_message)}
                       </p>
                     </div>

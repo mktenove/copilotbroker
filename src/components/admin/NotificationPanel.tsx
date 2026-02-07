@@ -41,7 +41,7 @@ const NOTIFICATION_ICONS = {
 
 const NOTIFICATION_COLORS = {
   new_lead: "text-emerald-400",
-  stale_lead: "text-amber-400",
+  stale_lead: "text-yellow-400",
   status_change: "text-blue-400",
 };
 

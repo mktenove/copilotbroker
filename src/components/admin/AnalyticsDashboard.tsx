@@ -775,7 +775,7 @@ const getOriginBadgeClass = (type: OriginType): string => {
     paid: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
     organic: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
     referral: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
-    manual: "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300",
+    manual: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
     unknown: "bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300"
   };
   return classes[type];

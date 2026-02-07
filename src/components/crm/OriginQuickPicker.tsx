@@ -36,7 +36,7 @@ const PICKER_COLORS: Record<string, { bg: string; icon: string }> = {
     icon: "👥",
   },
   manual: {
-    bg: "bg-amber-600/90 hover:bg-amber-500 text-white border-amber-500/50",
+    bg: "bg-yellow-500/90 hover:bg-yellow-400 text-black border-yellow-400/50",
     icon: "📝",
   },
   unknown: {

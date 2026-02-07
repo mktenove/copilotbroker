@@ -84,7 +84,7 @@ const formatPhone = (phone: string | null) => {
 
 const getStatusBadge = (status: string, isPaused: boolean) => {
   if (isPaused) {
-    return <Badge variant="secondary" className="bg-amber-500/20 text-amber-400">Pausado</Badge>;
+    return <Badge variant="secondary" className="bg-yellow-500/20 text-yellow-400">Pausado</Badge>;
   }
   switch (status) {
     case "connected":
@@ -235,7 +235,7 @@ export function WhatsAppOverviewTab({
                             onClick={() => onTogglePause(instance.id, !instance.is_paused)}
                             className={instance.is_paused 
                               ? "text-green-500 hover:text-green-400" 
-                              : "text-amber-500 hover:text-amber-400"
+                              : "text-yellow-500 hover:text-yellow-400"
                             }
                           >
                             {instance.is_paused ? (

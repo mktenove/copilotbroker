@@ -23,7 +23,7 @@ export function DocumentChecklist({ documents, onToggle, receivedCount, totalCou
           "text-xs font-medium px-2 py-0.5 rounded-full",
           receivedCount === totalCount 
             ? "bg-emerald-500/20 text-emerald-300" 
-            : "bg-amber-500/20 text-amber-300"
+            : "bg-yellow-500/20 text-yellow-300"
         )}>
           {receivedCount}/{totalCount}
         </span>

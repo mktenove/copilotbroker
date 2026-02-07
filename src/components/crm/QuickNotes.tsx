@@ -10,7 +10,7 @@ interface QuickNotesProps {
 const DARK_CATEGORY_COLORS: Record<NoteCategory, { bg: string; text: string; border: string }> = {
   contato: { bg: "bg-slate-500/20", text: "text-slate-300", border: "border-slate-500/40" },
   interesse: { bg: "bg-emerald-500/20", text: "text-emerald-300", border: "border-emerald-500/40" },
-  documentos: { bg: "bg-amber-500/20", text: "text-amber-300", border: "border-amber-500/40" },
+  documentos: { bg: "bg-yellow-500/20", text: "text-yellow-300", border: "border-yellow-500/40" },
   financeiro: { bg: "bg-purple-500/20", text: "text-purple-300", border: "border-purple-500/40" }
 };
 

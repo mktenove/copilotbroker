@@ -131,7 +131,7 @@ export const ORIGIN_TYPE_COLORS: Record<OriginType, string> = {
   paid: 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 border-purple-200 dark:border-purple-800',
   organic: 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border-green-200 dark:border-green-800',
   referral: 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-  manual: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
+  manual: 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border-yellow-200 dark:border-yellow-800',
   unknown: 'bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300 border-slate-200 dark:border-slate-800',
 };
 
@@ -178,13 +178,13 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
   },
   info_sent: {
     label: 'Informações Enviadas',
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50 border-amber-200'
+    color: 'text-yellow-400',
+    bgColor: 'bg-yellow-500/10 border-yellow-500/30'
   },
   awaiting_docs: {
     label: 'Aguardando Dados',
-    color: 'text-orange-600',
-    bgColor: 'bg-orange-50 border-orange-200'
+    color: 'text-yellow-300',
+    bgColor: 'bg-yellow-500/10 border-yellow-400/30'
   },
   docs_received: {
     label: 'Dados Recebidos',
@@ -250,6 +250,6 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
 export const NOTE_CATEGORY_CONFIG: Record<NoteCategory, { label: string; color: string; bgColor: string }> = {
   contato: { label: 'Contato', color: 'text-slate-600', bgColor: 'bg-slate-100 hover:bg-slate-200' },
   interesse: { label: 'Interesse', color: 'text-emerald-600', bgColor: 'bg-emerald-100 hover:bg-emerald-200' },
-  documentos: { label: 'Documentos', color: 'text-orange-600', bgColor: 'bg-orange-100 hover:bg-orange-200' },
+  documentos: { label: 'Documentos', color: 'text-yellow-600', bgColor: 'bg-yellow-100 hover:bg-yellow-200' },
   financeiro: { label: 'Financeiro', color: 'text-blue-600', bgColor: 'bg-blue-100 hover:bg-blue-200' },
 };

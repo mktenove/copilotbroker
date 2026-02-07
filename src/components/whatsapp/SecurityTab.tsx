@@ -97,7 +97,7 @@ export function SecurityTab() {
       </Card>
 
       {/* Warmup Progress */}
-      <Card className="bg-gradient-to-r from-amber-500/5 to-orange-500/5 border-amber-500/20">
+      <Card className="bg-gradient-to-r from-yellow-500/5 to-yellow-400/5 border-yellow-500/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
             🔥 Aquecimento
@@ -108,7 +108,7 @@ export function SecurityTab() {
             <span className="text-slate-400">
               Dia {instance?.warmup_day || 1} de 14
             </span>
-            <span className="text-amber-400">
+            <span className="text-yellow-400">
               {instance?.warmup_stage === "normal" ? "Completo" : "Em andamento"}
             </span>
           </div>

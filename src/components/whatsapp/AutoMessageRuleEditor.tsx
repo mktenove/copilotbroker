@@ -267,9 +267,9 @@ export function AutoMessageRuleEditor({
             </div>
 
             {/* Warning */}
-            <Alert className="bg-amber-500/10 border-amber-500/30">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
-              <AlertDescription className="text-amber-300 text-sm">
+            <Alert className="bg-yellow-500/10 border-yellow-500/30">
+              <AlertTriangle className="w-4 h-4 text-yellow-400" />
+              <AlertDescription className="text-yellow-300 text-sm">
                 Esta mensagem será enviada <strong>automaticamente</strong> após o cadastro 
                 do lead na landing page. Certifique-se de que o texto está correto.
               </AlertDescription>

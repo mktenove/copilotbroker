@@ -53,7 +53,7 @@ const ACTIVITY_LABELS = {
 
 const ACTIVITY_COLORS = {
   login: "text-blue-400",
-  lead_update: "text-amber-400",
+  lead_update: "text-yellow-400",
   note_added: "text-emerald-400",
   doc_processed: "text-purple-400",
   status_change: "text-cyan-400",

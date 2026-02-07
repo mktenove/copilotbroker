@@ -183,7 +183,7 @@ const BrokerAdmin = () => {
           className={cn(
             "bg-card border rounded-xl p-4 mb-6 cursor-pointer transition-colors group",
             pendingCount > 0 
-              ? "border-amber-500/50 hover:border-amber-500" 
+              ? "border-yellow-500/50 hover:border-yellow-500" 
               : "border-border hover:border-primary/50"
           )}
         >
@@ -191,11 +191,11 @@ const BrokerAdmin = () => {
             <div className="flex items-center gap-3">
               <div className={cn(
                 "w-10 h-10 rounded-full flex items-center justify-center shrink-0",
-                pendingCount > 0 ? "bg-amber-500/10" : "bg-primary/10"
+                pendingCount > 0 ? "bg-yellow-500/10" : "bg-primary/10"
               )}>
                 <Building2 className={cn(
                   "w-5 h-5",
-                  pendingCount > 0 ? "text-amber-500" : "text-primary"
+                  pendingCount > 0 ? "text-yellow-500" : "text-primary"
                 )} />
               </div>
               <div>
@@ -212,7 +212,7 @@ const BrokerAdmin = () => {
             <ArrowRight className={cn(
               "w-5 h-5 transition-colors",
               pendingCount > 0 
-                ? "text-amber-500 group-hover:text-amber-400" 
+                ? "text-yellow-500 group-hover:text-yellow-400" 
                 : "text-muted-foreground group-hover:text-primary"
             )} />
           </div>
@@ -223,14 +223,14 @@ const BrokerAdmin = () => {
               value={(brokerProjects.length / totalProjects) * 100} 
               className={cn(
                 "h-1.5 mb-2",
-                pendingCount > 0 && "[&>div]:bg-amber-500"
+                pendingCount > 0 && "[&>div]:bg-yellow-500"
               )}
             />
           )}
 
           {/* Pending Alert */}
           {!isProjectsLoading && pendingCount > 0 && (
-            <div className="flex items-center gap-2 text-amber-500 text-xs">
+            <div className="flex items-center gap-2 text-yellow-500 text-xs">
               <AlertCircle className="w-3.5 h-3.5" />
               <span>
                 {pendingCount === 1 

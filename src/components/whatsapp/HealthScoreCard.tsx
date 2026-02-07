@@ -33,8 +33,8 @@ export function HealthScoreCard({ instance }: HealthScoreCardProps) {
     };
     if (score >= 20) return { 
       label: "Atenção", 
-      color: "text-orange-400", 
-      bgColor: "bg-orange-500",
+      color: "text-yellow-400", 
+      bgColor: "bg-yellow-500",
       icon: TrendingDown 
     };
     return { 

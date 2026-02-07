@@ -233,17 +233,17 @@ export function ConnectionTab() {
 
       {/* Warmup Info */}
       {instance.warmup_stage !== "normal" && (
-        <Card className="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border-amber-500/20">
+        <Card className="bg-gradient-to-r from-yellow-500/10 to-yellow-400/10 border-yellow-500/20">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
                 <span className="text-lg">🔥</span>
               </div>
               <div>
-                <p className="font-medium text-amber-200">
+                <p className="font-medium text-yellow-200">
                   Período de Aquecimento - Dia {instance.warmup_day} de 14
                 </p>
-                <p className="text-sm text-amber-200/70">
+                <p className="text-sm text-yellow-200/70">
                   Limite atual: {instance.daily_limit} msgs/dia | {instance.hourly_limit} msgs/hora
                 </p>
               </div>
