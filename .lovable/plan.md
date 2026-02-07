@@ -1,70 +1,45 @@
 
 
-# Corrigir Erro 405 "Method Not Allowed" no Envio de Notificacoes
+# Corrigir Visibilidade do QR Code na Conexao do Corretor
 
-## Problema Identificado
+## Problema
 
-A URL de envio esta sendo montada incorretamente. O formato atual e:
+Quando o corretor clica em "Iniciar Conexao", o QR Code aparece por alguns segundos e depois desaparece. Isso acontece porque:
+
+1. A instancia e criada com status `qr_pending` e o QR Code e exibido corretamente
+2. O polling de status (a cada 5 segundos) consulta a UAZAPI, que retorna `"connecting"`
+3. O normalizador mapeia `"connecting"` para o status interno `"connecting"`
+4. A interface so mostra o QR Code quando o status e `"qr_pending"` ou `"disconnected"`, entao o QR desaparece e mostra o card de "Saude" no lugar
+
+## Correcao
+
+### 1. Incluir "connecting" na logica de exibicao do QR Code (`ConnectionTab.tsx`)
+
+Na linha que decide se mostra o QR Code ou o card de saude, adicionar `"connecting"` ao conjunto de status que exibem o QR:
 
 ```text
-https://enove.uazapi.com/enove_global_1770423387245/send/text  (ERRADO - 405)
+ANTES:  needsQR = status === "qr_pending" || status === "disconnected"
+DEPOIS: needsQR = status === "qr_pending" || status === "connecting" || status === "disconnected"
 ```
 
-Mas o formato correto da UAZAPI v2 e:
+Isso faz sentido porque na UAZAPI, `"connecting"` significa exatamente "QR Code esta disponivel, aguardando escaneamento".
 
-```text
-https://enove.uazapi.com/send/text  (CORRETO)
-```
+### 2. Atualizar texto de status no `ConnectionStatusCard.tsx`
 
-Na UAZAPI v2, a instancia e identificada pelo header `token`, nao pela URL. As outras funcoes (`whatsapp-global-instance-manager` e `whatsapp-message-sender`) ja usam esse formato corretamente.
+O status `"connecting"` exibe "Estabelecendo conexao..." mas na realidade o usuario precisa escanear o QR Code. Ajustar a mensagem para algo como "Escaneie o QR Code para conectar".
 
-## Evidencias
+### 3. Atualizar polling adaptativo no hook `use-whatsapp-instance.ts`
 
-- Logs mostram: `url: "https://enove.uazapi.com/enove_global_1770423387245/send/text"` retornando 405
-- O `whatsapp-global-instance-manager` faz requests para `https://enove.uazapi.com/instance/status` (sem nome da instancia no path)
-- O `whatsapp-message-sender` usa `${baseUrl}/send/text` onde baseUrl e o dominio base
-- A linha 74 do `notify-new-lead` esta errada: `instanceUrl = ${baseApiUrl}/${storedInstance.instance_name}`
+O polling para `"connecting"` ja esta com 5 segundos (igual ao `qr_pending`), o que e correto. Nenhuma mudanca necessaria aqui.
 
-## Problema Secundario
+## Arquivos a Alterar
 
-O status no banco de dados (`global_whatsapp_config`) permanece como "disconnected" mesmo quando a instancia esta conectada. Isso ocorre porque o `whatsapp-global-instance-manager` detecta o status "connected" da UAZAPI mas nao atualiza o banco.
-
-## Alteracoes
-
-### 1. Corrigir URL em `notify-new-lead/index.ts`
-
-Mudar a linha 74 de:
-
-```typescript
-// ERRADO: inclui nome da instância no path
-instanceUrl = `${baseApiUrl}/${storedInstance.instance_name}`;
-```
-
-Para:
-
-```typescript
-// CORRETO: usa apenas o domínio base, token identifica a instância
-instanceUrl = baseApiUrl;
-```
-
-O token ja esta sendo passado corretamente no header, entao a UAZAPI sabe qual instancia usar.
-
-### 2. Atualizar status no banco apos verificacao de status
-
-No `whatsapp-global-instance-manager`, garantir que o endpoint `/status` atualize o campo `status` na tabela `global_whatsapp_config` quando detectar que a instancia esta conectada na UAZAPI. Isso corrige o problema do status "disconnected" persistente.
+- `src/components/whatsapp/ConnectionTab.tsx` - Adicionar `"connecting"` ao check `needsQR`
+- `src/components/whatsapp/ConnectionStatusCard.tsx` - Ajustar mensagem do status `"connecting"` para orientar o usuario a escanear o QR Code
 
 ## Resultado Esperado
 
-- URL de envio sera `https://enove.uazapi.com/send/text` (formato correto UAZAPI v2)
-- Token no header `token` identifica a instancia
-- Notificacoes serao enviadas com sucesso
-- Status no banco refletira o estado real da instancia ("connected")
-
-## Detalhes Tecnicos
-
-A funcao `notify-new-lead` precisa apenas de 2 informacoes do banco:
-1. `instance_token` - para autenticacao via header
-2. A URL base (`https://enove.uazapi.com`) - extraida da variavel de ambiente
-
-O `instance_name` nao e necessario para construir a URL de envio - ele e usado apenas para operacoes administrativas (init, connect, disconnect).
+- O QR Code permanece visivel enquanto o status for `connecting` (aguardando escaneamento)
+- Quando o usuario escanear o QR, o status muda para `connected` e o QR desaparece automaticamente
+- A mensagem de status orienta o usuario corretamente
 
