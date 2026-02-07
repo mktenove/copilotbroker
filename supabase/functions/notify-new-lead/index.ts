@@ -71,7 +71,8 @@ Deno.serve(async (req) => {
 
     if (storedInstance?.instance_token && storedInstance?.instance_name) {
       // Use stored configuration from database
-      instanceUrl = `${baseApiUrl}/${storedInstance.instance_name}`;
+      // UAZAPI v2: base URL only, instance identified by token header
+      instanceUrl = baseApiUrl;
       instanceToken = storedInstance.instance_token;
       console.log("✅ Usando token persistido do banco de dados");
     } else {

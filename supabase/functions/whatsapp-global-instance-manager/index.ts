@@ -122,11 +122,17 @@ const updateInstanceStatus = async (status: string, phoneNumber?: string): Promi
     const updateData: Record<string, unknown> = { status };
     if (phoneNumber) updateData.phone_number = phoneNumber;
     
-    await supabase
+    // Need a proper filter for PostgREST UPDATE - update all rows (there should be only one)
+    const { error } = await supabase
       .from("global_whatsapp_config")
       .update(updateData)
-      .order("created_at", { ascending: false })
-      .limit(1);
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+    
+    if (error) {
+      console.error("❌ Erro ao atualizar status no banco:", error);
+    } else {
+      console.log(`✅ Status atualizado no banco: ${status}`);
+    }
   } catch (err) {
     console.error("❌ Erro ao atualizar status:", err);
   }
