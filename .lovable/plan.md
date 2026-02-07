@@ -1,44 +1,120 @@
 
+# Aba "Conexao Global" com Painel de Saude e Estatisticas
 
-# Corrigir Flash de "Desconectado" na Conexao Global
+## Objetivo
 
-## Problema
+Transformar a aba "Conexao Global" de uma simples tela de status/QR Code em um painel completo de saude da instancia, incluindo metricas de mensagens enviadas, taxa de sucesso, historico diario e erros recentes.
 
-Ao abrir a aba "Conexao Global", o status aparece brevemente como "Desconectado" antes de exibir o status real "Conectado". Isso acontece porque o hook inicializa o status como `"disconnected"` e a condicao de loading no componente nunca ativa o spinner.
+## Fonte de Dados
 
-## Por que e Seguro
+A instancia global envia notificacoes de novos leads via a funcao `notify-new-lead`, que registra cada envio na tabela `lead_interactions` com:
+- `interaction_type = 'notification'`
+- `channel = 'whatsapp'`
+- `notes` contendo "Notificacao enviada" (sucesso) ou "Falha" / "Erro" (falha)
 
-- O status padrao e puramente visual, exibido apenas nos ~200ms antes da resposta da API
-- Assim que a API responde, o status real sobrescreve o padrao
-- Se a instancia estiver desconectada, a API retorna `"disconnected"` e a UI se atualiza corretamente
-- Nenhuma acao de envio ou gerenciamento depende do estado inicial
+Hoje existem 14 registros reais (9 sucessos, 5 falhas). Usaremos esses dados para construir as metricas.
 
 ## Mudancas
 
-### 1. `src/hooks/use-whatsapp-global-instance.ts` (linha 18)
+### 1. Novo hook: `src/hooks/use-global-whatsapp-stats.ts`
 
-Alterar o status padrao de `"disconnected"` para `"connected"`:
+Hook dedicado que consulta `lead_interactions` filtrando por `channel = 'whatsapp'` e `interaction_type = 'notification'`, e agrega:
 
+- **Totais gerais**: total enviados com sucesso, total com falha, total geral
+- **Estatisticas diarias (ultimos 7 dias)**: agrupadas por `DATE(created_at)` para alimentar o grafico
+- **Erros recentes**: ultimos 5 registros com falha, para exibir no painel de logs
+
+Usa `@tanstack/react-query` para cache e atualizacao automatica.
+
+### 2. Redesenho do componente: `src/components/whatsapp/GlobalConnectionTab.tsx`
+
+Layout expandido com 3 secoes quando a instancia esta conectada:
+
+```text
++--------------------------------------------------+
+| Cards de Metricas (grid 3 ou 4 colunas)          |
+| [Total Enviadas] [Sucesso] [Falhas] [Taxa %]    |
++--------------------------------------------------+
+
++------------------------+-------------------------+
+| Status da Conexao      | Score de Saude           |
+| (card existente)       | (circulo + barra)        |
+| - ConnectionStatusCard | - Score baseado na taxa  |
+| - Numero / Verificacao |   de sucesso             |
+| - Botoes de acao       | - Progresso visual       |
++------------------------+-------------------------+
+
++------------------------+-------------------------+
+| Grafico 7 Dias         | Erros Recentes           |
+| (BarChart com          | (Lista dos ultimos       |
+|  enviados vs falhas)   |  5 erros com data)       |
++------------------------+-------------------------+
 ```
-Antes: status: "disconnected"
-Depois: status: "connected"
+
+**Cards de Metricas (topo)**:
+- Total de notificacoes enviadas (todas)
+- Enviadas com sucesso
+- Falhas
+- Taxa de sucesso (%)
+
+**Score de Saude**:
+- Calculado como `(sucessos / total) * 100`
+- Faixas: >= 80 Excelente (verde), >= 60 Bom (emerald), >= 40 Regular (amarelo), < 40 Critico (vermelho)
+- Visual circular similar ao `HealthScoreCard` existente
+
+**Grafico de Barras (7 dias)**:
+- Reutiliza o estilo visual do `DailyStatsChart` ja existente no projeto
+- Barras verdes (sucesso) e vermelhas (falhas) por dia
+
+**Erros Recentes**:
+- Lista dos ultimos 5 envios com falha
+- Mostra o lead associado, a mensagem de erro e ha quanto tempo ocorreu
+
+Quando a instancia NAO esta conectada ou precisa de QR Code, o layout atual e mantido (QR Code + status card).
+
+### 3. Sem mudancas no banco de dados
+
+Todos os dados necessarios ja existem na tabela `lead_interactions`. Nao e necessario criar tabelas, colunas ou migracoes.
+
+### 4. Sem mudancas nas Edge Functions
+
+A funcao `notify-new-lead` ja registra sucesso e falha corretamente. Nenhuma alteracao necessaria.
+
+## Detalhes Tecnicos
+
+### Hook `use-global-whatsapp-stats.ts`
+
+```typescript
+// Consulta lead_interactions com filtros:
+// - channel = 'whatsapp'
+// - interaction_type = 'notification'
+// Retorna:
+// - totals: { total, sent, failed, successRate }
+// - dailyStats: Array<{ date, sent, failed }>
+// - recentErrors: Array<{ id, notes, created_at, lead_name }>
 ```
 
-### 2. `src/components/whatsapp/GlobalConnectionTab.tsx` (linha 42)
+A query de estatisticas diarias usa `created_at >= 7 dias atras` e agrupa por data no frontend (pois a funcao `.select()` do Supabase nao suporta `GROUP BY` diretamente).
 
-Melhorar a condicao de loading para usar uma flag dedicada em vez de checar `!status` (que nunca sera falsy):
+### Calculo do Score de Saude
 
+```typescript
+const successRate = totals.total > 0 
+  ? Math.round((totals.sent / totals.total) * 100) 
+  : 100; // Se nao tem envios, assume 100
 ```
-Antes: if (isLoading && !status)
-Depois: if (isLoading)
-```
 
-Isso garante que durante o carregamento inicial, o usuario vera um spinner em vez de qualquer estado provisorio. Assim que o fetch completa, `isLoading` vira `false` e o status real e exibido.
+### Paleta Visual
 
-## Resultado
+Segue a paleta neutra fria ja padronizada:
+- Cards: `bg-[#1a1a1d] border-[#2a2a2e]`
+- Fundo profundo: `#0f0f12`
+- Textos: `text-white`, `text-slate-400`, `text-slate-500`
 
-- Nenhum flash de "Desconectado" ao abrir a aba
-- Se a instancia estiver conectada: spinner -> Conectado (transicao limpa)
-- Se a instancia estiver desconectada: spinner -> Desconectado (comportamento correto)
-- Zero impacto no funcionamento de envio de mensagens, QR Code ou gerenciamento
+## Resultado Esperado
 
+- A aba "Conexao Global" se torna um painel completo de monitoramento
+- O admin visualiza de imediato quantas notificacoes foram enviadas e a taxa de sucesso
+- Erros recentes ficam visiveis para diagnostico rapido
+- O grafico mostra a tendencia dos ultimos 7 dias
+- A funcionalidade de conexao (QR Code, reiniciar, desconectar, limpar sessao) permanece intacta
