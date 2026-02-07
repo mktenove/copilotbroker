@@ -211,13 +211,13 @@ const AdminWhatsApp = () => {
                 <Send className="w-4 h-4" />
                 <span className="hidden sm:inline">Fila</span>
               </TabsTrigger>
-              <TabsTrigger value="security" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
-                <Shield className="w-4 h-4" />
-                <span className="hidden sm:inline">Segurança</span>
-              </TabsTrigger>
               <TabsTrigger value="automation" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Bot className="w-4 h-4" />
                 <span className="hidden sm:inline">Automação</span>
+              </TabsTrigger>
+              <TabsTrigger value="security" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
+                <Shield className="w-4 h-4" />
+                <span className="hidden sm:inline">Segurança</span>
               </TabsTrigger>
             </TabsList>
 
@@ -251,12 +251,12 @@ const AdminWhatsApp = () => {
               <QueueTab />
             </TabsContent>
 
-            <TabsContent value="security" className="mt-6">
-              <SecurityTab />
-            </TabsContent>
-
             <TabsContent value="automation" className="mt-6">
               <AutoMessageTab />
+            </TabsContent>
+
+            <TabsContent value="security" className="mt-6">
+              <SecurityTab />
             </TabsContent>
           </Tabs>
         </div>
