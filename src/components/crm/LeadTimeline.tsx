@@ -55,40 +55,55 @@ export function LeadTimeline({ interactions }: LeadTimelineProps) {
           const Icon = INTERACTION_ICONS[interaction.interaction_type] || Clock;
           const label = INTERACTION_LABELS[interaction.interaction_type] || interaction.interaction_type;
 
+          // Detect success/failure for contact_attempt
+          const isContactAttempt = interaction.interaction_type === "contact_attempt";
+          const isSuccess = isContactAttempt && interaction.notes?.includes("✅");
+          const isFailure = isContactAttempt && (interaction.notes?.includes("❌") || interaction.notes?.includes("Falha"));
+
+          // Determine icon border color
+          const getIconBorderColor = () => {
+            if (interaction.interaction_type === "inactivation") return "border-red-500";
+            if (isFailure) return "border-red-400";
+            if (isSuccess) return "border-emerald-500";
+            if (interaction.interaction_type === "notification") return "border-emerald-500";
+            if (interaction.interaction_type === "registration") return "border-[#FFFF00]";
+            return "border-slate-500";
+          };
+
+          // Determine icon text color
+          const getIconTextColor = () => {
+            if (interaction.interaction_type === "inactivation") return "text-red-500";
+            if (isFailure) return "text-red-400";
+            if (isSuccess) return "text-emerald-500";
+            if (interaction.interaction_type === "notification") return "text-emerald-500";
+            if (interaction.interaction_type === "registration") return "text-[#FFFF00]";
+            return "text-slate-400";
+          };
+
+          // Determine card bg/border
+          const getCardStyle = () => {
+            if (interaction.interaction_type === "inactivation") return "bg-red-500/10 border-red-500/30";
+            if (isFailure) return "bg-red-500/10 border-red-400/30";
+            if (isSuccess) return "bg-emerald-500/10 border-emerald-500/30";
+            if (interaction.interaction_type === "notification") return "bg-emerald-500/10 border-emerald-500/30";
+            return "bg-[#0f0f12] border-[#2a2a2e]";
+          };
+
           return (
             <div key={interaction.id} className="relative pl-10 pb-4">
               {/* Icon circle */}
               <div className={cn(
                 "absolute left-2 w-5 h-5 rounded-full flex items-center justify-center",
                 "bg-[#1e1e22] border-2",
-                interaction.interaction_type === "inactivation" 
-                  ? "border-red-500" 
-                  : interaction.interaction_type === "notification"
-                  ? "border-emerald-500"
-                  : interaction.interaction_type === "registration"
-                  ? "border-[#FFFF00]"
-                  : "border-slate-500"
+                getIconBorderColor()
               )}>
-                <Icon className={cn(
-                  "w-3 h-3",
-                  interaction.interaction_type === "inactivation" 
-                    ? "text-red-500" 
-                    : interaction.interaction_type === "notification"
-                    ? "text-emerald-500"
-                    : interaction.interaction_type === "registration"
-                    ? "text-[#FFFF00]"
-                    : "text-slate-400"
-                )} />
+                <Icon className={cn("w-3 h-3", getIconTextColor())} />
               </div>
 
               {/* Content */}
               <div className={cn(
                 "rounded-lg p-3 border",
-                interaction.interaction_type === "inactivation"
-                  ? "bg-red-500/10 border-red-500/30"
-                  : interaction.interaction_type === "notification"
-                  ? "bg-emerald-500/10 border-emerald-500/30"
-                  : "bg-[#0f0f12] border-[#2a2a2e]"
+                getCardStyle()
               )}>
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-medium text-slate-300">{label}</span>
