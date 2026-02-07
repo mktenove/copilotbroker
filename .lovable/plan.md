@@ -1,81 +1,56 @@
 
 
-# Redesign Premium dos Cards de Resumo do Corretor
+# Cards Ultra-Minimalistas com Cores Corrigidas
 
-## O Problema
+## Problema
 
-Os 3 elementos destacados na imagem (card de empreendimentos + 2 cards de stats) tem um visual generico que destoa do layout premium dark. Especificamente:
+Os cards atuais usam as CSS variables `bg-card` e `border-border` que no dark mode resolvem para:
+- `--card: 20 20% 8%` (HSL com matiz 20 = tom **marrom/quente**)
+- `--border: 40 20% 20%` (HSL com matiz 40 = tom **marrom/dourado**)
 
-- Circulos com icones em fundo amarelo translucido parecem "elementor" / template builder
-- A barra de progresso do Radix e grossa e deselegante
-- Os cards de "Novos" e "Total" sao planos demais, sem profundidade visual
-- Falta hierarquia visual e refinamento tipografico
+Isso cria um contraste "quente" contra o fundo frio `#0f0f12`, gerando a sensacao de marrom que destoa do layout.
 
-## Novo Design
+Alem disso, os cards ainda estao grandes demais com padding excessivo.
 
-### Card "Seus Empreendimentos"
+## Solucao
 
-- Remover o circulo amarelo do icone e usar icone inline mais sutil
-- Adicionar um gradiente sutil de borda (glow dourado leve)
-- Trocar a Progress bar generica por uma barra customizada ultra-fina (2px) com gradiente dourado
-- Tipografia mais refinada: numero em destaque com fonte maior
-- Seta com animacao de hover mais premium (translateX)
+Trocar as CSS variables por cores fixas do design system frio e reduzir drasticamente o tamanho dos cards.
 
-### Cards de Stats ("Novos" / "Total")
-
-- Remover os circulos com icones genericos (parecem Elementor)
-- Layout vertical: label em cima, numero grande embaixo, sem icone circular
-- Adicionar bordas com gradiente sutil (glow effect)
-- O card de "Novos" tera um destaque visual especial (borda primary sutil) quando houver leads novos
-- Numeros com tamanho maior e peso mais forte para impacto visual
-- Adicionar um separador decorativo sutil (linha dourada fina)
-
-## Visual Esperado
-
-```text
-+------------------------------------------------------------+
-| [Building2 icon]  Seus Empreendimentos            [->]     |
-| 2 de 3 ativos                                              |
-| [============================----------] barra ultra-fina   |
-| (!) 1 empreendimento disponivel                            |
-+------------------------------------------------------------+
-
-+----------------------------+  +----------------------------+
-| Novos Leads                |  | Total de Leads             |
-|                            |  |                            |
-|  _____ (linha dourada)     |  |  _____ (linha dourada)     |
-|                            |  |                            |
-|  5                         |  |  6                         |
-+----------------------------+  +----------------------------+
-```
-
-## Detalhamento Tecnico
+### Paleta correta (fria, sem marrom):
+- Fundo de cards: `#1e1e22` (cinza neutro escuro)
+- Bordas: `#2a2a2e` (cinza neutro medio)
+- Background page: `#0f0f12` (ja esta correto)
 
 ### Arquivo: `src/pages/BrokerAdmin.tsx`
 
-**Card de Empreendimentos (linhas 180-243):**
-- Substituir o div circular do icone por um icone inline com opacidade
-- Usar `bg-gradient-to-r from-[#1e1e22] to-[#1a1a1f]` para profundidade
-- Trocar `<Progress>` por uma div customizada com height de 2px e gradiente `from-primary via-yellow-400 to-primary`
-- Animacao de hover na seta: `group-hover:translate-x-1`
-- Borda com `border-[#2a2a2e]` base, com hover para `border-primary/30`
+**Card "Seus Empreendimentos":**
+- Trocar `bg-gradient-to-r from-card to-card/80` por `bg-[#1e1e22]`
+- Trocar bordas baseadas em `border-border` por `border-[#2a2a2e]`
+- Reduzir padding de `p-4` para `p-3`
+- Reduzir `mb-6` para `mb-4`
+- Trocar `rounded-xl` por `rounded-lg` para um visual mais sutil
 
-**Cards de Stats (linhas 246-269):**
-- Remover completamente os divs circulares com icones `<Users>`
-- Layout vertical centralizado a esquerda
-- Label: `text-xs uppercase tracking-widest text-muted-foreground/70`
-- Separador: `div` com `w-8 h-px bg-primary/40 my-2`
-- Numero: `text-3xl sm:text-4xl font-light text-white tracking-tight`
-- Card "Novos" com borda `border-primary/20` quando `newLeads.length > 0`
-- Background sutil: `bg-[#1e1e22]/80 backdrop-blur-sm`
+**Cards de Stats ("Novos Leads" / "Total"):**
+- Trocar `bg-card/80 backdrop-blur-sm` por `bg-[#1e1e22]/80`
+- Trocar `border-border/50` por `border-[#2a2a2e]/50`
+- Reduzir padding de `p-4 sm:p-6` para `p-3 sm:p-4`
+- Reduzir numeros de `text-3xl sm:text-4xl` para `text-2xl sm:text-3xl`
+- Reduzir gap e margin do grid: `gap-3 sm:gap-4 mb-6` para `gap-2 sm:gap-3 mb-4`
+- Diminuir o separador dourado de `my-2 sm:my-3` para `my-1.5 sm:my-2`
 
-### Arquivo: Nenhum outro arquivo precisa ser alterado
+### Resultado visual esperado
 
-Toda a mudanca e contida no `BrokerAdmin.tsx`, ja que os cards sao renderizados inline (nao sao componentes separados).
+```
++----------------------------------------------------------+
+| [icon] Empreendimentos  2 de 3 ativos             [->]   |
+| [===========-----] barra 2px                              |
++----------------------------------------------------------+
 
-## Resultado Esperado
++-------------------------+  +-------------------------+
+| NOVOS LEADS             |  | TOTAL DE LEADS          |
+| ____                    |  | ____                    |
+| 5                       |  | 6                       |
++-------------------------+  +-------------------------+
+```
 
-- Visual premium e minimalista, coerente com o dark theme luxury da Enove
-- Sem circulos amarelos genericos que lembram templates
-- Tipografia elegante com hierarquia clara
-- Detalhes sutis de gradiente e glow que elevam a percepcao de qualidade
+Cards compactos, fundo cinza neutro `#1e1e22`, sem nenhum tom marrom.
