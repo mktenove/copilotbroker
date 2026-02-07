@@ -66,7 +66,7 @@ export function ConnectionStatusCard({ status }: ConnectionStatusCardProps) {
         </p>
         <p className="text-xs text-slate-500">
           {status === "connected" && "Pronto para enviar mensagens"}
-          {status === "connecting" && "Estabelecendo conexão..."}
+          {status === "connecting" && "Escaneie o QR Code para conectar"}
           {status === "qr_pending" && "Escaneie o QR Code com seu WhatsApp"}
           {status === "disconnected" && "Clique em 'Novo QR Code' para reconectar"}
         </p>
