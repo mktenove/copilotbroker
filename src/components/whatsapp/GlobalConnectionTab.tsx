@@ -1,6 +1,11 @@
 import { useWhatsAppGlobalInstance } from "@/hooks/use-whatsapp-global-instance";
+import { useGlobalWhatsAppStats } from "@/hooks/use-global-whatsapp-stats";
 import { ConnectionStatusCard } from "./ConnectionStatusCard";
 import { QRCodeDisplay } from "./QRCodeDisplay";
+import { GlobalMetricsCards } from "./GlobalMetricsCards";
+import { GlobalHealthScore } from "./GlobalHealthScore";
+import { GlobalDailyChart } from "./GlobalDailyChart";
+import { GlobalRecentErrors } from "./GlobalRecentErrors";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,7 +20,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle, Trash2, Plus, Wifi } from "lucide-react";
+import { Loader2, RefreshCw, Power, RotateCcw, Globe, AlertTriangle, Trash2, Wifi } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -39,6 +44,13 @@ export function GlobalConnectionTab() {
     clearSession,
   } = useWhatsAppGlobalInstance();
 
+  const {
+    totals,
+    dailyStats,
+    recentErrors,
+    extractErrorMessage,
+  } = useGlobalWhatsAppStats();
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -49,9 +61,8 @@ export function GlobalConnectionTab() {
 
   const isConnected = status === "connected";
   const needsQR = status === "qr_pending" || status === "disconnected";
-  const showCreateButton = needsInit || (status === "disconnected" && error);
 
-  // No instance yet - show init card (similar to ConnectionTab)
+  // No instance yet - show init card
   if (needsInit && !qrCode) {
     return (
       <Card className="bg-[#1a1a1d] border-[#2a2a2e] max-w-lg mx-auto">
@@ -91,9 +102,9 @@ export function GlobalConnectionTab() {
           <AlertTitle>Erro ao verificar status</AlertTitle>
           <AlertDescription className="flex items-center justify-between">
             <span>{error}</span>
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               onClick={refreshStatus}
               className="ml-2 border-red-500/30 text-red-400 hover:bg-red-500/10"
             >
@@ -104,7 +115,17 @@ export function GlobalConnectionTab() {
         </Alert>
       )}
 
-      {/* Main Connection Card */}
+      {/* Metrics Cards (top row) */}
+      {isConnected && (
+        <GlobalMetricsCards
+          total={totals.total}
+          sent={totals.sent}
+          failed={totals.failed}
+          successRate={totals.successRate}
+        />
+      )}
+
+      {/* Connection Status + Health Score / QR Code */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Status Card */}
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
@@ -114,27 +135,25 @@ export function GlobalConnectionTab() {
               Status da Conexão Global
             </CardTitle>
             {instanceName && (
-              <CardDescription>
-                Instância: {instanceName}
-              </CardDescription>
+              <CardDescription>Instância: {instanceName}</CardDescription>
             )}
           </CardHeader>
           <CardContent className="space-y-4">
             <ConnectionStatusCard status={status} />
-            
+
             {phoneNumber && (
               <div className="text-sm text-slate-400">
                 <span className="text-slate-500">Número:</span>{" "}
                 <span className="text-white font-mono">{phoneNumber}</span>
               </div>
             )}
-            
+
             {lastSeenAt && (
               <div className="text-sm text-slate-400">
                 <span className="text-slate-500">Última verificação:</span>{" "}
-                {formatDistanceToNow(new Date(lastSeenAt), { 
-                  locale: ptBR, 
-                  addSuffix: true 
+                {formatDistanceToNow(new Date(lastSeenAt), {
+                  locale: ptBR,
+                  addSuffix: true,
                 })}
               </div>
             )}
@@ -157,7 +176,7 @@ export function GlobalConnectionTab() {
                   Novo QR Code
                 </Button>
               )}
-              
+
               {isConnected && (
                 <>
                   <Button
@@ -196,7 +215,7 @@ export function GlobalConnectionTab() {
                       <AlertDialogHeader>
                         <AlertDialogTitle className="text-white">Limpar sessão global?</AlertDialogTitle>
                         <AlertDialogDescription className="text-slate-400">
-                          Esta ação irá desconectar a instância e limpar a sessão. 
+                          Esta ação irá desconectar a instância e limpar a sessão.
                           Você precisará escanear o QR Code novamente.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
@@ -219,36 +238,32 @@ export function GlobalConnectionTab() {
           </CardContent>
         </Card>
 
-        {/* QR Code or Connected Info Card */}
+        {/* Right side: QR Code or Health Score */}
         {needsQR ? (
-          <QRCodeDisplay 
-            qrCode={qrCode} 
-            isLoading={isLoadingQR} 
-            onRefresh={fetchQRCode} 
+          <QRCodeDisplay
+            qrCode={qrCode}
+            isLoading={isLoadingQR}
+            onRefresh={fetchQRCode}
           />
         ) : (
-          <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center gap-2">
-                ✅ Instância Conectada
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-center py-8">
-                <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Globe className="w-10 h-10 text-green-500" />
-                </div>
-                <p className="text-slate-300 text-lg font-medium">
-                  Pronta para enviar notificações
-                </p>
-                <p className="text-slate-500 text-sm mt-2">
-                  Os corretores receberão alertas de novos leads por esta instância
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <GlobalHealthScore
+            successRate={totals.successRate}
+            totalSent={totals.sent}
+            totalFailed={totals.failed}
+          />
         )}
       </div>
+
+      {/* Chart + Recent Errors (bottom row) - only when connected */}
+      {isConnected && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <GlobalDailyChart dailyStats={dailyStats} />
+          <GlobalRecentErrors
+            errors={recentErrors}
+            extractErrorMessage={extractErrorMessage}
+          />
+        </div>
+      )}
     </div>
   );
 }
