@@ -1,42 +1,47 @@
 
 
-# Horario de Disparo Configuravel pelo Corretor
+# Corrigir Atualização da Lista Após Criar Regra
 
-## Situacao Atual
+## Problema
 
-O backend **ja suporta** horarios configuraveis por corretor:
-- A tabela `broker_whatsapp_instances` tem as colunas `working_hours_start` (default 09:00) e `working_hours_end` (default 21:00)
-- O endpoint `POST /settings` do `whatsapp-instance-manager` aceita `working_hours_start` e `working_hours_end`
-- O `whatsapp-message-sender` valida via `isWithinWorkingHours()` antes de enviar
-- O hook `updateSettings` no frontend ja aceita esses campos
+O `AutoMessageTab` e o `AutoMessageRuleEditor` chamam `useAutoMessageRules()` cada um separadamente. Isso cria dois estados independentes:
 
-O unico problema e que **nao existe UI** para o corretor alterar esses horarios. A aba Seguranca mostra "Horario de envio: 09:00 - 21:00" de forma fixa.
+```text
+AutoMessageTab
+  └── useAutoMessageRules()  --> rules (estado A)
+  └── AutoMessageRuleEditor
+        └── useAutoMessageRules()  --> rules (estado B)
+```
+
+Quando o editor chama `createRule()`, atualiza o estado B, mas o estado A (que renderiza a lista) permanece inalterado.
+
+## Solucao
+
+Remover a chamada duplicada do hook no `AutoMessageRuleEditor` e passar as funcoes necessarias (`createRule`, `updateRule`, `isSaving`, `rules`) como props vindas do `AutoMessageTab`, que ja possui a instancia correta do hook.
+
+```text
+AutoMessageTab
+  └── useAutoMessageRules()  --> rules (estado unico)
+  └── AutoMessageRuleEditor
+        └── recebe createRule, updateRule, isSaving, rules via props
+```
 
 ## Alteracoes
 
-### 1. Adicionar campos de horario na `SecurityTab.tsx`
+### 1. Atualizar `AutoMessageRuleEditor.tsx`
 
-Dentro do card "Limites de Envio", adicionar dois campos de horario (tipo `<input type="time">`) para inicio e fim do expediente:
+- Remover o import e a chamada de `useAutoMessageRules()`
+- Adicionar `createRule`, `updateRule`, `isSaving` e `rules` na interface de props
+- Usar essas props no lugar do hook interno
 
-- Campo "Inicio do expediente" - valor inicial vindo de `instance.working_hours_start`
-- Campo "Fim do expediente" - valor inicial vindo de `instance.working_hours_end`
-- Ambos incluidos no `handleSaveSettings` junto com os limites de envio
+### 2. Atualizar `AutoMessageTab.tsx`
 
-### 2. Atualizar o `handleSaveSettings`
-
-Incluir `working_hours_start` e `working_hours_end` na chamada de `updateSettings()` que ja existe.
-
-### 3. Atualizar a regra anti-spam exibida
-
-Trocar o texto fixo "Horario de envio: 09:00 - 21:00" pelo horario real configurado pelo corretor, lido de `instance.working_hours_start` e `instance.working_hours_end`.
-
-## Arquivo a Alterar
-
-- `src/components/whatsapp/SecurityTab.tsx` - Adicionar inputs de horario e atualizar texto dinamico
+- Passar `createRule`, `updateRule`, `isSaving` e `rules` como props para o `AutoMessageRuleEditor`
+- A tab ja desestrutura `rules` do hook, entao basta tambem desestruturar `createRule`, `updateRule` e `isSaving`
 
 ## Resultado Esperado
 
-- O corretor pode definir o horario de inicio e fim dos disparos (ex: 08:00 - 20:00)
-- Os valores sao salvos no banco e respeitados pelo processador de fila
-- A regra anti-spam exibe o horario real configurado
+- Ao criar uma regra, a lista atualiza imediatamente porque ambos os componentes compartilham o mesmo estado
+- O mesmo vale para editar regras: as alteracoes refletem instantaneamente na lista
+- A verificacao de "projeto ja tem regra" tambem funciona corretamente, pois usa a mesma lista
 
