@@ -28,19 +28,19 @@ export function CampaignsTab() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold text-white">Campanhas</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button 
             variant="outline"
             onClick={() => setIsTemplatesOpen(true)}
-            className="bg-[#1a1a1d] border-[#2a2a2e] text-white hover:bg-[#2a2a2e]"
+            className="bg-[#1a1a1d] border-[#2a2a2e] text-white hover:bg-[#2a2a2e] flex-1 sm:flex-none"
           >
             <FileText className="w-4 h-4 mr-2" />
             Templates
           </Button>
           <Button 
-            className="bg-primary hover:bg-primary/90"
+            className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none"
             onClick={() => setIsNewCampaignOpen(true)}
           >
             <Plus className="w-4 h-4 mr-2" />
