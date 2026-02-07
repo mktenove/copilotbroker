@@ -1,50 +1,70 @@
 
 
-# Corrigir Edge Function da Conexao Global
+# Corrigir Erro 405 "Method Not Allowed" no Envio de Notificacoes
 
-## Problema Raiz
+## Problema Identificado
 
-A edge function `whatsapp-global-instance-manager` **nao esta deployada** no servidor. O teste direto retorna `404 - Requested function was not found`, o que causa todos os erros "Failed to fetch" e "Erro ao criar instancia" na interface.
+A URL de envio esta sendo montada incorretamente. O formato atual e:
+
+```text
+https://enove.uazapi.com/enove_global_1770423387245/send/text  (ERRADO - 405)
+```
+
+Mas o formato correto da UAZAPI v2 e:
+
+```text
+https://enove.uazapi.com/send/text  (CORRETO)
+```
+
+Na UAZAPI v2, a instancia e identificada pelo header `token`, nao pela URL. As outras funcoes (`whatsapp-global-instance-manager` e `whatsapp-message-sender`) ja usam esse formato corretamente.
 
 ## Evidencias
 
-- Teste direto via curl: `{"code":"NOT_FOUND","message":"Requested function was not found"}`
-- Zero logs de execucao no analytics (a funcao nunca rodou)
-- Console do frontend mostra "Failed to fetch" a cada 15 segundos (polling)
-- A tabela `global_whatsapp_config` tem um registro salvo mas com status "disconnected"
+- Logs mostram: `url: "https://enove.uazapi.com/enove_global_1770423387245/send/text"` retornando 405
+- O `whatsapp-global-instance-manager` faz requests para `https://enove.uazapi.com/instance/status` (sem nome da instancia no path)
+- O `whatsapp-message-sender` usa `${baseUrl}/send/text` onde baseUrl e o dominio base
+- A linha 74 do `notify-new-lead` esta errada: `instanceUrl = ${baseApiUrl}/${storedInstance.instance_name}`
 
-## Solucao
+## Problema Secundario
 
-### Passo 1: Fazer deploy da edge function
+O status no banco de dados (`global_whatsapp_config`) permanece como "disconnected" mesmo quando a instancia esta conectada. Isso ocorre porque o `whatsapp-global-instance-manager` detecta o status "connected" da UAZAPI mas nao atualiza o banco.
 
-Deployar a funcao `whatsapp-global-instance-manager` que ja existe no codigo mas nao esta no servidor.
+## Alteracoes
 
-### Passo 2: Testar a funcao apos deploy
+### 1. Corrigir URL em `notify-new-lead/index.ts`
 
-Executar uma chamada GET no endpoint `/status` para verificar se a funcao responde corretamente e consegue se comunicar com a UAZAPI usando o token salvo no banco (`984cd567-f34b-4528-a5bf-7fb70dd4f869`).
+Mudar a linha 74 de:
 
-### Passo 3: Verificar e corrigir possiveis erros no codigo
+```typescript
+// ERRADO: inclui nome da instância no path
+instanceUrl = `${baseApiUrl}/${storedInstance.instance_name}`;
+```
 
-Se apos o deploy a funcao ainda apresentar erros, analisar os logs para identificar problemas como:
-- URL da UAZAPI mal formada
-- Token invalido
-- Erros de importacao do Hono ou Supabase
+Para:
+
+```typescript
+// CORRETO: usa apenas o domínio base, token identifica a instância
+instanceUrl = baseApiUrl;
+```
+
+O token ja esta sendo passado corretamente no header, entao a UAZAPI sabe qual instancia usar.
+
+### 2. Atualizar status no banco apos verificacao de status
+
+No `whatsapp-global-instance-manager`, garantir que o endpoint `/status` atualize o campo `status` na tabela `global_whatsapp_config` quando detectar que a instancia esta conectada na UAZAPI. Isso corrige o problema do status "disconnected" persistente.
 
 ## Resultado Esperado
 
-- A funcao responde corretamente ao endpoint `/status`
-- A interface "Conexao Global" para de mostrar "Erro ao criar instancia"
-- O status da instancia reflete o estado real da conexao na UAZAPI
+- URL de envio sera `https://enove.uazapi.com/send/text` (formato correto UAZAPI v2)
+- Token no header `token` identifica a instancia
+- Notificacoes serao enviadas com sucesso
+- Status no banco refletira o estado real da instancia ("connected")
 
 ## Detalhes Tecnicos
 
-O codigo da funcao usa o framework Hono com basePath `/whatsapp-global-instance-manager` e tem os seguintes endpoints:
-- `GET /status` - Verifica status via token salvo no banco ou fallback para env vars
-- `POST /init` - Cria nova instancia via admintoken
-- `GET /qrcode` - Obtem QR code para conexao
-- `POST /logout` - Desconecta a instancia
-- `POST /restart` - Reinicia a instancia
-- `POST /clear-session` - Limpa sessao e remove do banco
+A funcao `notify-new-lead` precisa apenas de 2 informacoes do banco:
+1. `instance_token` - para autenticacao via header
+2. A URL base (`https://enove.uazapi.com`) - extraida da variavel de ambiente
 
-A configuracao em `supabase/config.toml` ja existe com `verify_jwt = false`.
+O `instance_name` nao e necessario para construir a URL de envio - ele e usado apenas para operacoes administrativas (init, connect, disconnect).
 
