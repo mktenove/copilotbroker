@@ -20,10 +20,10 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2, AlertTriangle, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useAutoMessageRules } from "@/hooks/use-auto-message-rules";
 import { useUserRole } from "@/hooks/use-user-role";
 import { 
   type BrokerAutoMessageRule, 
+  type AutoMessageRuleFormData,
   DEFAULT_AUTO_MESSAGE,
   replaceAutoMessageVariables 
 } from "@/types/auto-message";
@@ -32,6 +32,10 @@ interface AutoMessageRuleEditorProps {
   isOpen: boolean;
   onClose: () => void;
   editingRule: BrokerAutoMessageRule | null;
+  createRule: (data: AutoMessageRuleFormData) => Promise<any>;
+  updateRule: (id: string, data: Partial<AutoMessageRuleFormData>) => Promise<any>;
+  isSaving: boolean;
+  rules: BrokerAutoMessageRule[];
 }
 
 interface Project {
@@ -43,9 +47,12 @@ export function AutoMessageRuleEditor({
   isOpen,
   onClose,
   editingRule,
+  createRule,
+  updateRule,
+  isSaving,
+  rules,
 }: AutoMessageRuleEditorProps) {
   const { brokerId } = useUserRole();
-  const { createRule, updateRule, isSaving, rules } = useAutoMessageRules();
   
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);

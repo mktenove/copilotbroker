@@ -9,7 +9,7 @@ import type { BrokerAutoMessageRule } from "@/types/auto-message";
 import { cn } from "@/lib/utils";
 
 export function AutoMessageTab() {
-  const { rules, isLoading, toggleRuleActive, deleteRule } = useAutoMessageRules();
+  const { rules, isLoading, toggleRuleActive, deleteRule, createRule, updateRule, isSaving } = useAutoMessageRules();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<BrokerAutoMessageRule | null>(null);
 
@@ -182,6 +182,10 @@ export function AutoMessageTab() {
         isOpen={isEditorOpen}
         onClose={handleCloseEditor}
         editingRule={editingRule}
+        createRule={createRule}
+        updateRule={updateRule}
+        isSaving={isSaving}
+        rules={rules}
       />
     </div>
   );
