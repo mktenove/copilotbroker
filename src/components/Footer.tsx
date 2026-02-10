@@ -30,10 +30,6 @@ const Footer = () => {
           
           <address className="text-center space-y-2 not-italic">
             <p className="text-xs sm:text-sm text-muted-foreground">
-              Uma realização{" "}
-              <span className="text-primary font-medium">Ábaco Incorporadora</span>
-            </p>
-            <p className="text-xs sm:text-sm text-muted-foreground">
               Comercialização:{" "}
               <span className="text-foreground/80 font-medium">Enove Imobiliária</span>
             </p>
