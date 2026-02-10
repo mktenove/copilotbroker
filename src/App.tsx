@@ -7,8 +7,9 @@ import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
 import AppHead from "@/components/AppHead";
 import Home from "./pages/Home";
-import EstanciaVelha from "./pages/EstanciaVelha";
-import BrokerLandingPage from "./pages/BrokerLandingPage";
+// EstanciaVelha temporarily offline - redirecting to home
+// import EstanciaVelha from "./pages/EstanciaVelha";
+// import BrokerLandingPage from "./pages/BrokerLandingPage";
 import ProjectLandingPage from "./pages/ProjectLandingPage";
 import ProjectBrokerLandingPage from "./pages/ProjectBrokerLandingPage";
 import GoldenViewLandingPage from "./pages/goldenview/GoldenViewLandingPage";
@@ -52,8 +53,8 @@ const App = () => (
             {/* Legacy redirects for backward compatibility */}
             <Route path="/goldenview" element={<Navigate to="/portao/goldenview" replace />} />
             <Route path="/goldenview/:brokerSlug" element={<Navigate to="/portao/goldenview" replace />} />
-            <Route path="/estanciavelha" element={<EstanciaVelha />} />
-            <Route path="/estanciavelha/:brokerSlug" element={<BrokerLandingPage />} />
+            <Route path="/estanciavelha" element={<Navigate to="/" replace />} />
+            <Route path="/estanciavelha/:brokerSlug" element={<Navigate to="/" replace />} />
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
