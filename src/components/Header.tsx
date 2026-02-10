@@ -36,7 +36,7 @@ const Header = () => {
           className="hidden sm:inline-flex btn-outline text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           aria-label="Ir para formulário de cadastro"
         >
-          Quero Acesso Antecipado
+          Quero Mais Informações
         </button>
       </nav>
     </header>

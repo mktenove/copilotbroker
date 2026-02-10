@@ -51,7 +51,7 @@ const FloatingCTA = () => {
         aria-hidden={!isVisible}
         tabIndex={isVisible ? 0 : -1}
       >
-        Quero Acesso Antecipado
+        Quero Mais Informações
       </button>
 
       {/* Scroll to Top Button */}

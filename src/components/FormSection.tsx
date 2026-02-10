@@ -388,7 +388,7 @@ const FormSection = ({
                   <span>Enviando...</span>
                 </span>
               ) : (
-                "Quero Acesso Antecipado"
+                "Quero Mais Informações"
               )}
             </button>
 
