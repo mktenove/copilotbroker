@@ -1,48 +1,28 @@
 
-# Fix: Pagina do Corretor nao renderiza conteudo em producao
+# Alterar CTA para "Quero Acesso Antecipado"
 
-## Problema
+Trocar o texto dos botoes de chamada para acao nas paginas GoldenView e Mauricio Cardoso.
 
-A pagina `/estanciavelha/:brokerSlug` mostra apenas o header e um fundo escuro -- sem titulo, texto ou formulario. O conteudo existe mas esta invisivel.
+## Arquivos e alteracoes
 
-## Causa Raiz
+### GoldenView (5 alteracoes em 4 arquivos)
 
-Ha um problema de **timing entre o IntersectionObserver e o estado de loading**:
+| Arquivo | Texto atual | Novo texto |
+|---|---|---|
+| `GVFloatingCTA.tsx` (linha 56) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
+| `GVFormSection.tsx` (linha 368) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
+| `GVCallToActionSection.tsx` (linha 118) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
+| `GVHeroSection.tsx` (linha 98) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
+| `GVHeader.tsx` (linha 39) | "Quero Acesso" | "Quero Acesso Antecipado" |
 
-1. O componente monta e o `useEffect` do observer roda imediatamente
-2. Nesse momento, `loading = true`, entao o componente renderiza o **spinner** (nao o hero)
-3. O `heroRef.current` e `null` -- o observer nao observa nada
-4. Quando o loading termina e o hero renderiza com `heroRef`, o observer ja executou e nao re-executa
-5. `visibleItems` permanece `0`, e todos os elementos ficam com `opacity-0 translate-y-8` -- invisiveis
+### Mauricio Cardoso (6 alteracoes em 4 arquivos)
 
-No preview do Lovable funciona por causa de hot-reload e cache, mas em producao com uma visita limpa o bug aparece.
+| Arquivo | Texto atual | Novo texto |
+|---|---|---|
+| `MCHeroSection.tsx` (linha 62) | "Quero receber informacoes" | "Quero Acesso Antecipado" |
+| `MCHeroSection.tsx` (linha 60, aria-label) | "Quero receber informacoes..." | "Quero acesso antecipado ao empreendimento" |
+| `MCFormSection.tsx` (linha 189) | "Quero acompanhar esse projeto" | "Quero Acesso Antecipado" |
+| `MCHeader.tsx` (linhas 95, 141) | "Cadastrar" | "Quero Acesso Antecipado" |
+| `MCFloatingCTA.tsx` (linhas 32-33) | "Cadastrar" | "Acesso Antecipado" |
 
-## Solucao
-
-### `src/pages/EstanciaVelhaBrokerTeaser.tsx`
-
-Adicionar `loading` como dependencia do `useEffect` do IntersectionObserver para que ele re-execute apos o loading terminar e o heroRef estar disponivel no DOM:
-
-```tsx
-useEffect(() => {
-  if (loading) return; // Esperar loading terminar
-
-  const observer = new IntersectionObserver(
-    ([entry]) => {
-      if (entry.isIntersecting) {
-        let count = 0;
-        const interval = setInterval(() => {
-          count++;
-          setVisibleItems(count);
-          if (count >= 6) clearInterval(interval);
-        }, 200);
-      }
-    },
-    { threshold: 0.1 }
-  );
-  if (heroRef.current) observer.observe(heroRef.current);
-  return () => observer.disconnect();
-}, [loading]); // <-- adicionar dependencia
-```
-
-Apenas essa alteracao de 2 linhas resolve o problema. Nenhum outro arquivo precisa ser alterado.
+Nenhuma alteracao de logica ou layout -- apenas substituicao de strings de texto.
