@@ -1,30 +1,48 @@
 
+# Fix: Pagina do Corretor nao renderiza conteudo em producao
 
-# Correcoes na Pagina Teaser Estancia Velha
+## Problema
 
-## Problemas Identificados
+A pagina `/estanciavelha/:brokerSlug` mostra apenas o header e um fundo escuro -- sem titulo, texto ou formulario. O conteudo existe mas esta invisivel.
 
-1. **Frase duplicada**: Na linha 107-110, "Nao fique de fora" aparece duas vezes com markup quebrado -- uma vez como texto direto e outra dentro das aspas decorativas.
-2. **Espacamento excessivo**: `space-y-10` (2.5rem entre cada secao) + `mt-16` (4rem antes do formulario) + `py-12 md:py-20` no main criam gaps muito grandes, fazendo o formulario ficar "escondido" abaixo da dobra.
+## Causa Raiz
 
-## Alteracoes
+Ha um problema de **timing entre o IntersectionObserver e o estado de loading**:
 
-### 1. `src/pages/EstanciaVelhaTeaser.tsx`
+1. O componente monta e o `useEffect` do observer roda imediatamente
+2. Nesse momento, `loading = true`, entao o componente renderiza o **spinner** (nao o hero)
+3. O `heroRef.current` e `null` -- o observer nao observa nada
+4. Quando o loading termina e o hero renderiza com `heroRef`, o observer ja executou e nao re-executa
+5. `visibleItems` permanece `0`, e todos os elementos ficam com `opacity-0 translate-y-8` -- invisiveis
 
-- **Corrigir a frase duplicada** (linhas 107-110): Manter apenas uma instancia com as aspas decorativas corretas
-- **Reduzir espacamentos**:
-  - `space-y-10` para `space-y-6` (entre elementos do hero)
-  - `mt-16` para `mt-10` (antes do formulario)
-  - `py-12 md:py-20` para `py-8 md:py-12` (padding do main)
+No preview do Lovable funciona por causa de hot-reload e cache, mas em producao com uma visita limpa o bug aparece.
 
-### 2. `src/pages/EstanciaVelhaBrokerTeaser.tsx`
+## Solucao
 
-- Aplicar as mesmas reducoes de espacamento para manter consistencia visual
-- A frase neste arquivo ja esta correta (sem duplicacao)
+### `src/pages/EstanciaVelhaBrokerTeaser.tsx`
 
-## Resultado Esperado
+Adicionar `loading` como dependencia do `useEffect` do IntersectionObserver para que ele re-execute apos o loading terminar e o heroRef estar disponivel no DOM:
 
-- Frase "Nao fique de fora." aparece uma unica vez com aspas douradas
-- Formulario fica visivel mais rapidamente na tela, sem necessidade de scroll excessivo
-- Layout mais compacto e coeso, mantendo a elegancia premium
+```tsx
+useEffect(() => {
+  if (loading) return; // Esperar loading terminar
 
+  const observer = new IntersectionObserver(
+    ([entry]) => {
+      if (entry.isIntersecting) {
+        let count = 0;
+        const interval = setInterval(() => {
+          count++;
+          setVisibleItems(count);
+          if (count >= 6) clearInterval(interval);
+        }, 200);
+      }
+    },
+    { threshold: 0.1 }
+  );
+  if (heroRef.current) observer.observe(heroRef.current);
+  return () => observer.disconnect();
+}, [loading]); // <-- adicionar dependencia
+```
+
+Apenas essa alteracao de 2 linhas resolve o problema. Nenhum outro arquivo precisa ser alterado.
