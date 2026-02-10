@@ -146,7 +146,7 @@ const Termos = () => {
                 <h2 className="text-xl font-semibold text-foreground mb-3">2. Origem das informações</h2>
                 <p className="mb-2">O usuário declara ciência de que:</p>
                 <ul className="list-disc list-inside space-y-1 ml-4">
-                  <li>As informações divulgadas sobre o empreendimento são fornecidas pela Incorporadora responsável, de forma genérica;</li>
+                  <li>As informações divulgadas sobre o empreendimento serão, futuramente fornecidas pela incorporadora responsável, de forma genérica;</li>
                   <li>A ENOVE atua como intermediadora imobiliária, não sendo responsável por decisões técnicas, alterações de projeto, preços, prazos ou condições definidas pela incorporadora.</li>
                 </ul>
               </div>
