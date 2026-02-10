@@ -1,111 +1,37 @@
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Link } from "react-router-dom";
+import { Helmet } from "react-helmet-async";
 import logoEnove from "@/assets/logo-enove.png";
 import Footer from "@/components/Footer";
-import { usePageTracking, trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
+import {
+  HomeHero,
+  HomePositioning,
+  HomeDifferentials,
+  HomeProcess,
+  HomePartnership,
+  HomeCTA,
+} from "@/components/home";
 
 const Home = () => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ name: "", whatsapp: "" });
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
-  const formRef = useRef<HTMLElement>(null);
-
-  // Track page view
-  usePageTracking();
-
-  useEffect(() => {
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!formData.name.trim()) {
-      toast.error("Por favor, informe seu nome.");
-      return;
-    }
-
-    const whatsappNumbers = formData.whatsapp.replace(/\D/g, "");
-    if (whatsappNumbers.length < 10 || whatsappNumbers.length > 11) {
-      toast.error("Por favor, informe um número de WhatsApp válido.");
-      return;
-    }
-
-    if (!acceptedTerms) {
-      toast.error("Você precisa aceitar os termos para continuar.");
-      return;
-    }
-
-    setIsSubmitting(true);
-
-    try {
-      const { data: insertedLead, error } = await supabase
-        .from("leads")
-        .insert({
-          name: formData.name.trim(),
-          whatsapp: formData.whatsapp,
-          lead_origin: getLeadOriginFromUTM(), // Auto-preencher origem via UTM
-        })
-        .select("id")
-        .single();
-
-      if (error) throw error;
-
-      // Track lead attribution
-      if (insertedLead?.id) {
-        await trackLeadAttribution(insertedLead.id);
-        
-        // GA4 conversion event
-        if (typeof window.gtag === 'function') {
-          window.gtag('event', 'generate_lead', {
-            event_category: 'Lead',
-            event_label: 'home',
-            value: 1,
-            lead_source: 'home'
-          });
-        }
-
-        // Notificar via WhatsApp (UAZAPI)
-        supabase.functions.invoke("notify-new-lead", {
-          body: {
-            leadId: insertedLead.id,
-            leadName: formData.name.trim(),
-            leadWhatsapp: formData.whatsapp,
-            brokerId: null,
-            source: "Home Page",
-          },
-        }).catch((notifyError) => {
-          console.error("Erro ao enviar notificação WhatsApp:", notifyError);
-        });
-      }
-
-      toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
-      setFormData({ name: "", whatsapp: "" });
-      setAcceptedTerms(false);
-    } catch (error) {
-      console.error("Error submitting form:", error);
-      toast.error("Erro ao realizar cadastro. Tente novamente.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   return (
     <>
-      {/* Skip to main content - Accessibility */}
-      <a 
-        href="#main-content" 
+      <Helmet>
+        <title>Enove | Plataforma de Lançamentos Imobiliários no RS</title>
+        <meta
+          name="description"
+          content="A Enove é a parceira estratégica de incorporadoras para lançamentos imobiliários no Rio Grande do Sul. Estratégia, marketing e operação comercial de alta performance."
+        />
+        <meta property="og:title" content="Enove | Plataforma de Lançamentos Imobiliários no RS" />
+        <meta
+          property="og:description"
+          content="Transformamos lançamentos em cases de sucesso. Estratégia, tecnologia e operação comercial de alta performance para incorporadoras."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://onovocondominio.com.br/" />
+        <link rel="canonical" href="https://onovocondominio.com.br/" />
+      </Helmet>
+
+      {/* Skip to main content */}
+      <a
+        href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
       >
         Pular para o conteúdo principal
@@ -135,159 +61,13 @@ const Home = () => {
         </header>
 
         {/* Main Content */}
-        <main 
-          id="main-content" 
-          className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12"
-          role="main"
-        >
-          <article
-            className={`max-w-2xl w-full text-center transition-all duration-700 ease-out ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-            }`}
-          >
-            {/* Hero Section */}
-            <header className="mb-8 sm:mb-12">
-              <p className="text-primary font-medium tracking-widest uppercase mb-3 sm:mb-4 text-xs sm:text-sm">
-                Novidade chegando
-              </p>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4 sm:mb-6 leading-tight">
-                Em Breve
-              </h1>
-              <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed mb-4 sm:mb-6 px-2">
-                Novos empreendimentos de alto padrão estão chegando ao{" "}
-                <strong className="text-foreground font-medium">Vale dos Sinos</strong>.{" "}
-                Cadastre-se e seja o primeiro a saber.
-              </p>
-              <p 
-                className="text-xl sm:text-2xl md:text-3xl font-semibold text-primary mb-4 sm:mb-6"
-                aria-label="Chamada principal"
-              >
-                Não fique de fora.
-              </p>
-            </header>
-
-            {/* Lead Capture Form */}
-            <section
-              ref={formRef}
-              className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-5 sm:p-6 md:p-8"
-              aria-labelledby="form-heading"
-            >
-              <h2 
-                id="form-heading" 
-                className="text-lg sm:text-xl md:text-2xl font-semibold text-foreground mb-2"
-              >
-                Cadastre-se para saber mais
-              </h2>
-              <p className="text-sm sm:text-base text-muted-foreground mb-5 sm:mb-6">
-                Seja um dos primeiros a receber informações exclusivas.
-              </p>
-
-              <form 
-                onSubmit={handleSubmit} 
-                className="space-y-4"
-                aria-label="Formulário de cadastro para acesso antecipado"
-              >
-                <div>
-                  <label htmlFor="name" className="sr-only">Nome completo</label>
-                  <input
-                    id="name"
-                    name="name"
-                    type="text"
-                    autoComplete="name"
-                    placeholder="Seu nome completo"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-base"
-                    aria-required="true"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="whatsapp" className="sr-only">Número de WhatsApp</label>
-                  <input
-                    id="whatsapp"
-                    name="whatsapp"
-                    type="tel"
-                    autoComplete="tel"
-                    inputMode="numeric"
-                    placeholder="Seu WhatsApp (XX) XXXXX-XXXX"
-                    value={formData.whatsapp}
-                    onChange={(e) =>
-                      setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })
-                    }
-                    maxLength={16}
-                    className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-foreground placeholder:text-muted-foreground text-base"
-                    aria-required="true"
-                  />
-                </div>
-
-                <div className="flex items-start gap-3 text-left">
-                  <input
-                    type="checkbox"
-                    id="terms-home"
-                    name="terms"
-                    checked={acceptedTerms}
-                    onChange={(e) => setAcceptedTerms(e.target.checked)}
-                    className="mt-1 w-4 h-4 min-w-[16px] rounded border-border text-primary focus:ring-primary/50 cursor-pointer"
-                    aria-required="true"
-                    aria-describedby="terms-description"
-                  />
-                  <label 
-                    id="terms-description"
-                    htmlFor="terms-home" 
-                    className="text-xs sm:text-sm text-muted-foreground cursor-pointer"
-                  >
-                    Li e aceito os{" "}
-                    <Link
-                      to="/termos"
-                      target="_blank"
-                      className="text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded"
-                      rel="noopener"
-                    >
-                      Termos de Uso e Política de Privacidade
-                    </Link>
-                    , incluindo o recebimento de informações via WhatsApp.
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap min-h-[48px] text-sm sm:text-base"
-                  aria-busy={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <svg
-                        className="animate-spin h-5 w-5"
-                        xmlns="http://www.w3.org/2000/svg"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        aria-hidden="true"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        />
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        />
-                      </svg>
-                      <span>Enviando...</span>
-                    </span>
-                  ) : (
-                    "QUERO MAIS INFORMAÇÕES"
-                  )}
-                </button>
-              </form>
-            </section>
-          </article>
+        <main id="main-content" className="flex-1" role="main">
+          <HomeHero />
+          <HomePositioning />
+          <HomeDifferentials />
+          <HomeProcess />
+          <HomePartnership />
+          <HomeCTA />
         </main>
 
         <Footer />
