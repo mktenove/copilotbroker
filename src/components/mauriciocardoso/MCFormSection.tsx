@@ -186,7 +186,7 @@ const MCFormSection = ({ projectId, brokerId }: MCFormSectionProps) => {
                   </>
                 ) : (
                   <>
-                    Quero acompanhar esse projeto
+                    Quero Acesso Antecipado
                     <ArrowRight className="w-4 h-4" />
                   </>
                 )}

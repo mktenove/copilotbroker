@@ -57,9 +57,9 @@ const MCHeroSection = () => {
             <button
               onClick={scrollToForm}
               className="inline-flex items-center gap-2 md:gap-3 px-6 sm:px-8 md:px-10 py-4 md:py-5 bg-white text-[hsl(var(--mc-forest))] font-medium uppercase tracking-[0.15em] md:tracking-[0.2em] text-[11px] sm:text-xs rounded hover:bg-[hsl(var(--mc-sage-light))] hover:text-white transition-all duration-500 hover:scale-[1.02] min-h-[48px]"
-              aria-label="Quero receber informações sobre o empreendimento"
+              aria-label="Quero acesso antecipado ao empreendimento"
             >
-              Quero receber informações
+              Quero Acesso Antecipado
             </button>
           </div>
         </div>

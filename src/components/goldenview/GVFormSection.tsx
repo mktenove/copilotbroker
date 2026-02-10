@@ -365,7 +365,7 @@ const GVFormSection = ({
                   Enviando...
                 </span>
               ) : (
-                "Quero Mais Informações"
+                "Quero Acesso Antecipado"
               )}
             </button>
 

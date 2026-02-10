@@ -53,7 +53,7 @@ const GVFloatingCTA = () => {
         aria-hidden={!isVisible}
         tabIndex={isVisible ? 0 : -1}
       >
-        Quero Mais Informações
+        Quero Acesso Antecipado
       </button>
 
       {/* Scroll to Top Button */}
