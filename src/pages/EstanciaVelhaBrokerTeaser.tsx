@@ -7,7 +7,7 @@ import logoEnove from "@/assets/logo-enove.png";
 
 const EstanciaVelhaBrokerTeaser = () => {
   const { brokerSlug } = useParams<{ brokerSlug: string }>();
-  const [isVisible, setIsVisible] = useState(false);
+  const [visibleItems, setVisibleItems] = useState<number>(0);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [brokerId, setBrokerId] = useState<string | null>(null);
   const [brokerName, setBrokerName] = useState<string | null>(null);
@@ -18,7 +18,14 @@ const EstanciaVelhaBrokerTeaser = () => {
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
+        if (entry.isIntersecting) {
+          let count = 0;
+          const interval = setInterval(() => {
+            count++;
+            setVisibleItems(count);
+            if (count >= 6) clearInterval(interval);
+          }, 200);
+        }
       },
       { threshold: 0.1 }
     );
@@ -56,11 +63,18 @@ const EstanciaVelhaBrokerTeaser = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: "#0a0a0d" }}>
         <div className="animate-spin h-8 w-8 border-2 border-primary border-t-transparent rounded-full" />
       </div>
     );
   }
+
+  const itemClass = (index: number) =>
+    `transition-all duration-[1.2s] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+      visibleItems > index
+        ? "opacity-100 translate-y-0"
+        : "opacity-0 translate-y-8"
+    }`;
 
   return (
     <>
@@ -74,45 +88,93 @@ const EstanciaVelhaBrokerTeaser = () => {
         </script>
       </Helmet>
 
-      <div className="min-h-screen bg-background text-foreground flex flex-col">
-        <header className="py-6 flex justify-center">
-          <img src={logoEnove} alt="Enove Imobiliária" className="h-10 sm:h-12" />
+      <div className="min-h-screen flex flex-col relative overflow-hidden"
+        style={{
+          background: `
+            radial-gradient(ellipse 60% 50% at 50% 40%, hsl(48 96% 53% / 0.04) 0%, transparent 70%),
+            linear-gradient(180deg, #0a0a0d 0%, #0f0f12 40%, #0a0a0d 100%)
+          `,
+        }}
+      >
+        {/* Header */}
+        <header className="relative py-8 flex justify-center">
+          <a
+            href="https://www.enoveimobiliaria.com.br/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="opacity-80 hover:opacity-100 transition-opacity duration-500"
+          >
+            <img src={logoEnove} alt="Enove Imobiliária" className="h-10 sm:h-12" />
+          </a>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-48 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
         </header>
 
-        <main className="flex-1 flex flex-col items-center justify-center px-4">
-          <div
-            ref={heroRef}
-            className={`max-w-2xl mx-auto text-center space-y-8 transition-all duration-1000 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/30 bg-primary/5">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
-              </span>
-              <span className="text-sm font-medium text-primary">Novidade Chegando</span>
+        {/* Hero */}
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20">
+          <div ref={heroRef} className="max-w-2xl mx-auto text-center space-y-10">
+            {/* Badge */}
+            <div className={itemClass(0)}>
+              <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/5 backdrop-blur-sm">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+                </span>
+                <span className="text-xs font-medium text-primary uppercase tracking-[0.25em]">
+                  Novidade Chegando
+                </span>
+              </div>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl md:text-7xl font-serif font-bold tracking-tight">
-              Em Breve
-            </h1>
+            {/* Title */}
+            <div className={itemClass(1)}>
+              <h1 className="text-7xl sm:text-8xl md:text-9xl font-serif font-bold tracking-[0.2em] sm:tracking-[0.3em] text-foreground/90 uppercase">
+                Em Breve
+              </h1>
+            </div>
 
-            <p className="text-lg sm:text-xl text-muted-foreground max-w-lg mx-auto leading-relaxed">
-              Novos empreendimentos de alto padrão estão chegando ao Vale dos Sinos. Cadastre-se e seja o primeiro a saber.
-            </p>
+            {/* Gold divider */}
+            <div className={itemClass(2)}>
+              <div className="flex items-center justify-center gap-4">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent to-primary/50" />
+                <div className="w-1.5 h-1.5 rotate-45 bg-primary/60" />
+                <div className="w-12 h-px bg-gradient-to-l from-transparent to-primary/50" />
+              </div>
+            </div>
 
-            <p className="text-primary font-semibold text-lg">Não fique de fora.</p>
+            {/* Subtitle */}
+            <div className={itemClass(3)}>
+              <p className="text-base sm:text-lg text-muted-foreground max-w-md mx-auto leading-relaxed font-light tracking-wide">
+                Novos empreendimentos de alto padrão estão chegando ao Vale dos Sinos. Cadastre-se e seja o primeiro a saber.
+              </p>
+            </div>
+
+            {/* Quote */}
+            <div className={itemClass(4)}>
+              <p className="text-primary font-serif italic text-xl sm:text-2xl tracking-wide">
+                <span className="text-primary/40 text-3xl mr-1">"</span>
+                Não fique de fora.
+                <span className="text-primary/40 text-3xl ml-1">"</span>
+              </p>
+            </div>
           </div>
 
-          <FormSection
-            projectId={projectId}
-            projectSlug="estanciavelha"
-            brokerId={brokerId}
-            brokerSlug={brokerSlug}
-          />
+          {/* Form */}
+          <div className={`w-full max-w-lg mx-auto mt-16 ${itemClass(5)}`}>
+            <FormSection
+              projectId={projectId}
+              projectSlug="estanciavelha"
+              brokerId={brokerId}
+              brokerSlug={brokerSlug}
+            />
+          </div>
         </main>
 
-        <footer className="py-6 text-center text-xs text-muted-foreground border-t border-border">
-          © {new Date().getFullYear()} Enove Imobiliária. Todos os direitos reservados.
+        {/* Footer */}
+        <footer className="py-8 text-center">
+          <div className="w-16 h-px bg-gradient-to-r from-transparent via-primary/30 to-transparent mx-auto mb-4" />
+          <p className="text-[11px] text-muted-foreground/60 tracking-widest uppercase">
+            © {new Date().getFullYear()} Enove Imobiliária
+          </p>
         </footer>
       </div>
     </>
