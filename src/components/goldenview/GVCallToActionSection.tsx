@@ -115,7 +115,7 @@ const GVCallToActionSection = () => {
               onClick={scrollToForm}
               className="btn-primary text-base px-10 py-5 animate-pulse-slow"
             >
-              Quero Acesso Antecipado Agora
+              Quero Mais Informações
             </button>
           </div>
         </div>

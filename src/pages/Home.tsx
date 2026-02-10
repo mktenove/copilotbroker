@@ -282,7 +282,7 @@ const Home = () => {
                       <span>Enviando...</span>
                     </span>
                   ) : (
-                    "QUERO ACESSO ANTECIPADO"
+                    "QUERO MAIS INFORMAÇÕES"
                   )}
                 </button>
               </form>
