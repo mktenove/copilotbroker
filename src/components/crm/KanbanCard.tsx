@@ -4,6 +4,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { OriginCombobox } from "./OriginCombobox";
 import { InactivationCombobox } from "./InactivationCombobox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -72,6 +73,7 @@ const PROGRESS_COLORS: Record<string, string> = {
 };
 
 export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus }: KanbanCardProps) {
+  const isMobile = useIsMobile();
   const nextStatus = getNextStatus(lead.status);
   const nextStatusLabel = getNextStatusLabel(lead.status);
   
@@ -82,7 +84,7 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
     transform,
     transition,
     isDragging
-  } = useSortable({ id: lead.id });
+  } = useSortable({ id: lead.id, disabled: isMobile });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -149,12 +151,11 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
       <div
         ref={setNodeRef}
         style={style}
-        {...attributes}
-        {...listeners}
+        {...(isMobile ? {} : { ...attributes, ...listeners })}
         onClick={onClick}
         className={cn(
-          // Base card styles - neutral dark theme
-          "relative rounded-xl cursor-grab active:cursor-grabbing",
+          "relative rounded-xl",
+          isMobile ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
           "bg-[#1e1e22] border border-[#2a2a2e]",
           "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
           "transition-all duration-200 ease-out",
