@@ -1,80 +1,66 @@
 
 
-# Auditoria SEO das Landing Pages - Problemas e Melhorias
+# Desabilitar Drag nos Cards do Kanban no Mobile
 
-## Problemas Identificados
+## Problema
+No celular, o drag-and-drop dos cards do Kanban interfere na navegacao por scroll horizontal entre as colunas, causando "falhas" visuais e uma experiencia ruim. O corretor ja possui o botao de seta (ChevronRight) para avancar o status do lead.
 
-### 1. SPA sem Pre-rendering (CRITICO)
-O problema principal: o site e uma Single Page Application (SPA) em React. Quando o Google acessa `onovocondominio.com.br/estanciavelha`, ele recebe o `index.html` generico com o titulo "Enove Imobiliaria | Condominios de Alto Padrao no RS" e a descricao generica. Os meta tags especificos de cada pagina so sao injetados pelo React Helmet **apos** o JavaScript executar no navegador.
+## Solucao
 
-Embora o Googlebot consiga renderizar JavaScript, ele tem limitacoes:
-- O conteudo renderizado por JS tem menor prioridade de indexacao
-- O titulo e descricao do `index.html` base podem ser indexados no lugar dos especificos
-- O conteudo dinamico (carregado do banco de dados) pode nao estar disponivel no momento do crawl
+### Arquivo: `src/components/crm/KanbanCard.tsx`
 
-### 2. Titulo do index.html generico demais
-O `index.html` tem como titulo padrao "Enove Imobiliaria | Condominios de Alto Padrao no RS". Se o Google nao executar o JS corretamente, esse titulo generico sera indexado para TODAS as paginas, diluindo a relevancia.
+1. Importar o hook `useIsMobile` de `@/hooks/use-mobile`
+2. Condicionar o `useSortable` para que no mobile o card nao seja arrastavel:
+   - No mobile: nao aplicar `listeners` (eventos de drag) nem `attributes` de drag
+   - Trocar `cursor-grab` por `cursor-pointer` no mobile
+   - Remover `active:cursor-grabbing` no mobile
+3. Manter o `setNodeRef` e `transform/transition` para que o dnd-kit nao quebre (ele precisa do ref mesmo sem drag ativo)
 
-### 3. Pagina Home compete com Estancia Velha
-A rota `/` (Home) menciona explicitamente "Estancia Velha" no seu conteudo:
-```
-"A cidade de Estancia Velha recebera um novo condominio..."
-```
-Isso cria **canibalizacao de keywords** - duas paginas do mesmo dominio competindo pela mesma busca "condominio estancia velha".
+### Arquivo: `src/components/crm/KanbanBoard.tsx`
 
-### 4. A Home (`/`) nao esta no sitemap
-A pagina raiz nao esta incluida no `sitemap.xml`, entao o Google pode nao saber que ela existe ou qual sua relacao com as outras paginas.
+4. Ajustar o `PointerSensor` para exigir uma distancia maior de ativacao, como camada extra de seguranca
 
-### 5. Falta `<h1>` semantico consistente
-Na pagina Estancia Velha, o `<h1>` e "O Maior Lancamento Imobiliario de Estancia Velha Esta Prestes a Ser Revelado" - bom para copywriting mas fraco para SEO. Nao contem termos como "condominio", "terrenos" ou "lotes" que sao os termos de busca.
+### Verificacao dos botoes de seta
 
-### 6. Data de lancamento desatualizada
-Os meta tags e keywords ainda referenciam "lancamento imobiliario **2025**" quando ja estamos em 2026. Isso afeta a relevancia temporal.
-
-### 7. OG Title inconsistente com Title
-- Title: "Condominio Alto Padrao Estancia Velha | 350 Lotes a partir de 500m2"
-- OG Title: "Novo Condominio em Estancia Velha | Lancamento 2025"
-- O Google pode usar qualquer um deles, e o OG ainda diz 2025.
+O botao ChevronRight (avancar status) ja existe no card e funciona corretamente. Atualmente, **nao existe** um botao de "voltar" (ChevronLeft) para retroceder o status. Sera mantido assim, pois retroceder status e uma acao incomum que pode ser feita pelo detalhe do lead.
 
 ---
 
-## Plano de Melhorias
+## Secao Tecnica
 
-### Passo 1: Corrigir canibalizacao Home vs Estancia Velha
-Remover a mencao explicita a "Estancia Velha" da Home, tornando-a uma pagina institucional generica da Enove que lista todos os empreendimentos.
+### `KanbanCard.tsx` - Mudancas
 
-### Passo 2: Otimizar `<h1>` da Estancia Velha para SEO
-Alterar o H1 do HeroSection para incluir termos de busca relevantes. Exemplo:
+```tsx
+import { useIsMobile } from "@/hooks/use-mobile";
+
+// Dentro do componente:
+const isMobile = useIsMobile();
+
+const {
+  attributes,
+  listeners,
+  setNodeRef,
+  transform,
+  transition,
+  isDragging
+} = useSortable({ id: lead.id, disabled: isMobile });
+
+// No div principal:
+// - Remover {...attributes} e {...listeners} quando mobile
+// - Trocar cursor-grab por cursor-pointer quando mobile
+<div
+  ref={setNodeRef}
+  style={style}
+  {...(isMobile ? {} : { ...attributes, ...listeners })}
+  onClick={onClick}
+  className={cn(
+    "relative rounded-xl",
+    isMobile ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
+    // ... resto igual
+  )}
+>
 ```
-"O Novo Condominio de Estancia Velha" (h1)
-"350 Lotes a partir de 500m2" (subtitulo)
-```
 
-### Passo 3: Atualizar datas de 2025 para 2026
-Corrigir todas as referencias a "2025" nos meta tags, keywords e OG tags das 3 landing pages.
-
-### Passo 4: Alinhar OG Title com Title
-Garantir que `og:title` e `<title>` sejam consistentes em todas as paginas.
-
-### Passo 5: Adicionar Home ao sitemap
-Incluir `https://onovocondominio.com.br/` no sitemap com prioridade menor (0.5).
-
-### Passo 6: Melhorar conteudo semantico rastreavel
-Adicionar textos semanticos mais ricos nas secoes das landing pages, com as palavras-chave naturais que as pessoas buscam.
-
----
-
-## Secao Tecnica - Arquivos Modificados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/Home.tsx` | Remover mencao especifica a "Estancia Velha", tornar institucional |
-| `src/components/HeroSection.tsx` | Otimizar H1 para incluir "condominio" e termos de busca |
-| `src/pages/EstanciaVelha.tsx` | Atualizar "2025" para "2026" nos meta tags, alinhar og:title com title |
-| `src/pages/goldenview/GoldenViewLandingPage.tsx` | Revisar keywords e datas |
-| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Revisar keywords e datas |
-| `public/sitemap.xml` | Adicionar URL da Home, atualizar lastmod para 2026-02-10 |
-
-## Observacao sobre Pre-rendering
-A solucao definitiva para o problema de SPA seria implementar pre-rendering (SSR/SSG), mas isso requer mudanca de framework (ex: Next.js) que nao e suportado pelo Lovable. As melhorias propostas acima maximizam o SEO dentro das limitacoes atuais da stack React + Vite.
+### `KanbanBoard.tsx` - Sem mudancas necessarias
+O `PointerSensor` ja tem `activationConstraint: { distance: 8 }`, que e suficiente quando combinado com a desabilitacao no card.
 
