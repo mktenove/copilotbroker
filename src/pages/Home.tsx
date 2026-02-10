@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
-import { ArrowRight } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 import Footer from "@/components/Footer";
 import { usePageTracking, trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
@@ -155,9 +154,9 @@ const Home = () => {
                 Em Breve
               </h1>
               <p className="text-base sm:text-lg md:text-xl text-muted-foreground leading-relaxed mb-4 sm:mb-6 px-2">
-                A cidade de{" "}
-                <strong className="text-foreground font-medium">Estância Velha</strong>{" "}
-                receberá um novo condomínio, que certamente, fará história.
+                Novos empreendimentos de alto padrão estão chegando ao{" "}
+                <strong className="text-foreground font-medium">Vale dos Sinos</strong>.{" "}
+                Cadastre-se e seja o primeiro a saber.
               </p>
               <p 
                 className="text-xl sm:text-2xl md:text-3xl font-semibold text-primary mb-4 sm:mb-6"
@@ -165,14 +164,6 @@ const Home = () => {
               >
                 Não fique de fora.
               </p>
-              <Link
-                to="/estanciavelha"
-                className="inline-flex items-center gap-2 text-primary hover:text-primary/80 transition-colors font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg px-2 py-1"
-                aria-label="Saiba mais sobre o empreendimento"
-              >
-                Saiba mais
-                <ArrowRight className="w-5 h-5" aria-hidden="true" />
-              </Link>
             </header>
 
             {/* Lead Capture Form */}

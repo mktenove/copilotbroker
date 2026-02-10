@@ -181,7 +181,7 @@ const GoldenViewLandingPage = () => {
         <title>GoldenView | Condomínio de Alto Padrão em Portão - RS</title>
         <meta name="title" content="GoldenView | Condomínio de Alto Padrão em Portão" />
         <meta name="description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos de alto padrão em Portão. Vista panorâmica, segurança 24h e valorização garantida. Construsinos + Maricler." />
-        <meta name="keywords" content="condomínio fechado Portão, terrenos alto padrão Portão RS, GoldenView Residencial, Construsinos, Maricler, lotes Portão 2026, condomínio vista panorâmica, lotes 300m², lotes 600m²" />
+        <meta name="keywords" content="condomínio fechado Portão, terrenos alto padrão Portão RS, GoldenView Residencial, Construsinos, Maricler, lotes Portão 2026, condomínio vista panorâmica, lotes 300m², lotes 600m², condomínio Portão RS" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 

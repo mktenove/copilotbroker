@@ -133,7 +133,7 @@ const EstanciaVelha = () => {
         <title>Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²</title>
         <meta name="title" content="Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²" />
         <meta name="description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão." />
-        <meta name="keywords" content="condomínio fechado Estância Velha, terrenos Vale dos Sinos, lotes alto padrão RS, Ábaco Incorporadora, Enove Imobiliária, lançamento imobiliário 2025, lotes 500m², condomínio piscina aquecida" />
+        <meta name="keywords" content="condomínio fechado Estância Velha, terrenos Vale dos Sinos, lotes alto padrão RS, Ábaco Incorporadora, Enove Imobiliária, lançamento imobiliário 2026, lotes 500m², condomínio piscina aquecida, condomínio Estância Velha" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 
@@ -141,8 +141,8 @@ const EstanciaVelha = () => {
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content="Enove Imobiliária" />
-        <meta property="og:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
-        <meta property="og:description" content="O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora." />
+        <meta property="og:title" content="Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²" />
+        <meta property="og:description" content="Pré-lançamento exclusivo: condomínio fechado de terrenos em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante, piscina aquecida e infraestrutura de alto padrão." />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />
@@ -152,8 +152,8 @@ const EstanciaVelha = () => {
         {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content={canonicalUrl} />
-        <meta name="twitter:title" content="Novo Condomínio em Estância Velha | Lançamento 2025" />
-        <meta name="twitter:description" content="O novo condomínio de Estância Velha. Terrenos em Condomínio Fechado. Abaco Incorporadora." />
+        <meta name="twitter:title" content="Condomínio Alto Padrão Estância Velha | 350 Lotes a partir de 500m²" />
+        <meta name="twitter:description" content="Pré-lançamento exclusivo: condomínio fechado em Estância Velha com 350 lotes a partir de 500m². Vista deslumbrante e infraestrutura de alto padrão." />
         <meta name="twitter:image" content={ogImageUrl} />
 
         {/* JSON-LD Schemas */}
