@@ -16,6 +16,8 @@ const EstanciaVelhaBrokerTeaser = () => {
   const heroRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (loading) return;
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -31,7 +33,7 @@ const EstanciaVelhaBrokerTeaser = () => {
     );
     if (heroRef.current) observer.observe(heroRef.current);
     return () => observer.disconnect();
-  }, []);
+  }, [loading]);
 
   useEffect(() => {
     const fetchData = async () => {
