@@ -3,52 +3,38 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import FormSection from "@/components/FormSection";
 import logoEnove from "@/assets/logo-enove.png";
-
 const EstanciaVelhaTeaser = () => {
   const [projectId, setProjectId] = useState<string | null>(null);
   const [visibleItems, setVisibleItems] = useState<number>(0);
   const heroRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          // Staggered reveal: increment every 200ms
-          let count = 0;
-          const interval = setInterval(() => {
-            count++;
-            setVisibleItems(count);
-            if (count >= 6) clearInterval(interval);
-          }, 200);
-        }
-      },
-      { threshold: 0.1 }
-    );
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        // Staggered reveal: increment every 200ms
+        let count = 0;
+        const interval = setInterval(() => {
+          count++;
+          setVisibleItems(count);
+          if (count >= 6) clearInterval(interval);
+        }, 200);
+      }
+    }, {
+      threshold: 0.1
+    });
     if (heroRef.current) observer.observe(heroRef.current);
     return () => observer.disconnect();
   }, []);
-
   useEffect(() => {
     const fetchProject = async () => {
-      const { data } = await supabase
-        .from("projects")
-        .select("id")
-        .eq("slug", "estanciavelha")
-        .maybeSingle();
+      const {
+        data
+      } = await supabase.from("projects").select("id").eq("slug", "estanciavelha").maybeSingle();
       if (data) setProjectId(data.id);
     };
     fetchProject();
   }, []);
-
-  const itemClass = (index: number) =>
-    `transition-all duration-[1.2s] ease-[cubic-bezier(0.22,1,0.36,1)] ${
-      visibleItems > index
-        ? "opacity-100 translate-y-0"
-        : "opacity-0 translate-y-8"
-    }`;
-
-  return (
-    <>
+  const itemClass = (index: number) => `transition-all duration-[1.2s] ease-[cubic-bezier(0.22,1,0.36,1)] ${visibleItems > index ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`;
+  return <>
       <Helmet>
         <title>Em Breve — Novo Empreendimento no Vale dos Sinos | Enove</title>
         <meta name="description" content="Novos empreendimentos de alto padrão estão chegando ao Vale dos Sinos. Cadastre-se e seja o primeiro a saber." />
@@ -62,22 +48,15 @@ const EstanciaVelhaTeaser = () => {
         </script>
       </Helmet>
 
-      <div className="min-h-screen flex flex-col relative overflow-hidden"
-        style={{
-          background: `
+      <div className="min-h-screen flex flex-col relative overflow-hidden" style={{
+      background: `
             radial-gradient(ellipse 60% 50% at 50% 40%, hsl(48 96% 53% / 0.04) 0%, transparent 70%),
             linear-gradient(180deg, #0a0a0d 0%, #0f0f12 40%, #0a0a0d 100%)
-          `,
-        }}
-      >
+          `
+    }}>
         {/* Header */}
         <header className="relative py-8 flex justify-center">
-          <a
-            href="https://www.enoveimobiliaria.com.br/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="opacity-80 hover:opacity-100 transition-opacity duration-500"
-          >
+          <a href="https://www.enoveimobiliaria.com.br/" target="_blank" rel="noopener noreferrer" className="opacity-80 hover:opacity-100 transition-opacity duration-500">
             <img src={logoEnove} alt="Enove Imobiliária" className="h-10 sm:h-12" />
           </a>
           {/* Gold line */}
@@ -125,8 +104,7 @@ const EstanciaVelhaTeaser = () => {
 
             {/* Quote */}
             <div className={itemClass(4)}>
-              <p className="text-primary font-serif italic text-xl sm:text-2xl tracking-wide">
-                <span className="text-primary/40 text-3xl mr-1">"</span>
+              <p className="text-primary font-serif italic text-xl sm:text-2xl tracking-wide">"Não fique de fora."<span className="text-primary/40 text-3xl mr-1">"</span>
                 Não fique de fora.
                 <span className="text-primary/40 text-3xl ml-1">"</span>
               </p>
@@ -135,11 +113,7 @@ const EstanciaVelhaTeaser = () => {
 
           {/* Form */}
           <div className={`w-full max-w-lg mx-auto mt-16 ${itemClass(5)}`}>
-            <FormSection
-              projectId={projectId}
-              projectSlug="estanciavelha"
-              allowBrokerSelection={true}
-            />
+            <FormSection projectId={projectId} projectSlug="estanciavelha" allowBrokerSelection={true} />
           </div>
         </main>
 
@@ -151,8 +125,6 @@ const EstanciaVelhaTeaser = () => {
           </p>
         </footer>
       </div>
-    </>
-  );
+    </>;
 };
-
 export default EstanciaVelhaTeaser;
