@@ -1,94 +1,54 @@
 
 
-# Nova Home Institucional B2B -- Plataforma de Lancamentos Enove
+# Pagina Teaser "Em Breve" para Estancia Velha
 
-## Visao Geral
+## Objetivo
 
-Substituir a Home atual (pagina simples "Em Breve" com formulario de leads) por uma pagina institucional completa voltada para incorporadoras (B2B). A pagina posiciona a Enove como plataforma de vendas de lancamentos, nao apenas uma imobiliaria.
+Criar duas paginas teaser para `/estanciavelha` e `/estanciavelha/:brokerSlug` com o conteudo "Novidade Chegando / Em Breve", mantendo os arquivos originais (`EstanciaVelha.tsx` e `BrokerLandingPage.tsx`) intactos como backup para reativacao futura.
 
-A pagina tera 6 secoes conforme o briefing, sem formulario de captura de leads -- o CTA final sera um link direto para WhatsApp.
+## Arquivos a criar
 
-## Estrutura de Arquivos
+### 1. `src/pages/EstanciaVelhaTeaser.tsx`
 
-O conteudo sera dividido em componentes para manter o padrao do projeto:
+Pagina teaser elegante no estilo dark luxury contendo:
+- Logo Enove centralizado no topo
+- Badge "Novidade Chegando" com ponto pulsante dourado
+- Titulo "Em Breve" em destaque (font-serif)
+- Texto: "Novos empreendimentos de alto padrao estao chegando ao Vale dos Sinos. Cadastre-se e seja o primeiro a saber."
+- Frase dourada: "Nao fique de fora."
+- Componente `FormSection` com `allowBrokerSelection={true}` e `projectSlug="estanciavelha"`
+- Busca o `projectId` do banco para atribuicao correta dos leads
+- Footer simples
+- SEO basico via Helmet (titulo, descricao, canonical)
 
-```text
-src/pages/Home.tsx                          -- Pagina principal (orquestra as secoes)
-src/components/home/HomeHero.tsx            -- Hero / primeira dobra
-src/components/home/HomePositioning.tsx     -- Secao "Posicionamento"
-src/components/home/HomeDifferentials.tsx   -- Secao "Diferencial Estrutural" (3 cards)
-src/components/home/HomeProcess.tsx         -- Secao "Modelo de Atuacao" (3 etapas)
-src/components/home/HomePartnership.tsx     -- Secao "Filosofia de Parceria"
-src/components/home/HomeCTA.tsx             -- Secao "Call to Action" com link WhatsApp
-src/components/home/index.ts               -- Barrel export
-```
+### 2. `src/pages/EstanciaVelhaBrokerTeaser.tsx`
 
-## Design e Estetica
+Mesma estrutura visual, porem:
+- Busca o corretor pelo `:brokerSlug` da URL
+- Passa `brokerId` e `brokerSlug` ao `FormSection` (sem seletor de corretor)
+- Redireciona para `/estanciavelha` se corretor nao encontrado ou inativo
 
-Seguira o design system existente (dark luxury):
-- Fundo escuro (background), tipografia serif para titulos (font-serif), sans para corpo
-- Cor primaria dourada para destaques e CTAs (classe `text-primary`, `btn-primary`)
-- Animacoes suaves de entrada (`animate-fade-up`, transicoes com `isVisible`)
-- Divisores dourados (`divider-gold`)
-- Cards com `card-luxury` para os diferenciais
-- Espacamento generoso entre secoes
-- Layout responsivo mobile-first
+## Arquivo a alterar
 
-## Detalhamento por Secao
+### 3. `src/App.tsx`
 
-### 1. HomeHero
-- Badge "Plataforma de Lancamentos" com ponto pulsante
-- H1: "O parceiro estrategico para lancamentos imobiliarios no RS"
-- Subtitulo e paragrafo descritivo
-- Botao CTA "Quero Lancar com a Enove" que rola ate a secao de contato
-- Background sutil com gradiente (sem imagem, para manter leveza institucional)
+- Substituir os dois redirects atuais (linhas 56-57) pelas novas rotas:
+  - `/estanciavelha` aponta para `EstanciaVelhaTeaser`
+  - `/estanciavelha/:brokerSlug` aponta para `EstanciaVelhaBrokerTeaser`
+- Manter os imports comentados de `EstanciaVelha` e `BrokerLandingPage` como referencia de backup
 
-### 2. HomePositioning
-- Titulo: "Lancamentos exigem metodo, nao improviso"
-- Texto corrido + lista de 5 itens com icones minimalistas (lucide-react)
-- Frase de destaque ao final
+## Backup
 
-### 3. HomeDifferentials
-- Titulo: "Muito alem da intermediacao"
-- 3 cards lado a lado (responsivos, empilham em mobile):
-  - Marketing proprio (com sub-lista)
-  - Corretores de alta performance (com sub-lista)
-  - LGPD (com sub-lista)
-- Cada card usa o estilo `card-luxury`
+Os arquivos originais permanecem no projeto sem alteracao:
+- `src/pages/EstanciaVelha.tsx` -- landing page completa com todas as secoes e schemas SEO
+- `src/pages/BrokerLandingPage.tsx` -- landing page do corretor
 
-### 4. HomeProcess
-- Titulo: "Participamos de todo o ciclo do lancamento"
-- 3 etapas (Pre-lancamento, Lancamento, Pos-lancamento)
-- Layout em timeline vertical ou cards numerados
-- Cada etapa com titulo, descricao e sub-lista
+Para reativar futuramente, basta trocar as rotas no `App.tsx` de volta para esses componentes.
 
-### 5. HomePartnership
-- Secao mais simples, texto centrado
-- Titulo: "Parcerias de longo prazo sao o nosso foco"
-- Texto corrido com frase de destaque final em dourado
+## Detalhes tecnicos
 
-### 6. HomeCTA
-- Titulo: "Vamos lancar juntos?"
-- Subtitulo
-- Botao "Entrar em Contato" como link externo para WhatsApp:
-  `https://wa.me/5551997010323`
-
-## Alteracoes em Arquivos Existentes
-
-### src/pages/Home.tsx
-- Remover toda a logica atual (formulario, supabase, toast, etc.)
-- Substituir por composicao das novas secoes
-- Manter Header com logo Enove e Footer existente
-
-### src/App.tsx
-- Nenhuma alteracao necessaria (rota `/` ja aponta para Home)
-
-## Notas Tecnicas
-
-- Nao ha captura de leads nesta pagina (sem supabase, sem formulario)
-- O formulario antigo sera removido da Home, mas continua disponivel nas landing pages dos empreendimentos
-- SEO: meta tags atualizadas no AppHead para refletir posicionamento B2B
-- Acessibilidade: landmarks semanticos, aria-labels, skip-to-content mantidos
-- Scroll suave entre secoes
-- Intersection Observer para animacoes de entrada conforme scroll
+- Reutiliza o `FormSection` existente (logica de salvar lead, webhook, notificacao WhatsApp, atribuicao)
+- Animacao suave de entrada com Intersection Observer
+- Layout centralizado, minimalista, responsivo
+- Microsoft Clarity tag de Estancia Velha (vbso39eiiq) incluida via Helmet
 
