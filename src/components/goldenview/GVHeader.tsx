@@ -36,7 +36,7 @@ const GVHeader = () => {
           onClick={scrollToForm}
           className="hidden sm:inline-flex btn-primary text-xs px-4 py-2.5 sm:px-6 sm:py-3"
         >
-          Quero Acesso
+          Quero Acesso Antecipado
         </button>
       </div>
     </header>

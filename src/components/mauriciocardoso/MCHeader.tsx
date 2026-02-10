@@ -92,7 +92,7 @@ const MCHeader = ({ brokerName }: MCHeaderProps) => {
                 onClick={() => scrollToSection("cadastro")}
                 className="px-5 lg:px-6 py-2.5 bg-[hsl(var(--mc-forest))] text-white text-xs uppercase tracking-[0.15em] font-medium rounded hover:bg-[hsl(var(--mc-charcoal))] transition-all duration-300"
               >
-                Cadastrar
+                Quero Acesso Antecipado
               </button>
             </nav>
 
@@ -138,7 +138,7 @@ const MCHeader = ({ brokerName }: MCHeaderProps) => {
                 onClick={() => scrollToSection("cadastro")}
                 className="w-full py-4 bg-[hsl(var(--mc-forest))] text-white text-center text-sm uppercase tracking-[0.1em] font-medium rounded-md hover:bg-[hsl(var(--mc-charcoal))] transition-colors min-h-[48px]"
               >
-                Cadastrar
+                Quero Acesso Antecipado
               </button>
             </div>
           </nav>
