@@ -110,8 +110,8 @@ const EstanciaVelhaBrokerTeaser = () => {
         </header>
 
         {/* Hero */}
-        <main className="flex-1 flex flex-col items-center justify-center px-4 py-12 md:py-20">
-          <div ref={heroRef} className="max-w-2xl mx-auto text-center space-y-10">
+        <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 md:py-12">
+          <div ref={heroRef} className="max-w-2xl mx-auto text-center space-y-6">
             {/* Badge */}
             <div className={itemClass(0)}>
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-primary/30 bg-primary/5 backdrop-blur-sm">
@@ -159,7 +159,7 @@ const EstanciaVelhaBrokerTeaser = () => {
           </div>
 
           {/* Form */}
-          <div className={`w-full max-w-lg mx-auto mt-16 ${itemClass(5)}`}>
+          <div className={`w-full max-w-lg mx-auto mt-10 ${itemClass(5)}`}>
             <FormSection
               projectId={projectId}
               projectSlug="estanciavelha"
