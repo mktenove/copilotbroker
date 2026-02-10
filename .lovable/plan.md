@@ -1,66 +1,31 @@
 
 
-# Desabilitar Drag nos Cards do Kanban no Mobile
+# Tirar temporariamente a landing page de Estância Velha do ar
 
-## Problema
-No celular, o drag-and-drop dos cards do Kanban interfere na navegacao por scroll horizontal entre as colunas, causando "falhas" visuais e uma experiencia ruim. O corretor ja possui o botao de seta (ChevronRight) para avancar o status do lead.
+## Abordagem
 
-## Solucao
+A forma mais simples e reversivel é redirecionar todas as rotas de Estância Velha para a Home (`/`). Assim, quem acessar `/estanciavelha` ou `/estanciavelha/:brokerSlug` será redirecionado automaticamente, sem perder nenhum código.
 
-### Arquivo: `src/components/crm/KanbanCard.tsx`
+## Alteracoes
 
-1. Importar o hook `useIsMobile` de `@/hooks/use-mobile`
-2. Condicionar o `useSortable` para que no mobile o card nao seja arrastavel:
-   - No mobile: nao aplicar `listeners` (eventos de drag) nem `attributes` de drag
-   - Trocar `cursor-grab` por `cursor-pointer` no mobile
-   - Remover `active:cursor-grabbing` no mobile
-3. Manter o `setNodeRef` e `transform/transition` para que o dnd-kit nao quebre (ele precisa do ref mesmo sem drag ativo)
-
-### Arquivo: `src/components/crm/KanbanBoard.tsx`
-
-4. Ajustar o `PointerSensor` para exigir uma distancia maior de ativacao, como camada extra de seguranca
-
-### Verificacao dos botoes de seta
-
-O botao ChevronRight (avancar status) ja existe no card e funciona corretamente. Atualmente, **nao existe** um botao de "voltar" (ChevronLeft) para retroceder o status. Sera mantido assim, pois retroceder status e uma acao incomum que pode ser feita pelo detalhe do lead.
-
----
-
-## Secao Tecnica
-
-### `KanbanCard.tsx` - Mudancas
+### 1. `src/App.tsx`
+- Substituir as rotas de Estância Velha por redirecionamentos:
 
 ```tsx
-import { useIsMobile } from "@/hooks/use-mobile";
+// Antes:
+<Route path="/estanciavelha" element={<EstanciaVelha />} />
+<Route path="/estanciavelha/:brokerSlug" element={<BrokerLandingPage />} />
 
-// Dentro do componente:
-const isMobile = useIsMobile();
-
-const {
-  attributes,
-  listeners,
-  setNodeRef,
-  transform,
-  transition,
-  isDragging
-} = useSortable({ id: lead.id, disabled: isMobile });
-
-// No div principal:
-// - Remover {...attributes} e {...listeners} quando mobile
-// - Trocar cursor-grab por cursor-pointer quando mobile
-<div
-  ref={setNodeRef}
-  style={style}
-  {...(isMobile ? {} : { ...attributes, ...listeners })}
-  onClick={onClick}
-  className={cn(
-    "relative rounded-xl",
-    isMobile ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
-    // ... resto igual
-  )}
->
+// Depois:
+<Route path="/estanciavelha" element={<Navigate to="/" replace />} />
+<Route path="/estanciavelha/:brokerSlug" element={<Navigate to="/" replace />} />
 ```
 
-### `KanbanBoard.tsx` - Sem mudancas necessarias
-O `PointerSensor` ja tem `activationConstraint: { distance: 8 }`, que e suficiente quando combinado com a desabilitacao no card.
+- Remover os imports de `EstanciaVelha` e `BrokerLandingPage` (opcional, nao causa erro se mantidos).
+
+### 2. `public/sitemap.xml`
+- Remover a entrada de `/estanciavelha` para que o Google nao tente indexar uma pagina que agora redireciona.
+
+## Para reativar
+Basta reverter as duas alteracoes: trocar o `Navigate` de volta pelos componentes originais e readicionar a URL no sitemap.
 
