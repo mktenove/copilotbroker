@@ -70,9 +70,8 @@ const HeroSection = () => {
             className={`font-serif text-2xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-semibold leading-tight max-w-5xl mx-auto ${isVisible ? 'animate-slide-up' : 'opacity-0'}`} 
             style={{ animationDelay: '300ms' }}
           >
-            O Maior Lançamento Imobiliário de{" "}
-            <span className="text-primary">Estância Velha</span>{" "}
-            Está Prestes a Ser Revelado
+            O Novo Condomínio de{" "}
+            <span className="text-primary">Estância Velha</span>
           </h1>
 
           {/* Subtitle */}
@@ -80,13 +79,13 @@ const HeroSection = () => {
             className={`font-serif text-lg sm:text-xl md:text-2xl text-foreground/80 italic max-w-2xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} 
             style={{ animationDelay: '500ms' }}
           >
-            Poucas pessoas terão acesso primeiro.
+            350 Lotes a partir de 500m² — Terrenos de Alto Padrão
           </p>
           <p 
             className={`text-sm sm:text-base text-muted-foreground max-w-xl mx-auto ${isVisible ? 'animate-fade-up' : 'opacity-0'}`} 
             style={{ animationDelay: '600ms' }}
           >
-            A maioria vai descobrir quando já for tarde.
+            Poucas pessoas terão acesso primeiro. A maioria vai descobrir quando já for tarde.
           </p>
 
           {/* CTA Button */}
