@@ -16,7 +16,7 @@ const HomeHero = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative min-h-[85vh] flex items-center justify-center px-4 py-20 sm:py-28 overflow-hidden"
+      className="relative min-h-[85vh] flex items-center justify-center px-4 py-12 sm:py-20 overflow-hidden"
       aria-labelledby="hero-heading">
 
       {/* Background gradient */}

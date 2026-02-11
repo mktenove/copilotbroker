@@ -20,11 +20,11 @@ const HomeCTA = () => {
     <section
       id="contato"
       ref={sectionRef}
-      className="py-20 sm:py-28 px-4"
+      className="py-12 sm:py-16 px-4"
       aria-labelledby="cta-heading"
     >
       <div className={`container max-w-2xl text-center transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-        <div className="divider-gold mx-auto mb-10" aria-hidden="true" />
+        <div className="divider-gold mx-auto mb-6" aria-hidden="true" />
 
         <h2 id="cta-heading" className="font-serif text-4xl sm:text-5xl md:text-6xl font-semibold text-foreground mb-6">
           Vamos lançar{" "}

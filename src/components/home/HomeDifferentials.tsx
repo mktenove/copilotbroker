@@ -59,12 +59,12 @@ const HomeDifferentials = () => {
   return (
     <section
       ref={sectionRef}
-      className="py-20 sm:py-28 px-4 bg-card/30"
+      className="py-12 sm:py-16 px-4 bg-card/30"
       aria-labelledby="differentials-heading"
     >
       <div className="container max-w-6xl">
         <div className={`text-center mb-14 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-          <div className="divider-gold mx-auto mb-10" aria-hidden="true" />
+          <div className="divider-gold mx-auto mb-6" aria-hidden="true" />
           <h2 id="differentials-heading" className="section-title mb-4">
             Muito além da{" "}
             <span className="text-primary">intermediação</span>
