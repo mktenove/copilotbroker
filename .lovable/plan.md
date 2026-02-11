@@ -1,28 +1,24 @@
 
-# Alterar CTA para "Quero Acesso Antecipado"
 
-Trocar o texto dos botoes de chamada para acao nas paginas GoldenView e Mauricio Cardoso.
+# Rota provisoria para visualizar a pagina completa
 
-## Arquivos e alteracoes
+## Alteracao
 
-### GoldenView (5 alteracoes em 4 arquivos)
+Adicionar uma rota temporaria `/estanciavelha/privado` no `src/App.tsx` que renderiza o componente `EstanciaVelha` (pagina completa em backup), sem alterar nenhuma outra rota existente.
 
-| Arquivo | Texto atual | Novo texto |
-|---|---|---|
-| `GVFloatingCTA.tsx` (linha 56) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
-| `GVFormSection.tsx` (linha 368) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
-| `GVCallToActionSection.tsx` (linha 118) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
-| `GVHeroSection.tsx` (linha 98) | "Quero Mais Informacoes" | "Quero Acesso Antecipado" |
-| `GVHeader.tsx` (linha 39) | "Quero Acesso" | "Quero Acesso Antecipado" |
+### `src/App.tsx`
 
-### Mauricio Cardoso (6 alteracoes em 4 arquivos)
+1. Descomentar o import de `EstanciaVelha`:
+```tsx
+import EstanciaVelha from "./pages/EstanciaVelha";
+```
 
-| Arquivo | Texto atual | Novo texto |
-|---|---|---|
-| `MCHeroSection.tsx` (linha 62) | "Quero receber informacoes" | "Quero Acesso Antecipado" |
-| `MCHeroSection.tsx` (linha 60, aria-label) | "Quero receber informacoes..." | "Quero acesso antecipado ao empreendimento" |
-| `MCFormSection.tsx` (linha 189) | "Quero acompanhar esse projeto" | "Quero Acesso Antecipado" |
-| `MCHeader.tsx` (linhas 95, 141) | "Cadastrar" | "Quero Acesso Antecipado" |
-| `MCFloatingCTA.tsx` (linhas 32-33) | "Cadastrar" | "Acesso Antecipado" |
+2. Adicionar a rota antes das rotas dinamicas:
+```tsx
+<Route path="/estanciavelha/privado" element={<EstanciaVelha />} />
+```
 
-Nenhuma alteracao de logica ou layout -- apenas substituicao de strings de texto.
+A rota precisa ficar **antes** de `/estanciavelha/:brokerSlug` para nao ser capturada como brokerSlug.
+
+Nenhum outro arquivo sera alterado. Voce podera acessar pelo preview em `/estanciavelha/privado`.
+
