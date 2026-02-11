@@ -325,7 +325,7 @@ const GVFormSection = ({
                   <button
                     type="button"
                     onClick={handleToggleBrokerSelect}
-                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors whitespace-nowrap"
                   >
                     {showBrokerSelect ? (
                       <ChevronUp className="h-4 w-4" />
