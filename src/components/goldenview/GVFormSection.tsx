@@ -202,6 +202,34 @@ const GVFormSection = ({
         },
       }).catch(console.error);
 
+      // Meta Pixel - Lead event (client-side)
+      const eventId = crypto.randomUUID();
+      if (typeof window.fbq === "function") {
+        window.fbq("track", "Lead", { content_name: "GoldenView" });
+      }
+
+      // Meta Conversions API - Lead event (server-side)
+      const getCookie = (name: string) => {
+        const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+        return match ? match[2] : undefined;
+      };
+
+      supabase.functions.invoke("meta-conversions-api", {
+        body: {
+          event_name: "Lead",
+          event_id: eventId,
+          event_source_url: window.location.href,
+          user_data: {
+            fn: formData.name.trim(),
+            ph: formData.whatsapp.trim(),
+          },
+          fbp: getCookie("_fbp"),
+          fbc: getCookie("_fbc"),
+        },
+      }).catch((err) => {
+        console.warn("Meta CAPI trigger failed:", err);
+      });
+
       toast.success("Cadastro realizado com sucesso! Em breve entraremos em contato.");
       setFormData({ name: "", whatsapp: "" });
       setAcceptedTerms(false);
