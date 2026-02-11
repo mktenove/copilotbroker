@@ -16,11 +16,11 @@ const HomePartnership = () => {
   return (
     <section
       ref={sectionRef}
-      className="py-20 sm:py-28 px-4 bg-card/30"
+      className="py-12 sm:py-16 px-4 bg-card/30"
       aria-labelledby="partnership-heading"
     >
       <div className={`container max-w-3xl text-center transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-        <div className="divider-gold mx-auto mb-10" aria-hidden="true" />
+        <div className="divider-gold mx-auto mb-6" aria-hidden="true" />
 
         <h2 id="partnership-heading" className="section-title mb-8">
           Parcerias de longo prazo são o{" "}

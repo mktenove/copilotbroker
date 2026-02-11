@@ -52,12 +52,12 @@ const HomeProcess = () => {
   return (
     <section
       ref={sectionRef}
-      className="py-20 sm:py-28 px-4"
+      className="py-12 sm:py-16 px-4"
       aria-labelledby="process-heading"
     >
       <div className="container max-w-5xl">
         <div className={`text-center mb-14 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10"}`}>
-          <div className="divider-gold mx-auto mb-10" aria-hidden="true" />
+          <div className="divider-gold mx-auto mb-6" aria-hidden="true" />
           <h2 id="process-heading" className="section-title mb-4">
             Participamos de todo o{" "}
             <span className="text-primary">ciclo do lançamento</span>
