@@ -56,7 +56,8 @@ const App = () => (
             {/* Legacy redirects for backward compatibility */}
             <Route path="/goldenview" element={<Navigate to="/portao/goldenview" replace />} />
             <Route path="/goldenview/:brokerSlug" element={<Navigate to="/portao/goldenview" replace />} />
-            <Route path="/estanciavelha/privado" element={<EstanciaVelha />} />
+            {/* Backup: rota desativada - reativar quando necessário */}
+            {/* <Route path="/estanciavelha/privado" element={<EstanciaVelha />} /> */}
             <Route path="/estanciavelha" element={<EstanciaVelhaTeaser />} />
             <Route path="/estanciavelha/:brokerSlug" element={<EstanciaVelhaBrokerTeaser />} />
             
