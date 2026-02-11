@@ -89,8 +89,8 @@ const GVUrgencySection = () => {
               E quem ficou de fora vai ouvir a frase clássica:
             </p>
             
-            <div className="inline-block bg-destructive/10 border border-destructive/30 rounded-lg px-8 py-4">
-              <p className="font-serif text-xl md:text-2xl font-bold text-destructive">
+            <div className="inline-block bg-primary/10 border border-primary/30 rounded-lg px-8 py-4">
+              <p className="font-serif text-xl md:text-2xl font-bold text-primary">
                 "Esses já foram vendidos."
               </p>
             </div>
