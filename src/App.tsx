@@ -45,6 +45,7 @@ const App = () => (
             
             {/* GoldenView - custom landing page with unique visual identity */}
             <Route path="/portao/goldenview" element={<GoldenViewLandingPage />} />
+            <Route path="/portao/goldenview/obrigado" element={<GoldenViewLandingPage />} />
             <Route path="/portao/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
             
             {/* Mauricio Cardoso - Wellness landing page for Novo Hamburgo */}

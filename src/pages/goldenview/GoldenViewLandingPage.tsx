@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { RefreshCw } from "lucide-react";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,8 @@ const GoldenViewLandingPage = () => {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
+  const isThankYouPage = location.pathname === "/portao/goldenview/obrigado";
 
   // Track page view
   usePageTracking(project?.id);
@@ -263,6 +265,7 @@ const GoldenViewLandingPage = () => {
         <GVFormSection
           projectId={project.id}
           webhookUrl={project.webhook_url}
+          submitted={isThankYouPage}
         />
       </main>
       

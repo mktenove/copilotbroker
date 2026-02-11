@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,6 +19,7 @@ interface GVFormSectionProps {
   brokerSlug?: string | null;
   webhookUrl?: string | null;
   allowBrokerSelection?: boolean;
+  submitted?: boolean;
 }
 
 const DEFAULT_WEBHOOK = "https://webhook.outoflow.online/webhook/622dff9d-d12f-4150-bf6f-b15908e8b205";
@@ -28,8 +29,10 @@ const GVFormSection = ({
   brokerId, 
   brokerSlug, 
   webhookUrl,
-  allowBrokerSelection = true 
+  allowBrokerSelection = true,
+  submitted = false
 }: GVFormSectionProps) => {
+  const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: "", whatsapp: "" });
@@ -235,6 +238,7 @@ const GVFormSection = ({
       setAcceptedTerms(false);
       setSelectedBrokerId("");
       setShowBrokerSelect(false);
+      navigate("/portao/goldenview/obrigado");
     } catch (error) {
       console.error("Erro ao salvar lead:", error);
       toast.error("Ocorreu um erro ao salvar. Tente novamente.");
@@ -265,142 +269,154 @@ const GVFormSection = ({
             </p>
           </div>
 
-          {/* Form */}
-          <form
-            onSubmit={handleSubmit}
-            className="card-luxury p-8 md:p-10 space-y-6"
-          >
-            <div>
-              <label htmlFor="gv-name" className="block text-sm font-medium text-foreground/80 mb-2">
-                Nome Completo
-              </label>
-              <input
-                type="text"
-                id="gv-name"
-                name="name"
-                autoComplete="name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                placeholder="Digite seu nome completo"
-              />
+          {/* Form or Thank You */}
+          {submitted ? (
+            <div className="card-luxury p-8 md:p-10 flex flex-col items-center justify-center text-center space-y-4 min-h-[200px]">
+              <h3 className="font-serif text-2xl md:text-3xl font-bold text-foreground">
+                Parabéns, agora você faz parte da nossa{" "}
+                <span className="text-gold-gradient">lista VIP!</span>
+              </h3>
+              <p className="text-muted-foreground">
+                Em breve entraremos em contato pelo WhatsApp.
+              </p>
             </div>
-
-            <div>
-              <label htmlFor="gv-whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
-                WhatsApp
-              </label>
-              <input
-                type="tel"
-                id="gv-whatsapp"
-                name="whatsapp"
-                autoComplete="tel"
-                inputMode="numeric"
-                value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
-                className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                placeholder="(00) 00000-0000"
-                maxLength={16}
-              />
-            </div>
-
-            {/* Optional broker selection */}
-            {allowBrokerSelection && !brokerId && (
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  onClick={handleToggleBrokerSelect}
-                  className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {showBrokerSelect ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                  Já sou atendido por um corretor Enove
-                </button>
-                
-                {showBrokerSelect && (
-                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <Select
-                      value={selectedBrokerId || "none"}
-                      onValueChange={(value) => setSelectedBrokerId(value === "none" ? "" : value)}
-                    >
-                      <SelectTrigger className="w-full bg-background border-border text-muted-foreground">
-                        <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-popover border-border">
-                        <SelectItem value="none">
-                          Nenhum / Não encontrei meu corretor
-                        </SelectItem>
-                        {loadingBrokers ? (
-                          <SelectItem value="loading" disabled>
-                            Carregando...
-                          </SelectItem>
-                        ) : (
-                          brokers.map((broker) => (
-                            <SelectItem key={broker.id} value={broker.id}>
-                              {broker.name}
-                            </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Terms Checkbox */}
-            <div className="flex items-start gap-3">
-              <Checkbox
-                id="gv-terms"
-                checked={acceptedTerms}
-                onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
-                className="mt-0.5"
-              />
-              <label htmlFor="gv-terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
-                Li e aceito os{" "}
-                <Link
-                  to="/termos#termos-de-uso"
-                  target="_blank"
-                  className="text-primary hover:text-primary/80 underline underline-offset-2"
-                >
-                  Termos de Uso
-                </Link>{" "}
-                e a{" "}
-                <Link
-                  to="/termos#politica-de-privacidade"
-                  target="_blank"
-                  className="text-primary hover:text-primary/80 underline underline-offset-2"
-                >
-                  Política de Privacidade
-                </Link>
-              </label>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[52px]"
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              className="card-luxury p-8 md:p-10 space-y-6"
             >
-              {isSubmitting ? (
-                <span className="flex items-center justify-center gap-2">
-                  <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Enviando...
-                </span>
-              ) : (
-                "Quero Acesso Antecipado"
-              )}
-            </button>
+              <div>
+                <label htmlFor="gv-name" className="block text-sm font-medium text-foreground/80 mb-2">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  id="gv-name"
+                  name="name"
+                  autoComplete="name"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  placeholder="Digite seu nome completo"
+                />
+              </div>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Cadastro gratuito e sem compromisso
-            </p>
-          </form>
+              <div>
+                <label htmlFor="gv-whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
+                  WhatsApp
+                </label>
+                <input
+                  type="tel"
+                  id="gv-whatsapp"
+                  name="whatsapp"
+                  autoComplete="tel"
+                  inputMode="numeric"
+                  value={formData.whatsapp}
+                  onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
+                  className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  placeholder="(00) 00000-0000"
+                  maxLength={16}
+                />
+              </div>
+
+              {/* Optional broker selection */}
+              {allowBrokerSelection && !brokerId && (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    onClick={handleToggleBrokerSelect}
+                    className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showBrokerSelect ? (
+                      <ChevronUp className="h-4 w-4" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4" />
+                    )}
+                    Já sou atendido por um corretor Enove
+                  </button>
+                  
+                  {showBrokerSelect && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <Select
+                        value={selectedBrokerId || "none"}
+                        onValueChange={(value) => setSelectedBrokerId(value === "none" ? "" : value)}
+                      >
+                        <SelectTrigger className="w-full bg-background border-border text-muted-foreground">
+                          <SelectValue placeholder="Nenhum / Não encontrei meu corretor" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-popover border-border">
+                          <SelectItem value="none">
+                            Nenhum / Não encontrei meu corretor
+                          </SelectItem>
+                          {loadingBrokers ? (
+                            <SelectItem value="loading" disabled>
+                              Carregando...
+                            </SelectItem>
+                          ) : (
+                            brokers.map((broker) => (
+                              <SelectItem key={broker.id} value={broker.id}>
+                                {broker.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Terms Checkbox */}
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="gv-terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                  className="mt-0.5"
+                />
+                <label htmlFor="gv-terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
+                  Li e aceito os{" "}
+                  <Link
+                    to="/termos#termos-de-uso"
+                    target="_blank"
+                    className="text-primary hover:text-primary/80 underline underline-offset-2"
+                  >
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link
+                    to="/termos#politica-de-privacidade"
+                    target="_blank"
+                    className="text-primary hover:text-primary/80 underline underline-offset-2"
+                  >
+                    Política de Privacidade
+                  </Link>
+                </label>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[52px]"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Enviando...
+                  </span>
+                ) : (
+                  "Quero Acesso Antecipado"
+                )}
+              </button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Cadastro gratuito e sem compromisso
+              </p>
+            </form>
+          )}
         </div>
       </div>
     </section>
