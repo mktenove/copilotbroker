@@ -1,23 +1,17 @@
 
-# Reduzir espaco entre secoes da pagina inicial
+# Alterar cor da frase "Esses ja foram vendidos"
 
-## Problema
-Todas as 6 secoes da pagina Home usam `py-20 sm:py-28` (80px / 112px de padding vertical), criando espacos excessivos entre elas, especialmente em mobile.
+## O que sera feito
 
-## Solucao
-Reduzir o padding vertical de todas as secoes para `py-12 sm:py-16` (48px / 64px), mantendo a hierarquia visual mas com um layout mais compacto e fluido.
+No arquivo `src/components/goldenview/GVUrgencySection.tsx`, a frase "Esses ja foram vendidos." atualmente usa a cor `text-destructive` (vermelho) com fundo `bg-destructive/10` e borda `border-destructive/30`.
 
-## Alteracoes
+Sera alterada para usar a paleta dourada (gold/primary), mantendo coerencia com o restante da landing page.
+
+## Alteracao
 
 | Arquivo | De | Para |
 |---------|-----|------|
-| `src/components/home/HomeHero.tsx` | `py-20 sm:py-28` | `py-12 sm:py-20` |
-| `src/components/home/HomePositioning.tsx` | `py-20 sm:py-28` | `py-12 sm:py-16` |
-| `src/components/home/HomeDifferentials.tsx` | `py-20 sm:py-28` | `py-12 sm:py-16` |
-| `src/components/home/HomeProcess.tsx` | `py-20 sm:py-28` | `py-12 sm:py-16` |
-| `src/components/home/HomePartnership.tsx` | `py-20 sm:py-28` | `py-12 sm:py-16` |
-| `src/components/home/HomeCTA.tsx` | `py-20 sm:py-28` | `py-12 sm:py-16` |
+| `src/components/goldenview/GVUrgencySection.tsx` | `bg-destructive/10 border-destructive/30` | `bg-primary/10 border-primary/30` |
+| (mesmo arquivo) | `text-destructive` no texto | `text-primary` |
 
-Tambem reduzir o `mb-10` dos `divider-gold` para `mb-6` nas secoes HomePositioning, HomeDifferentials, HomeProcess, HomePartnership e HomeCTA, pois o separador dourado adiciona espaco extra no topo de cada secao.
-
-Totalizando, o espaco entre secoes passara de ~224px para ~128px, eliminando o vazio visual mostrado nas capturas.
+Apenas 1 arquivo alterado, 3 classes substituidas.
