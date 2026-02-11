@@ -8,7 +8,7 @@ import { HelmetProvider } from "react-helmet-async";
 import AppHead from "@/components/AppHead";
 import Home from "./pages/Home";
 // Backup: landing pages completas de Estância Velha (reativar trocando as rotas abaixo)
-// import EstanciaVelha from "./pages/EstanciaVelha";
+import EstanciaVelha from "./pages/EstanciaVelha";
 // import BrokerLandingPage from "./pages/BrokerLandingPage";
 import EstanciaVelhaTeaser from "./pages/EstanciaVelhaTeaser";
 import EstanciaVelhaBrokerTeaser from "./pages/EstanciaVelhaBrokerTeaser";
@@ -55,6 +55,7 @@ const App = () => (
             {/* Legacy redirects for backward compatibility */}
             <Route path="/goldenview" element={<Navigate to="/portao/goldenview" replace />} />
             <Route path="/goldenview/:brokerSlug" element={<Navigate to="/portao/goldenview" replace />} />
+            <Route path="/estanciavelha/privado" element={<EstanciaVelha />} />
             <Route path="/estanciavelha" element={<EstanciaVelhaTeaser />} />
             <Route path="/estanciavelha/:brokerSlug" element={<EstanciaVelhaBrokerTeaser />} />
             
