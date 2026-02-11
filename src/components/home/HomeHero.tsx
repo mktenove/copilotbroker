@@ -17,8 +17,8 @@ const HomeHero = () => {
     <section
       ref={sectionRef}
       className="relative min-h-[85vh] flex items-center justify-center px-4 py-20 sm:py-28 overflow-hidden"
-      aria-labelledby="hero-heading"
-    >
+      aria-labelledby="hero-heading">
+
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-background via-background to-card/30" aria-hidden="true" />
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px]" aria-hidden="true" />
@@ -42,20 +42,20 @@ const HomeHero = () => {
           Transformamos lançamentos em cases de sucesso através de estratégia, tecnologia e uma operação comercial de alta performance.
         </p>
 
-        <p className="text-base sm:text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-10">
-          A Enove atua lado a lado com incorporadoras desde a concepção do produto até a última unidade vendida.
+        <p className="text-base sm:text-lg text-muted-foreground/80 max-w-2xl mx-auto mb-10">A Enove Select atua lado a lado com incorporadoras desde a concepção do produto até a última unidade vendida.
+
         </p>
 
         <button
           onClick={scrollToCTA}
           className="btn-primary text-base"
-          aria-label="Ir para seção de contato"
-        >
+          aria-label="Ir para seção de contato">
+
           Quero Lançar com a Enove
         </button>
       </div>
-    </section>
-  );
+    </section>);
+
 };
 
 export default HomeHero;
