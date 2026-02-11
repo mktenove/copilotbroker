@@ -54,9 +54,9 @@ const GVHeroSection = () => {
 
           {/* Main Title */}
           <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white leading-tight">
-            O LANÇAMENTO QUE{" "}
+            PREPARE-SE: O ENDEREÇO MAIS DESEJADO DE{" "}
             <span className="text-gold-gradient">PORTÃO</span>{" "}
-            ESPERAVA HÁ ANOS
+            ESTÁ PRESTES A NASCER
           </h1>
 
           {/* Subtitle */}
