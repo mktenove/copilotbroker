@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useRoletas, useRoletaLogs } from "@/hooks/use-roletas";
 import { Roleta } from "@/types/roleta";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,7 @@ const RoletaManagement = () => {
   const [formNome, setFormNome] = useState("");
   const [formLiderId, setFormLiderId] = useState("");
   const [formTimeout, setFormTimeout] = useState(10);
+  const [formSelectedProjects, setFormSelectedProjects] = useState<string[]>([]);
 
   // Add member state
   const [addMemberRoletaId, setAddMemberRoletaId] = useState<string | null>(null);
@@ -85,16 +87,21 @@ const RoletaManagement = () => {
       toast.error("Nome e líder são obrigatórios.");
       return;
     }
-    const success = await createRoleta({
+    const roletaId = await createRoleta({
       nome: formNome.trim(),
       lider_id: formLiderId,
       tempo_reserva_minutos: formTimeout,
     });
-    if (success) {
+    if (roletaId) {
+      // Vincular empreendimentos selecionados
+      for (const projectId of formSelectedProjects) {
+        await addEmpreendimento(roletaId, projectId);
+      }
       setIsCreateOpen(false);
       setFormNome("");
       setFormLiderId("");
       setFormTimeout(10);
+      setFormSelectedProjects([]);
     }
   };
 
@@ -144,7 +151,15 @@ const RoletaManagement = () => {
           </p>
         </div>
 
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <Dialog open={isCreateOpen} onOpenChange={(open) => {
+          setIsCreateOpen(open);
+          if (!open) {
+            setFormNome("");
+            setFormLiderId("");
+            setFormTimeout(10);
+            setFormSelectedProjects([]);
+          }
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-primary text-primary-foreground hover:brightness-110">
               <Plus className="w-5 h-5 mr-2" />
@@ -188,6 +203,31 @@ const RoletaManagement = () => {
                   step={1}
                   className="mt-2"
                 />
+              </div>
+              <div>
+                <Label>Empreendimentos</Label>
+                <div className="space-y-2 mt-2 max-h-40 overflow-y-auto">
+                  {projects.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">Nenhum empreendimento disponível.</p>
+                  ) : (
+                    projects.map(p => (
+                      <label key={p.id} className="flex items-center gap-2 cursor-pointer">
+                        <Checkbox
+                          checked={formSelectedProjects.includes(p.id)}
+                          onCheckedChange={(checked) => {
+                            setFormSelectedProjects(prev =>
+                              checked
+                                ? [...prev, p.id]
+                                : prev.filter(id => id !== p.id)
+                            );
+                          }}
+                        />
+                        <span className="text-sm text-foreground">{p.name}</span>
+                        <span className="text-xs text-muted-foreground">({p.city})</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 pt-4">
                 <DialogClose asChild>
