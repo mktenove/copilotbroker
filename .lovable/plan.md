@@ -1,17 +1,32 @@
 
-# Alterar cor da frase "Esses ja foram vendidos"
+# Corrigir lista de corretores no formulário GoldenView
 
-## O que sera feito
+## Problema
+A consulta para buscar corretores associados ao projeto usa a tabela `broker_projects`, que possui politicas de seguranca (RLS) restritas a admins e corretores autenticados. Como a landing page e publica (sem login), a consulta retorna vazio e nenhum corretor aparece na lista.
 
-No arquivo `src/components/goldenview/GVUrgencySection.tsx`, a frase "Esses ja foram vendidos." atualmente usa a cor `text-destructive` (vermelho) com fundo `bg-destructive/10` e borda `border-destructive/30`.
+A tabela `brokers` ja possui uma politica publica ("Qualquer pessoa pode ver corretores ativos"), mas `broker_projects` nao tem politica equivalente para leitura publica.
 
-Sera alterada para usar a paleta dourada (gold/primary), mantendo coerencia com o restante da landing page.
+## Solucao
+Adicionar uma politica de leitura publica na tabela `broker_projects` para associacoes ativas, permitindo que visitantes da landing page vejam quais corretores estao vinculados ao projeto.
 
-## Alteracao
+## Alteracoes
 
-| Arquivo | De | Para |
-|---------|-----|------|
-| `src/components/goldenview/GVUrgencySection.tsx` | `bg-destructive/10 border-destructive/30` | `bg-primary/10 border-primary/30` |
-| (mesmo arquivo) | `text-destructive` no texto | `text-primary` |
+### 1. Migracaco de banco de dados
+Criar uma nova politica RLS na tabela `broker_projects`:
 
-Apenas 1 arquivo alterado, 3 classes substituidas.
+```sql
+CREATE POLICY "Associacoes ativas sao publicas"
+  ON public.broker_projects
+  FOR SELECT
+  USING (is_active = true);
+```
+
+Isso segue o mesmo padrao ja usado na tabela `brokers` ("Qualquer pessoa pode ver corretores ativos") e na tabela `projects` ("Projetos ativos sao publicos").
+
+### 2. Nenhuma alteracao de codigo necessaria
+O componente `GVFormSection` ja faz a consulta correta — o unico bloqueio era a falta de permissao no banco de dados. Com a nova politica, a lista de corretores aparecera automaticamente.
+
+## Seguranca
+- A politica expoe apenas associacoes ativas (`is_active = true`)
+- Apenas leitura (SELECT) — nenhuma operacao de escrita e permitida publicamente
+- Os dados expostos sao minimos: apenas o vinculo corretor-projeto, sem informacoes sensiveis
