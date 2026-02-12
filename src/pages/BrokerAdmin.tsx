@@ -171,7 +171,7 @@ const BrokerAdmin = () => {
           </div>
         ) : (
           <>
-            <div className="flex flex-col gap-3 mb-6 md:hidden">
+            <div className="flex flex-col gap-3 mb-6 lg:hidden">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <input
