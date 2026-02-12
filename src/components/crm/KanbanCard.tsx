@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock, RotateCw, Timer, AlertTriangle } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock, RotateCw, Timer, AlertTriangle, Play } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -28,6 +28,7 @@ interface KanbanCardProps {
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
   onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
+  onStartService?: (leadId: string) => Promise<void>;
 }
 
 // Status order for advancement
@@ -72,7 +73,7 @@ const PROGRESS_COLORS: Record<string, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onStartService }: KanbanCardProps) {
   const isMobile = useIsMobile();
   const nextStatus = getNextStatus(lead.status);
   const nextStatusLabel = getNextStatusLabel(lead.status);
@@ -260,24 +261,45 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
             </div>
           </div>
 
-          {/* Row 5: WhatsApp Button + Actions - touch friendly */}
+          {/* Row 5: WhatsApp / Iniciar Atendimento Button + Actions - touch friendly */}
           <div className="flex items-center gap-2 mb-3">
-            <a
-              href={`https://wa.me/55${cleanPhone}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className={cn(
-                "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
-                "bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-lg",
-                "font-medium text-xs transition-all duration-150",
-                "hover:scale-[1.02] active:scale-[0.98]",
-                "shadow-sm"
-              )}
-            >
-              <MessageCircle className="w-4 h-4 md:w-3.5 md:h-3.5" />
-              <span>WhatsApp</span>
-            </a>
+            {lead.roleta_id && lead.status_distribuicao !== 'atendimento_iniciado' && onStartService ? (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartService(lead.id).then(() => {
+                    window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+                  });
+                }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
+                  "bg-cyan-500/90 hover:bg-cyan-500 text-white rounded-lg",
+                  "font-medium text-xs transition-all duration-150",
+                  "hover:scale-[1.02] active:scale-[0.98]",
+                  "shadow-sm animate-pulse hover:animate-none"
+                )}
+              >
+                <Play className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                <span>Iniciar Atendimento</span>
+              </button>
+            ) : (
+              <a
+                href={`https://wa.me/55${cleanPhone}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
+                  "bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-lg",
+                  "font-medium text-xs transition-all duration-150",
+                  "hover:scale-[1.02] active:scale-[0.98]",
+                  "shadow-sm"
+                )}
+              >
+                <MessageCircle className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                <span>WhatsApp</span>
+              </a>
+            )}
 
             {/* Action buttons - touch friendly */}
             <div className="flex items-center gap-1 ml-auto">

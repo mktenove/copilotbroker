@@ -160,15 +160,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 8. Try to notify via WhatsApp (global instance)
+    // 8. Try to notify via WhatsApp (global instance) using global_whatsapp_config
     try {
       const { data: globalConfig } = await supabase
         .from("global_whatsapp_config")
-        .select("*")
+        .select("instance_name, instance_token, status")
+        .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle();
 
-      if (globalConfig?.status === "connected" && brokerData) {
+      console.log("WhatsApp config:", {
+        hasConfig: !!globalConfig,
+        status: globalConfig?.status,
+        hasToken: !!globalConfig?.instance_token,
+      });
+
+      if (globalConfig?.instance_token && brokerData) {
         const { data: brokerInfo } = await supabase
           .from("brokers")
           .select("whatsapp")
@@ -176,23 +183,42 @@ Deno.serve(async (req) => {
           .single();
 
         if (brokerInfo?.whatsapp && leadData) {
-          const uazapiUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
-          if (uazapiUrl) {
+          // Build base URL from env var (extract origin only)
+          const envUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+          let baseUrl: string;
+          try {
+            baseUrl = new URL(envUrl).origin;
+          } catch {
+            baseUrl = envUrl.replace(/\/[^\/]+\/?$/, "");
+          }
+
+          if (baseUrl) {
+            const cleanBrokerPhone = brokerInfo.whatsapp.replace(/\D/g, "");
             const message = `🔔 *Novo lead via Roleta*\n\n📋 *${projectData?.name || "Empreendimento"}*\n👤 ${leadData.name}\n📱 ${leadData.whatsapp}\n\n⏱️ Tempo para atendimento: ${roleta.tempo_reserva_minutos} min`;
             
-            await fetch(`${uazapiUrl}/send/text`, {
+            const apiUrl = `${baseUrl}/send/text`;
+            console.log("Sending WhatsApp notification to:", cleanBrokerPhone, "via:", apiUrl);
+
+            const whatsappResp = await fetch(apiUrl, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
-                token: globalConfig.instance_token,
+                "token": globalConfig.instance_token,
               },
               body: JSON.stringify({
-                phone: brokerInfo.whatsapp,
-                message,
+                number: cleanBrokerPhone,
+                text: message,
               }),
             });
+
+            const respText = await whatsappResp.text();
+            console.log(`WhatsApp response (${whatsappResp.status}):`, respText.substring(0, 300));
+          } else {
+            console.warn("No UAZAPI base URL available");
           }
         }
+      } else {
+        console.log("WhatsApp notification skipped: no config or no broker data");
       }
     } catch (whatsappError) {
       console.error("WhatsApp notification failed (non-critical):", whatsappError);
