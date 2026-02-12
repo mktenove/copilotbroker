@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin } from "lucide-react";
+import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin, Play, RotateCw, ArrowRightLeft } from "lucide-react";
 import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS, LEAD_ORIGINS, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { useLeadDocuments } from "@/hooks/use-lead-documents";
@@ -344,6 +344,49 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
               </div>
             )}
           </div>
+
+          {/* Roleta Info */}
+          {lead.roleta_id && (
+            <div className="bg-cyan-500/10 border border-cyan-500/30 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <RotateCw className="w-4 h-4 text-cyan-400" />
+                <h4 className="text-sm font-medium text-cyan-300">Distribuído via Roleta</h4>
+              </div>
+              {lead.status_distribuicao && (
+                <p className="text-xs text-cyan-300/70">
+                  Status: {lead.status_distribuicao === 'atribuicao_inicial' ? 'Atribuição inicial' :
+                    lead.status_distribuicao === 'reassinado_timeout' ? 'Reassinado (timeout)' :
+                    lead.status_distribuicao === 'fallback_lider' ? 'Fallback para líder' :
+                    lead.status_distribuicao === 'atendimento_iniciado' ? 'Atendimento iniciado' :
+                    lead.status_distribuicao}
+                </p>
+              )}
+              {lead.reserva_expira_em && lead.status_distribuicao !== 'atendimento_iniciado' && (
+                <p className="text-xs text-amber-300/70">
+                  ⏱ Reserva expira em: {new Date(lead.reserva_expira_em).toLocaleString("pt-BR")}
+                </p>
+              )}
+              <div className="flex gap-2">
+                {lead.status_distribuicao !== 'atendimento_iniciado' && (
+                  <Button
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                    onClick={async () => {
+                      await onUpdate(lead.id, {
+                        atendimento_iniciado_em: new Date().toISOString(),
+                        status_distribuicao: 'atendimento_iniciado' as any,
+                        reserva_expira_em: null,
+                      });
+                      toast.success("Atendimento iniciado!");
+                    }}
+                  >
+                    <Play className="w-3.5 h-3.5 mr-1.5" />
+                    Iniciar Atendimento
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Quick Actions */}
           <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 space-y-3">
