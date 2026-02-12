@@ -59,10 +59,10 @@ const BrokerAdmin = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!isRoleLoading && role === "admin") {
+    if (!isRoleLoading && (role === "admin" || role === "leader")) {
       navigate("/admin");
     }
-    if (!isRoleLoading && role !== "broker") {
+    if (!isRoleLoading && role !== "broker" && role !== "leader") {
       navigate("/auth");
     }
   }, [role, isRoleLoading, navigate]);
