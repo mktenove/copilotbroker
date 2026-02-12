@@ -216,6 +216,32 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
     setWhatsappCampaignOpen(true);
   };
 
+  const handleStartService = async (leadId: string) => {
+    const { error } = await supabase
+      .from("leads")
+      .update({
+        atendimento_iniciado_em: new Date().toISOString(),
+        status_distribuicao: 'atendimento_iniciado' as any,
+        reserva_expira_em: null,
+      })
+      .eq("id", leadId);
+
+    if (error) {
+      toast.error("Erro ao iniciar atendimento");
+      throw error;
+    }
+
+    // Log the interaction
+    await supabase.from("lead_interactions").insert({
+      lead_id: leadId,
+      interaction_type: "atendimento_iniciado",
+      notes: "Atendimento iniciado pelo corretor via Kanban",
+    });
+
+    toast.success("Atendimento iniciado!");
+    fetchLeads();
+  };
+
   return (
     <div className="flex flex-col min-h-[700px]">
       {/* Mobile: Botão Atualizar grande */}
@@ -322,6 +348,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 onDelete={isAdmin ? handleDeleteLead : undefined}
                 onAdvanceStatus={handleAdvanceStatus}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
+                onStartService={handleStartService}
               />
             ))}
           </div>
