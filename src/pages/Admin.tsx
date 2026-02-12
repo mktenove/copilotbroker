@@ -116,7 +116,7 @@ const Admin = () => {
         .from("leads" as any)
         .select(`
           *,
-          broker:brokers(name, slug)
+          broker:brokers!leads_broker_id_fkey(name, slug)
         `)
         .order("created_at", { ascending: false }) as any);
 

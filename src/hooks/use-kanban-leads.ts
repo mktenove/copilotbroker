@@ -20,7 +20,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
         .from("leads")
         .select(`
           *,
-          broker:brokers(id, name, slug),
+          broker:brokers!leads_broker_id_fkey(id, name, slug),
           project:projects(id, name, slug, city_slug),
           attribution:lead_attribution(landing_page)
         `)
