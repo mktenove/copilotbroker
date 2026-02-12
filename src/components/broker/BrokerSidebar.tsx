@@ -34,7 +34,7 @@ export function BrokerSidebar({
   const isRoletasPage = location.pathname === "/corretor/roletas";
   
   return (
-    <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden md:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
+    <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden lg:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
       {/* Logo */}
       <div className="flex items-center justify-center pt-4 pb-2">
         <img src={logoEnoveMini} alt="Enove" className="h-8 w-8 object-contain" />

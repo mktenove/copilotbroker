@@ -192,13 +192,13 @@ export function BrokerLayout({
       </Sheet>
 
       {/* Main content - offset by sidebar width on desktop */}
-      <div className="md:ml-16 min-h-screen flex flex-col pb-20 md:pb-0">
+      <div className="lg:ml-16 min-h-screen flex flex-col pb-20 lg:pb-0">
         <BrokerHeader
           brokerName={brokerName}
           searchTerm={searchTerm}
           onSearchChange={onSearchChange}
         />
-        <main className="flex-1 flex flex-col p-3 md:p-6">{children}</main>
+        <main className="flex-1 flex flex-col p-3 lg:p-6">{children}</main>
       </div>
     </div>
   );
