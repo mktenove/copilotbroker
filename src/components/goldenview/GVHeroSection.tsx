@@ -64,11 +64,6 @@ const GVHeroSection = () => {
             E que vai acabar rápido.
           </p>
 
-          {/* Description */}
-          <p className="text-base sm:text-lg md:text-xl text-white/80 mb-6 max-w-2xl mx-auto leading-relaxed">
-            Em breve, Portão vai viver o maior e mais desejado lançamento imobiliário da sua história recente.
-          </p>
-
           <p className="text-sm sm:text-base text-white/70 mb-8 max-w-2xl mx-auto">
             Um condomínio fechado de terrenos de alto padrão, criado para um público seleto e assinado por duas das empresas mais respeitadas da região:
           </p>
