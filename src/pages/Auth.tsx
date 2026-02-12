@@ -15,11 +15,10 @@ const Auth = () => {
 
   const checkUserRoleAndRedirect = async (userId: string) => {
     try {
-      const { data: roleData, error } = await (supabase
+      const { data: rolesData, error } = await (supabase
         .from("user_roles" as any)
         .select("role")
-        .eq("user_id", userId)
-        .maybeSingle() as any);
+        .eq("user_id", userId) as any);
 
       if (error) {
         console.error("Erro ao buscar role:", error);
@@ -27,7 +26,11 @@ const Auth = () => {
         return;
       }
 
-      if (roleData?.role === "broker") {
+      const roles = (rolesData || []).map((r: { role: string }) => r.role);
+      
+      if (roles.includes("admin")) {
+        navigate("/admin");
+      } else if (roles.includes("broker") || roles.includes("leader")) {
         navigate("/corretor/admin");
       } else {
         navigate("/admin");

@@ -39,7 +39,7 @@ const BrokerAdmin = () => {
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const navigate = useNavigate();
-  const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
+  const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -60,10 +60,10 @@ const BrokerAdmin = () => {
   }, [navigate]);
 
   useEffect(() => {
-    if (!isRoleLoading && (role === "admin" || role === "leader")) {
+    if (!isRoleLoading && role === "admin") {
       navigate("/admin");
     }
-    if (!isRoleLoading && role !== "broker" && role !== "leader") {
+    if (!isRoleLoading && role !== "broker" && role !== "admin") {
       navigate("/auth");
     }
   }, [role, isRoleLoading, navigate]);
@@ -162,6 +162,7 @@ const BrokerAdmin = () => {
         onAddLead={handleAddLead}
         searchTerm={viewMode === "list" ? searchTerm : undefined}
         onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
+        isLeader={isLeader}
       >
         {viewMode === "kanban" ? (
           <div className="flex-1 min-h-[400px] space-y-4">

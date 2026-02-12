@@ -1,4 +1,4 @@
-import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare } from "lucide-react";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare, RotateCw } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
@@ -11,6 +11,7 @@ interface BrokerSidebarProps {
   onOpenLanding?: () => void;
   onAddLead?: () => void;
   brokerInitial?: string;
+  isLeader?: boolean;
 }
 
 const NAV_ITEMS = [
@@ -25,10 +26,12 @@ export function BrokerSidebar({
   onOpenLanding,
   onAddLead,
   brokerInitial = "C",
+  isLeader = false,
 }: BrokerSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const isWhatsAppPage = location.pathname === "/corretor/whatsapp";
+  const isRoletasPage = location.pathname === "/corretor/roletas";
   
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden md:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
@@ -91,6 +94,23 @@ export function BrokerSidebar({
             WhatsApp
           </span>
         </button>
+
+        {/* Roletas - only for leaders */}
+        {isLeader && (
+          <button
+            onClick={() => navigate("/corretor/roletas")}
+            className={cn(
+              "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative mt-2",
+              isRoletasPage ? "bg-[#2a2a2e] text-[#FFFF00]" : "text-slate-400 hover:text-white"
+            )}
+            title="Roletas"
+          >
+            <RotateCw className="w-5 h-5" />
+            <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              Roletas
+            </span>
+          </button>
+        )}
 
         {/* Empreendimentos */}
         <button
