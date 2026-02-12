@@ -1,37 +1,30 @@
 
 
-## Fix: Leads not loading due to ambiguous broker relationship
+## Reorganizar informacoes no card do Kanban para evitar sobreposicao
 
-### Problem
-After adding the `corretor_atribuido_id` column to the `leads` table (for the roleta feature), there are now **two** foreign keys from `leads` to `brokers`:
-- `leads.broker_id -> brokers.id`
-- `leads.corretor_atribuido_id -> brokers.id`
+### Problema atual
+Na **Row 1** do card, os badges (projeto, roleta, fallback, stale) ficam no lado esquerdo usando `flex-wrap`, enquanto o badge de mensagem automatica ("1a msg" / "Manual") e a data ficam no lado direito com `shrink-0`. Quando ha muitos badges a esquerda (ex: projeto + roleta + stale), eles competem pelo espaco horizontal com o badge de mensagem e a data, causando sobreposicao visual ou compressao excessiva.
 
-PostgREST returns a **300 error** because it can't determine which relationship to use when the query says `broker:brokers(...)`.
+### Solucao proposta
+Redistribuir as informacoes em linhas separadas para que nada se sobreponha, mantendo o card compacto:
 
-### Solution
-Disambiguate the relationship by specifying the foreign key name explicitly in all affected queries.
+**Nova estrutura do card:**
 
-### Files to change
+1. **Linha 1 (topo):** Projeto + Data/Hora (lado a lado, como hoje, mas sem os outros badges)
+2. **Linha 2 (badges contextuais):** Roleta, Fallback, 1a Msg, Stale -- todos na mesma linha horizontal com `flex-wrap`, sem competir com a data
+3. **Linha 3:** Nome do lead (sem mudanca)
+4. **Linha 4:** Contato (telefone/email, sem mudanca)
+5. **Linha 5:** Barra de progresso (sem mudanca)
+6. **Linha 6:** Botao WhatsApp + acoes (sem mudanca)
+7. **Linha 7 (rodape):** Avatar do corretor + tempo + origem (sem mudanca)
 
-**1. `src/hooks/use-kanban-leads.ts` (line 23)**
-Change:
-```
-broker:brokers(id, name, slug)
-```
-To:
-```
-broker:brokers!leads_broker_id_fkey(id, name, slug)
-```
+### Detalhes tecnicos
 
-**2. `src/pages/Admin.tsx` (line 119)**
-Change:
-```
-broker:brokers(name, slug)
-```
-To:
-```
-broker:brokers!leads_broker_id_fkey(name, slug)
-```
+**Arquivo:** `src/components/crm/KanbanCard.tsx`
 
-These are the only two files querying leads with a broker join. The other files (`GVFormSection`, `AdminWhatsApp`, `use-whatsapp-campaigns`) query different tables where the relationship is unambiguous.
+- Separar a Row 1 atual em duas partes:
+  - A primeira mantem apenas o badge do projeto e a data/hora nos cantos
+  - Uma nova linha abaixo agrupa os badges contextuais (Roleta, Fallback, 1a msg enviada, Manual, indicador Stale) em um `flex flex-wrap gap-1` sem restricao de espaco
+- Os badges contextuais so aparecem condicionalmente, entao a linha extra so ocupa espaco quando ha algo a mostrar (condicional com `&&`)
+- Nenhuma outra alteracao em logica, dados ou estilos dos badges individuais
+
