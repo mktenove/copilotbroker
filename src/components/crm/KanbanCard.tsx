@@ -165,47 +165,37 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
         )}
       >
         <div className="p-3">
-          {/* Row 1: Project Name + Date/Time + Auto Message Badge */}
-          <div className="flex items-start justify-between gap-2 mb-2.5">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {/* Project Name Tag */}
-              {lead.project ? (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-primary/20 text-primary border border-primary/40">
-                  {lead.project.name}
-                </span>
-              ) : (
-                <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 border border-dashed border-slate-600">
-                  Sem projeto
-                </span>
-              )}
+        {/* Row 1: Project Name + Date/Time */}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            {lead.project ? (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-primary/20 text-primary border border-primary/40">
+                {lead.project.name}
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 border border-dashed border-slate-600">
+                Sem projeto
+              </span>
+            )}
+            <span className="text-[10px] text-slate-500 shrink-0">
+              {createdAtWithTime}
+            </span>
+          </div>
 
-              {/* Roleta badge */}
+          {/* Row 2: Contextual badges (only renders if any exist) */}
+          {(lead.roleta_id || lead.status_distribuicao === 'fallback_lider' || lead.auto_first_message_sent || lead.attribution?.landing_page === "admin_manual" || isStale) && (
+            <div className="flex flex-wrap items-center gap-1 mb-2">
               {lead.roleta_id && (
                 <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
                   <RotateCw className="w-2.5 h-2.5" />
                   Roleta
                 </span>
               )}
-
-              {/* Fallback indicator */}
               {lead.status_distribuicao === 'fallback_lider' && (
                 <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
                   <AlertTriangle className="w-2.5 h-2.5" />
                   Fallback
                 </span>
               )}
-
-              {/* Stale indicator */}
-              {isStale && (
-                <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
-                  !
-                </span>
-              )}
-            </div>
-
-            {/* Auto Message Badge + Date/Time */}
-            <div className="flex items-center gap-2 shrink-0">
-              {/* Auto First Message Status Badge */}
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -230,13 +220,13 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              
-              {/* Date + Time */}
-              <span className="text-[10px] text-slate-500">
-                {createdAtWithTime}
-              </span>
+              {isStale && (
+                <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">
+                  !
+                </span>
+              )}
             </div>
-          </div>
+          )}
 
           {/* Row 2: Lead Name */}
           <h4 className="font-semibold text-white text-sm leading-snug line-clamp-1 mb-2 group-hover:text-primary transition-colors">
