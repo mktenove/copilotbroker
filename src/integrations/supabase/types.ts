@@ -1253,6 +1253,7 @@ export type Database = {
     }
     Functions: {
       get_my_broker_id: { Args: never; Returns: string }
+      get_my_roleta_ids: { Args: never; Returns: string[] }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
