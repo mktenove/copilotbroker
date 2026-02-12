@@ -1,52 +1,51 @@
 
-
-## Visibilidade de membros online e proximo da fila para corretores
+## Adicionar botao para excluir roleta
 
 ### Objetivo
+Permitir que o admin exclua uma roleta diretamente pela interface de gerenciamento.
 
-Permitir que cada corretor veja, dentro de cada roleta em que participa, todos os membros da fila com seu status (online/offline) e quem e o proximo a receber um lead.
+### Mudancas necessarias
 
-### Mudancas
+**1. Migracao de banco de dados**
 
-**Arquivo: `src/components/broker/BrokerRoletas.tsx`**
+Duas foreign keys referenciam a tabela `roletas` com `NO ACTION`, o que impede a exclusao:
+- `roletas_log.roleta_id` -- sera alterada para `ON DELETE CASCADE` (logs perdem sentido sem a roleta)
+- `leads.roleta_id` -- sera alterada para `ON DELETE SET NULL` (leads devem ser preservados)
 
-1. Apos buscar os dados do membro logado (`roletas_membros` filtrado por `corretor_id`), fazer uma segunda query para cada `roleta_id` buscando **todos os membros ativos** daquela roleta, incluindo o nome do corretor:
-   ```
-   roletas_membros(*, corretor:brokers(id, name))
-   WHERE roleta_id = X AND ativo = true
-   ORDER BY ordem ASC
-   ```
-2. Buscar tambem os dados da roleta principal (campo `ultimo_membro_ordem_atribuida`) para calcular quem e o proximo
-3. Adicionar uma secao colapsavel (ou sempre visivel) abaixo de cada card de roleta mostrando a lista de membros:
-   - Indicador verde/cinza ao lado do nome (online/offline)
-   - Badge "Proximo" no corretor que sera o proximo a receber lead (baseado em `ultimo_membro_ordem_atribuida + 1`, considerando apenas membros com check-in ativo)
-   - Destacar o proprio corretor logado na lista (ex: nome em negrito ou badge "Voce")
-4. Adicionar Realtime subscription na tabela `roletas_membros` para atualizar automaticamente quando alguem faz check-in/check-out
+As demais FKs (`roletas_membros`, `roletas_empreendimentos`) ja possuem `ON DELETE CASCADE`.
 
-### Layout atualizado de cada card
+**2. Hook `src/hooks/use-roletas.ts`**
+
+Adicionar funcao `deleteRoleta(id: string)`:
+- Executa `supabase.from("roletas").delete().eq("id", id)`
+- Exibe toast de sucesso/erro
+- Chama `fetchRoletas()` para atualizar a lista
+
+**3. Componente `src/components/admin/RoletaManagement.tsx`**
+
+- Adicionar botao "Excluir" (vermelho, com icone Trash2) na area de acoes da roleta expandida, ao lado dos botoes "Desativar" e "Logs"
+- Usar um `AlertDialog` para confirmar a exclusao antes de executar, exibindo o nome da roleta e avisando que a acao e irreversivel
+- Chamar `deleteRoleta(roleta.id)` ao confirmar
+- Se a roleta excluida estava expandida, limpar o estado `expandedRoleta`
+
+### Layout do botao
+
+O botao aparecera na area de acoes existente (linha 299-321), junto com "Desativar" e "Logs":
 
 ```text
-+--------------------------------------------+
-| Roleta GoldenView              [Check-out] |
-| Ordem: 2 | 10min reserva                   |
-|                                             |
-| Fila da Roleta (3/5 online)                |
-| +----------------------------------------+ |
-| | #1  * Joao Silva                       | |
-| | #2  * Voce              [Proximo]      | |
-| | #3  o Maria Santos                     | |
-| | #4  * Pedro Lima                       | |
-| | #5  o Ana Costa                        | |
-| +----------------------------------------+ |
-|  * = online   o = offline                   |
-+--------------------------------------------+
+[Desativar]  [Logs]  [Excluir]
 ```
 
-### Detalhes tecnicos
+Ao clicar em "Excluir", um dialog de confirmacao aparece:
 
-- A query de membros usara a relacao `corretor:brokers(id, name)` que ja existe no schema
-- O calculo de "proximo" segue a mesma logica do admin: `ordem === ultimo_membro_ordem_atribuida + 1` (com wrap-around para o primeiro membro quando o ultimo da lista ja foi atribuido), considerando apenas membros com `status_checkin = true`
-- Para Realtime, usar `supabase.channel('roleta-membros-ROLETA_ID').on('postgres_changes', ...)` filtrando por `roleta_id`
-- As RLS policies ja permitem que corretores vejam membros das suas roletas (`roleta_id IN get_my_roleta_ids()`)
-- Nenhuma migracao de banco necessaria
-
+```text
++----------------------------------+
+| Excluir Roleta                   |
++----------------------------------+
+| Tem certeza que deseja excluir   |
+| a roleta "GoldenView"?          |
+| Esta acao e irreversivel.        |
+|                                  |
+| [Cancelar]  [Excluir]           |
++----------------------------------+
+```
