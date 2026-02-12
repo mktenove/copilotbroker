@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail, Crown, Users } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -10,14 +10,25 @@ import {
   DialogTrigger,
   DialogClose,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { BrokerActivitySheet } from "./BrokerActivitySheet";
 import { useBrokersLastAccess } from "@/hooks/use-broker-activity";
 import { formatDistanceToNow, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import TeamView from "./TeamView";
+import LeaderManagement from "./LeaderManagement";
 
 interface Project {
   id: string;
@@ -33,8 +44,28 @@ interface Broker {
   email: string;
   whatsapp: string | null;
   is_active: boolean;
+  lider_id: string | null;
   created_at: string;
   projects?: Project[];
+}
+
+interface Leader {
+  id: string;
+  name: string;
+  user_id: string;
+}
+
+interface Roleta {
+  id: string;
+  nome: string;
+  lider_id: string;
+  ativa: boolean;
+}
+
+interface RoletaMembro {
+  roleta_id: string;
+  corretor_id: string;
+  ativo: boolean;
 }
 
 interface BrokerFormData {
@@ -42,10 +73,14 @@ interface BrokerFormData {
   email: string;
   whatsapp: string;
   password: string;
+  lider_id: string;
 }
 
 const BrokerManagement = () => {
   const [brokers, setBrokers] = useState<Broker[]>([]);
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [roletas, setRoletas] = useState<Roleta[]>([]);
+  const [roletasMembros, setRoletasMembros] = useState<RoletaMembro[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -57,6 +92,7 @@ const BrokerManagement = () => {
     email: "",
     whatsapp: "",
     password: "",
+    lider_id: "",
   });
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [selectedBrokerForHistory, setSelectedBrokerForHistory] = useState<Broker | null>(null);
@@ -64,9 +100,65 @@ const BrokerManagement = () => {
   const { lastAccessMap, leadsCountMap, fetchLastAccess } = useBrokersLastAccess();
 
   useEffect(() => {
+    fetchAll();
+  }, []);
+
+  const fetchAll = () => {
     fetchBrokers();
     fetchProjects();
-  }, []);
+    fetchLeaders();
+    fetchRoletas();
+  };
+
+  const fetchLeaders = async () => {
+    try {
+      // Get user_ids with leader role
+      const { data: rolesData, error: rolesError } = await (supabase
+        .from("user_roles" as any)
+        .select("user_id")
+        .eq("role", "leader") as any);
+
+      if (rolesError) throw rolesError;
+
+      const leaderUserIds = (rolesData || []).map((r: { user_id: string }) => r.user_id);
+      if (leaderUserIds.length === 0) {
+        setLeaders([]);
+        return;
+      }
+
+      // Get broker info for those users
+      const { data: brokersData, error: brokersError } = await (supabase
+        .from("brokers" as any)
+        .select("id, name, user_id")
+        .in("user_id", leaderUserIds) as any);
+
+      if (brokersError) throw brokersError;
+      setLeaders((brokersData || []) as Leader[]);
+    } catch (error) {
+      console.error("Erro ao buscar líderes:", error);
+    }
+  };
+
+  const fetchRoletas = async () => {
+    try {
+      const { data, error } = await (supabase
+        .from("roletas" as any)
+        .select("id, nome, lider_id, ativa") as any);
+
+      if (error) throw error;
+      setRoletas((data || []) as Roleta[]);
+
+      // Also fetch roletas_membros for the "Todos" tab badges
+      const { data: membrosData } = await (supabase
+        .from("roletas_membros" as any)
+        .select("roleta_id, corretor_id, ativo")
+        .eq("ativo", true) as any);
+
+      setRoletasMembros((membrosData || []) as RoletaMembro[]);
+    } catch (error) {
+      console.error("Erro ao buscar roletas:", error);
+    }
+  };
 
   const fetchProjects = async () => {
     try {
@@ -86,7 +178,6 @@ const BrokerManagement = () => {
   const fetchBrokers = async () => {
     setIsLoading(true);
     try {
-      // Fetch brokers
       const { data: brokersData, error: brokersError } = await (supabase
         .from("brokers" as any)
         .select("*")
@@ -94,13 +185,11 @@ const BrokerManagement = () => {
 
       if (brokersError) throw brokersError;
 
-      // Fetch broker_projects to get project associations
       const { data: brokerProjectsData } = await supabase
         .from("broker_projects")
         .select("broker_id, project:projects(id, name, city)")
         .eq("is_active", true);
 
-      // Map projects to brokers
       const brokersWithProjects = (brokersData || []).map((broker: Broker) => {
         const brokerProjects = (brokerProjectsData || [])
           .filter((bp: any) => bp.broker_id === broker.id)
@@ -112,7 +201,6 @@ const BrokerManagement = () => {
 
       setBrokers(brokersWithProjects as Broker[]);
       
-      // Buscar último acesso e contagem de leads
       const brokerIds = (brokersWithProjects as Broker[]).map(b => b.id);
       if (brokerIds.length > 0) {
         fetchLastAccess(brokerIds);
@@ -142,9 +230,9 @@ const BrokerManagement = () => {
         email: broker.email,
         whatsapp: broker.whatsapp || "",
         password: "",
+        lider_id: broker.lider_id || "",
       });
       
-      // Fetch associated projects for this broker
       const { data } = await supabase
         .from("broker_projects")
         .select("project_id")
@@ -154,7 +242,7 @@ const BrokerManagement = () => {
       setSelectedProjects(data?.map(bp => bp.project_id) || []);
     } else {
       setEditingBroker(null);
-      setFormData({ name: "", email: "", whatsapp: "", password: "" });
+      setFormData({ name: "", email: "", whatsapp: "", password: "", lider_id: "" });
       setSelectedProjects([]);
     }
     setIsDialogOpen(true);
@@ -169,13 +257,11 @@ const BrokerManagement = () => {
   };
 
   const syncBrokerProjects = async (brokerId: string, projectIds: string[]) => {
-    // Remove all existing associations
     await supabase
       .from("broker_projects")
       .delete()
       .eq("broker_id", brokerId);
     
-    // Insert new associations
     if (projectIds.length > 0) {
       const { error } = await supabase
         .from("broker_projects")
@@ -197,7 +283,6 @@ const BrokerManagement = () => {
       return;
     }
 
-    // Validate WhatsApp if provided
     if (formData.whatsapp && !isValidBrazilianWhatsApp(formData.whatsapp)) {
       toast.error("WhatsApp inválido. Use o formato completo com código do Brasil (+55).");
       return;
@@ -217,23 +302,20 @@ const BrokerManagement = () => {
 
     try {
       if (editingBroker) {
-        // Atualizar corretor existente
         const { error } = await (supabase
           .from("brokers" as any)
           .update({
             name: formData.name.trim(),
             whatsapp: formData.whatsapp.trim() || null,
+            lider_id: formData.lider_id || null,
           })
           .eq("id", editingBroker.id) as any);
 
         if (error) throw error;
 
-        // Sincronizar projetos
         await syncBrokerProjects(editingBroker.id, selectedProjects);
-
         toast.success("Corretor atualizado com sucesso!");
       } else {
-        // Criar novo usuário no Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: formData.email.trim(),
           password: formData.password,
@@ -248,7 +330,6 @@ const BrokerManagement = () => {
         const userId = authData.user.id;
         const slug = generateSlug(formData.name);
 
-        // Criar registro na tabela brokers
         const { error: brokerError } = await (supabase
           .from("brokers" as any)
           .insert({
@@ -257,11 +338,11 @@ const BrokerManagement = () => {
             slug,
             email: formData.email.trim(),
             whatsapp: formData.whatsapp.trim() || null,
+            lider_id: formData.lider_id || null,
           }) as any);
 
         if (brokerError) throw brokerError;
 
-        // Criar role do corretor
         const { error: roleError } = await (supabase
           .from("user_roles" as any)
           .insert({
@@ -271,14 +352,12 @@ const BrokerManagement = () => {
 
         if (roleError) throw roleError;
 
-        // Buscar o broker recém criado para obter o ID
         const { data: newBroker } = await (supabase
           .from("brokers" as any)
           .select("id")
           .eq("user_id", userId)
           .single() as any);
 
-        // Sincronizar projetos
         if (newBroker && selectedProjects.length > 0) {
           await syncBrokerProjects(newBroker.id, selectedProjects);
         }
@@ -288,9 +367,9 @@ const BrokerManagement = () => {
 
       setIsDialogOpen(false);
       setEditingBroker(null);
-      setFormData({ name: "", email: "", whatsapp: "", password: "" });
+      setFormData({ name: "", email: "", whatsapp: "", password: "", lider_id: "" });
       setSelectedProjects([]);
-      fetchBrokers();
+      fetchAll();
     } catch (error: any) {
       console.error("Erro ao salvar corretor:", error);
       if (error.message?.includes("duplicate key")) {
@@ -356,7 +435,6 @@ const BrokerManagement = () => {
     );
   }
 
-  // Cores para avatares baseadas no nome
   const getAvatarGradient = (name: string) => {
     const gradients = [
       'from-blue-500 to-purple-600',
@@ -366,11 +444,9 @@ const BrokerManagement = () => {
       'from-indigo-500 to-blue-600',
       'from-cyan-500 to-blue-600',
     ];
-    const index = name.charCodeAt(0) % gradients.length;
-    return gradients[index];
+    return gradients[name.charCodeAt(0) % gradients.length];
   };
 
-  // Barra de progresso baseada em leads
   const getProgressPercentage = (leads: number): number => {
     if (leads === 0) return 5;
     if (leads <= 5) return 20;
@@ -380,16 +456,28 @@ const BrokerManagement = () => {
     return 100;
   };
 
+  const getLeaderName = (liderId: string | null) => {
+    if (!liderId) return null;
+    return leaders.find(l => l.id === liderId)?.name || null;
+  };
+
+  const getBrokerRoletas = (brokerId: string) => {
+    const roletaIds = roletasMembros
+      .filter(rm => rm.corretor_id === brokerId)
+      .map(rm => rm.roleta_id);
+    return roletas.filter(r => roletaIds.includes(r.id) && r.ativa);
+  };
+
   const activeCount = brokers.filter(b => b.is_active).length;
 
   return (
     <div className="space-y-6">
-      {/* Header Premium */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold text-foreground">Corretores</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            {activeCount} corretor{activeCount !== 1 ? 'es' : ''} ativo{activeCount !== 1 ? 's' : ''} de {brokers.length} total
+            {activeCount} ativo{activeCount !== 1 ? 's' : ''} · {leaders.length} líder{leaders.length !== 1 ? 'es' : ''} · {brokers.length} total
           </p>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -452,7 +540,30 @@ const BrokerManagement = () => {
                 />
               </div>
 
-              {/* Seleção de Empreendimentos */}
+              {/* Leader select */}
+              <div>
+                <label className="block text-sm font-medium text-muted-foreground mb-2">
+                  Líder da Equipe
+                </label>
+                <Select
+                  value={formData.lider_id}
+                  onValueChange={(value) => setFormData({ ...formData, lider_id: value === "none" ? "" : value })}
+                >
+                  <SelectTrigger className="w-full h-11 bg-[#141417] border-[#2a2a2e]">
+                    <SelectValue placeholder="Sem líder" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Sem líder</SelectItem>
+                    {leaders.map(leader => (
+                      <SelectItem key={leader.id} value={leader.id}>
+                        {leader.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Projects */}
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-2">
                   Empreendimentos
@@ -473,9 +584,6 @@ const BrokerManagement = () => {
                     <p className="text-sm text-muted-foreground">Nenhum projeto disponível</p>
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Selecione os empreendimentos que este corretor pode vender
-                </p>
               </div>
 
               {!editingBroker && (
@@ -515,145 +623,201 @@ const BrokerManagement = () => {
         </Dialog>
       </div>
 
-      {/* Grid de Cards Estilo Kanban */}
-      {brokers.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl p-12 text-center">
-          <p className="text-muted-foreground">Nenhum corretor cadastrado ainda.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {brokers.map((broker) => {
-            const lastAccess = lastAccessMap[broker.id];
-            const leadsCount = leadsCountMap[broker.id] || 0;
-            
-            return (
-              <div
-                key={broker.id}
-                onClick={() => setSelectedBrokerForHistory(broker)}
-                className={cn(
-                  "relative rounded-xl cursor-pointer",
-                  "bg-[#1e1e22] border border-[#2a2a2e]",
-                  "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
-                  "transition-all duration-200 ease-out",
-                  "group overflow-hidden",
-                  !broker.is_active && "ring-2 ring-red-400/50"
-                )}
-              >
-                <div className="p-3">
-                  {/* Row 1: Status + Data de cadastro */}
-                  <div className="flex items-start justify-between gap-2 mb-2.5">
-                    <span className={cn(
-                      "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
-                      broker.is_active
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                        : "bg-red-500/20 text-red-400 border-red-500/40"
-                    )}>
-                      {broker.is_active ? 'Ativo' : 'Inativo'}
-                    </span>
-                    <span className="text-[10px] text-slate-500 shrink-0">
-                      {format(new Date(broker.created_at), "dd/MM HH:mm")}
-                    </span>
-                  </div>
+      {/* Tabs */}
+      <Tabs defaultValue="equipes" className="w-full">
+        <TabsList className="bg-card/50 border border-border">
+          <TabsTrigger value="equipes" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <Users className="w-3.5 h-3.5" />
+            Equipes
+          </TabsTrigger>
+          <TabsTrigger value="todos" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            Todos os Corretores
+          </TabsTrigger>
+          <TabsTrigger value="lideres" className="gap-1.5 data-[state=active]:bg-primary/10 data-[state=active]:text-primary">
+            <Crown className="w-3.5 h-3.5" />
+            Líderes
+          </TabsTrigger>
+        </TabsList>
 
-                  {/* Row 2: Nome */}
-                  <h4 className="font-semibold text-white text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
-                    {broker.name}
-                  </h4>
+        {/* Tab: Equipes */}
+        <TabsContent value="equipes">
+          <TeamView
+            brokers={brokers}
+            leaders={leaders}
+            leadsCountMap={leadsCountMap}
+            lastAccessMap={lastAccessMap}
+            onRefresh={fetchAll}
+          />
+        </TabsContent>
 
-                  {/* Row 3: Email */}
-                  <div className="flex items-center gap-2 text-xs text-slate-400 mb-3">
-                    <Mail className="w-3 h-3 text-slate-500" />
-                    <span className="truncate">{broker.email}</span>
-                  </div>
+        {/* Tab: Todos os Corretores */}
+        <TabsContent value="todos">
+          {brokers.length === 0 ? (
+            <div className="bg-card border border-border rounded-xl p-12 text-center">
+              <p className="text-muted-foreground">Nenhum corretor cadastrado ainda.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {brokers.map((broker) => {
+                const lastAccess = lastAccessMap[broker.id];
+                const leadsCount = leadsCountMap[broker.id] || 0;
+                const leaderName = getLeaderName(broker.lider_id);
+                const brokerRoletas = getBrokerRoletas(broker.id);
+                
+                return (
+                  <div
+                    key={broker.id}
+                    onClick={() => setSelectedBrokerForHistory(broker)}
+                    className={cn(
+                      "relative rounded-xl cursor-pointer",
+                      "bg-card border border-border",
+                      "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
+                      "transition-all duration-200 ease-out",
+                      "group overflow-hidden",
+                      !broker.is_active && "ring-2 ring-destructive/50"
+                    )}
+                  >
+                    <div className="p-3">
+                      {/* Row 1: Status + Leader badge + Date */}
+                      <div className="flex items-start justify-between gap-2 mb-2.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={cn(
+                            "px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide border",
+                            broker.is_active
+                              ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                              : "bg-red-500/20 text-red-400 border-red-500/40"
+                          )}>
+                            {broker.is_active ? 'Ativo' : 'Inativo'}
+                          </span>
+                          {leaderName && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 gap-0.5 border-primary/30 text-primary">
+                              <Crown className="w-2.5 h-2.5" />
+                              {leaderName}
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {format(new Date(broker.created_at), "dd/MM HH:mm")}
+                        </span>
+                      </div>
 
-                  {/* Row 4: Barra de progresso */}
-                  <div className="mb-3">
-                    <div className="h-1 w-full bg-slate-700/50 rounded-full overflow-hidden">
-                      <div 
-                        className={cn(
-                          "h-full rounded-full transition-all duration-500",
-                          broker.is_active ? "bg-primary" : "bg-red-500"
+                      {/* Row 2: Name */}
+                      <h4 className="font-semibold text-foreground text-sm leading-snug line-clamp-1 mb-1 group-hover:text-primary transition-colors">
+                        {broker.name}
+                      </h4>
+
+                      {/* Row 3: Email */}
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-3">
+                        <Mail className="w-3 h-3" />
+                        <span className="truncate">{broker.email}</span>
+                      </div>
+
+                      {/* Row 4: Progress bar */}
+                      <div className="mb-3">
+                        <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              broker.is_active ? "bg-primary" : "bg-destructive"
+                            )}
+                            style={{ width: `${getProgressPercentage(leadsCount)}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Row 5: Projects + Roleta badges */}
+                      <div className="flex flex-wrap gap-1.5 mb-3 min-h-[22px]">
+                        {broker.projects?.slice(0, 2).map(project => (
+                          <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground border border-border">
+                            {project.name}
+                          </span>
+                        ))}
+                        {(broker.projects?.length || 0) > 2 && (
+                          <span className="px-2 py-0.5 text-[10px] rounded-md bg-muted text-muted-foreground">
+                            +{broker.projects!.length - 2}
+                          </span>
                         )}
-                        style={{ width: `${getProgressPercentage(leadsCount)}%` }}
-                      />
-                    </div>
-                  </div>
+                        {brokerRoletas.map(r => (
+                          <Badge key={r.id} variant="outline" className="text-[10px] px-1.5 py-0 h-4 border-accent/40 text-accent-foreground">
+                            🎯 {r.nome}
+                          </Badge>
+                        ))}
+                        {(!broker.projects || broker.projects.length === 0) && brokerRoletas.length === 0 && (
+                          <span className="text-[10px] text-muted-foreground">Nenhum projeto</span>
+                        )}
+                      </div>
 
-                  {/* Row 5: Projetos */}
-                  <div className="flex flex-wrap gap-1.5 mb-3 min-h-[22px]">
-                    {broker.projects?.slice(0, 2).map(project => (
-                      <span key={project.id} className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-300 border border-[#3a3a3e]">
-                        {project.name}
-                      </span>
-                    ))}
-                    {(broker.projects?.length || 0) > 2 && (
-                      <span className="px-2 py-0.5 text-[10px] rounded-md bg-[#2a2a2e] text-slate-400">
-                        +{broker.projects!.length - 2}
-                      </span>
-                    )}
-                    {(!broker.projects || broker.projects.length === 0) && (
-                      <span className="text-[10px] text-slate-500">Nenhum projeto</span>
-                    )}
-                  </div>
+                      {/* Row 6: Actions */}
+                      <div className="flex items-center gap-1 mb-3">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
+                          className={cn(
+                            "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
+                            "bg-muted hover:bg-muted/80 text-muted-foreground rounded-lg",
+                            "font-medium text-xs transition-all"
+                          )}
+                        >
+                          {copiedSlug === broker.slug ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
+                          <span>{copiedSlug === broker.slug ? 'Copiado!' : 'Link'}</span>
+                        </button>
+                        
+                        <div className="flex-1" />
+                        
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
+                          className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        >
+                          <Edit2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                        </button>
+                        
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
+                          className="p-2 md:p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                        </button>
+                      </div>
 
-                  {/* Row 6: Ações */}
-                  <div className="flex items-center gap-1 mb-3">
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); copyLink(broker.slug); }}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
-                        "bg-slate-700/50 hover:bg-slate-600/50 text-slate-300 rounded-lg",
-                        "font-medium text-xs transition-all"
-                      )}
-                    >
-                      {copiedSlug === broker.slug ? <Check className="w-3.5 h-3.5 text-primary" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedSlug === broker.slug ? 'Copiado!' : 'Link'}</span>
-                    </button>
-                    
-                    <div className="flex-1" />
-                    
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); handleOpenDialog(broker); }}
-                      className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-white hover:bg-slate-700/50 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
-                    </button>
-                    
-                    <button 
-                      onClick={(e) => { e.stopPropagation(); deleteBroker(broker); }}
-                      className="p-2 md:p-1.5 rounded-md text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4 md:w-3.5 md:h-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Row 7: Footer com métricas */}
-                  <div className="flex items-center justify-between pt-2 border-t border-slate-700/50">
-                    <div className="flex items-center gap-2">
-                      <Avatar className="w-5 h-5 border border-[#2a2a2e]">
-                        <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
-                          {broker.name.charAt(0).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-slate-600">•</span>
-                      <div className="flex items-center gap-1 text-[10px] text-slate-500">
-                        <Clock className="w-3 h-3" />
-                        <span>{lastAccess ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR }) : '—'}</span>
+                      {/* Row 7: Footer */}
+                      <div className="flex items-center justify-between pt-2 border-t border-border">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="w-5 h-5 border border-border">
+                            <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
+                              {broker.name.charAt(0).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-muted-foreground">•</span>
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            <span>{lastAccess ? formatDistanceToNow(new Date(lastAccess), { addSuffix: false, locale: ptBR }) : '—'}</span>
+                          </div>
+                        </div>
+                        
+                        <span className="text-[10px] text-muted-foreground font-medium">
+                          {leadsCount} lead{leadsCount !== 1 ? 's' : ''}
+                        </span>
                       </div>
                     </div>
-                    
-                    <span className="text-[10px] text-slate-400 font-medium">
-                      {leadsCount} lead{leadsCount !== 1 ? 's' : ''}
-                    </span>
                   </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
 
-      {/* Sheet de Histórico do Corretor */}
+        {/* Tab: Líderes */}
+        <TabsContent value="lideres">
+          <LeaderManagement
+            brokers={brokers}
+            leaders={leaders}
+            leadsCountMap={leadsCountMap}
+            roletas={roletas}
+            onRefresh={fetchAll}
+          />
+        </TabsContent>
+      </Tabs>
+
+      {/* Broker history sheet */}
       <BrokerActivitySheet
         broker={selectedBrokerForHistory}
         isOpen={!!selectedBrokerForHistory}
