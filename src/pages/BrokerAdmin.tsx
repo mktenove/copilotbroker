@@ -10,6 +10,7 @@ import { AddLeadModal } from "@/components/admin/AddLeadModal";
 import { CsvImportModal } from "@/components/admin/CsvImportModal";
 import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
+import { BrokerRoletas } from "@/components/broker/BrokerRoletas";
 import { LeadStatus } from "@/types/crm";
 
 interface Lead {
@@ -163,7 +164,8 @@ const BrokerAdmin = () => {
         onSearchChange={viewMode === "list" ? setSearchTerm : undefined}
       >
         {viewMode === "kanban" ? (
-          <div className="flex-1 min-h-[400px]">
+          <div className="flex-1 min-h-[400px] space-y-4">
+            {brokerId && <BrokerRoletas brokerId={brokerId} />}
             <KanbanBoard brokerId={brokerId} isAdmin={false} />
           </div>
         ) : (

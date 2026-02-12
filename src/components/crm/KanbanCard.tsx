@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock, RotateCw, Timer, AlertTriangle } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -176,6 +176,22 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               ) : (
                 <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 border border-dashed border-slate-600">
                   Sem projeto
+                </span>
+              )}
+
+              {/* Roleta badge */}
+              {lead.roleta_id && (
+                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-cyan-500/20 text-cyan-300 border border-cyan-500/40">
+                  <RotateCw className="w-2.5 h-2.5" />
+                  Roleta
+                </span>
+              )}
+
+              {/* Fallback indicator */}
+              {lead.status_distribuicao === 'fallback_lider' && (
+                <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                  <AlertTriangle className="w-2.5 h-2.5" />
+                  Fallback
                 </span>
               )}
 
