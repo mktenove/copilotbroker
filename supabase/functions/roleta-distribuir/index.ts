@@ -1,0 +1,215 @@
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { lead_id, project_id } = await req.json();
+
+    if (!lead_id || !project_id) {
+      return new Response(JSON.stringify({ error: "lead_id e project_id são obrigatórios" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 1. Find active roleta for this project
+    const { data: reData, error: reError } = await supabase
+      .from("roletas_empreendimentos")
+      .select("roleta_id")
+      .eq("empreendimento_id", project_id)
+      .eq("ativo", true)
+      .limit(1)
+      .maybeSingle();
+
+    if (reError || !reData) {
+      console.log("No active roleta for project:", project_id);
+      return new Response(JSON.stringify({ message: "Sem roleta ativa para este empreendimento" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const roletaId = reData.roleta_id;
+
+    // 2. Get roleta with FOR UPDATE lock (using RPC would be ideal, but we'll use sequential updates)
+    const { data: roleta, error: roletaError } = await supabase
+      .from("roletas")
+      .select("*")
+      .eq("id", roletaId)
+      .eq("ativa", true)
+      .single();
+
+    if (roletaError || !roleta) {
+      console.log("Roleta not found or inactive:", roletaId);
+      return new Response(JSON.stringify({ message: "Roleta não encontrada ou inativa" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 3. Get active members with checkin
+    const { data: membros } = await supabase
+      .from("roletas_membros")
+      .select("id, corretor_id, ordem")
+      .eq("roleta_id", roletaId)
+      .eq("ativo", true)
+      .eq("status_checkin", true)
+      .order("ordem", { ascending: true });
+
+    const activeMembros = membros || [];
+    let assignedBrokerId: string;
+    let statusDistribuicao: string;
+    let motivo: string;
+    let novaOrdem: number;
+
+    if (activeMembros.length === 0) {
+      // Fallback to leader
+      assignedBrokerId = roleta.lider_id;
+      statusDistribuicao = "fallback_lider";
+      motivo = "Nenhum corretor online - atribuído ao líder";
+      novaOrdem = roleta.ultimo_membro_ordem_atribuida;
+      console.log("Fallback to leader:", assignedBrokerId);
+    } else {
+      // Round-robin: find next member after last assigned order
+      const lastOrder = roleta.ultimo_membro_ordem_atribuida;
+      let nextMembro = activeMembros.find(m => m.ordem > lastOrder);
+      if (!nextMembro) {
+        nextMembro = activeMembros[0]; // wrap around
+      }
+
+      assignedBrokerId = nextMembro.corretor_id;
+      statusDistribuicao = "atribuicao_inicial";
+      motivo = `Round-robin - ordem ${nextMembro.ordem}`;
+      novaOrdem = nextMembro.ordem;
+      console.log("Round-robin assigned to broker:", assignedBrokerId, "ordem:", novaOrdem);
+    }
+
+    const now = new Date();
+    const reservaExpira = new Date(now.getTime() + roleta.tempo_reserva_minutos * 60 * 1000);
+
+    // 4. Update lead
+    const { error: updateLeadError } = await supabase
+      .from("leads")
+      .update({
+        broker_id: assignedBrokerId,
+        roleta_id: roletaId,
+        corretor_atribuido_id: assignedBrokerId,
+        atribuido_em: now.toISOString(),
+        reserva_expira_em: statusDistribuicao === "fallback_lider" ? null : reservaExpira.toISOString(),
+        status_distribuicao: statusDistribuicao,
+        motivo_atribuicao: motivo,
+      })
+      .eq("id", lead_id);
+
+    if (updateLeadError) {
+      console.error("Error updating lead:", updateLeadError);
+      throw updateLeadError;
+    }
+
+    // 5. Update roleta pointer
+    await supabase
+      .from("roletas")
+      .update({ ultimo_membro_ordem_atribuida: novaOrdem })
+      .eq("id", roletaId);
+
+    // 6. Log
+    await supabase.from("roletas_log").insert({
+      roleta_id: roletaId,
+      lead_id: lead_id,
+      acao: statusDistribuicao === "fallback_lider" ? "fallback_lider" : "atribuicao_inicial",
+      para_corretor_id: assignedBrokerId,
+      motivo: motivo,
+    });
+
+    // 7. Create notification for the assigned broker
+    const { data: brokerData } = await supabase
+      .from("brokers")
+      .select("user_id")
+      .eq("id", assignedBrokerId)
+      .single();
+
+    const { data: leadData } = await supabase
+      .from("leads")
+      .select("name, whatsapp")
+      .eq("id", lead_id)
+      .single();
+
+    const { data: projectData } = await supabase
+      .from("projects")
+      .select("name")
+      .eq("id", project_id)
+      .single();
+
+    if (brokerData?.user_id && leadData) {
+      await supabase.from("notifications").insert({
+        user_id: brokerData.user_id,
+        type: "roleta_lead",
+        title: "Novo Lead via Roleta",
+        message: `Lead ${leadData.name} do ${projectData?.name || "empreendimento"} atribuído a você.`,
+        lead_id: lead_id,
+      });
+    }
+
+    // 8. Try to notify via WhatsApp (global instance)
+    try {
+      const { data: globalConfig } = await supabase
+        .from("global_whatsapp_config")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+
+      if (globalConfig?.status === "connected" && brokerData) {
+        const { data: brokerInfo } = await supabase
+          .from("brokers")
+          .select("whatsapp")
+          .eq("id", assignedBrokerId)
+          .single();
+
+        if (brokerInfo?.whatsapp && leadData) {
+          const uazapiUrl = Deno.env.get("UAZAPI_INSTANCE_URL");
+          if (uazapiUrl) {
+            const message = `🔔 *Novo lead via Roleta*\n\n📋 *${projectData?.name || "Empreendimento"}*\n👤 ${leadData.name}\n📱 ${leadData.whatsapp}\n\n⏱️ Tempo para atendimento: ${roleta.tempo_reserva_minutos} min`;
+            
+            await fetch(`${uazapiUrl}/send/text`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                token: globalConfig.instance_token,
+              },
+              body: JSON.stringify({
+                phone: brokerInfo.whatsapp,
+                message,
+              }),
+            });
+          }
+        }
+      }
+    } catch (whatsappError) {
+      console.error("WhatsApp notification failed (non-critical):", whatsappError);
+    }
+
+    return new Response(JSON.stringify({ 
+      success: true, 
+      assigned_to: assignedBrokerId, 
+      status: statusDistribuicao 
+    }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error in roleta-distribuir:", error);
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
