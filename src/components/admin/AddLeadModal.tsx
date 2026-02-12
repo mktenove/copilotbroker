@@ -128,8 +128,8 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
       return;
     }
 
-    if (!whatsapp || whatsapp.length < 13) {
-      toast.error("WhatsApp inválido (13 dígitos)");
+    if (!whatsapp || whatsapp.replace(/\D/g, "").length < 10) {
+      toast.error("WhatsApp inválido (mínimo 10 dígitos)");
       return;
     }
 
