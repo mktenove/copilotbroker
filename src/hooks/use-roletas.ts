@@ -197,6 +197,24 @@ export function useRoletas() {
     }
   };
 
+  const deleteRoleta = async (id: string) => {
+    try {
+      const { error } = await (supabase
+        .from("roletas" as any)
+        .delete()
+        .eq("id", id) as any);
+
+      if (error) throw error;
+      toast.success("Roleta excluída com sucesso!");
+      await fetchRoletas();
+      return true;
+    } catch (error: any) {
+      console.error("Erro ao excluir roleta:", error);
+      toast.error(error.message || "Erro ao excluir roleta.");
+      return false;
+    }
+  };
+
   return {
     roletas,
     isLoading,
@@ -210,6 +228,7 @@ export function useRoletas() {
     toggleCheckin,
     addEmpreendimento,
     removeEmpreendimento,
+    deleteRoleta,
   };
 }
 

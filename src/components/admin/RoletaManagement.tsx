@@ -15,6 +15,17 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -46,7 +57,7 @@ const RoletaManagement = () => {
     roletas, isLoading, fetchRoletas,
     createRoleta, updateRoleta, toggleRoletaAtiva,
     addMembro, removeMembro, updateMembroOrdem,
-    addEmpreendimento, removeEmpreendimento,
+    addEmpreendimento, removeEmpreendimento, deleteRoleta,
   } = useRoletas();
 
   const [brokers, setBrokers] = useState<Broker[]>([]);
@@ -318,6 +329,40 @@ const RoletaManagement = () => {
                         <History className="w-3 h-3 mr-1" />
                         Logs
                       </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs text-red-400 hover:text-red-300 border-red-400/30 hover:border-red-400/50"
+                          >
+                            <Trash2 className="w-3 h-3 mr-1" />
+                            Excluir
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir Roleta</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja excluir a roleta <strong>"{roleta.nome}"</strong>? Esta ação é irreversível. Todos os logs serão apagados e os leads serão desvinculados.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              onClick={async () => {
+                                const success = await deleteRoleta(roleta.id);
+                                if (success && expandedRoleta === roleta.id) {
+                                  setExpandedRoleta(null);
+                                }
+                              }}
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
 
                     {/* Membros */}
