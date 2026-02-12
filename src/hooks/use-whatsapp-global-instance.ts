@@ -29,9 +29,12 @@ export function useWhatsAppGlobalInstance() {
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.access_token) {
+      throw new Error("No active session");
+    }
     return {
       "Content-Type": "application/json",
-      "Authorization": `Bearer ${session?.access_token || ""}`,
+      "Authorization": `Bearer ${session.access_token}`,
     };
   }, []);
 
