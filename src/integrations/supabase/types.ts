@@ -1007,7 +1007,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "broker"
+      app_role: "admin" | "broker" | "leader"
       interaction_type:
         | "status_change"
         | "note_added"
@@ -1019,6 +1019,11 @@ export type Database = {
         | "origin_change"
         | "inactivation"
         | "notification"
+        | "roleta_atribuicao"
+        | "roleta_timeout"
+        | "roleta_fallback"
+        | "roleta_transferencia"
+        | "atendimento_iniciado"
       lead_status:
         | "new"
         | "info_sent"
@@ -1153,7 +1158,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "broker"],
+      app_role: ["admin", "broker", "leader"],
       interaction_type: [
         "status_change",
         "note_added",
@@ -1165,6 +1170,11 @@ export const Constants = {
         "origin_change",
         "inactivation",
         "notification",
+        "roleta_atribuicao",
+        "roleta_timeout",
+        "roleta_fallback",
+        "roleta_transferencia",
+        "atendimento_iniciado",
       ],
       lead_status: [
         "new",
