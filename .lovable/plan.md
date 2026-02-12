@@ -1,50 +1,33 @@
 
 
-## Acesso completo a ferramentas no Admin mobile
+## Corrigir logout inacessivel no iPad
 
 ### Problema
-A barra de navegacao inferior mobile (MobileBottomNav) exibe apenas 5 itens (Notificacoes, CRM, Adicionar Lead, Leads, Logout), enquanto a sidebar desktop tem 7 abas de navegacao + Notificacoes + Configuracoes. Faltam no mobile: **Corretores, Roletas, Empreendimentos, WhatsApp, Analytics e Configuracoes**.
+No iPad (tela de 768px a 1024px em modo retrato), o sistema usa o layout desktop (sidebar lateral) em vez do layout mobile (barra inferior). O botao de logout na sidebar e um icone pequeno no canto inferior, dificil de localizar e tocar em dispositivos touch. A barra inferior mobile -- que tem o menu "Mais" com opcao de "Sair" -- esta oculta por causa do breakpoint `md:hidden` (768px).
 
 ### Solucao
-Substituir o botao de Logout por um botao **"Mais"** (icone `MoreHorizontal`) que abre um **Drawer** (desliza de baixo para cima) contendo todas as opcoes que nao cabem na barra principal.
+Alterar o breakpoint de transicao entre layout mobile e desktop de `md` (768px) para `lg` (1024px). Assim, iPads em modo retrato (768-1024px) usarao a navegacao inferior com o menu "Mais" que contem o logout.
 
-### Layout da barra inferior (5 itens)
+### Arquivos afetados
 
-```text
-[Notificacoes]  [CRM]  (+Adicionar)  [Leads]  [Mais...]
-```
+**1. `src/components/broker/BrokerBottomNav.tsx`**
+- Mudar `md:hidden` para `lg:hidden` na nav principal
 
-### Conteudo do Drawer "Mais"
+**2. `src/components/broker/BrokerSidebar.tsx`**
+- Mudar `hidden md:flex` para `hidden lg:flex`
 
-```text
-+----------------------------------+
-|          ---- (handle) ----      |
-|                                  |
-|  Corretores                      |
-|  Roletas                         |
-|  Empreendimentos                 |
-|  WhatsApp                        |
-|  Analytics                       |
-|  Configuracoes                   |
-|  --------------------------------|
-|  Sair                            |
-+----------------------------------+
-```
+**3. `src/components/broker/BrokerLayout.tsx`**
+- Mudar `md:ml-16` para `lg:ml-16` no container principal
+- Mudar `md:pb-0` para `lg:pb-0` no padding inferior
 
-### Detalhes tecnicos
+**4. `src/pages/BrokerAdmin.tsx`**
+- Mudar `md:hidden` para `lg:hidden` no bloco de busca mobile (se houver)
 
-**Arquivo: `src/components/admin/MobileBottomNav.tsx`**
+**5. `src/components/broker/BrokerHeader.tsx`** (verificar se tem breakpoints `md:` relacionados ao layout)
 
-- Substituir o item `logout` (LogOut) por `more` (MoreHorizontal)
-- Adicionar estado `isMoreOpen` para controlar o Drawer
-- Ao clicar em "Mais", abrir um `Drawer` (componente vaul ja instalado) com os itens faltantes
-- Cada item do Drawer tera icone + label, ao clicar fecha o Drawer e executa `onTabChange(id)` ou `navigate("/admin/whatsapp")` para WhatsApp
-- Ao clicar em "Configuracoes", abrir o `SettingsPanel` (importado do AdminSidebar)
-- "Sair" fica no final do Drawer, separado por um divisor
-- Manter o badge de notificacao no botao de Notificacoes como ja esta
+### Impacto
+- iPads em retrato (768-1024px) passam a usar a barra inferior com acesso completo ao menu "Mais" (incluindo Sair)
+- iPads em paisagem (1024px+) continuam usando a sidebar desktop
+- Desktops nao sao afetados
+- Nenhuma mudanca de banco de dados necessaria
 
-**Arquivo: `src/components/admin/AdminLayout.tsx`**
-
-- Nenhuma mudanca necessaria, pois o MobileBottomNav ja recebe `onTabChange`
-
-**Dependencias**: nenhuma nova, o Drawer (vaul) ja esta instalado e o componente `Drawer` ja existe em `src/components/ui/drawer.tsx`
