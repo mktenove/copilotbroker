@@ -1,79 +1,85 @@
-## Redesign da Pagina de Corretores com Gestao de Times, Lideres e Equipes
 
-### Visao geral
 
-Unificar a gestao de corretores em uma unica pagina com **3 sub-abas** (via Tabs), substituindo a pagina atual de cards simples por uma interface organizada por **hierarquia de times**. A pagina de Roletas permanece separada no menu lateral, pois tem proposito operacional distinto. 
+## Corrigir papel do Lider: Corretor com acesso a Roletas, nao Admin
 
-### Estrutura da nova pagina
+### Contexto
 
-A tab "Corretores" no menu lateral abrira uma pagina com **3 sub-tabs**:
+Atualmente o sistema trata o lider como quase-admin, redirecionando-o para `/admin`. Na verdade, o lider e um **corretor normal** que tem uma atribuicao extra: **gerenciar roletas**. Ele deve usar o dashboard de corretor (`/corretor/admin`) com seus proprios leads, e ter acesso adicional a gestao de roletas.
 
-1. **Equipes** (tab padrao) -- Visao agrupada por lider
-2. **Todos os Corretores** -- Lista/grid completa como hoje, com melhorias
-3. **Lideres** -- Gestao dos lideres (atribuir role leader, ver equipes sob cada lider)
+### Mudancas necessarias
 
----
+**1. Hook `useUserRole` (`src/hooks/use-user-role.ts`)**
+- Inverter a prioridade: se o usuario tem `broker` E `leader`, o role resolvido deve ser `broker` (nao `leader`)
+- Adicionar um campo `isLeader: boolean` ao retorno do hook para saber se o usuario tambem e lider
+- Manter `brokerId` sendo buscado para ambos
 
-### Tab 1: Equipes (visao principal)
+**2. Pagina de Auth (`src/pages/Auth.tsx`)**
+- Atualizar `checkUserRoleAndRedirect`: lideres devem ir para `/corretor/admin`, nao `/admin`
+- Buscar todas as roles do usuario (nao apenas `maybeSingle`) para verificar se tem `broker` ou `leader`
 
-- Agrupa corretores pelo campo `lider_id` da tabela `brokers`
-- Cada grupo mostra o lider como cabecalho com avatar, nome, total de membros, e quantidade de leads da equipe
-- Abaixo do cabecalho, lista compacta dos corretores vinculados ao lider (mini-cards em grid)
-- Corretores **sem lider** aparecem em um grupo "Sem equipe" no final
-- Cada corretor exibe: nome, status (ativo/inativo), quantidade de leads, ultimo acesso
-- Botao para arrastar/mover corretor entre equipes (ou select para atribuir lider)
-- Botao "Atribuir Lider" direto no card do corretor sem equipe
+**3. Pagina BrokerAdmin (`src/pages/BrokerAdmin.tsx`)**
+- Remover o redirect de lideres para `/admin` (linha 63)
+- Permitir que lideres fiquem no dashboard de corretor
+- Aceitar role `broker` OU `leader` como valido para esta pagina
 
-### Tab 2: Todos os Corretores
+**4. Sidebar do Corretor (`src/components/broker/BrokerSidebar.tsx`)**
+- Adicionar item "Roletas" no menu lateral, visivel apenas para lideres
+- Navegar para uma nova rota `/corretor/roletas`
 
-- Mesmo grid de cards que existe hoje, com melhorias visuais:
-  - Adicionar coluna/badge do lider vinculado
-  - Adicionar badge de roletas ativas onde o corretor participa
-  - Manter funcionalidades existentes (editar, excluir, copiar link, historico)
+**5. Bottom Nav Mobile (`src/components/broker/BrokerBottomNav.tsx`)**
+- Adicionar icone de Roletas para lideres na navegacao mobile
 
-### Tab 3: Lideres
+**6. Nova rota e pagina**
+- Criar rota `/corretor/roletas` no `App.tsx`
+- Esta rota renderiza o componente `RoletaManagement` existente dentro do `BrokerLayout`
+- Apenas lideres podem acessar
 
-- Lista dos corretores que possuem role `leader` na tabela `user_roles`
-- Para cada lider: nome, quantidade de corretores na equipe, roletas que lidera, total de leads da equipe
-- Botao para **promover corretor a lider** (insere role `leader` em `user_roles`)
-- Botao para **remover role de lider**
-- Ao promover, o corretor aparece como opcao de lider na atribuicao de equipes
+**7. Pagina Admin (`src/pages/Admin.tsx`)**
+- Remover `leader` do acesso permitido (linha 411: `role !== "admin"`)
+- Lideres nao devem mais acessar o painel admin
+
+**8. RLS no banco de dados**
+- Adicionar policies para `leader` na tabela `leads`: lider pode ver leads dos corretores da sua equipe (onde `brokers.lider_id` = broker_id do lider)
+- Adicionar policies similares em `lead_interactions`, `lead_documents`, `lead_attribution`
+- Isso permite que o lider veja dados da equipe no contexto de roletas
 
 ---
 
 ### Detalhes tecnicos
 
-**Arquivo principal: `src/components/admin/BrokerManagement.tsx**`
+**`src/hooks/use-user-role.ts`** - Retorno atualizado:
+```
+{
+  role: "broker",       // prioridade: broker > leader (admin continua acima de tudo)
+  isLeader: true,       // flag separada
+  isLoading: false,
+  brokerId: "uuid..."
+}
+```
 
-- Refatorar para incluir `Tabs` do Radix (componente ja disponivel em `src/components/ui/tabs.tsx`)
-- Tab "Equipes": novo componente `TeamView` que agrupa brokers por `lider_id`
-- Tab "Todos": manter logica atual com grid de cards, adicionando badge de lider
-- Tab "Lideres": novo componente `LeaderManagement`
+**`src/pages/Auth.tsx`** - Nova logica de redirect:
+- Se tem role `admin` -> `/admin`
+- Se tem role `broker` ou `leader` -> `/corretor/admin`
+- Buscar com `.select("role")` sem `maybeSingle` para pegar todas as roles
 
-**Novos componentes:**
+**`src/components/broker/BrokerSidebar.tsx`** - Novo item condicional:
+- Prop `isLeader?: boolean`
+- Se `isLeader`, mostrar botao "Roletas" com icone `RotateCw` que navega para `/corretor/roletas`
 
-- `src/components/admin/TeamView.tsx` -- Visao de equipes agrupadas por lider
-- `src/components/admin/LeaderManagement.tsx` -- Gestao de lideres (promover/remover role)
+**`src/pages/Admin.tsx`** - Restringir acesso:
+- Linha 411: trocar `role !== "admin" && role !== "leader"` por `role !== "admin"`
+- Redirect de lider na linha ~103: redirecionar para `/corretor/admin`
 
-**Dados necessarios (ja existentes no banco):**
+**Nova pagina `src/pages/BrokerRoletasPage.tsx`**:
+- Usa `BrokerLayout` como wrapper
+- Renderiza `RoletaManagement` (componente que ja existe em `src/components/admin/RoletaManagement.tsx`)
+- Verifica se usuario e lider, caso contrario redireciona
 
-- `brokers.lider_id` -- vinculo corretor-lider (ja existe, nenhum corretor tem lider atribuido atualmente)
-- `user_roles` com role `leader` -- define quem e lider
-- `roletas.lider_id` -- roletas sob cada lider
+**`src/App.tsx`** - Nova rota:
+- Adicionar `/corretor/roletas` apontando para `BrokerRoletasPage`
 
-**Operacoes de banco:**
+**Migracao SQL** - RLS policies para leader ver leads da equipe:
+- SELECT em `leads` onde `broker_id IN (SELECT id FROM brokers WHERE lider_id = get_my_broker_id())`
+- SELECT/INSERT em `lead_interactions` para leads da equipe
+- SELECT em `lead_documents` e `lead_attribution` para leads da equipe
 
-- Atribuir lider: `UPDATE brokers SET lider_id = :liderId WHERE id = :brokerId`
-- Promover a lider: `INSERT INTO user_roles (user_id, role) VALUES (:userId, 'leader')`
-- Remover role lider: `DELETE FROM user_roles WHERE user_id = :userId AND role = 'leader'`
-- Nenhuma migracao necessaria -- todas as tabelas e colunas ja existem
-
-**Ajustes no formulario de edicao:**
-
-- Adicionar campo "Lider" (select com lista de corretores que tem role leader) no dialog de criar/editar corretor
-
-**Design:**
-
-- Seguir a estetica dark luxury existente (#1e1e22, #2a2a2e, primary yellow)
-- Cards compactos, tipografia refinada, sem elementos genericos
-- Badges minimalistas para status, role e lider
