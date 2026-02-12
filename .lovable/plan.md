@@ -1,26 +1,50 @@
 
 
-## Filtrar fila por corretores online + Lider define proximo da fila
+## Acesso completo a ferramentas no Admin mobile
 
-### Mudancas
+### Problema
+A barra de navegacao inferior mobile (MobileBottomNav) exibe apenas 5 itens (Notificacoes, CRM, Adicionar Lead, Leads, Logout), enquanto a sidebar desktop tem 7 abas de navegacao + Notificacoes + Configuracoes. Faltam no mobile: **Corretores, Roletas, Empreendimentos, WhatsApp, Analytics e Configuracoes**.
 
-**1. `src/components/broker/BrokerRoletas.tsx` -- Mostrar apenas corretores online**
+### Solucao
+Substituir o botao de Logout por um botao **"Mais"** (icone `MoreHorizontal`) que abre um **Drawer** (desliza de baixo para cima) contendo todas as opcoes que nao cabem na barra principal.
 
-- Na secao "Queue list", filtrar `allMembros` para exibir apenas os membros com `status_checkin === true`
-- Atualizar o texto do toggle para refletir apenas a contagem de online (ex: "Fila Online (3 corretores)")
-- Manter a logica de "Proximo" e "Voce" como esta
+### Layout da barra inferior (5 itens)
 
-**2. `src/components/admin/RoletaManagement.tsx` -- Lider pode definir o proximo**
+```text
+[Notificacoes]  [CRM]  (+Adicionar)  [Leads]  [Mais...]
+```
 
-- Adicionar um botao "Definir como proximo" (icone de seta ou target) ao lado de cada membro online na lista de membros
-- Ao clicar, atualizar o campo `ultimo_membro_ordem_atribuida` da roleta para `ordem - 1` do membro selecionado, fazendo com que ele seja o proximo na logica round-robin
-- Usar a funcao `updateRoleta(id, { ultimo_membro_ordem_atribuida: ordem - 1 })` que ja existe no hook
+### Conteudo do Drawer "Mais"
 
-**3. `src/hooks/use-roletas.ts`** -- Nenhuma mudanca necessaria (ja possui `updateRoleta`)
+```text
++----------------------------------+
+|          ---- (handle) ----      |
+|                                  |
+|  Corretores                      |
+|  Roletas                         |
+|  Empreendimentos                 |
+|  WhatsApp                        |
+|  Analytics                       |
+|  Configuracoes                   |
+|  --------------------------------|
+|  Sair                            |
++----------------------------------+
+```
 
 ### Detalhes tecnicos
 
-- Nenhuma migracao de banco necessaria
-- A logica de "proximo" ja funciona com base em `ultimo_membro_ordem_atribuida`: o proximo e o primeiro membro online com `ordem > ultimo_membro_ordem_atribuida`. Para "definir como proximo", basta setar `ultimo_membro_ordem_atribuida = ordem_do_membro - 1`
-- O botao "Definir como proximo" so aparece para membros com check-in ativo (online)
+**Arquivo: `src/components/admin/MobileBottomNav.tsx`**
 
+- Substituir o item `logout` (LogOut) por `more` (MoreHorizontal)
+- Adicionar estado `isMoreOpen` para controlar o Drawer
+- Ao clicar em "Mais", abrir um `Drawer` (componente vaul ja instalado) com os itens faltantes
+- Cada item do Drawer tera icone + label, ao clicar fecha o Drawer e executa `onTabChange(id)` ou `navigate("/admin/whatsapp")` para WhatsApp
+- Ao clicar em "Configuracoes", abrir o `SettingsPanel` (importado do AdminSidebar)
+- "Sair" fica no final do Drawer, separado por um divisor
+- Manter o badge de notificacao no botao de Notificacoes como ja esta
+
+**Arquivo: `src/components/admin/AdminLayout.tsx`**
+
+- Nenhuma mudanca necessaria, pois o MobileBottomNav ja recebe `onTabChange`
+
+**Dependencias**: nenhuma nova, o Drawer (vaul) ja esta instalado e o componente `Drawer` ja existe em `src/components/ui/drawer.tsx`
