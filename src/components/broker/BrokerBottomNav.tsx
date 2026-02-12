@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, Plus, Bell, MessageSquare, MoreHorizontal, List, Building2, LogOut } from "lucide-react";
+import { LayoutDashboard, Plus, Bell, MessageSquare, MoreHorizontal, List, Building2, LogOut, RotateCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,6 +18,7 @@ interface BrokerBottomNavProps {
   onCopyLink?: () => void;
   onAddLead?: () => void;
   onNotificationsClick?: () => void;
+  isLeader?: boolean;
 }
 
 export function BrokerBottomNav({
@@ -26,6 +27,7 @@ export function BrokerBottomNav({
   onCopyLink,
   onAddLead,
   onNotificationsClick,
+  isLeader = false,
 }: BrokerBottomNavProps) {
   const { unreadCount } = useNotifications();
   const navigate = useNavigate();
@@ -73,6 +75,8 @@ export function BrokerBottomNav({
       onViewChange("list");
     } else if (action === "projects") {
       navigate("/corretor/empreendimentos");
+    } else if (action === "roletas") {
+      navigate("/corretor/roletas");
     } else if (action === "logout") {
       handleLogout();
     }
@@ -96,6 +100,7 @@ export function BrokerBottomNav({
 
   const moreMenuItems = [
     { id: "list", label: "Modo Lista", icon: List, description: "Alternar para visualização em lista" },
+    ...(isLeader ? [{ id: "roletas", label: "Roletas", icon: RotateCw, description: "Gerenciar roletas da equipe" }] : []),
     { id: "projects", label: "Empreendimentos", icon: Building2, description: "Ver seus empreendimentos" },
     { id: "logout", label: "Sair", icon: LogOut, description: "Encerrar sessão", destructive: true },
   ];

@@ -94,15 +94,17 @@ const Admin = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Redirecionar se for corretor (não admin/leader)
+  // Redirecionar se não for admin
   useEffect(() => {
-    if (!isRoleLoading && role === "broker") {
-      navigate("/corretor/admin");
+    if (!isRoleLoading && role !== "admin") {
+      if (role === "broker") {
+        navigate("/corretor/admin");
+      }
     }
   }, [role, isRoleLoading, navigate]);
 
   useEffect(() => {
-    if (role === "admin" || role === "leader") {
+    if (role === "admin") {
       fetchLeads();
       fetchBrokers();
       fetchProjects();
@@ -408,7 +410,7 @@ const Admin = () => {
     );
   }
 
-  if (role !== "admin" && role !== "leader") {
+  if (role !== "admin") {
     const doLogout = async () => {
       await supabase.auth.signOut();
       navigate("/auth");

@@ -29,6 +29,7 @@ interface BrokerLayoutProps {
   onAddLead?: () => void;
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
+  isLeader?: boolean;
 }
 
 const NOTIFICATION_ICONS = {
@@ -55,6 +56,7 @@ export function BrokerLayout({
   onAddLead,
   searchTerm,
   onSearchChange,
+  isLeader = false,
 }: BrokerLayoutProps) {
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   // Rastrear sessão de login
@@ -79,6 +81,7 @@ export function BrokerLayout({
         onOpenLanding={onOpenLanding}
         onAddLead={onAddLead}
         brokerInitial={brokerInitial}
+        isLeader={isLeader}
       />
 
       {/* Mobile Bottom Navigation */}
@@ -88,6 +91,7 @@ export function BrokerLayout({
         onCopyLink={onCopyLink}
         onAddLead={onAddLead}
         onNotificationsClick={() => setIsNotificationsOpen(true)}
+        isLeader={isLeader}
       />
 
       {/* Mobile Notifications Sheet */}
