@@ -279,6 +279,7 @@ export type Database = {
           email: string
           id: string
           is_active: boolean
+          lider_id: string | null
           name: string
           slug: string
           updated_at: string
@@ -290,6 +291,7 @@ export type Database = {
           email: string
           id?: string
           is_active?: boolean
+          lider_id?: string | null
           name: string
           slug: string
           updated_at?: string
@@ -301,13 +303,22 @@ export type Database = {
           email?: string
           id?: string
           is_active?: boolean
+          lider_id?: string | null
           name?: string
           slug?: string
           updated_at?: string
           user_id?: string
           whatsapp?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "brokers_lider_id_fkey"
+            columns: ["lider_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       global_whatsapp_config: {
         Row: {
@@ -484,9 +495,12 @@ export type Database = {
       }
       leads: {
         Row: {
+          atendimento_iniciado_em: string | null
+          atribuido_em: string | null
           auto_first_message_at: string | null
           auto_first_message_sent: boolean | null
           broker_id: string | null
+          corretor_atribuido_id: string | null
           cpf: string | null
           created_at: string
           email: string | null
@@ -496,20 +510,29 @@ export type Database = {
           inactivation_reason: string | null
           last_interaction_at: string | null
           lead_origin: string | null
+          motivo_atribuicao: string | null
           name: string
           notes: string | null
           project_id: string | null
           registered_at: string | null
           registered_by: string | null
+          reserva_expira_em: string | null
+          roleta_id: string | null
           source: string
           status: Database["public"]["Enums"]["lead_status"]
+          status_distribuicao:
+            | Database["public"]["Enums"]["distribution_status"]
+            | null
           updated_at: string
           whatsapp: string
         }
         Insert: {
+          atendimento_iniciado_em?: string | null
+          atribuido_em?: string | null
           auto_first_message_at?: string | null
           auto_first_message_sent?: boolean | null
           broker_id?: string | null
+          corretor_atribuido_id?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -519,20 +542,29 @@ export type Database = {
           inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
+          motivo_atribuicao?: string | null
           name: string
           notes?: string | null
           project_id?: string | null
           registered_at?: string | null
           registered_by?: string | null
+          reserva_expira_em?: string | null
+          roleta_id?: string | null
           source?: string
           status?: Database["public"]["Enums"]["lead_status"]
+          status_distribuicao?:
+            | Database["public"]["Enums"]["distribution_status"]
+            | null
           updated_at?: string
           whatsapp: string
         }
         Update: {
+          atendimento_iniciado_em?: string | null
+          atribuido_em?: string | null
           auto_first_message_at?: string | null
           auto_first_message_sent?: boolean | null
           broker_id?: string | null
+          corretor_atribuido_id?: string | null
           cpf?: string | null
           created_at?: string
           email?: string | null
@@ -542,13 +574,19 @@ export type Database = {
           inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
+          motivo_atribuicao?: string | null
           name?: string
           notes?: string | null
           project_id?: string | null
           registered_at?: string | null
           registered_by?: string | null
+          reserva_expira_em?: string | null
+          roleta_id?: string | null
           source?: string
           status?: Database["public"]["Enums"]["lead_status"]
+          status_distribuicao?:
+            | Database["public"]["Enums"]["distribution_status"]
+            | null
           updated_at?: string
           whatsapp?: string
         }
@@ -561,10 +599,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "leads_corretor_atribuido_id_fkey"
+            columns: ["corretor_atribuido_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "leads_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leads_roleta_id_fkey"
+            columns: ["roleta_id"]
+            isOneToOne: false
+            referencedRelation: "roletas"
             referencedColumns: ["id"]
           },
         ]
@@ -704,6 +756,208 @@ export type Database = {
           webhook_url?: string | null
         }
         Relationships: []
+      }
+      roletas: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          id: string
+          lider_id: string
+          nome: string
+          tempo_reserva_minutos: number
+          ultimo_membro_ordem_atribuida: number
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          id?: string
+          lider_id: string
+          nome: string
+          tempo_reserva_minutos?: number
+          ultimo_membro_ordem_atribuida?: number
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          id?: string
+          lider_id?: string
+          nome?: string
+          tempo_reserva_minutos?: number
+          ultimo_membro_ordem_atribuida?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roletas_lider_id_fkey"
+            columns: ["lider_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roletas_empreendimentos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          empreendimento_id: string
+          id: string
+          roleta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          empreendimento_id: string
+          id?: string
+          roleta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          empreendimento_id?: string
+          id?: string
+          roleta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roletas_empreendimentos_empreendimento_id_fkey"
+            columns: ["empreendimento_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roletas_empreendimentos_roleta_id_fkey"
+            columns: ["roleta_id"]
+            isOneToOne: false
+            referencedRelation: "roletas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roletas_log: {
+        Row: {
+          acao: string
+          created_at: string
+          de_corretor_id: string | null
+          executado_por_user_id: string | null
+          id: string
+          lead_id: string | null
+          motivo: string | null
+          para_corretor_id: string | null
+          roleta_id: string
+        }
+        Insert: {
+          acao: string
+          created_at?: string
+          de_corretor_id?: string | null
+          executado_por_user_id?: string | null
+          id?: string
+          lead_id?: string | null
+          motivo?: string | null
+          para_corretor_id?: string | null
+          roleta_id: string
+        }
+        Update: {
+          acao?: string
+          created_at?: string
+          de_corretor_id?: string | null
+          executado_por_user_id?: string | null
+          id?: string
+          lead_id?: string | null
+          motivo?: string | null
+          para_corretor_id?: string | null
+          roleta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roletas_log_de_corretor_id_fkey"
+            columns: ["de_corretor_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roletas_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roletas_log_para_corretor_id_fkey"
+            columns: ["para_corretor_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roletas_log_roleta_id_fkey"
+            columns: ["roleta_id"]
+            isOneToOne: false
+            referencedRelation: "roletas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      roletas_membros: {
+        Row: {
+          ativo: boolean
+          checkin_em: string | null
+          checkout_em: string | null
+          corretor_id: string
+          created_at: string
+          id: string
+          ordem: number
+          roleta_id: string
+          status_checkin: boolean
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          checkin_em?: string | null
+          checkout_em?: string | null
+          corretor_id: string
+          created_at?: string
+          id?: string
+          ordem: number
+          roleta_id: string
+          status_checkin?: boolean
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          checkin_em?: string | null
+          checkout_em?: string | null
+          corretor_id?: string
+          created_at?: string
+          id?: string
+          ordem?: number
+          roleta_id?: string
+          status_checkin?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "roletas_membros_corretor_id_fkey"
+            columns: ["corretor_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "roletas_membros_roleta_id_fkey"
+            columns: ["roleta_id"]
+            isOneToOne: false
+            referencedRelation: "roletas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
@@ -998,6 +1252,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_my_broker_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1005,9 +1260,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      has_role_or_leader: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "broker" | "leader"
+      distribution_status:
+        | "atribuicao_inicial"
+        | "reassinado_timeout"
+        | "fallback_lider"
+        | "atendimento_iniciado"
       interaction_type:
         | "status_change"
         | "note_added"
@@ -1159,6 +1420,12 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "broker", "leader"],
+      distribution_status: [
+        "atribuicao_inicial",
+        "reassinado_timeout",
+        "fallback_lider",
+        "atendimento_iniciado",
+      ],
       interaction_type: [
         "status_change",
         "note_added",

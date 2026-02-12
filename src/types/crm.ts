@@ -1,5 +1,7 @@
 export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'docs_received' | 'registered' | 'inactive';
 
+export type DistributionStatus = 'atribuicao_inicial' | 'reassinado_timeout' | 'fallback_lider' | 'atendimento_iniciado';
+
 export type InteractionType = 
   | 'status_change'
   | 'note_added'
@@ -10,7 +12,12 @@ export type InteractionType =
   | 'registration'
   | 'origin_change'
   | 'inactivation'
-  | 'notification';
+  | 'notification'
+  | 'roleta_atribuicao'
+  | 'roleta_timeout'
+  | 'roleta_fallback'
+  | 'roleta_transferencia'
+  | 'atendimento_iniciado';
 
 export interface CRMLead {
   id: string;
@@ -35,6 +42,14 @@ export interface CRMLead {
   // Auto first message tracking
   auto_first_message_sent?: boolean;
   auto_first_message_at?: string | null;
+  // Roleta / distribution fields
+  roleta_id?: string | null;
+  corretor_atribuido_id?: string | null;
+  atribuido_em?: string | null;
+  atendimento_iniciado_em?: string | null;
+  reserva_expira_em?: string | null;
+  status_distribuicao?: DistributionStatus | null;
+  motivo_atribuicao?: string | null;
   // Relations
   broker?: {
     id: string;

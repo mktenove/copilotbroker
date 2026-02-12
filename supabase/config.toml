@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.meta-conversions-api]
 verify_jwt = false
+
+[functions.roleta-distribuir]
+verify_jwt = false
+
+[functions.roleta-timeout]
+verify_jwt = false

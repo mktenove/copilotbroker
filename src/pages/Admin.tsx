@@ -14,6 +14,7 @@ import AnalyticsDashboard from "@/components/admin/AnalyticsDashboard";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { AddLeadModal } from "@/components/admin/AddLeadModal";
 import { CsvImportModal } from "@/components/admin/CsvImportModal";
+import RoletaManagement from "@/components/admin/RoletaManagement";
 import { KanbanBoard, LeadDetailSheet } from "@/components/crm";
 import { LeadStatus, CRMLead } from "@/types/crm";
 
@@ -65,7 +66,7 @@ const Admin = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<LeadFilters>(initialFilters);
-  const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "projects" | "analytics">("crm");
+  const [activeTab, setActiveTab] = useState<"crm" | "leads" | "brokers" | "roletas" | "projects" | "analytics">("crm");
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
@@ -93,7 +94,7 @@ const Admin = () => {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Redirecionar se for corretor
+  // Redirecionar se for corretor (não admin/leader)
   useEffect(() => {
     if (!isRoleLoading && role === "broker") {
       navigate("/corretor/admin");
@@ -101,7 +102,7 @@ const Admin = () => {
   }, [role, isRoleLoading, navigate]);
 
   useEffect(() => {
-    if (role === "admin") {
+    if (role === "admin" || role === "leader") {
       fetchLeads();
       fetchBrokers();
       fetchProjects();
@@ -407,7 +408,7 @@ const Admin = () => {
     );
   }
 
-  if (role !== "admin") {
+  if (role !== "admin" && role !== "leader") {
     const doLogout = async () => {
       await supabase.auth.signOut();
       navigate("/auth");
@@ -559,6 +560,8 @@ const Admin = () => {
         </>
       ) : activeTab === "brokers" ? (
         <BrokerManagement />
+      ) : activeTab === "roletas" ? (
+        <RoletaManagement />
       ) : activeTab === "projects" ? (
         <ProjectManagement />
       ) : (

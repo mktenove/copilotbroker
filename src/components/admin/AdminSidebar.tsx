@@ -8,6 +8,7 @@ import {
   Settings,
   Plus,
   MessageSquare,
+  Shuffle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { id: "crm", label: "CRM", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
   { id: "brokers", label: "Corretores", icon: Users },
+  { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "analytics", label: "Analytics", icon: BarChart3 },

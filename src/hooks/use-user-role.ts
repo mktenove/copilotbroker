@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-type AppRole = "admin" | "broker" | null;
+type AppRole = "admin" | "leader" | "broker" | null;
 
 interface UserRoleState {
   role: AppRole;
@@ -38,18 +38,20 @@ export const useUserRole = () => {
           return;
         }
 
-        // Priorizar admin sobre broker se tiver ambas as roles
+        // Priorizar admin > leader > broker se tiver múltiplas roles
         const roles = (rolesData || []).map((r: { role: string }) => r.role);
         let role: AppRole = null;
         if (roles.includes("admin")) {
           role = "admin";
+        } else if (roles.includes("leader")) {
+          role = "leader";
         } else if (roles.includes("broker")) {
           role = "broker";
         }
 
         // Buscar broker_id se o usuário TEM a role "broker" (independente de ter admin também)
         let brokerId = null;
-        if (roles.includes("broker")) {
+        if (roles.includes("broker") || roles.includes("leader")) {
           const { data: brokerData } = await (supabase
             .from("brokers" as any)
             .select("id")
