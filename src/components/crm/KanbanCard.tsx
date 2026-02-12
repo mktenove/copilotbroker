@@ -273,13 +273,13 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                 }}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 min-h-[40px] md:min-h-0 md:py-1.5",
-                  "bg-cyan-500/90 hover:bg-cyan-500 text-white rounded-lg",
+                  "bg-emerald-500/90 hover:bg-emerald-500 text-white rounded-lg",
                   "font-medium text-xs transition-all duration-150",
                   "hover:scale-[1.02] active:scale-[0.98]",
-                  "shadow-sm animate-pulse hover:animate-none"
+                  "shadow-sm"
                 )}
               >
-                <Play className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                <MessageCircle className="w-4 h-4 md:w-3.5 md:h-3.5" />
                 <span>Iniciar Atendimento</span>
               </button>
             ) : (
