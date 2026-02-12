@@ -1,32 +1,20 @@
 
-# Corrigir lista de corretores no formulário GoldenView
 
-## Problema
-A consulta para buscar corretores associados ao projeto usa a tabela `broker_projects`, que possui politicas de seguranca (RLS) restritas a admins e corretores autenticados. Como a landing page e publica (sem login), a consulta retorna vazio e nenhum corretor aparece na lista.
+# Remover frase do Hero do GoldenView
 
-A tabela `brokers` ja possui uma politica publica ("Qualquer pessoa pode ver corretores ativos"), mas `broker_projects` nao tem politica equivalente para leitura publica.
+Remover o paragrafo "Em breve, Portão vai viver o maior e mais desejado lançamento imobiliário da sua história recente." da secao hero para deixar o visual mais limpo.
 
-## Solucao
-Adicionar uma politica de leitura publica na tabela `broker_projects` para associacoes ativas, permitindo que visitantes da landing page vejam quais corretores estao vinculados ao projeto.
+## Alteracao
 
-## Alteracoes
+**Arquivo:** `src/components/goldenview/GVHeroSection.tsx`
 
-### 1. Migracaco de banco de dados
-Criar uma nova politica RLS na tabela `broker_projects`:
+Remover as linhas 67-69 que contem:
 
-```sql
-CREATE POLICY "Associacoes ativas sao publicas"
-  ON public.broker_projects
-  FOR SELECT
-  USING (is_active = true);
+```tsx
+<p className="text-base sm:text-lg md:text-xl text-white/80 mb-6 max-w-2xl mx-auto leading-relaxed">
+  Em breve, Portão vai viver o maior e mais desejado lançamento imobiliário da sua história recente.
+</p>
 ```
 
-Isso segue o mesmo padrao ja usado na tabela `brokers` ("Qualquer pessoa pode ver corretores ativos") e na tabela `projects` ("Projetos ativos sao publicos").
+Nenhuma outra alteracao necessaria. Apenas 1 arquivo, 3 linhas removidas.
 
-### 2. Nenhuma alteracao de codigo necessaria
-O componente `GVFormSection` ja faz a consulta correta — o unico bloqueio era a falta de permissao no banco de dados. Com a nova politica, a lista de corretores aparecera automaticamente.
-
-## Seguranca
-- A politica expoe apenas associacoes ativas (`is_active = true`)
-- Apenas leitura (SELECT) — nenhuma operacao de escrita e permitida publicamente
-- Os dados expostos sao minimos: apenas o vinculo corretor-projeto, sem informacoes sensiveis
