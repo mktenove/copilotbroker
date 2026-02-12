@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History } from "lucide-react";
+import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History, Target } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoletas, useRoletaLogs } from "@/hooks/use-roletas";
 import { Roleta } from "@/types/roleta";
@@ -402,8 +402,9 @@ const RoletaManagement = () => {
 
                       <div className="space-y-1.5">
                         {(roleta.membros || []).filter(m => m.ativo).sort((a, b) => a.ordem - b.ordem).map((membro, idx) => {
-                          const isNext = membro.ordem === roleta.ultimo_membro_ordem_atribuida + 1 ||
-                            (idx === 0 && roleta.ultimo_membro_ordem_atribuida >= (roleta.membros || []).filter(m => m.ativo).length);
+                          const onlineMembros = (roleta.membros || []).filter(m => m.ativo && m.status_checkin).sort((a, b) => a.ordem - b.ordem);
+                          const nextOnline = onlineMembros.find(m => m.ordem > roleta.ultimo_membro_ordem_atribuida) || onlineMembros[0];
+                          const isNext = nextOnline?.id === membro.id && membro.status_checkin;
 
                           return (
                             <div key={membro.id} className={cn(
@@ -419,18 +420,31 @@ const RoletaManagement = () => {
                                   </AvatarFallback>
                                 </Avatar>
                                 <span className="text-sm text-foreground">{membro.corretor?.name || "—"}</span>
-                                {isNext && membro.status_checkin && (
+                                {isNext && (
                                   <Badge className="text-[9px] bg-primary/20 text-primary border-primary/40">Próximo</Badge>
                                 )}
                               </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-400 hover:text-red-300 p-1 h-auto"
-                                onClick={() => removeMembro(membro.id)}
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                {membro.status_checkin && !isNext && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-primary hover:text-primary/80 p-1 h-auto"
+                                    title="Definir como próximo"
+                                    onClick={() => updateRoleta(roleta.id, { ultimo_membro_ordem_atribuida: membro.ordem - 1 } as any)}
+                                  >
+                                    <Target className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="text-red-400 hover:text-red-300 p-1 h-auto"
+                                  onClick={() => removeMembro(membro.id)}
+                                >
+                                  <Trash2 className="w-3 h-3" />
+                                </Button>
+                              </div>
                             </div>
                           );
                         })}

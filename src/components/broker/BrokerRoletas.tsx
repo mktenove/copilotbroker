@@ -240,7 +240,7 @@ export function BrokerRoletas({ brokerId }: { brokerId: string }) {
                 className="w-full flex items-center justify-between px-3 py-1.5 bg-[#16161a] text-[11px] text-slate-400 hover:text-slate-300 transition-colors"
               >
                 <span>
-                  Fila da Roleta ({onlineCount}/{allMembros.length} online)
+                  Fila Online ({onlineCount} corretor{onlineCount !== 1 ? "es" : ""})
                 </span>
                 {isExpanded ? (
                   <ChevronUp className="w-3.5 h-3.5" />
@@ -249,10 +249,10 @@ export function BrokerRoletas({ brokerId }: { brokerId: string }) {
                 )}
               </button>
 
-              {/* Queue list */}
+              {/* Queue list - only online members */}
               {isExpanded && (
                 <div className="px-3 pb-2 pt-1 space-y-1">
-                  {allMembros.map((m) => {
+                  {allMembros.filter((m) => m.status_checkin).map((m) => {
                     const isMe = m.corretor_id === brokerId;
                     const isNext = m.id === nextId;
                     const corretorName = (m.corretor as any)?.name || "Corretor";
