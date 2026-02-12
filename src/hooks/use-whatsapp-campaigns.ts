@@ -2,6 +2,7 @@ import { useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useUserRole } from "@/hooks/use-user-role";
 import { 
   WhatsAppCampaign, 
   WhatsAppMessageTemplate, 
@@ -30,6 +31,7 @@ interface CreateTemplateData {
 export function useWhatsAppCampaigns() {
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
+  const { role } = useUserRole();
 
   // Fetch broker ID
   const { data: broker } = useQuery({
@@ -50,43 +52,51 @@ export function useWhatsAppCampaigns() {
 
   // Fetch campaigns
   const { data: campaigns = [], isLoading: isLoadingCampaigns, refetch: refetchCampaigns } = useQuery({
-    queryKey: ["whatsapp-campaigns", broker?.id],
+    queryKey: ["whatsapp-campaigns", broker?.id, role],
     queryFn: async () => {
-      if (!broker?.id) return [];
+      if (role !== "admin" && !broker?.id) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("whatsapp_campaigns")
         .select(`
           *,
           template:whatsapp_message_templates(id, name, content),
           project:projects(id, name)
         `)
-        .eq("broker_id", broker.id)
         .order("created_at", { ascending: false });
       
+      if (role !== "admin" && broker?.id) {
+        query = query.eq("broker_id", broker.id);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as WhatsAppCampaign[];
     },
-    enabled: !!broker?.id,
+    enabled: role === "admin" || !!broker?.id,
   });
 
   // Fetch templates
   const { data: templates = [], isLoading: isLoadingTemplates, refetch: refetchTemplates } = useQuery({
-    queryKey: ["whatsapp-templates", broker?.id],
+    queryKey: ["whatsapp-templates", broker?.id, role],
     queryFn: async () => {
-      if (!broker?.id) return [];
+      if (role !== "admin" && !broker?.id) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from("whatsapp_message_templates")
         .select("*")
-        .or(`broker_id.eq.${broker.id},broker_id.is.null`)
         .eq("is_active", true)
         .order("created_at", { ascending: false });
       
+      if (broker?.id) {
+        query = query.or(`broker_id.eq.${broker.id},broker_id.is.null`);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as WhatsAppMessageTemplate[];
     },
-    enabled: !!broker?.id,
+    enabled: role === "admin" || !!broker?.id,
   });
 
   // Fetch leads by status
@@ -94,7 +104,7 @@ export function useWhatsAppCampaigns() {
     targetStatus: LeadStatus[],
     projectId?: string
   ): Promise<CRMLead[]> => {
-    if (!broker?.id) return [];
+    if (role !== "admin" && !broker?.id) return [];
     
     let query = supabase
       .from("leads")
@@ -103,8 +113,11 @@ export function useWhatsAppCampaigns() {
         project:projects(id, name),
         broker:brokers(id, name)
       `)
-      .eq("broker_id", broker.id)
       .in("status", targetStatus);
+    
+    if (role !== "admin" && broker?.id) {
+      query = query.eq("broker_id", broker.id);
+    }
     
     if (projectId) {
       query = query.eq("project_id", projectId);
@@ -114,12 +127,12 @@ export function useWhatsAppCampaigns() {
     if (error) throw error;
     
     return data as unknown as CRMLead[];
-  }, [broker?.id]);
+  }, [broker?.id, role]);
 
   // Create campaign mutation
   const createCampaignMutation = useMutation({
     mutationFn: async (data: CreateCampaignData) => {
-      if (!broker?.id) throw new Error("Corretor não encontrado");
+      if (!broker?.id) throw new Error("Corretor não encontrado. Associe um perfil de corretor para criar campanhas.");
       
       setIsCreating(true);
       
