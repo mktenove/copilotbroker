@@ -1,55 +1,52 @@
 
-## Adicionar selecao de empreendimentos no formulario de criacao de Roleta
+
+## Visibilidade de membros online e proximo da fila para corretores
 
 ### Objetivo
 
-Ao criar uma nova roleta, o usuario ja podera selecionar os empreendimentos vinculados no mesmo formulario, eliminando a necessidade de expandir a roleta depois e vincular um a um.
+Permitir que cada corretor veja, dentro de cada roleta em que participa, todos os membros da fila com seu status (online/offline) e quem e o proximo a receber um lead.
 
 ### Mudancas
 
-**Arquivo: `src/components/admin/RoletaManagement.tsx`**
+**Arquivo: `src/components/broker/BrokerRoletas.tsx`**
 
-1. Adicionar estado `formSelectedProjects: string[]` para armazenar os IDs dos empreendimentos selecionados durante a criacao
-2. No dialog "Nova Roleta", adicionar uma secao de checkboxes com a lista de empreendimentos ativos (usando o componente `Checkbox` ja disponivel)
-   - Cada checkbox mostra o nome do empreendimento e a cidade
-   - Permitir selecionar multiplos empreendimentos
-3. Atualizar a funcao `handleCreate`:
-   - Apos criar a roleta com sucesso, buscar o ID da roleta recem-criada
-   - Para cada empreendimento selecionado, chamar `addEmpreendimento(roletaId, projectId)`
-   - Limpar `formSelectedProjects` ao finalizar
-4. Resetar o estado `formSelectedProjects` quando o dialog fechar
+1. Apos buscar os dados do membro logado (`roletas_membros` filtrado por `corretor_id`), fazer uma segunda query para cada `roleta_id` buscando **todos os membros ativos** daquela roleta, incluindo o nome do corretor:
+   ```
+   roletas_membros(*, corretor:brokers(id, name))
+   WHERE roleta_id = X AND ativo = true
+   ORDER BY ordem ASC
+   ```
+2. Buscar tambem os dados da roleta principal (campo `ultimo_membro_ordem_atribuida`) para calcular quem e o proximo
+3. Adicionar uma secao colapsavel (ou sempre visivel) abaixo de cada card de roleta mostrando a lista de membros:
+   - Indicador verde/cinza ao lado do nome (online/offline)
+   - Badge "Proximo" no corretor que sera o proximo a receber lead (baseado em `ultimo_membro_ordem_atribuida + 1`, considerando apenas membros com check-in ativo)
+   - Destacar o proprio corretor logado na lista (ex: nome em negrito ou badge "Voce")
+4. Adicionar Realtime subscription na tabela `roletas_membros` para atualizar automaticamente quando alguem faz check-in/check-out
 
-**Arquivo: `src/hooks/use-roletas.ts`**
-
-- Alterar `createRoleta` para retornar o ID da roleta criada (em vez de apenas `true/false`), usando `.select("id").single()` no insert. Isso permite vincular os empreendimentos logo em seguida.
-
-### Layout do formulario atualizado
+### Layout atualizado de cada card
 
 ```text
-+----------------------------------+
-| Nova Roleta                      |
-+----------------------------------+
-| Nome da Roleta                   |
-| [________________________]       |
-|                                  |
-| Lider Responsavel                |
-| [Select lider...        v]      |
-|                                  |
-| Tempo de Reserva: 10 min        |
-| [-------o-----------]           |
-|                                  |
-| Empreendimentos                  |
-| [x] GoldenView (Portao)        |
-| [ ] Estancia Velha (Est. Velha) |
-| [x] Mauricio Cardoso (MC)      |
-|                                  |
-| [Cancelar]  [Criar Roleta]      |
-+----------------------------------+
++--------------------------------------------+
+| Roleta GoldenView              [Check-out] |
+| Ordem: 2 | 10min reserva                   |
+|                                             |
+| Fila da Roleta (3/5 online)                |
+| +----------------------------------------+ |
+| | #1  * Joao Silva                       | |
+| | #2  * Voce              [Proximo]      | |
+| | #3  o Maria Santos                     | |
+| | #4  * Pedro Lima                       | |
+| | #5  o Ana Costa                        | |
+| +----------------------------------------+ |
+|  * = online   o = offline                   |
++--------------------------------------------+
 ```
 
 ### Detalhes tecnicos
 
-- O `createRoleta` no hook passara a fazer `.insert(data).select("id").single()` e retornar `string | null` (o ID criado)
-- O `handleCreate` no componente fara um loop sequencial chamando `addEmpreendimento` para cada projeto selecionado
-- O componente `Checkbox` de `@/components/ui/checkbox` sera usado para a selecao multipla
-- Nenhuma migracao de banco necessaria -- as tabelas e funcoes ja existem
+- A query de membros usara a relacao `corretor:brokers(id, name)` que ja existe no schema
+- O calculo de "proximo" segue a mesma logica do admin: `ordem === ultimo_membro_ordem_atribuida + 1` (com wrap-around para o primeiro membro quando o ultimo da lista ja foi atribuido), considerando apenas membros com `status_checkin = true`
+- Para Realtime, usar `supabase.channel('roleta-membros-ROLETA_ID').on('postgres_changes', ...)` filtrando por `roleta_id`
+- As RLS policies ja permitem que corretores vejam membros das suas roletas (`roleta_id IN get_my_roleta_ids()`)
+- Nenhuma migracao de banco necessaria
+
