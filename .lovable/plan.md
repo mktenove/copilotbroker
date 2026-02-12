@@ -1,33 +1,43 @@
 
 
-## Corrigir logout inacessivel no iPad
+## Corrigir contagem de leads em "Nova Campanha" (admin e corretores)
 
-### Problema
-No iPad (tela de 768px a 1024px em modo retrato), o sistema usa o layout desktop (sidebar lateral) em vez do layout mobile (barra inferior). O botao de logout na sidebar e um icone pequeno no canto inferior, dificil de localizar e tocar em dispositivos touch. A barra inferior mobile -- que tem o menu "Mais" com opcao de "Sair" -- esta oculta por causa do breakpoint `md:hidden` (768px).
+### Problema identificado
+O usuario ve 26 leads com status "info_sent" no Kanban, porem ao criar uma campanha, aparece "0 leads selecionados".
+
+A causa raiz: o usuario tem papel de **admin** (e possivelmente tambem broker). A politica RLS de admin permite ver **todos** os leads no Kanban. Porem, no hook `use-whatsapp-campaigns.ts`, a funcao `fetchLeadsByStatus` aplica um filtro a nivel de aplicacao `.eq("broker_id", broker.id)`, limitando os resultados apenas aos leads do proprio corretor -- ou retornando zero se o admin nao tiver registro de corretor.
+
+Em resumo: o Kanban mostra os leads via RLS (admin ve tudo), mas a campanha filtra por `broker_id` no codigo, gerando a inconsistencia.
 
 ### Solucao
-Alterar o breakpoint de transicao entre layout mobile e desktop de `md` (768px) para `lg` (1024px). Assim, iPads em modo retrato (768-1024px) usarao a navegacao inferior com o menu "Mais" que contem o logout.
+Tornar o hook `use-whatsapp-campaigns` consciente do papel do usuario. Se for **admin**, nao filtrar por `broker_id` nas queries de leads, campanhas e criacao. Se for **broker**, manter o filtro atual.
 
-### Arquivos afetados
+### Detalhes tecnicos
 
-**1. `src/components/broker/BrokerBottomNav.tsx`**
-- Mudar `md:hidden` para `lg:hidden` na nav principal
+**Arquivo: `src/hooks/use-whatsapp-campaigns.ts`**
 
-**2. `src/components/broker/BrokerSidebar.tsx`**
-- Mudar `hidden md:flex` para `hidden lg:flex`
+1. Importar e usar `useUserRole` para obter `role` e `brokerId`
+2. Na query `current-broker`: manter como esta (retorna dados do broker se existir)
+3. Na funcao `fetchLeadsByStatus` (linha 93-117):
+   - Remover o guard `if (!broker?.id) return []` para admins
+   - Se `role === "admin"`: nao aplicar `.eq("broker_id", broker.id)`, permitindo ver todos os leads
+   - Se `role !== "admin"`: manter o filtro `.eq("broker_id", broker.id)`
+4. Na query de campanhas (linhas 52-71): se admin, nao filtrar por `broker_id`
+5. Na criacao de campanha: se admin, tornar `broker_id` opcional (usar o broker_id se existir, senao criar sem)
 
-**3. `src/components/broker/BrokerLayout.tsx`**
-- Mudar `md:ml-16` para `lg:ml-16` no container principal
-- Mudar `md:pb-0` para `lg:pb-0` no padding inferior
+**Mudanca principal:**
 
-**4. `src/pages/BrokerAdmin.tsx`**
-- Mudar `md:hidden` para `lg:hidden` no bloco de busca mobile (se houver)
+```text
+// fetchLeadsByStatus - ANTES:
+if (!broker?.id) return [];
+query.eq("broker_id", broker.id);  // sempre filtra
 
-**5. `src/components/broker/BrokerHeader.tsx`** (verificar se tem breakpoints `md:` relacionados ao layout)
+// fetchLeadsByStatus - DEPOIS:
+if (role !== "admin" && !broker?.id) return [];
+if (role !== "admin" && broker?.id) {
+  query.eq("broker_id", broker.id);  // so filtra se nao for admin
+}
+```
 
-### Impacto
-- iPads em retrato (768-1024px) passam a usar a barra inferior com acesso completo ao menu "Mais" (incluindo Sair)
-- iPads em paisagem (1024px+) continuam usando a sidebar desktop
-- Desktops nao sao afetados
-- Nenhuma mudanca de banco de dados necessaria
+**Nenhuma migracao de banco necessaria** -- as RLS policies de admin ja permitem SELECT em leads, campaigns, templates e queue.
 
