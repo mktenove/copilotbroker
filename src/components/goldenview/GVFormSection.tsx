@@ -377,7 +377,7 @@ const GVFormSection = ({
                 <label htmlFor="gv-terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
                   Li e aceito os{" "}
                   <Link
-                    to="/termos#termos-de-uso"
+                    to="/portao/goldenview/termos#termos-de-uso"
                     target="_blank"
                     className="text-primary hover:text-primary/80 underline underline-offset-2"
                   >
@@ -385,7 +385,7 @@ const GVFormSection = ({
                   </Link>{" "}
                   e a{" "}
                   <Link
-                    to="/termos#politica-de-privacidade"
+                    to="/portao/goldenview/termos#politica-de-privacidade"
                     target="_blank"
                     className="text-primary hover:text-primary/80 underline underline-offset-2"
                   >

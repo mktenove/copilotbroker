@@ -18,6 +18,7 @@ import GoldenViewLandingPage from "./pages/goldenview/GoldenViewLandingPage";
 import GoldenViewBrokerLandingPage from "./pages/goldenview/GoldenViewBrokerLandingPage";
 import MauricioCardosoLandingPage from "./pages/mauriciocardoso/MauricioCardosoLandingPage";
 import MauricioCardosoBrokerLandingPage from "./pages/mauriciocardoso/MauricioCardosoBrokerLandingPage";
+import TermosGoldenView from "./pages/goldenview/TermosGoldenView";
 import TermosMauricioCardoso from "./pages/mauriciocardoso/TermosMauricioCardoso";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
@@ -46,6 +47,7 @@ const App = () => (
             {/* GoldenView - custom landing page with unique visual identity */}
             <Route path="/portao/goldenview" element={<GoldenViewLandingPage />} />
             <Route path="/portao/goldenview/obrigado" element={<GoldenViewLandingPage />} />
+            <Route path="/portao/goldenview/termos" element={<TermosGoldenView />} />
             <Route path="/portao/goldenview/:brokerSlug" element={<GoldenViewBrokerLandingPage />} />
             
             {/* Mauricio Cardoso - Wellness landing page for Novo Hamburgo */}
