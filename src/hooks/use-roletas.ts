@@ -34,20 +34,22 @@ export function useRoletas() {
     fetchRoletas();
   }, [fetchRoletas]);
 
-  const createRoleta = async (data: { nome: string; lider_id: string; tempo_reserva_minutos: number }) => {
+  const createRoleta = async (data: { nome: string; lider_id: string; tempo_reserva_minutos: number }): Promise<string | null> => {
     try {
-      const { error } = await (supabase
+      const { data: created, error } = await (supabase
         .from("roletas" as any)
-        .insert(data) as any);
+        .insert(data)
+        .select("id")
+        .single() as any);
 
       if (error) throw error;
       toast.success("Roleta criada com sucesso!");
       await fetchRoletas();
-      return true;
+      return created?.id || null;
     } catch (error: any) {
       console.error("Erro ao criar roleta:", error);
       toast.error(error.message || "Erro ao criar roleta.");
-      return false;
+      return null;
     }
   };
 
