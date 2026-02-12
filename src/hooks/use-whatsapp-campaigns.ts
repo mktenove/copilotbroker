@@ -111,7 +111,7 @@ export function useWhatsAppCampaigns() {
       .select(`
         *,
         project:projects(id, name),
-        broker:brokers(id, name)
+        broker:brokers!leads_broker_id_fkey(id, name)
       `)
       .in("status", targetStatus);
     
