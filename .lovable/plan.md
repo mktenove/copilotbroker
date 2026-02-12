@@ -1,51 +1,26 @@
 
-## Adicionar botao para excluir roleta
 
-### Objetivo
-Permitir que o admin exclua uma roleta diretamente pela interface de gerenciamento.
+## Filtrar fila por corretores online + Lider define proximo da fila
 
-### Mudancas necessarias
+### Mudancas
 
-**1. Migracao de banco de dados**
+**1. `src/components/broker/BrokerRoletas.tsx` -- Mostrar apenas corretores online**
 
-Duas foreign keys referenciam a tabela `roletas` com `NO ACTION`, o que impede a exclusao:
-- `roletas_log.roleta_id` -- sera alterada para `ON DELETE CASCADE` (logs perdem sentido sem a roleta)
-- `leads.roleta_id` -- sera alterada para `ON DELETE SET NULL` (leads devem ser preservados)
+- Na secao "Queue list", filtrar `allMembros` para exibir apenas os membros com `status_checkin === true`
+- Atualizar o texto do toggle para refletir apenas a contagem de online (ex: "Fila Online (3 corretores)")
+- Manter a logica de "Proximo" e "Voce" como esta
 
-As demais FKs (`roletas_membros`, `roletas_empreendimentos`) ja possuem `ON DELETE CASCADE`.
+**2. `src/components/admin/RoletaManagement.tsx` -- Lider pode definir o proximo**
 
-**2. Hook `src/hooks/use-roletas.ts`**
+- Adicionar um botao "Definir como proximo" (icone de seta ou target) ao lado de cada membro online na lista de membros
+- Ao clicar, atualizar o campo `ultimo_membro_ordem_atribuida` da roleta para `ordem - 1` do membro selecionado, fazendo com que ele seja o proximo na logica round-robin
+- Usar a funcao `updateRoleta(id, { ultimo_membro_ordem_atribuida: ordem - 1 })` que ja existe no hook
 
-Adicionar funcao `deleteRoleta(id: string)`:
-- Executa `supabase.from("roletas").delete().eq("id", id)`
-- Exibe toast de sucesso/erro
-- Chama `fetchRoletas()` para atualizar a lista
+**3. `src/hooks/use-roletas.ts`** -- Nenhuma mudanca necessaria (ja possui `updateRoleta`)
 
-**3. Componente `src/components/admin/RoletaManagement.tsx`**
+### Detalhes tecnicos
 
-- Adicionar botao "Excluir" (vermelho, com icone Trash2) na area de acoes da roleta expandida, ao lado dos botoes "Desativar" e "Logs"
-- Usar um `AlertDialog` para confirmar a exclusao antes de executar, exibindo o nome da roleta e avisando que a acao e irreversivel
-- Chamar `deleteRoleta(roleta.id)` ao confirmar
-- Se a roleta excluida estava expandida, limpar o estado `expandedRoleta`
+- Nenhuma migracao de banco necessaria
+- A logica de "proximo" ja funciona com base em `ultimo_membro_ordem_atribuida`: o proximo e o primeiro membro online com `ordem > ultimo_membro_ordem_atribuida`. Para "definir como proximo", basta setar `ultimo_membro_ordem_atribuida = ordem_do_membro - 1`
+- O botao "Definir como proximo" so aparece para membros com check-in ativo (online)
 
-### Layout do botao
-
-O botao aparecera na area de acoes existente (linha 299-321), junto com "Desativar" e "Logs":
-
-```text
-[Desativar]  [Logs]  [Excluir]
-```
-
-Ao clicar em "Excluir", um dialog de confirmacao aparece:
-
-```text
-+----------------------------------+
-| Excluir Roleta                   |
-+----------------------------------+
-| Tem certeza que deseja excluir   |
-| a roleta "GoldenView"?          |
-| Esta acao e irreversivel.        |
-|                                  |
-| [Cancelar]  [Excluir]           |
-+----------------------------------+
-```
