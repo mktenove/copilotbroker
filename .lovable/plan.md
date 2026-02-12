@@ -1,27 +1,31 @@
 
 
-## Corrigir busca de leads na criacao de campanhas
+## Tornar o codigo de pais editavel no campo WhatsApp com bandeira
 
-### Problema
-A query `fetchLeadsByStatus` no hook `use-whatsapp-campaigns.ts` usa `broker:brokers(id, name)` sem especificar qual chave estrangeira utilizar. Como a tabela `leads` possui duas chaves estrangeiras para `brokers` (`broker_id` e `corretor_atribuido_id`), o PostgREST retorna um erro HTTP 300 (ambiguidade), fazendo a query falhar silenciosamente e retornar 0 leads.
+### O que muda
+O campo de WhatsApp atualmente forca o prefixo +55 (Brasil) sem possibilidade de alteracao. Vamos transformar o componente `WhatsAppInput` para incluir um seletor de codigo de pais com bandeira, permitindo ao usuario escolher outro pais se necessario, mantendo o Brasil como padrao.
 
-O Kanban funciona corretamente porque usa a sintaxe correta: `broker:brokers!leads_broker_id_fkey(id, name, slug)`.
-
-### Solucao
-Corrigir a query para especificar explicitamente a foreign key, seguindo o mesmo padrao ja usado no Kanban.
+### Como vai ficar
+O campo tera duas partes lado a lado:
+1. Um botao/seletor a esquerda mostrando a bandeira do pais + codigo (ex: flag BR +55)
+2. O campo de input do numero a direita, formatando conforme o pais selecionado
 
 ### Detalhes tecnicos
 
-**Arquivo: `src/hooks/use-whatsapp-campaigns.ts`**
+**Arquivo: `src/components/ui/whatsapp-input.tsx`**
 
-Linha 114 - Alterar:
-```text
-broker:brokers(id, name)
-```
-Para:
-```text
-broker:brokers!leads_broker_id_fkey(id, name)
-```
+- Adicionar uma lista dos codigos de pais mais comuns (Brasil, EUA, Portugal, Argentina, etc.) com emoji de bandeira
+- Substituir o prefixo fixo "55" por um estado `countryCode` selecionavel via Popover/Select
+- O seletor mostra a bandeira emoji + codigo do pais (ex: "BR +55")
+- Ao trocar o pais, o raw value e atualizado automaticamente com o novo prefixo
+- A formatacao de display se adapta: para Brasil, manter o formato (XX) XXXXX-XXXX; para outros paises, exibir os numeros sem mascara especifica
+- A validacao `isValidBrazilianWhatsApp` continua funcionando para o caso brasileiro, mas nao bloqueia outros paises
 
-Essa e a unica mudanca necessaria. Nenhuma migracao de banco necessaria.
+**Arquivo: `src/components/admin/AddLeadModal.tsx`**
 
+- A validacao de 13 digitos na submissao sera ajustada para aceitar numeros com tamanho variavel (minimo 10 digitos total incluindo codigo do pais)
+
+**Paises incluidos no seletor:**
+- Brasil (+55), Estados Unidos (+1), Portugal (+351), Argentina (+54), Uruguai (+598), Paraguai (+595), Chile (+56), Colombia (+57), Mexico (+52)
+
+**Visual:** Usa um Popover com lista de paises, estilizado no tema escuro do modal, com emojis de bandeira para identificacao rapida.
