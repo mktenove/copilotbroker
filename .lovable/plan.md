@@ -1,51 +1,79 @@
+## Redesign da Pagina de Corretores com Gestao de Times, Lideres e Equipes
 
+### Visao geral
 
-## Corrigir botao "Iniciar Atendimento" e notificacao WhatsApp da Roleta
+Unificar a gestao de corretores em uma unica pagina com **3 sub-abas** (via Tabs), substituindo a pagina atual de cards simples por uma interface organizada por **hierarquia de times**. A pagina de Roletas permanece separada no menu lateral, pois tem proposito operacional distinto. 
 
-### Problema 1: Botao "Iniciar Atendimento" escondido e sem acao no WhatsApp
+### Estrutura da nova pagina
 
-O botao existe dentro do `LeadDetailSheet` (painel lateral que abre ao clicar no card), mas:
-- Nao e visivel diretamente no card do Kanban -- o corretor precisa clicar no card para encontra-lo
-- Ao clicar, apenas marca o status internamente, sem abrir o WhatsApp do lead
+A tab "Corretores" no menu lateral abrira uma pagina com **3 sub-tabs**:
 
-**Solucao:** Adicionar um botao "Iniciar Atendimento" diretamente no card do Kanban para leads com roleta pendente (`roleta_id` presente e `status_distribuicao !== 'atendimento_iniciado'`). Ao clicar:
-1. Atualiza `status_distribuicao` para `atendimento_iniciado`
-2. Define `atendimento_iniciado_em` com timestamp atual
-3. Limpa `reserva_expira_em` (para o timeout nao redistribuir)
-4. Abre o WhatsApp do lead em nova aba (`wa.me/55{phone}`)
+1. **Equipes** (tab padrao) -- Visao agrupada por lider
+2. **Todos os Corretores** -- Lista/grid completa como hoje, com melhorias
+3. **Lideres** -- Gestao dos lideres (atribuir role leader, ver equipes sob cada lider)
 
-Tambem atualizar o botao existente no `LeadDetailSheet` para abrir o WhatsApp ao iniciar atendimento.
+---
 
-### Problema 2: Notificacao WhatsApp nao chega ao corretor via Roleta
+### Tab 1: Equipes (visao principal)
 
-O codigo da funcao `roleta-distribuir` tenta enviar notificacao WhatsApp usando `Deno.env.get("UAZAPI_INSTANCE_URL")`, mas o sistema ja migrou para persistir as credenciais na tabela `global_whatsapp_config`. A funcao `notify-new-lead` ja usa essa tabela corretamente, mas a `roleta-distribuir` nao.
+- Agrupa corretores pelo campo `lider_id` da tabela `brokers`
+- Cada grupo mostra o lider como cabecalho com avatar, nome, total de membros, e quantidade de leads da equipe
+- Abaixo do cabecalho, lista compacta dos corretores vinculados ao lider (mini-cards em grid)
+- Corretores **sem lider** aparecem em um grupo "Sem equipe" no final
+- Cada corretor exibe: nome, status (ativo/inativo), quantidade de leads, ultimo acesso
+- Botao para arrastar/mover corretor entre equipes (ou select para atribuir lider)
+- Botao "Atribuir Lider" direto no card do corretor sem equipe
 
-**Solucao:** Atualizar a secao de notificacao WhatsApp da `roleta-distribuir` (passo 8) para buscar as credenciais da tabela `global_whatsapp_config` em vez de depender de variaveis de ambiente, seguindo o mesmo padrao da `notify-new-lead`.
+### Tab 2: Todos os Corretores
+
+- Mesmo grid de cards que existe hoje, com melhorias visuais:
+  - Adicionar coluna/badge do lider vinculado
+  - Adicionar badge de roletas ativas onde o corretor participa
+  - Manter funcionalidades existentes (editar, excluir, copiar link, historico)
+
+### Tab 3: Lideres
+
+- Lista dos corretores que possuem role `leader` na tabela `user_roles`
+- Para cada lider: nome, quantidade de corretores na equipe, roletas que lidera, total de leads da equipe
+- Botao para **promover corretor a lider** (insere role `leader` em `user_roles`)
+- Botao para **remover role de lider**
+- Ao promover, o corretor aparece como opcao de lider na atribuicao de equipes
 
 ---
 
 ### Detalhes tecnicos
 
-**Arquivo 1: `src/components/crm/KanbanCard.tsx`**
-- Adicionar prop `onStartService?: (leadId: string) => Promise<void>` ao componente
-- Para leads com `lead.roleta_id && lead.status_distribuicao !== 'atendimento_iniciado'`, renderizar um botao verde "Iniciar Atendimento" com icone Play logo acima ou ao lado do botao WhatsApp existente
-- Ao clicar: chamar `onStartService(lead.id)` e depois `window.open(whatsappUrl, '_blank')`
-- O botao substitui visualmente o botao WhatsApp normal para esses leads (primeira acao = iniciar + abrir WhatsApp)
+**Arquivo principal: `src/components/admin/BrokerManagement.tsx**`
 
-**Arquivo 2: `src/components/crm/KanbanBoard.tsx`**
-- Implementar a funcao `handleStartService` que faz o update no banco:
-  - `atendimento_iniciado_em: now()`
-  - `status_distribuicao: 'atendimento_iniciado'`
-  - `reserva_expira_em: null`
-- Passar como prop `onStartService` para o `KanbanCard`
+- Refatorar para incluir `Tabs` do Radix (componente ja disponivel em `src/components/ui/tabs.tsx`)
+- Tab "Equipes": novo componente `TeamView` que agrupa brokers por `lider_id`
+- Tab "Todos": manter logica atual com grid de cards, adicionando badge de lider
+- Tab "Lideres": novo componente `LeaderManagement`
 
-**Arquivo 3: `src/components/crm/LeadDetailSheet.tsx`**
-- No botao "Iniciar Atendimento" existente (linha 371), apos o update, abrir `window.open(whatsappUrl)` automaticamente
+**Novos componentes:**
 
-**Arquivo 4: `supabase/functions/roleta-distribuir/index.ts`**
-- Substituir o bloco do passo 8 (linhas ~115-145) para:
-  1. Buscar credenciais de `global_whatsapp_config` (instance_name, instance_token, status)
-  2. Construir a URL base usando `new URL(Deno.env.get("UAZAPI_INSTANCE_URL")).origin` como fallback
-  3. Enviar a mensagem usando o token da tabela, nao da env var
-  4. Adicionar logs para debug
+- `src/components/admin/TeamView.tsx` -- Visao de equipes agrupadas por lider
+- `src/components/admin/LeaderManagement.tsx` -- Gestao de lideres (promover/remover role)
 
+**Dados necessarios (ja existentes no banco):**
+
+- `brokers.lider_id` -- vinculo corretor-lider (ja existe, nenhum corretor tem lider atribuido atualmente)
+- `user_roles` com role `leader` -- define quem e lider
+- `roletas.lider_id` -- roletas sob cada lider
+
+**Operacoes de banco:**
+
+- Atribuir lider: `UPDATE brokers SET lider_id = :liderId WHERE id = :brokerId`
+- Promover a lider: `INSERT INTO user_roles (user_id, role) VALUES (:userId, 'leader')`
+- Remover role lider: `DELETE FROM user_roles WHERE user_id = :userId AND role = 'leader'`
+- Nenhuma migracao necessaria -- todas as tabelas e colunas ja existem
+
+**Ajustes no formulario de edicao:**
+
+- Adicionar campo "Lider" (select com lista de corretores que tem role leader) no dialog de criar/editar corretor
+
+**Design:**
+
+- Seguir a estetica dark luxury existente (#1e1e22, #2a2a2e, primary yellow)
+- Cards compactos, tipografia refinada, sem elementos genericos
+- Badges minimalistas para status, role e lider
