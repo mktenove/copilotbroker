@@ -1,59 +1,55 @@
 
 
-## Correcao definitiva: formato do payload UAZAPI v2
+## Teste real de campanha com cancelamento de follow-up
 
-### Causa raiz
+### Objetivo
+Criar uma campanha real com 2 steps usando a instancia `enove_maicon` (conectada), enviar para o lead "Teste Maicon" (+5551997010323), e verificar que o Step 2 e cancelado quando voce responder.
 
-O webhook recebe os dados da UAZAPI corretamente (os logs confirmam "Webhook received" com todo o payload), porem o codigo **nao consegue interpretar o formato real** porque foi escrito para um formato diferente. Resultado: toda mensagem recebida cai no handler "Unknown event" e nunca processa respostas.
+### Dados do teste
 
-### Mapeamento real dos campos (confirmado via logs de producao)
+| Item | Valor |
+|------|-------|
+| Broker | Maicon (ID: `68db81c3-b187-42e0-89fb-fbb05e4a67fd`) |
+| Instancia | `enove_maicon` (conectada) |
+| Lead | Teste Maicon (ID: `cca68eab-d371-4f0b-8b9d-fcf1062d75be`) |
+| Telefone | +5551997010323 |
 
-```text
-Codigo atual (ERRADO)          →  Formato real UAZAPI v2
-─────────────────────────────────────────────────────────
-payload.event                  →  payload.EventType
-payload.instance               →  payload.instanceName
-payload.messages (array)       →  payload.message (objeto unico)
-msg.key.fromMe                 →  payload.message.fromMe
-msg.key.remoteJid              →  payload.message.chatid
-msg.message.conversation       →  payload.message.text
-msg.message.extendedTextMessage→  (nao existe, usar .text)
-```
+### Etapas de execucao
 
-### O que sera alterado
+**1. Inserir campanha no banco**
+- Nome: "TESTE REAL: Cancelamento por Resposta"
+- Status: `running`
+- broker_id do Maicon
 
-**Arquivo: `supabase/functions/whatsapp-webhook/index.ts`** - reescrita da logica de parsing
+**2. Inserir 2 campaign_steps**
+- Step 1: "Ola Maicon, tudo bem? Teste de campanha automatica." (delay: 0, send_if_replied: true)
+- Step 2: "Maicon, esse follow-up SO deve chegar se voce NAO responder." (delay: 3 min, send_if_replied: **false**)
 
-1. **Extrair EventType corretamente**: usar `payload.EventType` em vez de `payload.event`
-2. **Extrair instanceName corretamente**: usar `payload.instanceName` em vez de `payload.instance`
-3. **Processar mensagem no formato correto**: 
-   - Acessar `payload.message` como objeto unico (nao array)
-   - Usar `payload.message.fromMe` para filtrar mensagens proprias
-   - Usar `payload.message.chatid` para extrair o telefone
-   - Usar `payload.message.text` para extrair o texto
-   - Usar `payload.message.isGroup` para filtrar grupos
-4. **Manter toda a logica existente** de opt-out, cancelamento de follow-ups, atualizacao de reply_count e daily_stats -- apenas corrigir como os dados sao extraidos do payload
+**3. Inserir 2 mensagens na fila (whatsapp_message_queue)**
+- Mensagem 1: status `scheduled`, scheduled_at = agora (sera enviada no proximo ciclo do cron)
+- Mensagem 2: status `scheduled`, scheduled_at = agora + 3 minutos, step_number = 2
 
-### Fluxo corrigido para mensagem recebida
+**4. Aguardar envio do Step 1** (o cron roda a cada minuto)
 
-```text
-1. Webhook recebe POST da UAZAPI
-2. Extrai EventType = "messages"
-3. Extrai payload.message (objeto unico)
-4. Verifica message.fromMe === false (mensagem do lead)
-5. Verifica message.isGroup === false (nao e grupo)
-6. Extrai telefone de message.chatid (ex: "555197010323@s.whatsapp.net")
-7. Extrai texto de message.text
-8. Detecta opt-out OU processa como resposta
-9. Se resposta: cancela follow-ups com send_if_replied = false
-```
+**5. Voce responde no WhatsApp** (qualquer mensagem)
 
-### O que NAO muda
+**6. O webhook processa a resposta e cancela o Step 2**
 
-- Logica de opt-out (detectOptout, cancelamento, daily stats)
-- Logica de cancelamento de follow-ups (cancelFollowUpsOnReply)
-- Logica de incremento de reply_count
-- Message sender (a verificacao preventiva continua funcionando)
-- Endpoint /health
-- Formato de resposta ao UAZAPI (sempre 200)
+**7. Verificar no banco que o Step 2 tem status `cancelled`**
+
+### O que valida
+
+- Envio real via UAZAPI funciona
+- Webhook recebe resposta real do WhatsApp
+- Logica de cancelamento funciona em producao
+- A mensagem "Maicon, esse follow-up SO deve chegar se voce NAO responder" **nunca sera entregue**
+
+### Secao tecnica
+
+Serao executadas 3 operacoes de INSERT no banco:
+1. `whatsapp_campaigns` - 1 registro
+2. `campaign_steps` - 2 registros  
+3. `whatsapp_message_queue` - 2 registros (step 1 agendado para agora, step 2 para +3 min)
+
+Apos confirmacao do teste, os dados serao limpos com DELETE.
 
