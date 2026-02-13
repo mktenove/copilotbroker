@@ -1,7 +1,7 @@
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
-const app = new Hono();
+const app = new Hono().basePath("/whatsapp-webhook");
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -92,6 +92,63 @@ interface UAZAPIWebhookEvent {
     state?: string;
   };
 }
+
+// Cancel scheduled follow-ups where send_if_replied = false
+const cancelFollowUpsOnReply = async (
+  supabase: ReturnType<typeof getSupabaseClient>,
+  phone: string,
+  campaignIds: string[]
+) => {
+  if (campaignIds.length === 0) return;
+
+  for (const campaignId of campaignIds) {
+    // Get scheduled messages for this phone+campaign with step_number > 1
+    const { data: scheduledMsgs } = await supabase
+      .from("whatsapp_message_queue")
+      .select("id, step_number")
+      .eq("phone", phone)
+      .eq("campaign_id", campaignId)
+      .in("status", ["scheduled", "queued"])
+      .gt("step_number", 1);
+
+    if (!scheduledMsgs || scheduledMsgs.length === 0) continue;
+
+    // Get campaign steps to check send_if_replied flag
+    const stepNumbers = scheduledMsgs.map((m: { step_number: number }) => m.step_number);
+    const { data: steps } = await supabase
+      .from("campaign_steps")
+      .select("step_order, send_if_replied")
+      .eq("campaign_id", campaignId)
+      .in("step_order", stepNumbers);
+
+    if (!steps) continue;
+
+    // Build set of step_orders where send_if_replied = false
+    const cancelSteps = new Set(
+      (steps as Array<{ step_order: number; send_if_replied: boolean }>)
+        .filter(s => s.send_if_replied === false)
+        .map(s => s.step_order)
+    );
+
+    // Cancel matching messages
+    const idsToCancel = (scheduledMsgs as Array<{ id: string; step_number: number }>)
+      .filter(m => cancelSteps.has(m.step_number))
+      .map(m => m.id);
+
+    if (idsToCancel.length > 0) {
+      await supabase
+        .from("whatsapp_message_queue")
+        .update({
+          status: "cancelled",
+          error_message: "Lead respondeu - follow-up cancelado",
+          updated_at: new Date().toISOString()
+        })
+        .in("id", idsToCancel);
+
+      console.log(`🚫 Cancelled ${idsToCancel.length} follow-ups for ${phone} (campaign ${campaignId})`);
+    }
+  }
+};
 
 // CORS preflight
 app.options("/*", (c) => {
@@ -189,28 +246,37 @@ app.post("/", async (c) => {
             }
           }
         } else {
-          // Regular reply - update reply count
+          // Regular reply - update reply count and cancel follow-ups
           console.log(`Reply received from ${phone}: "${messageText.substring(0, 50)}..."`);
           
-          // Find recent message sent to this phone and update campaign reply count
-          const { data: recentMessage } = await supabase
+          // Find recent messages sent to this phone and collect campaign_ids
+          const { data: recentMessages } = await supabase
             .from("whatsapp_message_queue")
             .select("campaign_id, broker_id")
             .eq("phone", phone)
             .eq("status", "sent")
             .order("sent_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .limit(10);
           
-          if (recentMessage) {
-            const msg = recentMessage as { campaign_id: string | null; broker_id: string };
+          if (recentMessages && recentMessages.length > 0) {
+            const firstMsg = recentMessages[0] as { campaign_id: string | null; broker_id: string };
             
-            // Update campaign reply count
-            if (msg.campaign_id) {
+            // Collect unique campaign_ids for follow-up cancellation
+            const campaignIds = [...new Set(
+              (recentMessages as Array<{ campaign_id: string | null }>)
+                .map(m => m.campaign_id)
+                .filter((id): id is string => id !== null)
+            )];
+
+            // Cancel scheduled follow-ups where send_if_replied = false
+            await cancelFollowUpsOnReply(supabase, phone, campaignIds);
+            
+            // Update campaign reply counts
+            for (const campaignId of campaignIds) {
               const { data: campaign } = await supabase
                 .from("whatsapp_campaigns")
                 .select("reply_count")
-                .eq("id", msg.campaign_id)
+                .eq("id", campaignId)
                 .single();
               
               if (campaign) {
@@ -219,7 +285,7 @@ app.post("/", async (c) => {
                   .update({ 
                     reply_count: ((campaign as { reply_count: number }).reply_count || 0) + 1 
                   })
-                  .eq("id", msg.campaign_id);
+                  .eq("id", campaignId);
               }
             }
             
@@ -228,7 +294,7 @@ app.post("/", async (c) => {
             const { data: existingStats } = await supabase
               .from("whatsapp_daily_stats")
               .select("*")
-              .eq("broker_id", msg.broker_id)
+              .eq("broker_id", firstMsg.broker_id)
               .eq("date", today)
               .maybeSingle();
             
@@ -289,12 +355,10 @@ app.post("/", async (c) => {
       const status = payload.data.status;
       
       if (messageId && status) {
-        // Update message status in queue if we have the UAZAPI message ID
         await supabase
           .from("whatsapp_message_queue")
           .update({ 
             updated_at: new Date().toISOString()
-            // Could add delivery_status field if needed
           })
           .eq("uazapi_message_id", messageId);
         
