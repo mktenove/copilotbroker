@@ -1,31 +1,41 @@
 
 
-## Tornar o codigo de pais editavel no campo WhatsApp com bandeira
+## Substituir emojis de bandeira por imagens reais
 
-### O que muda
-O campo de WhatsApp atualmente forca o prefixo +55 (Brasil) sem possibilidade de alteracao. Vamos transformar o componente `WhatsAppInput` para incluir um seletor de codigo de pais com bandeira, permitindo ao usuario escolher outro pais se necessario, mantendo o Brasil como padrao.
+### Problema
+Os emojis de bandeira (como 🇧🇷) nao renderizam corretamente em muitos navegadores e sistemas operacionais, especialmente Windows. Em vez da bandeira, aparece apenas o texto "BR". Por isso o usuario ve "BR +55" sem nenhuma bandeira visual.
+
+### Solucao
+Substituir os emojis por imagens de bandeiras reais usando o CDN publico `flagcdn.com`, que fornece imagens de bandeiras de todos os paises em formato PNG otimizado.
 
 ### Como vai ficar
-O campo tera duas partes lado a lado:
-1. Um botao/seletor a esquerda mostrando a bandeira do pais + codigo (ex: flag BR +55)
-2. O campo de input do numero a direita, formatando conforme o pais selecionado
+O botao do seletor mostrara uma pequena imagem da bandeira (20x15px) ao lado do codigo do pais, garantindo que funcione em qualquer navegador e sistema operacional.
 
 ### Detalhes tecnicos
 
 **Arquivo: `src/components/ui/whatsapp-input.tsx`**
 
-- Adicionar uma lista dos codigos de pais mais comuns (Brasil, EUA, Portugal, Argentina, etc.) com emoji de bandeira
-- Substituir o prefixo fixo "55" por um estado `countryCode` selecionavel via Popover/Select
-- O seletor mostra a bandeira emoji + codigo do pais (ex: "BR +55")
-- Ao trocar o pais, o raw value e atualizado automaticamente com o novo prefixo
-- A formatacao de display se adapta: para Brasil, manter o formato (XX) XXXXX-XXXX; para outros paises, exibir os numeros sem mascara especifica
-- A validacao `isValidBrazilianWhatsApp` continua funcionando para o caso brasileiro, mas nao bloqueia outros paises
+1. Alterar a constante `COUNTRIES` para trocar o campo `flag` (emoji) por `flagCode` (codigo ISO de 2 letras minusculas usado pelo CDN):
+   - Brasil: `br`, EUA: `us`, Portugal: `pt`, Argentina: `ar`, etc.
 
-**Arquivo: `src/components/admin/AddLeadModal.tsx`**
+2. Substituir os `<span>` que exibem o emoji por tags `<img>` apontando para `https://flagcdn.com/w20/{flagCode}.png`
 
-- A validacao de 13 digitos na submissao sera ajustada para aceitar numeros com tamanho variavel (minimo 10 digitos total incluindo codigo do pais)
+3. Aplicar estilo na imagem: `w-5 h-auto rounded-sm` para manter proporcao e visual limpo
 
-**Paises incluidos no seletor:**
-- Brasil (+55), Estados Unidos (+1), Portugal (+351), Argentina (+54), Uruguai (+598), Paraguai (+595), Chile (+56), Colombia (+57), Mexico (+52)
+4. Atualizar tanto o botao do seletor (trigger) quanto os itens da lista do popover
 
-**Visual:** Usa um Popover com lista de paises, estilizado no tema escuro do modal, com emojis de bandeira para identificacao rapida.
+**Mudancas especificas:**
+
+Constante COUNTRIES - trocar `flag: "🇧🇷"` por `flagCode: "br"`, e assim para todos os paises.
+
+No trigger do Popover e nos itens da lista, trocar:
+```
+<span className="text-base leading-none">{selectedCountry.flag}</span>
+```
+Por:
+```
+<img src={`https://flagcdn.com/w20/${selectedCountry.flagCode}.png`} alt={selectedCountry.name} className="w-5 h-auto rounded-sm" />
+```
+
+Nenhuma outra mudanca necessaria. Funcoes de formatacao e validacao permanecem iguais.
+
