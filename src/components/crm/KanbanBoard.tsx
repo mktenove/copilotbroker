@@ -11,9 +11,10 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Building2, Users, Search } from "lucide-react";
+import { RefreshCw, Building2, Users, Search, MapPin } from "lucide-react";
 import { toast } from "sonner";
-import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
+import { useCustomOrigins } from "@/hooks/use-custom-origins";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
@@ -49,6 +50,8 @@ const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered
 export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [selectedOrigin, setSelectedOrigin] = useState<string>("all");
+  const { data: customOrigins = [] } = useCustomOrigins();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
@@ -120,7 +123,12 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
       selectedProject === "all" ||
       lead.project_id === selectedProject;
 
-    return matchesSearch && matchesBroker && matchesProject;
+    const matchesOrigin =
+      selectedOrigin === "all" ||
+      (selectedOrigin === "sem_origem" && !lead.lead_origin) ||
+      lead.lead_origin === selectedOrigin;
+
+    return matchesSearch && matchesBroker && matchesProject && matchesOrigin;
   });
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -289,6 +297,28 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
             </SelectContent>
           </Select>
         )}
+
+        {/* Filtro de Origem */}
+        <Select value={selectedOrigin} onValueChange={setSelectedOrigin}>
+          <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
+            <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
+            <SelectValue placeholder="Origem" className="truncate" />
+          </SelectTrigger>
+          <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+            <SelectItem value="all">Todas origens</SelectItem>
+            <SelectItem value="sem_origem">Sem origem</SelectItem>
+            {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
+              <SelectItem key={origin.key} value={origin.key}>
+                {origin.label}
+              </SelectItem>
+            ))}
+            {customOrigins.map(origin => (
+              <SelectItem key={origin} value={origin}>
+                {origin}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
         {/* Filtro de Corretor */}
         {isAdmin && brokers.length > 0 && (
