@@ -263,7 +263,8 @@ app.post("/process", async (c) => {
       }
 
       // DEDUPLICATION: Check if already sent to this lead in last 24h
-      if (queueMsg.lead_id) {
+      // Skip dedup for campaign sequences (step_number present) - allow multiple steps
+      if (queueMsg.lead_id && !(queueMsg as Record<string, unknown>).step_number) {
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
         const { data: recentMessage } = await supabase
           .from("whatsapp_message_queue")
@@ -272,6 +273,7 @@ app.post("/process", async (c) => {
           .eq("status", "sent")
           .gte("sent_at", oneDayAgo)
           .neq("id", queueMsg.id)
+          .is("step_number", null) // Only dedup non-sequence messages
           .maybeSingle();
 
         if (recentMessage) {

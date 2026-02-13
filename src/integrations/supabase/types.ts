@@ -320,6 +320,51 @@ export type Database = {
           },
         ]
       }
+      campaign_steps: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          delay_minutes: number
+          id: string
+          message_content: string
+          step_order: number
+          template_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          message_content: string
+          step_order?: number
+          template_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          message_content?: string
+          step_order?: number
+          template_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "campaign_steps_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "campaign_steps_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_whatsapp_config: {
         Row: {
           created_at: string
@@ -1119,6 +1164,7 @@ export type Database = {
           scheduled_at: string
           sent_at: string | null
           status: string | null
+          step_number: number | null
           uazapi_message_id: string | null
           updated_at: string | null
         }
@@ -1137,6 +1183,7 @@ export type Database = {
           scheduled_at: string
           sent_at?: string | null
           status?: string | null
+          step_number?: number | null
           uazapi_message_id?: string | null
           updated_at?: string | null
         }
@@ -1155,6 +1202,7 @@ export type Database = {
           scheduled_at?: string
           sent_at?: string | null
           status?: string | null
+          step_number?: number | null
           uazapi_message_id?: string | null
           updated_at?: string | null
         }

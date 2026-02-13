@@ -8,7 +8,8 @@ import {
   BarChart3, 
   CheckCircle,
   Clock,
-  AlertTriangle
+  AlertTriangle,
+  ListOrdered
 } from "lucide-react";
 import { WhatsAppCampaign, CampaignStatus } from "@/types/whatsapp";
 import { cn } from "@/lib/utils";
