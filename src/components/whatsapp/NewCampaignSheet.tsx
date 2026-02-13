@@ -136,12 +136,13 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent className="w-full sm:max-w-lg bg-[#0f0f11] border-[#2a2a2e] overflow-y-auto">
+      <SheetContent className="w-full sm:max-w-lg bg-[#0f0f11] border-[#2a2a2e] flex flex-col overflow-hidden">
         <SheetHeader>
           <SheetTitle className="text-white">Nova Campanha</SheetTitle>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto mt-6 space-y-6 pr-1 -mr-1">
           {/* Campaign Name */}
           <div className="space-y-2">
             <Label className="text-slate-300">Nome da campanha</Label>
@@ -278,9 +279,11 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
               </div>
             </div>
           )}
+        </div>
 
-          {/* Actions */}
-          <div className="flex gap-3 pt-4">
+        {/* Sticky Footer */}
+        <div className="sticky bottom-0 pt-4 pb-6 mt-auto bg-gradient-to-t from-[#0f0f11] from-70% to-transparent -mx-6 px-6">
+          <div className="flex gap-3">
             <Button
               variant="outline"
               onClick={() => onOpenChange(false)}
