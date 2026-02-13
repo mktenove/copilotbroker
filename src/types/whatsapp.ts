@@ -62,6 +62,7 @@ export interface WhatsAppCampaign {
   // Joined fields
   template?: WhatsAppMessageTemplate;
   project?: { id: string; name: string };
+  broker?: { id: string; name: string };
 }
 
 export interface WhatsAppMessageQueue {
