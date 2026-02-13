@@ -176,6 +176,24 @@ export const getRandomInterval = (): number => {
   return (base + jitter) * 1000; // Convert to ms
 };
 
+// Campaign Step types
+export interface CampaignStep {
+  id: string;
+  campaign_id: string;
+  step_order: number;
+  message_content: string;
+  delay_minutes: number;
+  template_id: string | null;
+  created_at: string;
+}
+
+export interface CampaignStepInput {
+  messageContent: string;
+  delayMinutes: number;
+  templateId?: string;
+  useTemplate?: boolean;
+}
+
 // Template variable replacements
 export interface TemplateVariables {
   nome?: string;

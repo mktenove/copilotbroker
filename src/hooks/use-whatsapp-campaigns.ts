@@ -12,14 +12,18 @@ import {
   replaceTemplateVariables,
   getRandomInterval
 } from "@/types/whatsapp";
+import type { CampaignStepInput } from "@/types/whatsapp";
 import type { CRMLead, LeadStatus } from "@/types/crm";
 
 interface CreateCampaignData {
   name: string;
   targetStatus: LeadStatus[];
   projectId?: string;
+  // Legacy single-message fields (backward compat)
   templateId?: string;
   customMessage?: string;
+  // New multi-step
+  steps?: Array<{ messageContent: string; delayMinutes: number; templateId?: string }>;
 }
 
 interface CreateTemplateData {
@@ -136,6 +140,23 @@ export function useWhatsAppCampaigns() {
       
       setIsCreating(true);
       
+      // Build steps array (backward compat: if no steps, use single message)
+      const steps = data.steps && data.steps.length > 0
+        ? data.steps
+        : [{
+            messageContent: data.customMessage || 
+              (data.templateId ? (templates.find(t => t.id === data.templateId)?.content || "") : ""),
+            delayMinutes: 0,
+            templateId: data.templateId,
+          }];
+
+      // Validate steps have content
+      for (const step of steps) {
+        if (!step.messageContent.trim()) {
+          throw new Error("Todas as etapas devem ter uma mensagem");
+        }
+      }
+      
       // Fetch leads for the campaign
       const leads = await fetchLeadsByStatus(data.targetStatus, data.projectId);
       
@@ -160,64 +181,101 @@ export function useWhatsAppCampaigns() {
         throw new Error("Nenhum lead válido após filtrar opt-outs e telefones inválidos");
       }
       
-      // Get message content
-      let messageContent = data.customMessage || "";
-      if (data.templateId) {
-        const template = templates.find(t => t.id === data.templateId);
-        if (template) messageContent = template.content;
-      }
-      
-      if (!messageContent.trim()) {
-        throw new Error("Mensagem não pode estar vazia");
-      }
-      
       // Create campaign
+      const totalMessages = validLeads.length * steps.length;
       const { data: campaign, error: campaignError } = await supabase
         .from("whatsapp_campaigns")
         .insert({
           broker_id: broker.id,
           name: data.name,
-          template_id: data.templateId || null,
-          custom_message: data.customMessage || null,
+          template_id: steps[0].templateId || null,
+          custom_message: steps.length === 1 ? steps[0].messageContent : null,
           target_status: data.targetStatus,
           project_id: data.projectId || null,
           status: "running" as CampaignStatus,
-          total_leads: validLeads.length,
+          total_leads: totalMessages,
         })
         .select()
         .single();
       
       if (campaignError) throw campaignError;
+
+      // Insert campaign steps
+      const stepsToInsert = steps.map((step, index) => ({
+        campaign_id: campaign.id,
+        step_order: index + 1,
+        message_content: step.messageContent,
+        delay_minutes: index === 0 ? 0 : step.delayMinutes,
+        template_id: step.templateId || null,
+      }));
+
+      const { error: stepsError } = await supabase
+        .from("campaign_steps")
+        .insert(stepsToInsert);
+
+      if (stepsError) {
+        console.error("Error inserting steps:", stepsError);
+        // Don't fail the whole campaign for this
+      }
       
-      // Schedule messages with random intervals
-      let scheduledTime = new Date();
-      const queueItems = validLeads.map((lead) => {
-        const interval = getRandomInterval();
-        scheduledTime = new Date(scheduledTime.getTime() + interval);
+      // Schedule all messages for all steps
+      const queueItems: Array<{
+        broker_id: string;
+        campaign_id: string;
+        lead_id: string;
+        phone: string;
+        message: string;
+        status: string;
+        scheduled_at: string;
+        step_number: number;
+      }> = [];
+      
+      for (const lead of validLeads) {
+        let previousScheduledTime = new Date();
+        // Add initial random interval for step 1
+        previousScheduledTime = new Date(previousScheduledTime.getTime() + getRandomInterval());
+
+        for (let stepIndex = 0; stepIndex < steps.length; stepIndex++) {
+          const step = steps[stepIndex];
+          
+          // For steps after the first, add the delay
+          if (stepIndex > 0) {
+            previousScheduledTime = new Date(
+              previousScheduledTime.getTime() + 
+              step.delayMinutes * 60 * 1000 + 
+              Math.floor(Math.random() * 60) * 1000 // small jitter
+            );
+          }
+
+          const personalizedMessage = replaceTemplateVariables(step.messageContent, {
+            nome: lead.name.split(" ")[0],
+            empreendimento: lead.project?.name || "",
+            corretor_nome: broker.name.split(" ")[0],
+          });
+          
+          queueItems.push({
+            broker_id: broker.id,
+            campaign_id: campaign.id,
+            lead_id: lead.id,
+            phone: formatPhoneE164(lead.whatsapp),
+            message: personalizedMessage,
+            status: "scheduled",
+            scheduled_at: previousScheduledTime.toISOString(),
+            step_number: stepIndex + 1,
+          });
+        }
+      }
+      
+      // Insert queue items in batches of 500
+      const BATCH_SIZE = 500;
+      for (let i = 0; i < queueItems.length; i += BATCH_SIZE) {
+        const batch = queueItems.slice(i, i + BATCH_SIZE);
+        const { error: queueError } = await supabase
+          .from("whatsapp_message_queue")
+          .insert(batch);
         
-        const personalizedMessage = replaceTemplateVariables(messageContent, {
-          nome: lead.name.split(" ")[0],
-          empreendimento: lead.project?.name || "",
-          corretor_nome: broker.name.split(" ")[0],
-        });
-        
-        return {
-          broker_id: broker.id,
-          campaign_id: campaign.id,
-          lead_id: lead.id,
-          phone: formatPhoneE164(lead.whatsapp),
-          message: personalizedMessage,
-          status: "scheduled",
-          scheduled_at: scheduledTime.toISOString(),
-        };
-      });
-      
-      // Insert queue items
-      const { error: queueError } = await supabase
-        .from("whatsapp_message_queue")
-        .insert(queueItems);
-      
-      if (queueError) throw queueError;
+        if (queueError) throw queueError;
+      }
       
       return campaign;
     },
