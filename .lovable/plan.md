@@ -1,41 +1,37 @@
 
 
-## Substituir emojis de bandeira por imagens reais
+## Corrigir acessibilidade do botao "Iniciar Campanha" em telas menores
 
 ### Problema
-Os emojis de bandeira (como 🇧🇷) nao renderizam corretamente em muitos navegadores e sistemas operacionais, especialmente Windows. Em vez da bandeira, aparece apenas o texto "BR". Por isso o usuario ve "BR +55" sem nenhuma bandeira visual.
+O Sheet de criacao de campanha tem muito conteudo vertical (nome, status, empreendimento, contagem de leads, mensagem, preview, botoes). Em telas com resolucao menor, o conteudo ultrapassa a altura visivel e, embora o Sheet tenha `overflow-y-auto`, os botoes de acao ficam escondidos no final do scroll, dificultando ou impossibilitando o clique.
 
 ### Solucao
-Substituir os emojis por imagens de bandeiras reais usando o CDN publico `flagcdn.com`, que fornece imagens de bandeiras de todos os paises em formato PNG otimizado.
-
-### Como vai ficar
-O botao do seletor mostrara uma pequena imagem da bandeira (20x15px) ao lado do codigo do pais, garantindo que funcione em qualquer navegador e sistema operacional.
+Fixar os botoes de acao ("Cancelar" e "Iniciar Campanha") na parte inferior do Sheet, criando um rodape sticky que fica sempre visivel independente do scroll do conteudo.
 
 ### Detalhes tecnicos
 
-**Arquivo: `src/components/ui/whatsapp-input.tsx`**
+**Arquivo: `src/components/whatsapp/NewCampaignSheet.tsx`**
 
-1. Alterar a constante `COUNTRIES` para trocar o campo `flag` (emoji) por `flagCode` (codigo ISO de 2 letras minusculas usado pelo CDN):
-   - Brasil: `br`, EUA: `us`, Portugal: `pt`, Argentina: `ar`, etc.
+1. Reestruturar o layout interno do SheetContent para separar o conteudo rolavel dos botoes fixos:
+   - Mover o `overflow-y-auto` do SheetContent para uma div interna que envolve apenas o conteudo do formulario
+   - O SheetContent passa a usar `flex flex-col` para organizar header, conteudo rolavel e footer fixo
+   - Os botoes de acao ficam em uma div separada com `sticky bottom-0` e um fundo solido para nao sobrepor conteudo de forma transparente
 
-2. Substituir os `<span>` que exibem o emoji por tags `<img>` apontando para `https://flagcdn.com/w20/{flagCode}.png`
-
-3. Aplicar estilo na imagem: `w-5 h-auto rounded-sm` para manter proporcao e visual limpo
-
-4. Atualizar tanto o botao do seletor (trigger) quanto os itens da lista do popover
-
-**Mudancas especificas:**
-
-Constante COUNTRIES - trocar `flag: "🇧🇷"` por `flagCode: "br"`, e assim para todos os paises.
-
-No trigger do Popover e nos itens da lista, trocar:
-```
-<span className="text-base leading-none">{selectedCountry.flag}</span>
-```
-Por:
-```
-<img src={`https://flagcdn.com/w20/${selectedCountry.flagCode}.png`} alt={selectedCountry.name} className="w-5 h-auto rounded-sm" />
+2. Estrutura resultante:
+```text
+SheetContent (flex flex-col, sem overflow)
+  |-- SheetHeader (fixo no topo)
+  |-- div.flex-1.overflow-y-auto (conteudo rolavel)
+  |     |-- Nome da campanha
+  |     |-- Selecao de status
+  |     |-- Filtro de empreendimento
+  |     |-- Contagem de leads
+  |     |-- Mensagem / Template
+  |     |-- Preview
+  |-- div.sticky.bottom-0 (botoes sempre visiveis)
+        |-- Cancelar | Iniciar Campanha
 ```
 
-Nenhuma outra mudanca necessaria. Funcoes de formatacao e validacao permanecem iguais.
+3. O footer tera um gradiente sutil no topo (`bg-gradient-to-t from-[#0f0f11]`) para indicar visualmente que ha conteudo rolavel acima, e padding inferior seguro (`pb-safe` ou `pb-6`) para dispositivos com barra de navegacao.
 
+Nenhuma outra mudanca necessaria. Apenas reorganizacao do layout CSS dentro do mesmo componente.
