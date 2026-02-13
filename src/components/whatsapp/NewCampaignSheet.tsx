@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import { Loader2, Send, Clock, Users, Plus, Trash2, GripVertical, Search, ChevronDown, ChevronUp, Filter, CheckSquare, Square } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
 import { useProjects } from "@/hooks/use-projects";
@@ -31,6 +32,8 @@ const ACTIVE_STATUSES: LeadStatus[] = ["new", "info_sent", "awaiting_docs", "doc
 
 const DELAY_PRESETS = [
   { label: "Imediatamente", minutes: 0 },
+  { label: "1 minuto", minutes: 1 },
+  { label: "5 minutos", minutes: 5 },
   { label: "30 minutos", minutes: 30 },
   { label: "1 hora", minutes: 60 },
   { label: "2 horas", minutes: 120 },
@@ -195,9 +198,10 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
   const addStep = () => {
     setSteps(prev => [...prev, { 
       messageContent: "", 
-      delayMinutes: 1440,
+      delayMinutes: 5,
       useTemplate: true, 
-      templateId: "" 
+      templateId: "",
+      sendIfReplied: false,
     }]);
   };
 
@@ -260,6 +264,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
         : step.messageContent,
       delayMinutes: step.delayMinutes,
       templateId: step.useTemplate ? step.templateId : undefined,
+      sendIfReplied: step.sendIfReplied || false,
     }));
 
     try {
@@ -555,24 +560,37 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
                     </div>
 
                     {index > 0 && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs text-slate-400">Enviar após</Label>
-                        <Select 
-                          value={String(step.delayMinutes)} 
-                          onValueChange={(v) => updateStep(index, { delayMinutes: Number(v) })}
-                        >
-                          <SelectTrigger className="bg-[#0f0f11] border-[#2a2a2e] text-white h-9 text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="bg-[#1a1a1d] border-[#2a2a2e]">
-                            {DELAY_PRESETS.filter(p => p.minutes > 0).map((preset) => (
-                              <SelectItem key={preset.minutes} value={String(preset.minutes)}>
-                                {preset.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                      <>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs text-slate-400">Enviar após</Label>
+                          <Select 
+                            value={String(step.delayMinutes)} 
+                            onValueChange={(v) => updateStep(index, { delayMinutes: Number(v) })}
+                          >
+                            <SelectTrigger className="bg-[#0f0f11] border-[#2a2a2e] text-white h-9 text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                              {DELAY_PRESETS.filter(p => p.minutes > 0).map((preset) => (
+                                <SelectItem key={preset.minutes} value={String(preset.minutes)}>
+                                  {preset.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="flex items-center justify-between py-1.5">
+                          <Label className="text-xs text-slate-400 cursor-pointer" htmlFor={`send-if-replied-${index}`}>
+                            Enviar mesmo se o lead responder
+                          </Label>
+                          <Switch
+                            id={`send-if-replied-${index}`}
+                            checked={step.sendIfReplied || false}
+                            onCheckedChange={(checked: boolean) => updateStep(index, { sendIfReplied: checked })}
+                          />
+                        </div>
+                      </>
                     )}
 
                     <div className="flex gap-2">

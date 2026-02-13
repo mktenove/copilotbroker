@@ -192,6 +192,7 @@ export interface CampaignStepInput {
   delayMinutes: number;
   templateId?: string;
   useTemplate?: boolean;
+  sendIfReplied?: boolean;
 }
 
 // Template variable replacements
