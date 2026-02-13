@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Check, Plus } from "lucide-react";
+import { Check, Plus, Tag } from "lucide-react";
 import { LEAD_ORIGINS, getOriginType } from "@/types/crm";
+import { useCustomOrigins } from "@/hooks/use-custom-origins";
 import { cn } from "@/lib/utils";
 import {
   Popover,
@@ -38,6 +39,7 @@ export function OriginCombobox({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { data: customOrigins = [] } = useCustomOrigins();
 
   const handleSelect = async (value: string) => {
     if (!value.trim()) return;
@@ -54,7 +56,7 @@ export function OriginCombobox({
   const searchExists = LEAD_ORIGINS.some(
     o => o.label.toLowerCase() === search.toLowerCase() ||
          o.key.toLowerCase() === search.toLowerCase()
-  );
+  ) || customOrigins.some(o => o.toLowerCase() === search.toLowerCase());
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -101,6 +103,30 @@ export function OriginCombobox({
                 );
               })}
             </CommandGroup>
+
+            {customOrigins.length > 0 && (
+              <CommandGroup heading="Personalizadas">
+                {customOrigins.map((origin) => {
+                  const isSelected = currentOrigin === origin;
+                  return (
+                    <CommandItem
+                      key={origin}
+                      value={origin}
+                      onSelect={() => handleSelect(origin)}
+                      disabled={isLoading}
+                      className={cn(
+                        "flex items-center gap-2 px-2 py-1.5 text-sm cursor-pointer",
+                        "text-slate-300 hover:text-white"
+                      )}
+                    >
+                      <Tag className="w-3 h-3 text-slate-400" />
+                      <span className="flex-1">{origin}</span>
+                      {isSelected && <Check className="w-3 h-3 text-primary" />}
+                    </CommandItem>
+                  );
+                })}
+              </CommandGroup>
+            )}
 
             {search.trim() && !searchExists && (
               <CommandGroup>

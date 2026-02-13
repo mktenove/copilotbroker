@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { MapPin, Plus, Check } from "lucide-react";
+import { MapPin, Plus, Check, Tag } from "lucide-react";
 import { LEAD_ORIGINS, getOriginType } from "@/types/crm";
+import { useCustomOrigins } from "@/hooks/use-custom-origins";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,6 +84,7 @@ export function OriginQuickPicker({
   const [customOrigin, setCustomOrigin] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { data: customOrigins = [] } = useCustomOrigins();
 
   const handleSelect = async (origin: string) => {
     if (!origin.trim()) return;
@@ -167,6 +169,40 @@ export function OriginQuickPicker({
               </div>
             </div>
           ))}
+
+          {/* Origens personalizadas */}
+          {customOrigins.length > 0 && (
+            <div>
+              <p className="text-xs font-medium text-slate-500 mb-3 flex items-center gap-2">
+                <Tag className="w-3.5 h-3.5" />
+                <span>Personalizadas</span>
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {customOrigins.map((origin) => {
+                  const isSelected = currentOrigin === origin;
+                  return (
+                    <button
+                      key={origin}
+                      onClick={() => handleSelect(origin)}
+                      disabled={isLoading}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-lg border text-left",
+                        "transition-all duration-150 min-h-[52px]",
+                        "hover:scale-[1.01] active:scale-[0.99]",
+                        "disabled:opacity-50 disabled:cursor-not-allowed",
+                        "bg-slate-600/90 hover:bg-slate-500 text-white border-slate-500/50",
+                        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                      )}
+                    >
+                      <Tag className="w-4 h-4 shrink-0 text-slate-300" />
+                      <span className="font-medium text-sm flex-1 truncate">{origin}</span>
+                      {isSelected && <Check className="w-4 h-4 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Input customizado */}
           <div className="pt-4 border-t border-slate-700/50">
