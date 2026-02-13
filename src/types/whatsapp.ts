@@ -190,8 +190,6 @@ export interface CampaignStep {
 export interface CampaignStepInput {
   messageContent: string;
   delayMinutes: number;
-  templateId?: string;
-  useTemplate?: boolean;
   sendIfReplied?: boolean;
 }
 

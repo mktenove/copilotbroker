@@ -5,14 +5,12 @@ import { toast } from "sonner";
 import { useUserRole } from "@/hooks/use-user-role";
 import { 
   WhatsAppCampaign, 
-  WhatsAppMessageTemplate, 
   CampaignStatus,
   formatPhoneE164,
   isValidPhone,
   replaceTemplateVariables,
   getRandomInterval
 } from "@/types/whatsapp";
-import type { CampaignStepInput } from "@/types/whatsapp";
 import type { CRMLead, LeadStatus } from "@/types/crm";
 
 interface CreateCampaignData {
@@ -27,12 +25,6 @@ interface CreateCampaignData {
   customMessage?: string;
   // New multi-step
   steps?: Array<{ messageContent: string; delayMinutes: number; templateId?: string; sendIfReplied?: boolean }>;
-}
-
-interface CreateTemplateData {
-  name: string;
-  content: string;
-  category: string;
 }
 
 export function useWhatsAppCampaigns() {
@@ -79,29 +71,6 @@ export function useWhatsAppCampaigns() {
       const { data, error } = await query;
       if (error) throw error;
       return data as WhatsAppCampaign[];
-    },
-    enabled: role === "admin" || !!broker?.id,
-  });
-
-  // Fetch templates
-  const { data: templates = [], isLoading: isLoadingTemplates, refetch: refetchTemplates } = useQuery({
-    queryKey: ["whatsapp-templates", broker?.id, role],
-    queryFn: async () => {
-      if (role !== "admin" && !broker?.id) return [];
-      
-      let query = supabase
-        .from("whatsapp_message_templates")
-        .select("*")
-        .eq("is_active", true)
-        .order("created_at", { ascending: false });
-      
-      if (broker?.id) {
-        query = query.or(`broker_id.eq.${broker.id},broker_id.is.null`);
-      }
-      
-      const { data, error } = await query;
-      if (error) throw error;
-      return data as WhatsAppMessageTemplate[];
     },
     enabled: role === "admin" || !!broker?.id,
   });
@@ -168,10 +137,8 @@ export function useWhatsAppCampaigns() {
       const steps = data.steps && data.steps.length > 0
         ? data.steps
         : [{
-            messageContent: data.customMessage || 
-              (data.templateId ? (templates.find(t => t.id === data.templateId)?.content || "") : ""),
+            messageContent: data.customMessage || "",
             delayMinutes: 0,
-            templateId: data.templateId,
           }];
 
       // Validate steps have content
@@ -407,74 +374,15 @@ export function useWhatsAppCampaigns() {
     },
   });
 
-  // Create template
-  const createTemplateMutation = useMutation({
-    mutationFn: async (data: CreateTemplateData) => {
-      if (!broker?.id) throw new Error("Corretor não encontrado");
-      
-      const { error } = await supabase
-        .from("whatsapp_message_templates")
-        .insert({
-          broker_id: broker.id,
-          name: data.name,
-          content: data.content,
-          category: data.category,
-        });
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Template criado");
-      refetchTemplates();
-    },
-  });
-
-  // Update template
-  const updateTemplateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<CreateTemplateData> }) => {
-      const { error } = await supabase
-        .from("whatsapp_message_templates")
-        .update(data)
-        .eq("id", id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Template atualizado");
-      refetchTemplates();
-    },
-  });
-
-  // Delete template
-  const deleteTemplateMutation = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase
-        .from("whatsapp_message_templates")
-        .update({ is_active: false })
-        .eq("id", id);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast.success("Template removido");
-      refetchTemplates();
-    },
-  });
-
   return {
     broker,
     campaigns,
-    templates,
-    isLoading: isLoadingCampaigns || isLoadingTemplates,
+    isLoading: isLoadingCampaigns,
     isCreating,
     fetchLeadsByStatus,
     createCampaign: createCampaignMutation.mutateAsync,
     pauseCampaign: pauseCampaignMutation.mutateAsync,
     resumeCampaign: resumeCampaignMutation.mutateAsync,
     cancelCampaign: cancelCampaignMutation.mutateAsync,
-    createTemplate: createTemplateMutation.mutateAsync,
-    updateTemplate: (id: string, data: Partial<CreateTemplateData>) => 
-      updateTemplateMutation.mutateAsync({ id, data }),
-    deleteTemplate: deleteTemplateMutation.mutateAsync,
   };
 }

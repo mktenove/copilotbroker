@@ -1,15 +1,13 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Megaphone, Loader2, FileText } from "lucide-react";
+import { Plus, Megaphone, Loader2 } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
 import { NewCampaignSheet } from "./NewCampaignSheet";
 import { CampaignCard } from "./CampaignCard";
-import { TemplatesSheet } from "./TemplatesSheet";
 
 export function CampaignsTab() {
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
-  const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
   const { 
     campaigns, 
     isLoading, 
@@ -31,14 +29,6 @@ export function CampaignsTab() {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <h2 className="text-lg font-semibold text-white">Campanhas</h2>
         <div className="flex items-center gap-2 w-full sm:w-auto">
-          <Button 
-            variant="outline"
-            onClick={() => setIsTemplatesOpen(true)}
-            className="bg-[#1a1a1d] border-[#2a2a2e] text-white hover:bg-[#2a2a2e] flex-1 sm:flex-none"
-          >
-            <FileText className="w-4 h-4 mr-2" />
-            Templates
-          </Button>
           <Button 
             className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none"
             onClick={() => setIsNewCampaignOpen(true)}
@@ -135,11 +125,6 @@ export function CampaignsTab() {
       <NewCampaignSheet
         open={isNewCampaignOpen}
         onOpenChange={setIsNewCampaignOpen}
-      />
-
-      <TemplatesSheet
-        open={isTemplatesOpen}
-        onOpenChange={setIsTemplatesOpen}
       />
     </div>
   );
