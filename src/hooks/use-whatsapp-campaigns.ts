@@ -19,6 +19,9 @@ interface CreateCampaignData {
   name: string;
   targetStatus: LeadStatus[];
   projectId?: string;
+  origins?: string[];
+  brokerFilterId?: string;
+  excludedLeadIds?: string[];
   // Legacy single-message fields (backward compat)
   templateId?: string;
   customMessage?: string;
@@ -103,10 +106,12 @@ export function useWhatsAppCampaigns() {
     enabled: role === "admin" || !!broker?.id,
   });
 
-  // Fetch leads by status
+  // Fetch leads by status with optional filters
   const fetchLeadsByStatus = useCallback(async (
     targetStatus: LeadStatus[],
-    projectId?: string
+    projectId?: string,
+    origins?: string[],
+    brokerFilterId?: string
   ): Promise<CRMLead[]> => {
     if (role !== "admin" && !broker?.id) return [];
     
@@ -119,12 +124,31 @@ export function useWhatsAppCampaigns() {
       `)
       .in("status", targetStatus);
     
+    // Broker visibility: non-admins only see their own leads
     if (role !== "admin" && broker?.id) {
       query = query.eq("broker_id", broker.id);
+    }
+
+    // Admin filtering by specific broker
+    if (brokerFilterId && role === "admin") {
+      query = query.eq("broker_id", brokerFilterId);
     }
     
     if (projectId) {
       query = query.eq("project_id", projectId);
+    }
+
+    // Origin filter
+    if (origins && origins.length > 0) {
+      const hasNull = origins.includes("__sem_origem__");
+      const realOrigins = origins.filter(o => o !== "__sem_origem__");
+      if (hasNull && realOrigins.length > 0) {
+        query = query.or(`lead_origin.in.(${realOrigins.join(",")}),lead_origin.is.null`);
+      } else if (hasNull) {
+        query = query.is("lead_origin", null);
+      } else {
+        query = query.in("lead_origin", realOrigins);
+      }
     }
     
     const { data, error } = await query;
@@ -158,21 +182,26 @@ export function useWhatsAppCampaigns() {
       }
       
       // Fetch leads for the campaign
-      const leads = await fetchLeadsByStatus(data.targetStatus, data.projectId);
+      const leads = await fetchLeadsByStatus(data.targetStatus, data.projectId, data.origins, data.brokerFilterId);
       
-      if (leads.length === 0) {
+      // Filter out excluded leads
+      const includedLeads = data.excludedLeadIds && data.excludedLeadIds.length > 0
+        ? leads.filter(l => !data.excludedLeadIds!.includes(l.id))
+        : leads;
+
+      if (includedLeads.length === 0) {
         throw new Error("Nenhum lead encontrado com os filtros selecionados");
       }
       
       // Check for opt-outs
-      const phones = leads.map(l => formatPhoneE164(l.whatsapp));
+      const phones = includedLeads.map(l => formatPhoneE164(l.whatsapp));
       const { data: optouts } = await supabase
         .from("whatsapp_optouts")
         .select("phone")
         .in("phone", phones);
       
       const optoutPhones = new Set(optouts?.map(o => o.phone) || []);
-      const validLeads = leads.filter(l => {
+      const validLeads = includedLeads.filter(l => {
         const phone = formatPhoneE164(l.whatsapp);
         return isValidPhone(l.whatsapp) && !optoutPhones.has(phone);
       });
