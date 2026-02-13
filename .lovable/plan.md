@@ -1,33 +1,15 @@
 
-## Trocar Switch por RadioGroup no controle de resposta
+## Padrao "Mensagem Personalizada" ao criar campanhas
 
 ### O que muda
 
-Substituir o componente `Switch` pelo `RadioGroup` com duas opcoes explicitas, tornando a escolha mais clara para o corretor:
+Alterar o valor default de `useTemplate` de `true` para `false` em tres locais no arquivo `src/components/whatsapp/NewCampaignSheet.tsx`:
 
-- **(o) Enviar mesmo que o lead responda**
-- **(  ) Enviar somente se o lead nao responder** (selecionado por padrao)
-
-### Alteracao
-
-**Arquivo: `src/components/whatsapp/NewCampaignSheet.tsx`**
-
-1. Remover import do `Switch`, adicionar import de `RadioGroup, RadioGroupItem` de `@/components/ui/radio-group`
-
-2. Substituir o bloco do Switch (linhas 583-592) por um `RadioGroup` com duas opcoes:
-
-```text
-Enviar apos: [5 minutos v]
-
-( ) Enviar mesmo que o lead responda
-(o) Enviar somente se o lead nao responder
-```
-
-3. O valor do RadioGroup sera `"true"` ou `"false"` (string), mapeado para o campo `sendIfReplied` (boolean) via `onValueChange`
-
-4. Valor padrao: `"false"` (nao enviar se responder)
+1. **Estado inicial dos steps** (linha 79): `useTemplate: true` -> `useTemplate: false`
+2. **Reset ao abrir o sheet** (linha 116): `useTemplate: true` -> `useTemplate: false`
+3. **Ao adicionar nova etapa** (linha 202): `useTemplate: true` -> `useTemplate: false`
 
 ### O que NAO muda
-- O campo `sendIfReplied` no state e no submit continua sendo boolean
-- Nenhuma alteracao no hook, tipos ou banco de dados
-- A etapa 1 continua sem mostrar essa opcao
+- Nenhuma alteracao em tipos, hooks ou banco de dados
+- O corretor ainda pode trocar para template clicando no botao
+- Comportamento de envio permanece igual
