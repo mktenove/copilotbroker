@@ -1,55 +1,41 @@
 
+## Corrigir Scroll em Listas de Popovers e Dropdowns
 
-## Melhorias nas Etapas de Campanha: Delays Rapidos + Controle de Resposta
+### Problema
+Varios popovers e listas no projeto nao permitem rolar quando o conteudo excede a area visivel. Isso acontece por dois motivos:
 
-### O que muda
+1. **ScrollArea com `max-h` em vez de `h` fixo**: O componente `ScrollArea` do Radix precisa de uma altura fixa (`h-[Xpx]`) no container para ativar a barra de rolagem. Usar `max-h` sozinho nao funciona com o Radix ScrollArea.
+2. **Uso de `overflow-y-auto` nativo sem restricao de altura efetiva**: Alguns popovers usam `overflow-y-auto` diretamente no `PopoverContent`, mas o popover nao tem restricao de altura que force o overflow.
 
-**1. Novos presets de delay rapido**
-Adicionar opcoes de "1 minuto" e "5 minutos" no seletor de delay entre etapas, alem das opcoes existentes (30 min, 1h, etc.).
+### Locais afetados e correcoes
 
-**2. Seletor "Enviar mesmo se o lead responder"**
-Cada etapa adicional (etapa 2+) ganha um toggle (Switch) com duas opcoes:
-- **Desligado (padrao)**: "Nao enviar se o lead responder" -- a etapa e cancelada se o lead ja respondeu
-- **Ligado**: "Enviar mesmo que o lead responda" -- a etapa e enviada independente de resposta
+**1. KanbanBoard.tsx -- Filtro de Origem (linha 322)**
+- Atual: `<div className="flex flex-col gap-1 max-h-64 overflow-y-auto">`
+- Corrigir: Envolver com `<ScrollArea className="h-[256px]">` e remover `max-h-64 overflow-y-auto` do div interno
+
+**2. NewCampaignSheet.tsx -- Filtro de Origem (linha 376)**
+- Atual: `<ScrollArea className="max-h-48">`
+- Corrigir: Trocar para `<ScrollArea className="h-[192px]">` (equivalente a max-h-48 = 12rem = 192px)
+
+**3. LeadsAdvancedFilters.tsx -- Filtro de Origem (linha 226)**
+- Atual: `<PopoverContent className="w-[240px] p-2 max-h-[300px] overflow-y-auto">`
+- Corrigir: Remover `max-h-[300px] overflow-y-auto` do PopoverContent, envolver o conteudo interno com `<ScrollArea className="h-[280px]">`
+
+**4. LeadsAdvancedFilters.tsx -- Filtro de Status (linha 159)**
+- Atual: `<PopoverContent className="w-[220px] p-2">` sem scroll
+- Nao critico (apenas 5 opcoes), mas adicionar scroll preventivo: `<ScrollArea className="max-h-[250px]">` por consistencia
+
+### Resumo das alteracoes
+
+| Arquivo | Local | Problema | Correcao |
+|---------|-------|----------|----------|
+| KanbanBoard.tsx | Filtro origem (L322) | `max-h + overflow-y-auto` nativo | ScrollArea com `h-[256px]` |
+| NewCampaignSheet.tsx | Filtro origem (L376) | ScrollArea com `max-h-48` | ScrollArea com `h-[192px]` |
+| LeadsAdvancedFilters.tsx | Filtro origem (L226) | `overflow-y-auto` no PopoverContent | ScrollArea com `h-[280px]` dentro |
+| LeadsAdvancedFilters.tsx | Filtro status (L159) | Sem scroll (5 itens ok) | Sem alteracao |
 
 ### Detalhes tecnicos
 
-**Arquivo: `src/components/whatsapp/NewCampaignSheet.tsx`**
-
-1. Adicionar `{ label: "1 minuto", minutes: 1 }` e `{ label: "5 minutos", minutes: 5 }` ao array `DELAY_PRESETS` (antes do "30 minutos")
-2. Alterar o default de `delayMinutes` no `addStep` de `1440` para `5` (mais intuitivo para mensagens rapidas)
-3. Adicionar um Switch abaixo do seletor de delay nas etapas 2+ com label "Enviar mesmo se o lead responder"
-4. Importar o componente `Switch`
-5. Passar o campo `sendIfReplied` para os steps no submit
-
-**Arquivo: `src/types/whatsapp.ts`**
-
-6. Adicionar campo `sendIfReplied?: boolean` ao type `CampaignStepInput`
-
-**Arquivo: `src/hooks/use-whatsapp-campaigns.ts`**
-
-7. Incluir `send_if_replied` no objeto `stepsToInsert` ao inserir na tabela `campaign_steps`
-8. Incluir `send_if_replied` no queue item para que o sender possa checar antes de enviar
-
-### Layout visual da etapa
-
-```text
-+--------------------------------------+
-| Etapa 2                         [X]  |
-+--------------------------------------+
-| Enviar apos: [5 minutos         v]   |
-|                                      |
-| [ ] Enviar mesmo se o lead responder |
-|                                      |
-| [Template] [Personalizada]           |
-| [Selecione um template         v]    |
-|                                      |
-| Previa: ...                          |
-+--------------------------------------+
-```
-
-### O que NAO muda
-- Etapa 1 continua sem delay e sem o toggle (sempre envia)
-- Logica de opt-out, warmup e intervalos aleatorios permanece igual
-- Lista de leads e filtros nao sao afetados
-
+- Importar `ScrollArea` nos arquivos que ainda nao o importam (KanbanBoard.tsx, LeadsAdvancedFilters.tsx)
+- O componente `ScrollArea` do Radix funciona renderizando um viewport interno; ele precisa de uma altura definida (nao max-height) para calcular se o conteudo excede a area e mostrar o thumb da scrollbar
+- Os `SelectContent` do Radix ja tem scroll nativo embutido, entao nao precisam de correcao
