@@ -76,7 +76,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
 
   // Steps state
   const [steps, setSteps] = useState<CampaignStepInput[]>([
-    { messageContent: "", delayMinutes: 0, useTemplate: true, templateId: "" }
+    { messageContent: "", delayMinutes: 0, useTemplate: false, templateId: "" }
   ]);
 
   // Fetch brokers for admin filter
@@ -113,7 +113,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
       setFetchedLeads([]);
       setExcludedLeadIds(new Set());
       setFiltersOpen(true);
-      setSteps([{ messageContent: "", delayMinutes: 0, useTemplate: true, templateId: "" }]);
+      setSteps([{ messageContent: "", delayMinutes: 0, useTemplate: false, templateId: "" }]);
     }
   }, [open, preselectedStatus]);
 
@@ -199,7 +199,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
     setSteps(prev => [...prev, { 
       messageContent: "", 
       delayMinutes: 5,
-      useTemplate: true, 
+      useTemplate: false, 
       templateId: "",
       sendIfReplied: false,
     }]);
