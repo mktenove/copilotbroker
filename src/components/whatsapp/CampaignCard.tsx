@@ -37,7 +37,14 @@ const STATUS_CONFIG: Record<CampaignStatus, {
 };
 
 export function CampaignCard({ campaign, onPause, onResume, onCancel }: CampaignCardProps) {
-  const status = campaign.status as CampaignStatus;
+  const rawStatus = campaign.status as CampaignStatus;
+  
+  // Derive visual status: if running but all sent, show as completed
+  const status: CampaignStatus = 
+    rawStatus === "running" && campaign.sent_count >= campaign.total_leads && campaign.total_leads > 0
+      ? "completed"
+      : rawStatus;
+  
   const config = STATUS_CONFIG[status];
   const StatusIcon = config.icon;
   
@@ -45,10 +52,10 @@ export function CampaignCard({ campaign, onPause, onResume, onCancel }: Campaign
     ? Math.round((campaign.sent_count / campaign.total_leads) * 100)
     : 0;
   
-  const isActive = status === "running" || status === "paused";
-  const canPause = status === "running";
-  const canResume = status === "paused";
-  const canCancel = status === "running" || status === "paused" || status === "scheduled";
+  const showProgress = status === "running" || status === "paused" || status === "completed";
+  const canPause = rawStatus === "running" && campaign.sent_count < campaign.total_leads;
+  const canResume = rawStatus === "paused";
+  const canCancel = rawStatus === "running" || rawStatus === "paused" || rawStatus === "scheduled";
 
   return (
     <Card className="bg-[#1a1a1d] border-[#2a2a2e] overflow-hidden">
@@ -63,9 +70,11 @@ export function CampaignCard({ campaign, onPause, onResume, onCancel }: Campaign
               </span>
             </div>
             <h3 className="text-white font-medium mt-1">{campaign.name}</h3>
-            {campaign.project && (
-              <p className="text-xs text-slate-500 mt-0.5">
-                {campaign.project.name}
+            {(campaign.project || campaign.broker) && (
+              <p className="text-xs text-slate-500 mt-0.5 truncate">
+                {campaign.project?.name}
+                {campaign.project && campaign.broker && " · "}
+                {campaign.broker && `por ${campaign.broker.name}`}
               </p>
             )}
           </div>
@@ -106,7 +115,7 @@ export function CampaignCard({ campaign, onPause, onResume, onCancel }: Campaign
         </div>
 
         {/* Progress */}
-        {isActive && (
+        {showProgress && (
           <div className="mb-3">
             <div className="flex justify-between text-xs text-slate-400 mb-1">
               <span>{campaign.sent_count} de {campaign.total_leads} enviados</span>

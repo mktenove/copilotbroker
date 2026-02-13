@@ -60,7 +60,8 @@ export function useWhatsAppCampaigns() {
         .select(`
           *,
           template:whatsapp_message_templates(id, name, content),
-          project:projects(id, name)
+          project:projects(id, name),
+          broker:brokers!whatsapp_campaigns_broker_id_fkey(id, name)
         `)
         .order("created_at", { ascending: false });
       
