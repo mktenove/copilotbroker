@@ -373,7 +373,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-56 p-2 bg-[#1e1e22] border-[#2a2a2e]" align="start">
-                      <ScrollArea className="max-h-48">
+                      <ScrollArea className="h-[192px]">
                         <div className="space-y-0.5">
                           {allOriginOptions.map((origin) => (
                             <label

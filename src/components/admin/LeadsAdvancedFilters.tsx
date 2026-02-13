@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -223,21 +224,23 @@ const LeadsAdvancedFilters = ({
                   <ChevronDown className="w-4 h-4 opacity-50 shrink-0" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[240px] p-2 max-h-[300px] overflow-y-auto" align="start">
-                <div className="space-y-1">
-                  {LEAD_ORIGINS.map((origin) => (
-                    <label
-                      key={origin.key}
-                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer"
-                    >
-                      <Checkbox
-                        checked={filters.originFilter.includes(origin.key)}
-                        onCheckedChange={() => toggleOrigin(origin.key)}
-                      />
-                      <span className="text-sm">{origin.label}</span>
-                    </label>
-                  ))}
-                </div>
+              <PopoverContent className="w-[240px] p-2" align="start">
+                <ScrollArea className="h-[280px]">
+                  <div className="space-y-1">
+                    {LEAD_ORIGINS.map((origin) => (
+                      <label
+                        key={origin.key}
+                        className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={filters.originFilter.includes(origin.key)}
+                          onCheckedChange={() => toggleOrigin(origin.key)}
+                        />
+                        <span className="text-sm">{origin.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
               </PopoverContent>
             </Popover>
           </div>
