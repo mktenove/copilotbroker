@@ -19,7 +19,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel, LeadStatus } from "@/types/crm";
 import { replaceTemplateVariables } from "@/types/whatsapp";
-import type { CampaignStepInput } from "@/types/whatsapp";
 import type { CRMLead } from "@/types/crm";
 
 interface NewCampaignSheetProps {
@@ -54,7 +53,7 @@ function formatDelay(minutes: number): string {
 }
 
 export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewCampaignSheetProps) {
-  const { broker, templates, isCreating, createCampaign, fetchLeadsByStatus } = useWhatsAppCampaigns();
+  const { broker, isCreating, createCampaign, fetchLeadsByStatus } = useWhatsAppCampaigns();
   const { projects } = useProjects();
   const { data: customOrigins = [] } = useCustomOrigins();
   const { role } = useUserRole();
@@ -75,8 +74,8 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
   const [excludedLeadIds, setExcludedLeadIds] = useState<Set<string>>(new Set());
 
   // Steps state
-  const [steps, setSteps] = useState<CampaignStepInput[]>([
-    { messageContent: "", delayMinutes: 0, useTemplate: false, templateId: "" }
+  const [steps, setSteps] = useState<Array<{ messageContent: string; delayMinutes: number; sendIfReplied?: boolean }>>([
+    { messageContent: "", delayMinutes: 0 }
   ]);
 
   // Fetch brokers for admin filter
@@ -113,7 +112,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
       setFetchedLeads([]);
       setExcludedLeadIds(new Set());
       setFiltersOpen(true);
-      setSteps([{ messageContent: "", delayMinutes: 0, useTemplate: false, templateId: "" }]);
+      setSteps([{ messageContent: "", delayMinutes: 0 }]);
     }
   }, [open, preselectedStatus]);
 
@@ -199,8 +198,6 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
     setSteps(prev => [...prev, { 
       messageContent: "", 
       delayMinutes: 5,
-      useTemplate: false, 
-      templateId: "",
       sendIfReplied: false,
     }]);
   };
@@ -209,19 +206,15 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
     setSteps(prev => prev.filter((_, i) => i !== index));
   };
 
-  const updateStep = (index: number, updates: Partial<CampaignStepInput>) => {
+  const updateStep = (index: number, updates: Partial<{ messageContent: string; delayMinutes: number; sendIfReplied: boolean }>) => {
     setSteps(prev => prev.map((step, i) => i === index ? { ...step, ...updates } : step));
   };
 
-  const getStepMessage = (step: CampaignStepInput): string => {
-    if (step.useTemplate && step.templateId) {
-      const t = templates.find(t => t.id === step.templateId);
-      return t?.content || "";
-    }
+  const getStepMessage = (step: { messageContent: string }): string => {
     return step.messageContent;
   };
 
-  const getPreview = (step: CampaignStepInput): string => {
+  const getPreview = (step: { messageContent: string }): string => {
     const content = getStepMessage(step);
     if (!content) return "";
     return replaceTemplateVariables(content, {
@@ -244,10 +237,7 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
       ? `~${estimatedHours}h ${remainingMinutes}min`
       : `~${totalMinutes}min`;
 
-  const stepsValid = steps.every(step => {
-    if (step.useTemplate) return !!step.templateId;
-    return step.messageContent.trim().length > 0;
-  });
+  const stepsValid = steps.every(step => step.messageContent.trim().length > 0);
 
   const isValid = name.trim() && 
     selectedStatuses.length > 0 && 
@@ -259,11 +249,8 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
     if (!isValid) return;
 
     const campaignSteps = steps.map(step => ({
-      messageContent: step.useTemplate 
-        ? (templates.find(t => t.id === step.templateId)?.content || "")
-        : step.messageContent,
+      messageContent: step.messageContent,
       delayMinutes: step.delayMinutes,
-      templateId: step.useTemplate ? step.templateId : undefined,
       sendIfReplied: step.sendIfReplied || false,
     }));
 
@@ -601,56 +588,17 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
                       </>
                     )}
 
-                    <div className="flex gap-2">
-                      <Button
-                        type="button"
-                        variant={step.useTemplate ? "default" : "outline"}
-                        size="sm"
-                        className={`h-7 text-xs ${!step.useTemplate ? "border-[#2a2a2e] text-slate-300" : ""}`}
-                        onClick={() => updateStep(index, { useTemplate: true })}
-                      >
-                        Template
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={!step.useTemplate ? "default" : "outline"}
-                        size="sm"
-                        className={`h-7 text-xs ${step.useTemplate ? "border-[#2a2a2e] text-slate-300" : ""}`}
-                        onClick={() => updateStep(index, { useTemplate: false })}
-                      >
-                        Personalizada
-                      </Button>
+                    <div className="space-y-1.5">
+                      <Textarea
+                        value={step.messageContent}
+                        onChange={(e) => updateStep(index, { messageContent: e.target.value })}
+                        placeholder="Digite sua mensagem... Use {nome}, {empreendimento}, {corretor_nome}"
+                        className="bg-[#0f0f11] border-[#2a2a2e] text-white min-h-[80px] text-sm"
+                      />
+                      <p className="text-xs text-slate-600">
+                        Variáveis: {"{nome}"}, {"{empreendimento}"}, {"{corretor_nome}"}
+                      </p>
                     </div>
-
-                    {step.useTemplate ? (
-                      <Select 
-                        value={step.templateId || ""} 
-                        onValueChange={(v) => updateStep(index, { templateId: v })}
-                      >
-                        <SelectTrigger className="bg-[#0f0f11] border-[#2a2a2e] text-white h-9 text-sm">
-                          <SelectValue placeholder="Selecione um template" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-[#1a1a1d] border-[#2a2a2e]">
-                          {templates.map((template) => (
-                            <SelectItem key={template.id} value={template.id}>
-                              {template.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <div className="space-y-1.5">
-                        <Textarea
-                          value={step.messageContent}
-                          onChange={(e) => updateStep(index, { messageContent: e.target.value })}
-                          placeholder="Digite sua mensagem... Use {nome}, {empreendimento}, {corretor_nome}"
-                          className="bg-[#0f0f11] border-[#2a2a2e] text-white min-h-[80px] text-sm"
-                        />
-                        <p className="text-xs text-slate-600">
-                          Variáveis: {"{nome}"}, {"{empreendimento}"}, {"{corretor_nome}"}
-                        </p>
-                      </div>
-                    )}
 
                     {getPreview(step) && (
                       <div className="p-2.5 rounded bg-[#0f0f11] border border-[#2a2a2e]">
