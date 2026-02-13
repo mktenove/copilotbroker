@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Project {
   id: string;
@@ -319,7 +320,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-2 bg-[#1e1e22] border-[#2a2a2e]" align="start">
-            <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+            <ScrollArea className="h-[256px]">
+            <div className="flex flex-col gap-1">
               <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
                 <Checkbox
                   checked={selectedOrigins.includes("sem_origem")}
@@ -358,6 +360,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 </label>
               ))}
             </div>
+            </ScrollArea>
           </PopoverContent>
         </Popover>
 
