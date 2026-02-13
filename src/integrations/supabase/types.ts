@@ -327,6 +327,7 @@ export type Database = {
           delay_minutes: number
           id: string
           message_content: string
+          send_if_replied: boolean
           step_order: number
           template_id: string | null
         }
@@ -336,6 +337,7 @@ export type Database = {
           delay_minutes?: number
           id?: string
           message_content: string
+          send_if_replied?: boolean
           step_order?: number
           template_id?: string | null
         }
@@ -345,6 +347,7 @@ export type Database = {
           delay_minutes?: number
           id?: string
           message_content?: string
+          send_if_replied?: boolean
           step_order?: number
           template_id?: string | null
         }

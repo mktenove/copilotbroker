@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_steps ADD COLUMN send_if_replied boolean NOT NULL DEFAULT false;

@@ -26,7 +26,7 @@ interface CreateCampaignData {
   templateId?: string;
   customMessage?: string;
   // New multi-step
-  steps?: Array<{ messageContent: string; delayMinutes: number; templateId?: string }>;
+  steps?: Array<{ messageContent: string; delayMinutes: number; templateId?: string; sendIfReplied?: boolean }>;
 }
 
 interface CreateTemplateData {
@@ -236,6 +236,7 @@ export function useWhatsAppCampaigns() {
         message_content: step.messageContent,
         delay_minutes: index === 0 ? 0 : step.delayMinutes,
         template_id: step.templateId || null,
+        send_if_replied: index === 0 ? true : (step.sendIfReplied || false),
       }));
 
       const { error: stepsError } = await supabase
