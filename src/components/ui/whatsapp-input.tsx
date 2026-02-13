@@ -5,15 +5,15 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronDown } from "lucide-react";
 
 const COUNTRIES = [
-  { code: "55", flag: "🇧🇷", name: "Brasil", format: true, maxDigits: 13 },
-  { code: "1", flag: "🇺🇸", name: "Estados Unidos", format: false, maxDigits: 11 },
-  { code: "351", flag: "🇵🇹", name: "Portugal", format: false, maxDigits: 12 },
-  { code: "54", flag: "🇦🇷", name: "Argentina", format: false, maxDigits: 13 },
-  { code: "598", flag: "🇺🇾", name: "Uruguai", format: false, maxDigits: 12 },
-  { code: "595", flag: "🇵🇾", name: "Paraguai", format: false, maxDigits: 12 },
-  { code: "56", flag: "🇨🇱", name: "Chile", format: false, maxDigits: 12 },
-  { code: "57", flag: "🇨🇴", name: "Colômbia", format: false, maxDigits: 12 },
-  { code: "52", flag: "🇲🇽", name: "México", format: false, maxDigits: 12 },
+  { code: "55", flagCode: "br", name: "Brasil", format: true, maxDigits: 13 },
+  { code: "1", flagCode: "us", name: "Estados Unidos", format: false, maxDigits: 11 },
+  { code: "351", flagCode: "pt", name: "Portugal", format: false, maxDigits: 12 },
+  { code: "54", flagCode: "ar", name: "Argentina", format: false, maxDigits: 13 },
+  { code: "598", flagCode: "uy", name: "Uruguai", format: false, maxDigits: 12 },
+  { code: "595", flagCode: "py", name: "Paraguai", format: false, maxDigits: 12 },
+  { code: "56", flagCode: "cl", name: "Chile", format: false, maxDigits: 12 },
+  { code: "57", flagCode: "co", name: "Colômbia", format: false, maxDigits: 12 },
+  { code: "52", flagCode: "mx", name: "México", format: false, maxDigits: 12 },
 ] as const;
 
 type Country = (typeof COUNTRIES)[number];
@@ -142,7 +142,7 @@ const WhatsAppInput = forwardRef<HTMLInputElement, WhatsAppInputProps>(
                   className?.includes("bg-[#141417]") && "bg-[#1a1a1e] border-[#2a2a2e] hover:bg-[#222226]"
                 )}
               >
-                <span className="text-base leading-none">{selectedCountry.flag}</span>
+                <img src={`https://flagcdn.com/w20/${selectedCountry.flagCode}.png`} alt={selectedCountry.name} className="w-5 h-auto rounded-sm" />
                 <span className="text-xs text-muted-foreground">+{selectedCountry.code}</span>
                 <ChevronDown className="w-3 h-3 text-muted-foreground" />
               </button>
@@ -163,7 +163,7 @@ const WhatsAppInput = forwardRef<HTMLInputElement, WhatsAppInputProps>(
                       selectedCountry.code === country.code && "bg-accent text-accent-foreground"
                     )}
                   >
-                    <span className="text-base">{country.flag}</span>
+                    <img src={`https://flagcdn.com/w20/${country.flagCode}.png`} alt={country.name} className="w-5 h-auto rounded-sm" />
                     <span className="flex-1 text-left">{country.name}</span>
                     <span className="text-xs text-muted-foreground">+{country.code}</span>
                   </button>
