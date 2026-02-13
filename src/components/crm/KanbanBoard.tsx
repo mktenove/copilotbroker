@@ -303,7 +303,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         {/* Filtro de Origem */}
         <Popover>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1 md:gap-2 h-9 px-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
+            <button className="flex items-center gap-1 md:gap-2 h-9 px-2 text-sm text-slate-400 hover:text-slate-200 transition-colors rounded-lg hover:bg-[#2a2a2e]">
               <MapPin className="w-4 h-4 shrink-0" />
               <span className="truncate max-w-[100px] md:max-w-none">
                 {selectedOrigins.length === 0
@@ -318,9 +318,9 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
               )}
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2" align="start">
+          <PopoverContent className="w-56 p-2 bg-[#1e1e22] border-[#2a2a2e]" align="start">
             <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
                 <Checkbox
                   checked={selectedOrigins.includes("sem_origem")}
                   onCheckedChange={() => {
@@ -332,7 +332,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 Sem origem
               </label>
               {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
-                <label key={origin.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                <label key={origin.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
                   <Checkbox
                     checked={selectedOrigins.includes(origin.key)}
                     onCheckedChange={() => {
@@ -345,7 +345,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
                 </label>
               ))}
               {customOrigins.map(origin => (
-                <label key={origin} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                <label key={origin} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
                   <Checkbox
                     checked={selectedOrigins.includes(origin)}
                     onCheckedChange={() => {
