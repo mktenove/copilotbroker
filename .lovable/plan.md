@@ -1,25 +1,28 @@
 
 
-## Adicionar Filtro por Origem no Kanban
+## Filtro de Origem Multi-Select no Kanban
 
 ### O que muda
-Um novo seletor de filtro "Origem" sera adicionado na barra de ferramentas do Kanban, seguindo o mesmo padrao visual dos filtros de Empreendimento e Corretor ja existentes. O usuario podera filtrar os leads por qualquer origem (pre-definida ou personalizada).
+O filtro de origem atual permite selecionar apenas uma origem por vez. Sera transformado em um multi-select usando Popover + Checkboxes, permitindo filtrar por varias origens simultaneamente (ex: "Meta Ads" + "Google Ads" + "Indicacao").
+
+### Como vai funcionar
+- Clicar no filtro abre um popover com checkboxes para cada origem
+- O usuario pode marcar/desmarcar varias origens
+- O texto do botao mostra "Todas origens" quando nenhum filtro esta ativo, ou "2 origens" / "3 origens" quando ha selecao
+- Inclui opcao "Sem origem" para leads sem origem atribuida
+- Botao "Limpar" para resetar a selecao
 
 ### Detalhes tecnicos
 
 **Arquivo: `src/components/crm/KanbanBoard.tsx`**
 
-1. Importar o hook `useCustomOrigins` e as constantes `LEAD_ORIGINS` e `getOriginDisplayLabel` de `@/types/crm`
-2. Importar o icone `MapPin` (ou `Target`) do lucide-react
-3. Adicionar estado `selectedOrigin` (string, default `"all"`)
-4. Construir a lista de opcoes do filtro combinando:
-   - Origens pre-definidas de `LEAD_ORIGINS` (excluindo "outro")
-   - Origens customizadas vindas de `useCustomOrigins()`
-   - Origens dinamicas (do analytics/UTM) encontradas nos leads carregados mas que nao estao nas duas listas anteriores
-5. Adicionar um novo `Select` na toolbar, posicionado entre o filtro de Empreendimento e o filtro de Corretor, com icone e estilo identicos
-6. Atualizar a logica de `filteredLeads` para incluir a condicao `matchesOrigin`:
-   - `"all"` mostra tudo
-   - `"sem_origem"` mostra leads com `lead_origin` nulo
-   - Qualquer outro valor compara com `lead.lead_origin`
+1. Trocar o estado de `selectedOrigin: string` para `selectedOrigins: string[]` (array vazio = todas)
+2. Substituir o componente `Select` por `Popover` + lista de `Checkbox` items
+3. Atualizar a logica de `matchesOrigin`:
+   - Array vazio = mostra tudo (equivalente ao "all" anterior)
+   - Array com "sem_origem" = inclui leads sem origem
+   - Array com valores especificos = filtra por `lead.lead_origin` estar no array
+4. Importar `Popover`, `PopoverTrigger`, `PopoverContent` e `Checkbox`
+5. Funcao toggle para adicionar/remover origens do array
+6. Label do trigger mostra contagem quando ha selecao ativa
 
-Nenhuma alteracao no banco de dados. Apenas filtragem local dos leads ja carregados.
