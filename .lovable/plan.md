@@ -1,41 +1,25 @@
 
 
-## Persistir Origens Personalizadas no CRM
+## Adicionar Filtro por Origem no Kanban
 
-### Problema
-Quando o usuario cria uma origem personalizada (ex: "Carteira pessoal", "Flip"), ela e salva apenas no lead individual. Ao atribuir origem a outro lead, as origens personalizadas nao aparecem na lista - o usuario precisa digitar novamente.
-
-### Solucao
-Buscar todas as origens distintas ja utilizadas na tabela `leads` e exibi-las automaticamente nos seletores de origem (Combobox desktop e QuickPicker mobile), em uma secao separada chamada "Usadas anteriormente". Isso elimina a necessidade de uma nova tabela - as origens personalizadas ja estao salvas nos leads.
-
-### Como vai funcionar
-Ao abrir o seletor de origem, o sistema busca todas as `lead_origin` distintas dos leads e filtra as que nao sao pre-definidas (como meta_ads, google_ads, etc). Essas origens aparecem em uma secao "Personalizadas" abaixo das origens padrao.
+### O que muda
+Um novo seletor de filtro "Origem" sera adicionado na barra de ferramentas do Kanban, seguindo o mesmo padrao visual dos filtros de Empreendimento e Corretor ja existentes. O usuario podera filtrar os leads por qualquer origem (pre-definida ou personalizada).
 
 ### Detalhes tecnicos
 
-**1. Novo hook `src/hooks/use-custom-origins.ts`**
+**Arquivo: `src/components/crm/KanbanBoard.tsx`**
 
-Hook simples que busca origens distintas do banco e filtra as pre-definidas:
+1. Importar o hook `useCustomOrigins` e as constantes `LEAD_ORIGINS` e `getOriginDisplayLabel` de `@/types/crm`
+2. Importar o icone `MapPin` (ou `Target`) do lucide-react
+3. Adicionar estado `selectedOrigin` (string, default `"all"`)
+4. Construir a lista de opcoes do filtro combinando:
+   - Origens pre-definidas de `LEAD_ORIGINS` (excluindo "outro")
+   - Origens customizadas vindas de `useCustomOrigins()`
+   - Origens dinamicas (do analytics/UTM) encontradas nos leads carregados mas que nao estao nas duas listas anteriores
+5. Adicionar um novo `Select` na toolbar, posicionado entre o filtro de Empreendimento e o filtro de Corretor, com icone e estilo identicos
+6. Atualizar a logica de `filteredLeads` para incluir a condicao `matchesOrigin`:
+   - `"all"` mostra tudo
+   - `"sem_origem"` mostra leads com `lead_origin` nulo
+   - Qualquer outro valor compara com `lead.lead_origin`
 
-```typescript
-// Query: SELECT DISTINCT lead_origin FROM leads WHERE lead_origin IS NOT NULL
-// Filtrar: remover origens que ja existem em LEAD_ORIGINS
-// Retornar: array de strings com origens customizadas
-```
-
-Usa `useQuery` com `staleTime` alto (5 min) para nao fazer queries excessivas.
-
-**2. Atualizar `src/components/crm/OriginCombobox.tsx`**
-
-- Importar e usar o hook `useCustomOrigins`
-- Adicionar um novo `CommandGroup` chamado "Personalizadas" abaixo das origens padrao
-- Listar as origens customizadas com icone de marcador (tag)
-- Manter o campo "Usar [texto digitado]" para criar novas origens
-
-**3. Atualizar `src/components/crm/OriginQuickPicker.tsx`**
-
-- Importar e usar o hook `useCustomOrigins`
-- Adicionar uma nova secao "Personalizadas" no drawer, entre as origens padrao e o input customizado
-- Usar estilo visual distinto (cor slate/cinza) para diferenciar das categorias padrao
-
-Nenhuma mudanca no banco de dados necessaria. As origens ja estao persistidas na coluna `lead_origin` da tabela `leads`.
+Nenhuma alteracao no banco de dados. Apenas filtragem local dos leads ja carregados.
