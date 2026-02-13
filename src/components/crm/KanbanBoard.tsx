@@ -11,7 +11,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Building2, Users, Search, MapPin } from "lucide-react";
+import { RefreshCw, Building2, Users, Search, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
 import { useCustomOrigins } from "@/hooks/use-custom-origins";
@@ -29,6 +29,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Project {
   id: string;
@@ -50,7 +52,7 @@ const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered
 export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
-  const [selectedOrigin, setSelectedOrigin] = useState<string>("all");
+  const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
   const { data: customOrigins = [] } = useCustomOrigins();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
@@ -124,9 +126,9 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
       lead.project_id === selectedProject;
 
     const matchesOrigin =
-      selectedOrigin === "all" ||
-      (selectedOrigin === "sem_origem" && !lead.lead_origin) ||
-      lead.lead_origin === selectedOrigin;
+      selectedOrigins.length === 0 ||
+      (selectedOrigins.includes("sem_origem") && !lead.lead_origin) ||
+      (lead.lead_origin != null && selectedOrigins.includes(lead.lead_origin));
 
     return matchesSearch && matchesBroker && matchesProject && matchesOrigin;
   });
@@ -299,26 +301,65 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         )}
 
         {/* Filtro de Origem */}
-        <Select value={selectedOrigin} onValueChange={setSelectedOrigin}>
-          <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
-            <MapPin className="w-4 h-4 text-slate-500 shrink-0" />
-            <SelectValue placeholder="Origem" className="truncate" />
-          </SelectTrigger>
-          <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-            <SelectItem value="all">Todas origens</SelectItem>
-            <SelectItem value="sem_origem">Sem origem</SelectItem>
-            {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
-              <SelectItem key={origin.key} value={origin.key}>
-                {origin.label}
-              </SelectItem>
-            ))}
-            {customOrigins.map(origin => (
-              <SelectItem key={origin} value={origin}>
-                {origin}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="flex items-center gap-1 md:gap-2 h-9 px-2 text-sm text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-accent">
+              <MapPin className="w-4 h-4 shrink-0" />
+              <span className="truncate max-w-[100px] md:max-w-none">
+                {selectedOrigins.length === 0
+                  ? "Todas origens"
+                  : `${selectedOrigins.length} origem${selectedOrigins.length > 1 ? "s" : ""}`}
+              </span>
+              {selectedOrigins.length > 0 && (
+                <X
+                  className="w-3.5 h-3.5 ml-0.5 hover:text-destructive"
+                  onClick={(e) => { e.stopPropagation(); setSelectedOrigins([]); }}
+                />
+              )}
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-56 p-2" align="start">
+            <div className="flex flex-col gap-1 max-h-64 overflow-y-auto">
+              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                <Checkbox
+                  checked={selectedOrigins.includes("sem_origem")}
+                  onCheckedChange={() => {
+                    setSelectedOrigins(prev =>
+                      prev.includes("sem_origem") ? prev.filter(o => o !== "sem_origem") : [...prev, "sem_origem"]
+                    );
+                  }}
+                />
+                Sem origem
+              </label>
+              {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
+                <label key={origin.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                  <Checkbox
+                    checked={selectedOrigins.includes(origin.key)}
+                    onCheckedChange={() => {
+                      setSelectedOrigins(prev =>
+                        prev.includes(origin.key) ? prev.filter(o => o !== origin.key) : [...prev, origin.key]
+                      );
+                    }}
+                  />
+                  {origin.label}
+                </label>
+              ))}
+              {customOrigins.map(origin => (
+                <label key={origin} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-accent cursor-pointer text-sm">
+                  <Checkbox
+                    checked={selectedOrigins.includes(origin)}
+                    onCheckedChange={() => {
+                      setSelectedOrigins(prev =>
+                        prev.includes(origin) ? prev.filter(o => o !== origin) : [...prev, origin]
+                      );
+                    }}
+                  />
+                  {origin}
+                </label>
+              ))}
+            </div>
+          </PopoverContent>
+        </Popover>
 
         {/* Filtro de Corretor */}
         {isAdmin && brokers.length > 0 && (
