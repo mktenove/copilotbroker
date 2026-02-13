@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Switch } from "@/components/ui/switch";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Loader2, Send, Clock, Users, Plus, Trash2, GripVertical, Search, ChevronDown, ChevronUp, Filter, CheckSquare, Square } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
 import { useProjects } from "@/hooks/use-projects";
@@ -580,16 +580,24 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
                           </Select>
                         </div>
 
-                        <div className="flex items-center justify-between py-1.5">
-                          <Label className="text-xs text-slate-400 cursor-pointer" htmlFor={`send-if-replied-${index}`}>
-                            Enviar mesmo se o lead responder
-                          </Label>
-                          <Switch
-                            id={`send-if-replied-${index}`}
-                            checked={step.sendIfReplied || false}
-                            onCheckedChange={(checked: boolean) => updateStep(index, { sendIfReplied: checked })}
-                          />
-                        </div>
+                        <RadioGroup
+                          value={step.sendIfReplied ? "true" : "false"}
+                          onValueChange={(val) => updateStep(index, { sendIfReplied: val === "true" })}
+                          className="space-y-1.5 py-1.5"
+                        >
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="true" id={`send-replied-${index}`} />
+                            <Label className="text-xs text-slate-400 cursor-pointer font-normal" htmlFor={`send-replied-${index}`}>
+                              Enviar mesmo que o lead responda
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="false" id={`stop-replied-${index}`} />
+                            <Label className="text-xs text-slate-400 cursor-pointer font-normal" htmlFor={`stop-replied-${index}`}>
+                              Enviar somente se o lead não responder
+                            </Label>
+                          </div>
+                        </RadioGroup>
                       </>
                     )}
 
