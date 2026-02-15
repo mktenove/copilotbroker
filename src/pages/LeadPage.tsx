@@ -51,6 +51,9 @@ export default function LeadPage() {
   const [whatsappMsgOpen, setWhatsappMsgOpen] = useState(false);
   const [whatsappMsg, setWhatsappMsg] = useState("");
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [iniciarAtendimentoOpen, setIniciarAtendimentoOpen] = useState(false);
+  const [iniciarAtendimentoMsg, setIniciarAtendimentoMsg] = useState("");
+  const [iniciarAtendimentoSending, setIniciarAtendimentoSending] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -276,8 +279,7 @@ export default function LeadPage() {
     if (!primaryAction) return;
     switch (primaryAction.action) {
       case "iniciar": {
-        const ok = await iniciarAtendimento(lead.id);
-        if (ok) { toast.success("Atendimento iniciado!"); refreshLead(); }
+        setIniciarAtendimentoOpen(true);
         break;
       }
       case "agendar": setAgendamentoOpen(true); break;
@@ -384,6 +386,60 @@ export default function LeadPage() {
           </div>
         )}
 
+        {/* Iniciar Atendimento inline textarea */}
+        {iniciarAtendimentoOpen && lead.status === "new" && (
+          <div className="mb-6 bg-[#111114] border border-emerald-500/20 rounded-xl p-4 space-y-3">
+            <p className="text-xs font-medium text-emerald-400">Mensagem inicial para {lead.name}</p>
+            <Textarea
+              autoFocus
+              placeholder="Escreva a mensagem que você vai enviar ao lead..."
+              value={iniciarAtendimentoMsg}
+              onChange={(e) => setIniciarAtendimentoMsg(e.target.value)}
+              className="min-h-[80px] bg-[#0a0a0d] border-[#2a2a2e] text-sm text-slate-200 placeholder:text-slate-600 resize-none"
+            />
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                disabled={!iniciarAtendimentoMsg.trim() || iniciarAtendimentoSending}
+                onClick={async () => {
+                  setIniciarAtendimentoSending(true);
+                  try {
+                    const ok = await iniciarAtendimento(lead.id);
+                    if (ok) {
+                      await addInteraction("whatsapp_manual" as any, {
+                        notes: iniciarAtendimentoMsg,
+                        channel: "whatsapp",
+                        createdBy: (await supabase.auth.getUser()).data.user?.id,
+                      });
+                      const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+                      window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`, "_blank");
+                      toast.success("Atendimento iniciado!");
+                      setIniciarAtendimentoMsg("");
+                      setIniciarAtendimentoOpen(false);
+                      refreshLead();
+                    }
+                  } catch {
+                    toast.error("Erro ao iniciar atendimento");
+                  } finally {
+                    setIniciarAtendimentoSending(false);
+                  }
+                }}
+                className="h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+              >
+                <Play className="w-3.5 h-3.5 mr-1.5" />
+                {iniciarAtendimentoSending ? "Iniciando..." : "Iniciar e Enviar via WhatsApp"}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => { setIniciarAtendimentoOpen(false); setIniciarAtendimentoMsg(""); }}
+                className="h-9 text-xs text-slate-400 hover:text-white"
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}

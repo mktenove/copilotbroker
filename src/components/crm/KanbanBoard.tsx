@@ -12,7 +12,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Building2, Users, Search, MapPin, X } from "lucide-react";
+import { RefreshCw, Building2, Users, Search, MapPin, X, Play } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
 import { useCustomOrigins } from "@/hooks/use-custom-origins";
@@ -35,6 +35,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -76,6 +79,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const [propostaModal, setPropostaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
+  const [iniciarModal, setIniciarModal] = useState<{ open: boolean; leadId: string | null; message: string }>({ open: false, leadId: null, message: "" });
 
   const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
 
@@ -220,15 +224,29 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   // Contextual action handlers
   const handleIniciarAtendimento = async (leadId: string) => {
-    const success = await iniciarAtendimento(leadId);
+    setIniciarModal({ open: true, leadId, message: "" });
+  };
+
+  const handleConfirmIniciarAtendimento = async () => {
+    if (!iniciarModal.leadId || !iniciarModal.message.trim()) return;
+    const success = await iniciarAtendimento(iniciarModal.leadId);
     if (success) {
+      // Log message to timeline
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      await supabase.from("lead_interactions").insert({
+        lead_id: iniciarModal.leadId,
+        interaction_type: "whatsapp_manual" as any,
+        notes: iniciarModal.message,
+        channel: "whatsapp",
+        created_by: userId,
+      });
       toast.success("Atendimento iniciado!");
-      // Open WhatsApp
-      const lead = leads.find(l => l.id === leadId);
+      const lead = leads.find(l => l.id === iniciarModal.leadId);
       if (lead) {
         const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-        window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+        window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarModal.message)}`, '_blank');
       }
+      setIniciarModal({ open: false, leadId: null, message: "" });
     }
   };
 
@@ -496,6 +514,38 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         onOpenChange={setWhatsappCampaignOpen}
         preselectedStatus={whatsappPreselectedStatus}
       />
+
+      {/* Iniciar Atendimento Modal */}
+      <Dialog open={iniciarModal.open} onOpenChange={(v) => { if (!v) setIniciarModal({ open: false, leadId: null, message: "" }); }}>
+        <DialogContent className="bg-[#111114] border-[#2a2a2e] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold text-slate-200">Iniciar Atendimento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-slate-400">Escreva a mensagem que será enviada ao lead via WhatsApp:</p>
+            <Textarea
+              autoFocus
+              placeholder="Escreva sua mensagem aqui..."
+              value={iniciarModal.message}
+              onChange={(e) => setIniciarModal(prev => ({ ...prev, message: e.target.value }))}
+              className="min-h-[100px] bg-[#0a0a0d] border-[#2a2a2e] text-sm text-slate-200 placeholder:text-slate-600 resize-none"
+            />
+            <div className="flex items-center gap-2 justify-end">
+              <Button variant="ghost" size="sm" onClick={() => setIniciarModal({ open: false, leadId: null, message: "" })} className="text-xs text-slate-400">
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                disabled={!iniciarModal.message.trim()}
+                onClick={handleConfirmIniciarAtendimento}
+                className="h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+              >
+                <Play className="w-3.5 h-3.5 mr-1.5" />Iniciar e Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
