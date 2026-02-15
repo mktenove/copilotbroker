@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CRMLead, LeadStatus } from "@/types/crm";
 import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface UseKanbanLeadsOptions {
   brokerId?: string | null;
@@ -12,6 +13,7 @@ interface UseKanbanLeadsOptions {
 export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanbanLeadsOptions) {
   const [leads, setLeads] = useState<CRMLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
@@ -59,6 +61,90 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
   useEffect(() => {
     fetchLeads();
   }, [fetchLeads]);
+
+  // Realtime subscription for lead updates (reassignment, status changes)
+  useEffect(() => {
+    // Clean up previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+
+    const channel = supabase
+      .channel('kanban-leads-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'leads',
+        },
+        (payload) => {
+          const updatedLead = payload.new as any;
+          const oldLead = payload.old as any;
+
+          // Lead became inactive → remove from kanban
+          if (updatedLead.status === 'inactive') {
+            setLeads(prev => prev.filter(l => l.id !== updatedLead.id));
+            return;
+          }
+
+          // For brokers: check if broker_id changed (reassignment)
+          if (!isAdmin && brokerId) {
+            const wasMyLead = oldLead.broker_id === brokerId;
+            const isMyLead = updatedLead.broker_id === brokerId;
+
+            if (wasMyLead && !isMyLead) {
+              // Lead was reassigned away from this broker → remove
+              setLeads(prev => prev.filter(l => l.id !== updatedLead.id));
+              return;
+            }
+
+            if (!wasMyLead && isMyLead) {
+              // Lead was reassigned TO this broker → refetch to get full join data
+              fetchLeads();
+              return;
+            }
+
+            if (!isMyLead) {
+              // Not my lead, ignore
+              return;
+            }
+          }
+
+          // Update the lead in local state (keep existing join data)
+          setLeads(prev => prev.map(l => 
+            l.id === updatedLead.id 
+              ? { ...l, ...updatedLead }
+              : l
+          ));
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'leads',
+        },
+        (payload) => {
+          const newLead = payload.new as any;
+          
+          // For brokers, only add if it's their lead
+          if (!isAdmin && brokerId && newLead.broker_id !== brokerId) return;
+          if (newLead.status === 'inactive') return;
+
+          // Refetch to get full join data (broker, project, attribution)
+          fetchLeads();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [brokerId, isAdmin, fetchLeads]);
 
   const updateLeadStatus = useCallback(async (
     leadId: string,
