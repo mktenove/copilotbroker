@@ -253,6 +253,13 @@
   .delay-600 { animation-delay: 600ms; }
   .delay-700 { animation-delay: 700ms; }
   .delay-800 { animation-delay: 800ms; }
+
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .top-safe {
+    top: env(safe-area-inset-top, 0px);
+  }
 }
 
 @keyframes fadeUp {
