@@ -9,6 +9,7 @@ export interface Roleta {
   nome: string;
   lider_id: string;
   tempo_reserva_minutos: number;
+  timeout_ativo: boolean;
   ativa: boolean;
   ultimo_membro_ordem_atribuida: number;
   created_at: string;

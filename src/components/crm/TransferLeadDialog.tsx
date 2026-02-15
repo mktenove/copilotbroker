@@ -55,6 +55,15 @@ export function TransferLeadDialog({
 
       if (error) throw error;
 
+      // Notify new broker via WhatsApp (non-blocking)
+      try {
+        await supabase.functions.invoke("notify-transfer", {
+          body: { lead_id: leadId, new_broker_id: selectedBrokerId },
+        });
+      } catch (notifyErr) {
+        console.error("Notify transfer failed (non-critical):", notifyErr);
+      }
+
       const targetBroker = brokers.find(b => b.id === selectedBrokerId);
       toast.success(`Lead transferido para ${targetBroker?.name || "corretor"}`);
       onTransferred();

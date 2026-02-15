@@ -32,6 +32,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Load global WhatsApp config once
+    const { data: globalConfig } = await supabase
+      .from("global_whatsapp_config")
+      .select("instance_name, instance_token, status")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const envUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+    let baseUrl = "";
+    try {
+      baseUrl = new URL(envUrl).origin;
+    } catch {
+      baseUrl = envUrl.replace(/\/[^\/]+\/?$/, "");
+    }
+
     console.log(`Processing ${expiredLeads.length} expired leads`);
     let processed = 0;
 
@@ -65,13 +81,11 @@ Deno.serve(async (req) => {
       let novaOrdem: number;
 
       if (activeMembros.length === 0) {
-        // Fallback to leader
         newBrokerId = roleta.lider_id;
         statusDistribuicao = "fallback_lider";
         motivo = "Timeout - nenhum outro corretor online - atribuído ao líder";
         novaOrdem = roleta.ultimo_membro_ordem_atribuida;
       } else {
-        // Next in round-robin
         const lastOrder = roleta.ultimo_membro_ordem_atribuida;
         let nextMembro = activeMembros.find((m: any) => m.ordem > lastOrder);
         if (!nextMembro) nextMembro = activeMembros[0];
@@ -113,10 +127,10 @@ Deno.serve(async (req) => {
         motivo,
       });
 
-      // Notify new broker
+      // Notify new broker (in-app)
       const { data: brokerData } = await supabase
         .from("brokers")
-        .select("user_id")
+        .select("user_id, whatsapp")
         .eq("id", newBrokerId)
         .single();
 
@@ -128,6 +142,42 @@ Deno.serve(async (req) => {
           message: `Lead ${lead.name} foi reassinado a você por timeout.`,
           lead_id: lead.id,
         });
+      }
+
+      // Notify new broker via WhatsApp (timeout = always hide lead data)
+      if (globalConfig?.instance_token && brokerData?.whatsapp && baseUrl) {
+        try {
+          const cleanPhone = brokerData.whatsapp.replace(/\D/g, "");
+
+          // Get project name
+          let projectName = "Empreendimento";
+          if (lead.project_id) {
+            const { data: proj } = await supabase
+              .from("projects")
+              .select("name")
+              .eq("id", lead.project_id)
+              .single();
+            if (proj) projectName = proj.name;
+          }
+
+          const message = `🔄 *Lead reassinado por timeout*\n\n📋 *${projectName}*\n\n⚡ Acesse o CRM para ver os dados e iniciar o atendimento.\n⏱️ Tempo para atendimento: ${roleta.tempo_reserva_minutos} min`;
+
+          const resp = await fetch(`${baseUrl}/send/text`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "token": globalConfig.instance_token,
+            },
+            body: JSON.stringify({
+              number: cleanPhone,
+              text: message,
+            }),
+          });
+
+          console.log(`WhatsApp timeout notification to ${cleanPhone}: ${resp.status}`);
+        } catch (whatsappErr) {
+          console.error("WhatsApp timeout notification failed (non-critical):", whatsappErr);
+        }
       }
 
       processed++;
