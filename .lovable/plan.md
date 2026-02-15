@@ -1,90 +1,45 @@
 
-# Campos Editaveis na Pagina do Lead + Follow-Up WhatsApp
+# Adicionar campo de Data/Hora de inicio ao Follow-Up
 
-## Visao Geral
+## O que muda
 
-Duas funcionalidades novas na pagina dedicada do lead:
+Atualmente a primeira mensagem do follow-up e agendada para "agora" (com um pequeno intervalo aleatorio). O corretor precisa poder escolher **quando** o follow-up comeca.
 
-1. **Dados do Lead editaveis inline** - todos os campos da secao "Dados do Lead" passam a ser editaveis, incluindo o campo "Corretor" que ao ser alterado executa transferencia automatica via RPC `transfer_lead`.
+## Alteracoes
 
-2. **Acao "Agendar Follow-Up"** - botao na secao de Acoes que abre um sheet para criar uma sequencia de mensagens WhatsApp direcionada apenas a esse lead, reutilizando a mesma logica de steps/delays das campanhas.
+### Arquivo: `src/components/crm/FollowUpSheet.tsx`
 
----
+1. **Novo estado** `startDate` (Date | undefined) e `startTime` (string, formato "HH:mm") -- resetados ao abrir o sheet.
 
-## PARTE 1 - Campos Editaveis
+2. **Nova secao visual** acima das etapas, com titulo "Inicio do envio":
+   - DatePicker usando `Popover` + `Calendar` (mesmo padrao do `AgendamentoModal`)
+   - Input de horario (type="time") ao lado da data
+   - Opcao rapida "Enviar agora" como alternativa (botao toggle)
+   - Quando "Enviar agora" esta selecionado, os campos de data/hora ficam desabilitados
 
-### Comportamento
+3. **Validacao atualizada**: `isValid` passa a exigir que `startDate` esteja preenchido OU que "Enviar agora" esteja ativo.
 
-- A secao "Dados do Lead" exibe os valores atuais normalmente
-- Ao clicar no icone de edicao (Pencil), o campo entra em modo de edicao inline
-- Campos editaveis: Nome, Telefone, Email, Empreendimento (Select), Origem (Select/Combobox), Corretor (Select), Observacoes
-- Ao alterar o **Corretor**, o sistema executa `transfer_lead` RPC + `notify-transfer` (mesmo fluxo do `TransferLeadDialog`)
-- Ao salvar qualquer campo, registra uma `lead_interaction` do tipo `note_added` com a alteracao
-- Botao "Salvar" aparece quando ha alteracoes pendentes
+4. **Logica de agendamento** (`handleSubmit`): em vez de `Date.now() + getRandomInterval()`, o `scheduledTime` inicial sera calculado a partir da data+hora selecionada. Se "Enviar agora", mantem o comportamento atual.
 
-### Arquivos alterados
+### Detalhes de UI
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/LeadPage.tsx` | Substituir `DataField` estatico por `EditableDataField` com estado de edicao, buscar lista de brokers e projects, adicionar logica de save |
+- A secao de data/hora segue o mesmo estilo dark do sheet (bg-[#0f0f11], border-[#2a2a2e])
+- Data formatada em dd/MM/yyyy, horario em formato 24h
+- Default ao abrir: "Enviar agora" ativo (comportamento atual preservado)
+- Ao desmarcar "Enviar agora", os campos de data/hora aparecem com a data de hoje e horario atual como default
 
-### Detalhes tecnicos
+### Fluxo
 
-- Buscar lista de `brokers` (ativos) e `projects` (ativos) via queries no LeadPage
-- Campo "Corretor" usa `Select` com lista de corretores; ao mudar, chamar `supabase.rpc("transfer_lead")` + `notify-transfer`
-- Campo "Empreendimento" usa `Select` com lista de projetos
-- Campos texto (nome, telefone, email) usam `Input` inline
-- Salvar via `supabase.from("leads").update(...)` + registrar interacao
-- Refresh dos dados apos salvar
+```text
+[Corretor abre Follow-Up]
+       |
+  [Secao: Inicio do envio]
+  [x] Enviar agora   -- ou --   [ Data: 18/02/2026 ] [ Hora: 14:30 ]
+       |
+  [Etapa 1 - mensagem]
+  [Etapa 2 - delay + mensagem]
+       |
+  [Agendar Follow-Up]
+```
 
----
-
-## PARTE 2 - Follow-Up WhatsApp
-
-### Comportamento
-
-- Novo botao na secao "Acoes": "Agendar Follow-Up" (icone MessageCircle)
-- Ao clicar, abre um Sheet lateral com:
-  - Sequencia de mensagens (steps) identica ao `NewCampaignSheet`
-  - Cada step: textarea de mensagem + delay configuravel + opcao "enviar mesmo com resposta"
-  - Variaveis suportadas: `{nome}`, `{empreendimento}`, `{corretor_nome}`
-  - Preview da mensagem personalizada
-  - Botao "Agendar Follow-Up"
-- Ao confirmar:
-  - Cria campanha com `total_leads: 1` vinculada ao lead
-  - Insere `campaign_steps`
-  - Agenda mensagens na `whatsapp_message_queue` para o lead
-  - Registra interacao na timeline
-
-### Novo componente
-
-| Arquivo | Tipo |
-|---------|------|
-| `src/components/crm/FollowUpSheet.tsx` | **Novo** - Sheet com editor de sequencia de mensagens para um unico lead |
-
-### Arquivos alterados
-
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/pages/LeadPage.tsx` | Importar e renderizar `FollowUpSheet`, adicionar botao na secao Acoes |
-| `src/components/crm/index.ts` | Exportar `FollowUpSheet` |
-
-### Detalhes tecnicos do FollowUpSheet
-
-- Reutiliza a logica de `useWhatsAppCampaigns` (`createCampaign`) passando o lead como unico target
-- Alternativa mais limpa: criar funcao dedicada `createFollowUp` no hook que aceita `leadId` diretamente, sem precisar dos filtros de status
-- O componente recebe: `leadId`, `leadName`, `leadPhone`, `projectName`, `brokerName`
-- Steps UI: identica ao NewCampaignSheet (textarea + delay presets + sendIfReplied radio)
-- Ao criar: insere campanha com nome auto-gerado (ex: "Follow-up - Joao Silva"), vincula ao lead, agenda na fila
-
----
-
-## Resumo de Arquivos
-
-| Arquivo | Acao |
-|---------|------|
-| `src/pages/LeadPage.tsx` | Campos editaveis + botao Follow-Up + queries de brokers/projects |
-| `src/components/crm/FollowUpSheet.tsx` | **Novo** - Sheet de follow-up WhatsApp |
-| `src/components/crm/index.ts` | Exportar novo componente |
-
-Nenhuma alteracao de banco necessaria - os campos, tabelas e RPCs ja existem.
+Nenhuma alteracao de banco necessaria -- o campo `scheduled_at` na `whatsapp_message_queue` ja aceita qualquer timestamp futuro.
