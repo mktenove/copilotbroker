@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const FUNNEL_STAGES: { status: LeadStatus; label: string; percent: number }[] = [
@@ -45,13 +46,16 @@ export default function LeadPage() {
   const [perdaOpen, setPerdaOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [whatsappMsgOpen, setWhatsappMsgOpen] = useState(false);
+  const [whatsappMsg, setWhatsappMsg] = useState("");
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   // Inline editing state
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
-  const { interactions } = useLeadInteractions(leadId || "");
+  const { interactions, addInteraction } = useLeadInteractions(leadId || "");
 
   // Fetch brokers & projects for editable selects
   const { data: allBrokers = [] } = useQuery({
@@ -396,11 +400,65 @@ export default function LeadPage() {
                   onSave={saveField}
                   onEditValueChange={(v) => setEditValues({ ...editValues, whatsapp: v })}
                   action={
-                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
-                      <MessageCircle className="w-3 h-3" />WhatsApp<ExternalLink className="w-2.5 h-2.5" />
-                    </a>
+                    <Button
+                      size="sm"
+                      onClick={() => setWhatsappMsgOpen(!whatsappMsgOpen)}
+                      className="h-8 px-3 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg shadow-md shadow-emerald-900/30 transition-all"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
+                      Enviar WhatsApp
+                    </Button>
                   }
                 />
+                {whatsappMsgOpen && (
+                  <div className="sm:col-span-2 bg-[#0f0f12] border border-emerald-500/20 rounded-xl p-4 space-y-3">
+                    <p className="text-xs font-medium text-emerald-400">Mensagem para {lead.name}</p>
+                    <Textarea
+                      autoFocus
+                      placeholder="Escreva sua mensagem aqui..."
+                      value={whatsappMsg}
+                      onChange={(e) => setWhatsappMsg(e.target.value)}
+                      className="min-h-[80px] bg-[#111114] border-[#2a2a2e] text-sm text-slate-200 placeholder:text-slate-600 resize-none"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button
+                        size="sm"
+                        disabled={!whatsappMsg.trim() || sendingWhatsapp}
+                        onClick={async () => {
+                          setSendingWhatsapp(true);
+                          try {
+                            await addInteraction("whatsapp_manual" as any, {
+                              notes: whatsappMsg,
+                              channel: "whatsapp",
+                              createdBy: (await supabase.auth.getUser()).data.user?.id,
+                            });
+                            const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+                            window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(whatsappMsg)}`, "_blank");
+                            setWhatsappMsg("");
+                            setWhatsappMsgOpen(false);
+                            toast.success("Interação registrada!");
+                          } catch {
+                            toast.error("Erro ao registrar interação");
+                          } finally {
+                            setSendingWhatsapp(false);
+                          }
+                        }}
+                        className="h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
+                        {sendingWhatsapp ? "Enviando..." : "Enviar via WhatsApp"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => { setWhatsappMsgOpen(false); setWhatsappMsg(""); }}
+                        className="h-9 text-xs text-slate-400 hover:text-white"
+                      >
+                        Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                )}
                 <EditableField icon={Mail} label="Email" field="email" value={lead.email || ""} placeholder="Não informado"
                   editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
                   onEditValueChange={(v) => setEditValues({ ...editValues, email: v })} />

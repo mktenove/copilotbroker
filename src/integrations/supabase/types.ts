@@ -1379,6 +1379,7 @@ export type Database = {
         | "proposta_enviada"
         | "venda_confirmada"
         | "reagendamento"
+        | "whatsapp_manual"
       lead_status:
         | "new"
         | "info_sent"
@@ -1542,6 +1543,7 @@ export const Constants = {
         "proposta_enviada",
         "venda_confirmada",
         "reagendamento",
+        "whatsapp_manual",
       ],
       lead_status: [
         "new",
