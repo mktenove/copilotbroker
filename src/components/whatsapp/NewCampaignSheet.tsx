@@ -27,7 +27,7 @@ interface NewCampaignSheetProps {
   preselectedStatus?: LeadStatus;
 }
 
-const ACTIVE_STATUSES: LeadStatus[] = ["new", "info_sent", "awaiting_docs", "docs_received"];
+const ACTIVE_STATUSES: LeadStatus[] = ["new", "info_sent", "scheduling", "docs_received"];
 
 const DELAY_PRESETS = [
   { label: "Imediatamente", minutes: 0 },

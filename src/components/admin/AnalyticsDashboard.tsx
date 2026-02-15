@@ -144,6 +144,7 @@ const FUNNEL_COLORS: Record<LeadStatus, string> = {
   new: "#3b82f6",
   info_sent: "#8b5cf6",
   awaiting_docs: "#f59e0b",
+  scheduling: "#f97316",
   docs_received: "#22c55e",
   registered: "#10b981",
   inactive: "#ef4444"

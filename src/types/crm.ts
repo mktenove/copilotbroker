@@ -1,4 +1,4 @@
-export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'docs_received' | 'registered' | 'inactive';
+export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'scheduling' | 'docs_received' | 'registered' | 'inactive';
 
 export type DistributionStatus = 'atribuicao_inicial' | 'reassinado_timeout' | 'fallback_lider' | 'atendimento_iniciado';
 
@@ -188,12 +188,12 @@ export interface LeadDocument {
 
 export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; bgColor: string }> = {
   new: {
-    label: 'Novos Leads',
+    label: 'Pré Atendimento',
     color: 'text-blue-600',
     bgColor: 'bg-blue-50 border-blue-200'
   },
   info_sent: {
-    label: 'Informações Enviadas',
+    label: 'Atendimento',
     color: 'text-yellow-400',
     bgColor: 'bg-yellow-500/10 border-yellow-500/30'
   },
@@ -202,13 +202,18 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
     color: 'text-yellow-300',
     bgColor: 'bg-yellow-500/10 border-yellow-400/30'
   },
+  scheduling: {
+    label: 'Agendamento',
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-50 border-orange-200'
+  },
   docs_received: {
-    label: 'Dados Recebidos',
+    label: 'Proposta',
     color: 'text-emerald-600',
     bgColor: 'bg-emerald-50 border-emerald-200'
   },
   registered: {
-    label: 'Cadastrado no Ábaco',
+    label: 'Vendido',
     color: 'text-slate-600',
     bgColor: 'bg-slate-100 border-slate-300'
   },

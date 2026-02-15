@@ -48,7 +48,7 @@ interface KanbanBoardProps {
   onSearchChange?: (value: string) => void;
 }
 
-const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
+const STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
@@ -165,7 +165,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     const leadId = active.id as string;
     
     // Valid status values
-    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered', 'inactive'];
+    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered', 'inactive'];
     
     let newStatus: LeadStatus;
     
@@ -228,7 +228,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   };
 
   const handleAdvanceStatus = async (leadId: string, currentStatus: LeadStatus) => {
-    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
+    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
     const currentIndex = STATUS_ORDER.indexOf(currentStatus);
     if (currentIndex === -1 || currentIndex >= STATUS_ORDER.length - 1) return;
     
@@ -236,6 +236,18 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     const success = await updateLeadStatus(leadId, currentStatus, nextStatus);
     if (success) {
       toast.success(`Lead avançado para "${STATUS_CONFIG[nextStatus].label}"`);
+    }
+  };
+
+  const handleRegressStatus = async (leadId: string, currentStatus: LeadStatus) => {
+    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
+    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+    if (currentIndex <= 0) return;
+    
+    const prevStatus = STATUS_ORDER[currentIndex - 1];
+    const success = await updateLeadStatus(leadId, currentStatus, prevStatus);
+    if (success) {
+      toast.success(`Lead retornado para "${STATUS_CONFIG[prevStatus].label}"`);
     }
   };
 
@@ -438,6 +450,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 onInactivate={handleInactivateLead}
                 onDelete={isAdmin ? handleDeleteLead : undefined}
                 onAdvanceStatus={handleAdvanceStatus}
+                onRegressStatus={handleRegressStatus}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
                 onStartService={handleStartService}
               />

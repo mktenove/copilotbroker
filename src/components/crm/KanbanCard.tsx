@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, CheckCircle2, Lock, RotateCw, Timer, AlertTriangle, Play } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, ChevronRight, ChevronLeft, CheckCircle2, Lock, RotateCw, Timer, AlertTriangle, Play } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -28,11 +28,12 @@ interface KanbanCardProps {
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
   onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
+  onRegressStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
   onStartService?: (leadId: string) => Promise<void>;
 }
 
 // Status order for advancement
-const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
+const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 
 const getNextStatus = (currentStatus: LeadStatus): LeadStatus | null => {
   const currentIndex = STATUS_ORDER.indexOf(currentStatus);
@@ -46,6 +47,18 @@ const getNextStatusLabel = (currentStatus: LeadStatus): string | null => {
   return STATUS_CONFIG[nextStatus]?.label || null;
 };
 
+const getPrevStatus = (currentStatus: LeadStatus): LeadStatus | null => {
+  const currentIndex = STATUS_ORDER.indexOf(currentStatus);
+  if (currentIndex <= 0) return null;
+  return STATUS_ORDER[currentIndex - 1];
+};
+
+const getPrevStatusLabel = (currentStatus: LeadStatus): string | null => {
+  const prevStatus = getPrevStatus(currentStatus);
+  if (!prevStatus) return null;
+  return STATUS_CONFIG[prevStatus]?.label || null;
+};
+
 // Vibrant dark theme colors for origin types
 const ORIGIN_COLORS: Record<string, string> = {
   paid: "bg-purple-500/20 text-purple-300 border-purple-500/40",
@@ -57,9 +70,10 @@ const ORIGIN_COLORS: Record<string, string> = {
 
 // Progress percentage by status
 const STATUS_PROGRESS: Record<string, number> = {
-  new: 15,
-  info_sent: 40,
-  docs_received: 70,
+  new: 10,
+  info_sent: 30,
+  scheduling: 50,
+  docs_received: 75,
   registered: 100,
   inactive: 0
 };
@@ -68,15 +82,18 @@ const STATUS_PROGRESS: Record<string, number> = {
 const PROGRESS_COLORS: Record<string, string> = {
   new: "bg-blue-500",
   info_sent: "bg-enove-yellow",
+  scheduling: "bg-orange-500",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
   inactive: "bg-red-500"
 };
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onStartService }: KanbanCardProps) {
+export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onRegressStatus, onStartService }: KanbanCardProps) {
   const isMobile = useIsMobile();
   const nextStatus = getNextStatus(lead.status);
   const nextStatusLabel = getNextStatusLabel(lead.status);
+  const prevStatus = getPrevStatus(lead.status);
+  const prevStatusLabel = getPrevStatusLabel(lead.status);
   
   const {
     attributes,
@@ -354,6 +371,25 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+              )}
+
+              {/* Regress Status Button */}
+              {onRegressStatus && prevStatus && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRegressStatus(lead.id, lead.status);
+                  }}
+                  className={cn(
+                    "p-2 md:p-1.5 rounded-md min-w-[40px] min-h-[40px] md:min-w-0 md:min-h-0",
+                    "flex items-center justify-center",
+                    "text-slate-500 hover:text-orange-400 hover:bg-orange-500/10",
+                    "transition-colors"
+                  )}
+                  title={`Voltar para: ${prevStatusLabel}`}
+                >
+                  <ChevronLeft className="w-4 h-4 md:w-3.5 md:h-3.5" />
+                </button>
               )}
 
               {/* Advance Status Button */}

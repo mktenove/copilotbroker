@@ -1,0 +1,1 @@
+ALTER TYPE lead_status ADD VALUE 'scheduling' BEFORE 'docs_received';
