@@ -1,34 +1,51 @@
 
-# Auto-calcular Valor/Parcela
 
-## Alteracao
+# Substituir botao Atualizar por atualizacao em tempo real
 
-**Arquivo:** `src/components/crm/PropostaModal.tsx`
+## Problema
+Na view de lista do painel do corretor, existe um botao "Atualizar" que o usuario precisa clicar manualmente para ver novos leads ou mudancas. Isso nao e ideal -- o Kanban ja usa Realtime, mas a lista nao.
 
-Modificar a funcao `updateParcela` para que, ao alterar o campo `valor` ou `quantidade_parcelas`, o sistema calcule automaticamente o `valor_parcela` dividindo valor pela quantidade de parcelas.
+## Solucao
+1. Adicionar uma subscription Realtime na tabela `leads` filtrada pelo `broker_id` do corretor, dentro do `BrokerAdmin.tsx`.
+2. Quando qualquer INSERT, UPDATE ou DELETE acontecer nos leads do corretor, a lista sera atualizada automaticamente via `fetchLeads()`.
+3. Remover o botao "Atualizar" e manter apenas o botao "Importar CSV".
 
-A logica sera:
-- Quando o usuario alterar `valor` ou `quantidade_parcelas`, verificar se ambos os campos tem valores validos
-- Se sim, calcular `valor_parcela = valor / quantidade_parcelas` e atualizar automaticamente
-- O campo Valor/Parcela continuara editavel manualmente (o usuario pode sobrescrever o calculo)
+## Alteracoes
+
+**Arquivo:** `src/pages/BrokerAdmin.tsx`
+
+1. **Adicionar subscription Realtime** -- novo `useEffect` que escuta mudancas na tabela `leads` filtradas por `broker_id`:
 
 ```typescript
-const updateParcela = (id: string, field: keyof ParcelaForm, value: string) => {
-  setParcelas(prev => prev.map(p => {
-    if (p.id !== id) return p;
-    const updated = { ...p, [field]: value };
-    // Auto-calculate valor_parcela
-    if (field === "valor" || field === "quantidade_parcelas") {
-      const val = parseCurrency(field === "valor" ? value : updated.valor);
-      const qty = parseInt(field === "quantidade_parcelas" ? value : updated.quantidade_parcelas);
-      if (val > 0 && qty > 0) {
-        const perInstallment = Math.round((val / qty) * 100);
-        updated.valor_parcela = String(perInstallment);
+useEffect(() => {
+  if (!brokerId) return;
+
+  const channel = supabase
+    .channel(`broker-leads-${brokerId}`)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'leads',
+        filter: `broker_id=eq.${brokerId}`,
+      },
+      () => {
+        fetchLeads();
       }
-    }
-    return updated;
-  }));
-};
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [brokerId]);
 ```
 
-Nenhuma outra alteracao necessaria -- o campo continua editavel e os dados sao salvos normalmente.
+2. **Remover o botao "Atualizar"** (linhas 177-184) e ajustar o layout do botao "Importar CSV" para ocupar o espaco de forma adequada.
+
+3. **Remover import do `RefreshCw`** (manter apenas para o loading spinner inicial) ou substituir o spinner inicial por um componente Skeleton/Loader mais limpo.
+
+## Resultado
+- A lista de leads atualiza sozinha em tempo real, sem necessidade de clicar em nenhum botao.
+- O Kanban ja funciona assim; agora ambas as views terao o mesmo comportamento.
