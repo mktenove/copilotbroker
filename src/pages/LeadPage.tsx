@@ -238,7 +238,7 @@ export default function LeadPage() {
     if (!lead) return null;
     switch (lead.status) {
       case "new": return { label: "Iniciar Atendimento", icon: Play, color: "bg-emerald-500 hover:bg-emerald-600", action: "iniciar" };
-      case "info_sent": return { label: "Registrar Agendamento", icon: Calendar, color: "bg-yellow-500 hover:bg-yellow-600 text-black", action: "agendar" };
+      case "info_sent": return { label: "Agendar Reunião", icon: Calendar, color: "bg-yellow-500 hover:bg-yellow-600 text-black", action: "agendar" };
       case "scheduling": return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
       case "docs_received": return { label: "Confirmar Venda", icon: Trophy, color: "bg-emerald-500 hover:bg-emerald-600", action: "venda" };
       default: return null;
@@ -308,21 +308,9 @@ export default function LeadPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {primaryAction && (
-                <Button onClick={handlePrimaryAction} className={cn("hidden sm:inline-flex h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}>
-                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />{primaryAction.label}
-                </Button>
-              )}
-              {canTransfer && !isSold && !isLost && (
-                <Button variant="ghost" size="sm" onClick={() => setTransferOpen(true)} className="text-slate-400 hover:text-white h-9">
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" /><span className="hidden sm:inline">Transferir</span>
-                </Button>
-              )}
-              {!isSold && !isLost && (
-                <Button variant="ghost" size="sm" onClick={() => setPerdaOpen(true)} className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10 h-9">
-                  <UserX className="w-3.5 h-3.5 mr-1.5" /><span className="hidden sm:inline">Perda</span>
-                </Button>
-              )}
+              <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all">
+                <MessageCircle className="w-3.5 h-3.5" />WhatsApp<ExternalLink className="w-3 h-3" />
+              </a>
             </div>
           </div>
 
@@ -345,6 +333,37 @@ export default function LeadPage() {
               );
             })}
           </div>
+
+          {/* Action bar */}
+          {!isSold && !isLost && (
+            <div className="flex items-center gap-2 mt-6 pt-4 border-t border-[#1e1e22] flex-wrap">
+              {primaryAction && (
+                <Button onClick={handlePrimaryAction} className={cn("h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}>
+                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />{primaryAction.label}
+                </Button>
+              )}
+
+              {lead.status === "scheduling" && (
+                <Button variant="outline" size="sm" onClick={() => setAgendamentoReagendar(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-300 hover:bg-[#1e1e22]">
+                  <Calendar className="w-3.5 h-3.5 mr-1.5" />Reagendar
+                </Button>
+              )}
+
+              <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="h-9 text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
+                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Follow-Up
+              </Button>
+
+              <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
+                <UserX className="w-3.5 h-3.5 mr-1.5" />Perda
+              </Button>
+
+              {canTransfer && (
+                <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-400 hover:bg-[#1e1e22]">
+                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />Transferir
+                </Button>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -357,11 +376,21 @@ export default function LeadPage() {
           </div>
         )}
 
-        {primaryAction && (
-          <div className="sm:hidden mb-6">
-            <Button onClick={handlePrimaryAction} className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}>
-              <primaryAction.icon className="w-4 h-4 mr-2" />{primaryAction.label}
-            </Button>
+        {!isSold && !isLost && (
+          <div className="sm:hidden mb-6 space-y-2">
+            {primaryAction && (
+              <Button onClick={handlePrimaryAction} className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}>
+                <primaryAction.icon className="w-4 h-4 mr-2" />{primaryAction.label}
+              </Button>
+            )}
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="flex-1 h-10 text-xs border-emerald-500/20 text-emerald-400">
+                <MessageCircle className="w-3.5 h-3.5 mr-1" />Follow-Up
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="flex-1 h-10 text-xs border-[#2a2a2e] text-red-400/80">
+                <UserX className="w-3.5 h-3.5 mr-1" />Perda
+              </Button>
+            </div>
           </div>
         )}
 
@@ -490,43 +519,6 @@ export default function LeadPage() {
 
           {/* ━━━━ RIGHT COLUMN (40%) ━━━━ */}
           <div className="lg:col-span-2 space-y-6">
-
-            {/* Smart Actions */}
-            {!isSold && !isLost && (
-              <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
-                <div className="px-5 py-3 border-b border-[#1e1e22]">
-                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ações</h2>
-                </div>
-                <div className="p-5 space-y-2.5">
-                  {primaryAction && (
-                    <button onClick={handlePrimaryAction} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all", primaryAction.color, "shadow-lg")}>
-                      <primaryAction.icon className="w-4 h-4" />{primaryAction.label}<ChevronRight className="w-4 h-4 ml-auto opacity-60" />
-                    </button>
-                  )}
-
-                  {lead.status === "scheduling" && (
-                    <button onClick={() => setAgendamentoReagendar(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all">
-                      <Calendar className="w-4 h-4 text-slate-500" />Reagendar
-                    </button>
-                  )}
-
-                  {/* Follow-Up WhatsApp */}
-                  <button onClick={() => setFollowUpOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 transition-all">
-                    <MessageCircle className="w-4 h-4" />Agendar Follow-Up<ChevronRight className="w-4 h-4 ml-auto opacity-60" />
-                  </button>
-
-                  <button onClick={() => setPerdaOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/80 bg-[#1a1a1e] hover:bg-red-500/10 border border-[#2a2a2e] hover:border-red-500/20 transition-all">
-                    <UserX className="w-4 h-4" />Registrar Perda
-                  </button>
-
-                  {canTransfer && (
-                    <button onClick={() => setTransferOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all">
-                      <ArrowRightLeft className="w-4 h-4 text-slate-500" />Transferir Lead
-                    </button>
-                  )}
-                </div>
-              </section>
-            )}
 
             {/* Sold state */}
             {isSold && (
