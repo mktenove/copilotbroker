@@ -7,3 +7,7 @@ export { DocumentChecklist } from "./DocumentChecklist";
 export { QuickNotes } from "./QuickNotes";
 export { OriginQuickPicker } from "./OriginQuickPicker";
 export { InactivationPicker } from "./InactivationPicker";
+export { AgendamentoModal } from "./AgendamentoModal";
+export { ComparecimentoModal } from "./ComparecimentoModal";
+export { VendaModal } from "./VendaModal";
+export { PerdaModal } from "./PerdaModal";
