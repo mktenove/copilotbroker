@@ -31,6 +31,35 @@ export function useLeadInteractions(leadId: string | null) {
     fetchInteractions();
   }, [fetchInteractions]);
 
+  // Realtime subscription for live timeline updates
+  useEffect(() => {
+    if (!leadId) return;
+
+    const channel = supabase
+      .channel(`lead-interactions-${leadId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "lead_interactions",
+          filter: `lead_id=eq.${leadId}`,
+        },
+        (payload) => {
+          const newInteraction = payload.new as unknown as LeadInteraction;
+          setInteractions((prev) => {
+            if (prev.some((i) => i.id === newInteraction.id)) return prev;
+            return [newInteraction, ...prev];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [leadId]);
+
   const addInteraction = useCallback(async (
     interactionType: InteractionType,
     options: {
