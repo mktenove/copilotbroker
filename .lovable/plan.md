@@ -1,54 +1,63 @@
 
 
-# Resolver Lentidao e Travamento na Tela "Verificando autenticacao..."
+# Reestruturar Etapas do Kanban
 
-## Problema Identificado
+## Resumo das alteracoes
 
-O fluxo atual quando o corretor clica no atalho para o CRM executa varias verificacoes redundantes e sequenciais:
+O Kanban passara de 4 para 5 colunas, com nomes atualizados e um botao de retroceder status (seta para a esquerda).
 
-1. **Auth.tsx** - Verifica sessao + busca role no banco + redireciona para `/corretor/admin`
-2. **BrokerAdmin.tsx** - Verifica sessao novamente + `useUserRole` busca role de novo + busca broker_id
-3. **useUserRole** - Faz 3 chamadas sequenciais ao banco: `getSession` -> `user_roles` -> `brokers`
-4. **Listeners duplicados** - `onAuthStateChange` esta configurado em Auth.tsx, BrokerAdmin.tsx e useUserRole.ts, disparando a mesma logica multiplas vezes (inclusive em token refresh)
+### Mapeamento de etapas
 
-Resultado: ate 6-8 chamadas ao banco antes do corretor ver o CRM, com race conditions que podem causar loops ou travamentos.
+| Posicao | Status (banco) | Nome antigo | Nome novo |
+|---------|---------------|-------------|-----------|
+| 1 | `new` | Novos Leads | Pre Atendimento |
+| 2 | `info_sent` | Informacoes Enviadas | Atendimento |
+| 3 | `scheduling` | *(nova)* | Agendamento |
+| 4 | `docs_received` | Dados Recebidos | Proposta |
+| 5 | `registered` | Cadastrado no Abaco | Vendido |
 
-## Solucao
+### Botao de retroceder
+Sera adicionado um botao com icone `ChevronLeft` ao lado do botao de avancar (`ChevronRight`) nos cards do Kanban. Ele so aparece quando o lead NAO esta na primeira etapa.
 
-### 1. Otimizar `useUserRole` - eliminar chamadas duplicadas
+---
 
-- Combinar a busca de `user_roles` e `brokers` em uma unica query usando join ou fazendo ambas em paralelo com `Promise.all`
-- Adicionar cache local (ref) para evitar re-fetches durante token refresh
-- Ignorar eventos de `onAuthStateChange` do tipo `TOKEN_REFRESHED` (nao muda role)
-- Adicionar flag para evitar chamadas concorrentes
+## Detalhes tecnicos
 
-### 2. Otimizar `Auth.tsx` - remover a race condition
+### 1. Migracao de banco de dados
+Adicionar o valor `scheduling` ao enum `lead_status` do Postgres:
+```sql
+ALTER TYPE lead_status ADD VALUE 'scheduling' BEFORE 'docs_received';
+```
 
-- Remover a verificacao duplicada: usar apenas `onAuthStateChange` com `INITIAL_SESSION` ao inves de chamar `getSession` separadamente
-- Isso elimina a possibilidade de dois redirects simultaneos
+### 2. `src/types/crm.ts`
+- Atualizar o tipo `LeadStatus` para incluir `'scheduling'`
+- Atualizar `STATUS_CONFIG` com os novos nomes:
+  - `new` -> "Pre Atendimento"
+  - `info_sent` -> "Atendimento"
+  - `scheduling` -> "Agendamento" (novo, cor laranja)
+  - `docs_received` -> "Proposta"
+  - `registered` -> "Vendido"
 
-### 3. Otimizar `BrokerAdmin.tsx` - remover listener redundante
+### 3. `src/components/crm/KanbanBoard.tsx`
+- Atualizar `STATUSES` para 5 colunas: `['new', 'info_sent', 'scheduling', 'docs_received', 'registered']`
+- Atualizar `VALID_STATUSES` e `STATUS_ORDER` no `handleAdvanceStatus` e `handleDragEnd`
+- Adicionar handler `handleRegressStatus` para retroceder etapa
 
-- Remover o `onAuthStateChange` local do BrokerAdmin, pois o `useUserRole` ja monitora o estado de autenticacao
-- Usar apenas o estado de `useUserRole` para decidir se redireciona para `/auth`
+### 4. `src/components/crm/KanbanCard.tsx`
+- Atualizar `STATUS_ORDER` para incluir `scheduling`
+- Atualizar `STATUS_PROGRESS` com 5 niveis (10%, 30%, 50%, 75%, 100%)
+- Atualizar `PROGRESS_COLORS` com cor para `scheduling`
+- Adicionar funcoes `getPrevStatus` e `getPrevStatusLabel`
+- Adicionar prop `onRegressStatus` e renderizar botao `ChevronLeft` quando nao estiver na primeira etapa
+- O botao aparecera a esquerda do botao de avancar, com cor amarela/laranja para diferenciar
 
-## Detalhes Tecnicos
+### 5. `src/components/crm/KanbanColumn.tsx`
+- Atualizar `STATUS_SQUARE_COLORS` para incluir `scheduling` (cor laranja)
+- Adicionar prop `onRegressStatus` e passa-la para os `KanbanCard`
 
-### `src/hooks/use-user-role.ts`
-- Usar `Promise.all` para buscar `user_roles` e `brokers` em paralelo (reduz de 3 chamadas sequenciais para 2 em paralelo)
-- Filtrar eventos do `onAuthStateChange`: so re-executar em `SIGNED_IN`, `SIGNED_OUT`, `INITIAL_SESSION`
-- Adicionar `useRef` para evitar chamadas concorrentes (debounce por flag)
+### 6. `src/components/whatsapp/NewCampaignSheet.tsx`
+- Atualizar `ACTIVE_STATUSES` para incluir `scheduling`
 
-### `src/pages/Auth.tsx`
-- Substituir o padrao `onAuthStateChange` + `getSession` separado por apenas `onAuthStateChange` que ja recebe `INITIAL_SESSION`
-- Isso elimina a race condition que causa o travamento na tela "Verificando autenticacao..."
-
-### `src/pages/BrokerAdmin.tsx`
-- Remover o `useEffect` com `onAuthStateChange` (linhas 44-60), ja que `useUserRole` cuida disso
-- Simplificar: se `!isRoleLoading && !role`, redirecionar para `/auth`
-
-### Resultado esperado
-- Tempo de carregamento reduzido em ~50-60% (menos chamadas, em paralelo)
-- Eliminacao do travamento na tela "Verificando autenticacao..."
-- Menos listeners ativos consumindo recursos
+### 7. `src/hooks/use-kanban-leads.ts`
+- Nenhuma alteracao necessaria (ja trata qualquer status valido)
 
