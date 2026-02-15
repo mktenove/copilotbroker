@@ -69,14 +69,14 @@ export function FollowUpSheet({
   const [steps, setSteps] = useState<Array<{ messageContent: string; delayMinutes: number; sendIfReplied?: boolean }>>([
     { messageContent: "", delayMinutes: 0 },
   ]);
-  const [isSendNow, setIsSendNow] = useState(true);
+  const [isSendNow, setIsSendNow] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [startTime, setStartTime] = useState("09:00");
 
   useEffect(() => {
     if (open) {
       setSteps([{ messageContent: "", delayMinutes: 0 }]);
-      setIsSendNow(true);
+      setIsSendNow(false);
       setStartDate(undefined);
       const now = new Date();
       setStartTime(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
