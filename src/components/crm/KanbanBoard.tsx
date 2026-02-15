@@ -12,7 +12,7 @@ import {
   DragEndEvent
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { RefreshCw, Building2, Users, Search, MapPin, X, Play } from "lucide-react";
+import { Building2, Users, Search, MapPin, X, Play } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
 import { useCustomOrigins } from "@/hooks/use-custom-origins";
@@ -277,33 +277,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   return (
     <div className="flex flex-col min-h-[700px]">
-      {/* Mobile: Botão Atualizar grande */}
-      <button
-        onClick={fetchLeads}
-        disabled={isLoading}
-        className={cn(
-          "md:hidden flex items-center justify-center gap-2 w-full py-3 mb-4 rounded-lg",
-          "bg-primary text-primary-foreground font-medium",
-          "hover:bg-primary/90 transition-all disabled:opacity-50"
-        )}
-      >
-        <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-        Atualizar
-      </button>
-
       {/* Toolbar - Filters */}
       <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 px-1">
-        <button
-          onClick={fetchLeads}
-          disabled={isLoading}
-          className={cn(
-            "hidden md:flex items-center justify-center w-9 h-9 shrink-0 rounded-lg",
-            "text-muted-foreground hover:text-foreground hover:bg-[#2a2a2e] transition-all"
-          )}
-        >
-          <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
-        </button>
-
         {(isAdmin || projects.length > 1) && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
