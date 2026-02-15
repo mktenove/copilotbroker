@@ -1,51 +1,17 @@
 
+# Remover botão Atualizar do Kanban
 
-# Substituir botao Atualizar por atualizacao em tempo real
+## Contexto
+O Kanban já utiliza Supabase Realtime (configurado no hook `use-kanban-leads.ts`) para atualizar os leads automaticamente. O botão "Atualizar" é redundante.
 
-## Problema
-Na view de lista do painel do corretor, existe um botao "Atualizar" que o usuario precisa clicar manualmente para ver novos leads ou mudancas. Isso nao e ideal -- o Kanban ja usa Realtime, mas a lista nao.
+## Alterações
 
-## Solucao
-1. Adicionar uma subscription Realtime na tabela `leads` filtrada pelo `broker_id` do corretor, dentro do `BrokerAdmin.tsx`.
-2. Quando qualquer INSERT, UPDATE ou DELETE acontecer nos leads do corretor, a lista sera atualizada automaticamente via `fetchLeads()`.
-3. Remover o botao "Atualizar" e manter apenas o botao "Importar CSV".
+**Arquivo:** `src/components/crm/KanbanBoard.tsx`
 
-## Alteracoes
+1. **Remover o botão mobile "Atualizar"** (bloco com `md:hidden` no início do return, linhas ~195-204).
 
-**Arquivo:** `src/pages/BrokerAdmin.tsx`
+2. **Remover o botão desktop "Atualizar"** (ícone RefreshCw dentro do toolbar de filtros, linhas ~207-215).
 
-1. **Adicionar subscription Realtime** -- novo `useEffect` que escuta mudancas na tabela `leads` filtradas por `broker_id`:
+3. **Limpar imports não utilizados**: remover `RefreshCw` do import de `lucide-react` (caso não seja usado em outro lugar do componente).
 
-```typescript
-useEffect(() => {
-  if (!brokerId) return;
-
-  const channel = supabase
-    .channel(`broker-leads-${brokerId}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'leads',
-        filter: `broker_id=eq.${brokerId}`,
-      },
-      () => {
-        fetchLeads();
-      }
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [brokerId]);
-```
-
-2. **Remover o botao "Atualizar"** (linhas 177-184) e ajustar o layout do botao "Importar CSV" para ocupar o espaco de forma adequada.
-
-3. **Remover import do `RefreshCw`** (manter apenas para o loading spinner inicial) ou substituir o spinner inicial por um componente Skeleton/Loader mais limpo.
-
-## Resultado
-- A lista de leads atualiza sozinha em tempo real, sem necessidade de clicar em nenhum botao.
-- O Kanban ja funciona assim; agora ambas as views terao o mesmo comportamento.
+Nenhuma outra alteração necessária -- o Realtime já está funcionando no hook e continuará atualizando os cards automaticamente.
