@@ -393,6 +393,68 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     }
   }, []);
 
+  const registrarComparecimento = useCallback(async (leadId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          comparecimento: true,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "comparecimento_registrado" as any,
+        notes: "✅ Cliente compareceu",
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, comparecimento: true, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao registrar comparecimento:", error);
+      toast.error("Erro ao registrar comparecimento.");
+      return false;
+    }
+  }, []);
+
+  const registrarProposta = useCallback(async (leadId: string, valorProposta: number) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "docs_received" as any,
+          valor_proposta: valorProposta,
+          data_envio_proposta: now,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "proposta_enviada" as any,
+        old_status: "scheduling",
+        new_status: "docs_received",
+        notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao registrar proposta:", error);
+      toast.error("Erro ao registrar proposta.");
+      return false;
+    }
+  }, []);
+
   const registrarNaoComparecimento = useCallback(async (leadId: string) => {
     try {
       const { error } = await supabase
@@ -520,6 +582,8 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     iniciarAtendimento,
     registrarAgendamento,
     registrarComparecimentoEProposta,
+    registrarComparecimento,
+    registrarProposta,
     registrarNaoComparecimento,
     reagendarLead,
     confirmarVenda,

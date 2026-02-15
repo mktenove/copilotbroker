@@ -22,6 +22,7 @@ import { KanbanCard } from "./KanbanCard";
 import { LeadDetailSheet } from "./LeadDetailSheet";
 import { AgendamentoModal } from "./AgendamentoModal";
 import { ComparecimentoModal } from "./ComparecimentoModal";
+import { PropostaModal } from "./PropostaModal";
 import { VendaModal } from "./VendaModal";
 import { PerdaModal } from "./PerdaModal";
 import { NewCampaignSheet } from "@/components/whatsapp/NewCampaignSheet";
@@ -72,6 +73,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   // Modal states
   const [agendamentoModal, setAgendamentoModal] = useState<{ open: boolean; leadId: string | null; isReagendamento?: boolean }>({ open: false, leadId: null });
   const [comparecimentoModal, setComparecimentoModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
+  const [propostaModal, setPropostaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
 
@@ -92,7 +94,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   const {
     leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus,
-    iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
+    iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
   } = useKanbanLeads({
     brokerId,
     isAdmin,
@@ -440,20 +442,32 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
       <ComparecimentoModal
         open={comparecimentoModal.open}
         onOpenChange={(v) => setComparecimentoModal(prev => ({ ...prev, open: v }))}
-        onCompareceu={async (valorProposta) => {
+        onCompareceu={async () => {
           if (!comparecimentoModal.leadId) return;
-          const success = await registrarComparecimentoEProposta(comparecimentoModal.leadId, valorProposta);
-          if (success) toast.success("Proposta registrada!");
+          const success = await registrarComparecimento(comparecimentoModal.leadId);
+          if (success) {
+            toast.success("Comparecimento registrado!");
+            // Open proposta modal automatically
+            setPropostaModal({ open: true, leadId: comparecimentoModal.leadId });
+          }
         }}
         onNaoCompareceu={() => {
           if (!comparecimentoModal.leadId) return;
           registrarNaoComparecimento(comparecimentoModal.leadId);
-          // Open options: reagendar or perda
           const lead = leads.find(l => l.id === comparecimentoModal.leadId);
           if (lead) {
-            // Show reagendamento modal
             setAgendamentoModal({ open: true, leadId: comparecimentoModal.leadId, isReagendamento: true });
           }
+        }}
+      />
+
+      <PropostaModal
+        open={propostaModal.open}
+        onOpenChange={(v) => setPropostaModal(prev => ({ ...prev, open: v }))}
+        onConfirm={async (valorProposta) => {
+          if (!propostaModal.leadId) return;
+          const success = await registrarProposta(propostaModal.leadId, valorProposta);
+          if (success) toast.success("Proposta registrada!");
         }}
       />
 

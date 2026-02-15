@@ -5,6 +5,7 @@ import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayL
 import { LeadTimeline } from "@/components/crm/LeadTimeline";
 import { AgendamentoModal } from "@/components/crm/AgendamentoModal";
 import { ComparecimentoModal } from "@/components/crm/ComparecimentoModal";
+import { PropostaModal } from "@/components/crm/PropostaModal";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
 import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
@@ -42,6 +43,7 @@ export default function LeadPage() {
   const [agendamentoOpen, setAgendamentoOpen] = useState(false);
   const [agendamentoReagendar, setAgendamentoReagendar] = useState(false);
   const [comparecimentoOpen, setComparecimentoOpen] = useState(false);
+  const [propostaOpen, setPropostaOpen] = useState(false);
   const [vendaOpen, setVendaOpen] = useState(false);
   const [perdaOpen, setPerdaOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
@@ -54,7 +56,7 @@ export default function LeadPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
-  const { iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
+  const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
 
   // Fetch brokers & projects for editable selects
@@ -243,7 +245,11 @@ export default function LeadPage() {
     switch (lead.status) {
       case "new": return { label: "Iniciar Atendimento", icon: Play, color: "bg-emerald-500 hover:bg-emerald-600", action: "iniciar" };
       case "info_sent": return { label: "Agendar Reunião", icon: Calendar, color: "bg-yellow-500 hover:bg-yellow-600 text-black", action: "agendar" };
-      case "scheduling": return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
+      case "scheduling":
+        if (lead.comparecimento === true) {
+          return { label: "Inserir Proposta", icon: DollarSign, color: "bg-purple-500 hover:bg-purple-600", action: "proposta" };
+        }
+        return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
       case "docs_received": return { label: "Confirmar Venda", icon: Trophy, color: "bg-emerald-500 hover:bg-emerald-600", action: "venda" };
       default: return null;
     }
@@ -276,6 +282,7 @@ export default function LeadPage() {
       }
       case "agendar": setAgendamentoOpen(true); break;
       case "comparecimento": setComparecimentoOpen(true); break;
+      case "proposta": setPropostaOpen(true); break;
       case "venda": setVendaOpen(true); break;
     }
   };
@@ -608,11 +615,19 @@ export default function LeadPage() {
       <ComparecimentoModal
         open={comparecimentoOpen}
         onOpenChange={setComparecimentoOpen}
-        onCompareceu={async (valor) => {
-          const ok = await registrarComparecimentoEProposta(lead.id, valor);
-          if (ok) { toast.success("Proposta registrada!"); refreshLead(); }
+        onCompareceu={async () => {
+          const ok = await registrarComparecimento(lead.id);
+          if (ok) { toast.success("Comparecimento registrado!"); refreshLead(); }
         }}
         onNaoCompareceu={() => { registrarNaoComparecimento(lead.id); setAgendamentoReagendar(true); }}
+      />
+      <PropostaModal
+        open={propostaOpen}
+        onOpenChange={setPropostaOpen}
+        onConfirm={async (valor) => {
+          const ok = await registrarProposta(lead.id, valor);
+          if (ok) { toast.success("Proposta registrada!"); refreshLead(); }
+        }}
       />
       <VendaModal
         open={vendaOpen}
