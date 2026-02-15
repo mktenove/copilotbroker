@@ -334,41 +334,11 @@ export default function LeadPage() {
             })}
           </div>
 
-          {/* Action bar */}
-          {!isSold && !isLost && (
-            <div className="flex items-center gap-2 mt-6 pt-4 border-t border-[#1e1e22] flex-wrap">
-              {primaryAction && (
-                <Button onClick={handlePrimaryAction} className={cn("h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}>
-                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />{primaryAction.label}
-                </Button>
-              )}
-
-              {lead.status === "scheduling" && (
-                <Button variant="outline" size="sm" onClick={() => setAgendamentoReagendar(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-300 hover:bg-[#1e1e22]">
-                  <Calendar className="w-3.5 h-3.5 mr-1.5" />Reagendar
-                </Button>
-              )}
-
-              <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="h-9 text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
-                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Follow-Up
-              </Button>
-
-              <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
-                <UserX className="w-3.5 h-3.5 mr-1.5" />Perda
-              </Button>
-
-              {canTransfer && (
-                <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-400 hover:bg-[#1e1e22]">
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />Transferir
-                </Button>
-              )}
-            </div>
-          )}
         </div>
       </div>
 
       {/* ━━━━━━━━━━━━━━ MAIN CONTENT ━━━━━━━━━━━━━━ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-24">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-10">
         {slaLabel === "SLA estourado" && (
           <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
@@ -376,23 +346,6 @@ export default function LeadPage() {
           </div>
         )}
 
-        {!isSold && !isLost && (
-          <div className="sm:hidden mb-6 space-y-2">
-            {primaryAction && (
-              <Button onClick={handlePrimaryAction} className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}>
-                <primaryAction.icon className="w-4 h-4 mr-2" />{primaryAction.label}
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="flex-1 h-10 text-xs border-emerald-500/20 text-emerald-400">
-                <MessageCircle className="w-3.5 h-3.5 mr-1" />Follow-Up
-              </Button>
-              <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="flex-1 h-10 text-xs border-[#2a2a2e] text-red-400/80">
-                <UserX className="w-3.5 h-3.5 mr-1" />Perda
-              </Button>
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
