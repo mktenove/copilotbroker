@@ -1,16 +1,26 @@
 
-# Proposta aparece imediatamente apos ser criada
+# Restringir seção Propostas à aba correta
 
 ## Problema
-Ao criar uma proposta, o sistema depende exclusivamente da subscricao Realtime do banco de dados para atualizar a lista. Isso pode causar um atraso perceptivel (1-3 segundos) antes da proposta aparecer na tela.
+A seção `PropostasList` está sendo renderizada incondicionalmente na página do lead, independente do status. Isso permite que o usuário veja e crie propostas nas etapas de Pré Atendimento, Atendimento e Agendamento, podendo pular etapas do funil.
 
-## Solucao
-Adicionar uma chamada direta ao `fetchPropostas()` dentro da funcao `criarProposta` logo apos o insert ser concluido com sucesso. Isso garante que a lista seja atualizada imediatamente, sem depender do Realtime.
+## Solução
+Adicionar uma condição no `src/pages/LeadPage.tsx` para que o componente `PropostasList` só seja exibido quando o lead estiver nos status `docs_received` (Proposta) ou `registered` (Vendido), ou nos status finais (`sold`, `inactive`) caso já existam propostas registradas.
 
-## Alteracao
+## Alteração
 
-**Arquivo:** `src/hooks/use-propostas.ts`
+**Arquivo:** `src/pages/LeadPage.tsx`
 
-Na funcao `criarProposta`, adicionar `await fetchPropostas()` logo antes do `toast.success()` (apos todas as insercoes no banco). Tambem atualizar a dependencia do `useCallback` para incluir `fetchPropostas`.
+Envolver o bloco `<PropostasList ... />` (linhas 455-469) em uma condição:
 
-A mesma logica ja existe no Realtime (que continuara funcionando como backup para atualizacoes vindas de outros usuarios), mas o refetch direto garante que o proprio usuario veja o resultado instantaneamente.
+```tsx
+{(lead.status === "docs_received" || lead.status === "registered" || 
+  ((lead.status === "sold" || lead.status === "inactive") && propostas.length > 0)) && (
+  <PropostasList ... />
+)}
+```
+
+Isso garante que:
+- Nas etapas Pré Atendimento, Atendimento e Agendamento a seção não aparece
+- Na etapa Proposta e Vendido ela aparece normalmente
+- Em leads finalizados (venda/perda) ela aparece somente se houver propostas existentes
