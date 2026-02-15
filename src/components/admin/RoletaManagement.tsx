@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History, Target, Timer, TimerOff } from "lucide-react";
+import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History, Target, Timer, TimerOff, LogOut } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoletas, useRoletaLogs } from "@/hooks/use-roletas";
 import { Roleta } from "@/types/roleta";
@@ -57,7 +57,7 @@ const RoletaManagement = () => {
   const {
     roletas, isLoading, fetchRoletas,
     createRoleta, updateRoleta, toggleRoletaAtiva,
-    addMembro, removeMembro, updateMembroOrdem,
+    addMembro, removeMembro, updateMembroOrdem, toggleCheckin,
     addEmpreendimento, removeEmpreendimento, deleteRoleta,
   } = useRoletas();
 
@@ -491,6 +491,17 @@ const RoletaManagement = () => {
                                     onClick={() => updateRoleta(roleta.id, { ultimo_membro_ordem_atribuida: membro.ordem - 1 } as any)}
                                   >
                                     <Target className="w-3 h-3" />
+                                  </Button>
+                                )}
+                                {membro.status_checkin && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-orange-400 hover:text-orange-300 p-1 h-auto"
+                                    title="Forçar check-out"
+                                    onClick={() => toggleCheckin(membro.id, false)}
+                                  >
+                                    <LogOut className="w-3 h-3" />
                                   </Button>
                                 )}
                                 <Button
