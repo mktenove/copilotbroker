@@ -1,200 +1,179 @@
 
-# Modulo Completo de Propostas
 
-## Resumo
-Criar um sistema completo de propostas dentro da pagina do lead, substituindo o modal simples atual por um formulario estruturado com historico, versionamento, status, geracao de PDF e encaminhamento ao vendedor.
+# Fluxo de Pagamento Detalhado na Proposta
 
-## 1. Nova tabela no banco de dados: `propostas`
+## Problema Atual
+O modal de proposta tem apenas dois campos financeiros (valor da proposta e valor de entrada), com um campo texto livre para parcelamento. Isso nao permite registrar fluxos complexos como: entrada parcelada + dacao em pagamento + financiamento com reforcos e indice de correcao.
+
+## Solucao
+Criar um sistema de **parcelas dinamicas** onde o corretor adiciona quantas linhas de pagamento precisar, cada uma com tipo, valor, quantidade de parcelas, descricao e indice de correcao. O sistema calcula automaticamente o total e valida se fecha com o valor da proposta.
+
+## Exemplo do usuario
+Proposta total: R$ 500.000
+- Entrada: R$ 100.000, parcelado em 10x de R$ 10.000
+- Dacao em pagamento: R$ 220.000, terreno em Estancia Velha
+- Financiamento: R$ 180.000, 100x com 6 reforcos semestrais de R$ 10.000, corrigido pelo INCC
+
+## Alteracoes
+
+### 1. Nova tabela: `proposta_parcelas`
+
+Tabela filha de `propostas` para armazenar cada linha do fluxo de pagamento.
 
 ```text
-propostas
+proposta_parcelas
 - id (uuid, PK)
-- lead_id (uuid, FK -> leads)
-- project_id (uuid, FK -> projects, nullable)
-- broker_id (uuid, nullable)
-- created_by (uuid, nullable)
-- unidade (text)
-- valor_proposta (numeric)
-- valor_entrada (numeric)
-- forma_pagamento_entrada (text: "a_vista" | "parcelado")
-- parcelamento (text, descricao do parcelamento)
-- permuta (boolean, default false)
-- descricao_permuta (text, nullable)
-- observacoes_corretor (text, nullable)
-- condicoes_especiais (text, nullable)
-- status_proposta (text: "pendente" | "enviada_vendedor" | "aprovada" | "rejeitada", default "pendente")
-- enviada_vendedor_em (timestamptz, nullable)
-- aprovada_em (timestamptz, nullable)
-- rejeitada_em (timestamptz, nullable)
-- motivo_rejeicao (text, nullable)
+- proposta_id (uuid, FK -> propostas, ON DELETE CASCADE)
+- tipo (text): "entrada", "dacao_pagamento", "financiamento", "sinal", "parcelas_mensais", "reforco", "balao", "outro"
+- valor (numeric, NOT NULL)
+- quantidade_parcelas (integer, nullable) - ex: 10, 100
+- valor_parcela (numeric, nullable) - ex: 10.000
+- descricao (text, nullable) - descricao livre, ex: "terreno em Estancia Velha"
+- indice_correcao (text, nullable) - ex: "INCC", "IGPM", "IPCA", "nenhum"
+- observacao (text, nullable) - ex: "6 reforcos semestrais de R$ 10.000"
+- ordem (integer, default 0)
 - created_at (timestamptz, default now())
-- updated_at (timestamptz, default now())
 ```
 
-RLS: mesmas regras dos leads (admins veem tudo, corretores veem das suas leads, lideres veem da equipe). Realtime habilitado.
+RLS: mesmas regras da tabela propostas (via join com propostas -> leads -> broker_id).
 
-## 2. Novo componente: `PropostaModal.tsx` (reescrita completa)
+### 2. Reformular o PropostaModal
 
-O modal atual sera completamente reescrito com os seguintes campos:
+Substituir os campos fixos (valor_entrada, forma_pagamento_entrada, parcelamento) por uma lista dinamica de parcelas:
 
-**Dados do imovel:**
-- Empreendimento (pre-preenchido do lead, editavel via Select)
-- Unidade (texto livre)
+- Manter o campo "Valor da Proposta" (valor total)
+- Remover campos de entrada/parcelamento fixos
+- Adicionar secao "Fluxo de Pagamento" com botao "+ Adicionar Parcela"
+- Cada parcela tem: Tipo (select), Valor, Qtd Parcelas, Valor/Parcela, Descricao, Indice de Correcao, Observacao
+- Calcular automaticamente: soma das parcelas vs valor da proposta
+- Exibir diferenca (falta compor / excede) em tempo real
+- Manter a secao de permuta como um tipo de parcela "dacao_pagamento"
 
-**Dados financeiros:**
-- Valor da proposta (input currency)
-- Valor de entrada (input currency)
-- Forma de pagamento da entrada (select: A Vista / Parcelado)
-- Parcelamento (texto descritivo)
-- Permuta (switch Sim/Nao)
-- Descricao da permuta (textarea, condicional)
+Tipos disponiveis no select:
+- Sinal
+- Entrada (a vista)
+- Entrada (parcelada)
+- Dacao em Pagamento
+- Financiamento
+- Parcelas Mensais
+- Reforco Semestral/Anual
+- Balao
+- Outro
 
-**Calculo automatico:** exibir resumo com total (valor proposta = entrada + financiamento implicito)
+### 3. Atualizar PropostasList
 
-**Dados estrategicos:**
-- Observacoes do corretor (textarea)
-- Condicoes especiais solicitadas (textarea)
+- Exibir as parcelas de cada proposta no card expandido (buscar da tabela proposta_parcelas)
+- Substituir os campos fixos de entrada/parcelamento pela lista de parcelas
 
-O modal sera um Dialog maior (sm:max-w-2xl) com scroll interno, dividido em secoes visuais.
+### 4. Atualizar PropostaPDF
 
-## 3. Novo componente: `PropostasList.tsx`
+- Gerar tabela detalhada com todas as parcelas do fluxo de pagamento
+- Cada linha: tipo, valor, parcelas, descricao, indice
 
-Secao na pagina do lead que lista todas as propostas do lead, exibindo:
-- Numero da proposta (sequencial)
-- Data de criacao
-- Valor
-- Status (badge colorido: pendente/enviada/aprovada/rejeitada)
-- Botoes de acao por proposta:
-  - "Aprovar" -> muda status para aprovada, libera botao "Confirmar Venda"
-  - "Rejeitar" -> muda status para rejeitada, permite nova proposta ou inativar
-  - "Gerar PDF" -> gera documento em nova aba
-  - "Encaminhar ao Vendedor" -> registra timestamp, muda status para enviada_vendedor
+### 5. Atualizar hook use-propostas
 
-## 4. Geracao de PDF
+- Ao criar proposta, inserir tambem as parcelas na tabela proposta_parcelas
+- Ao buscar propostas, buscar tambem as parcelas associadas
+- Atualizar PropostaInsert para incluir array de parcelas
 
-Sera implementado via funcao client-side usando a API nativa do browser (`window.print` com pagina formatada ou geracao via canvas/HTML).
+### 6. Campos que permanecem na tabela propostas
 
-O PDF contera:
-- Logo da imobiliaria (asset existente em /src/assets/logo-enove.png)
-- Dados do cliente (nome, whatsapp, email, cpf)
-- Dados do imovel (empreendimento, unidade)
-- Valores (proposta, entrada, forma de pagamento, parcelamento)
-- Permuta (se aplicavel)
-- Observacoes e condicoes especiais
-- Data da proposta
-- Nome do corretor
-
-Sera aberto em uma nova janela estilizada para impressao/PDF.
-
-## 5. Encaminhamento ao Vendedor
-
-Botao "Encaminhar Proposta ao Vendedor" com opcoes:
-- Via WhatsApp: abre link wa.me com texto resumido da proposta
-- Download manual: aciona a geracao do PDF
-
-Ao encaminhar, registra `enviada_vendedor_em` e altera `status_proposta` para "enviada_vendedor".
-
-## 6. Alteracoes na pagina do Lead (`LeadPage.tsx`)
-
-- Adicionar secao "Propostas" entre "Progresso Comercial" e "Metricas"
-- Botao "Nova Proposta" no topo da secao
-- Lista de propostas com cards expandiveis
-- Quando proposta aprovada: exibir destaque e liberar "Confirmar Venda"
-- Quando proposta rejeitada: exibir badge vermelho e permitir nova proposta ou inativar
-
-## 7. Ajuste no fluxo do funil
-
-- O `registrarProposta` no hook `use-kanban-leads.ts` sera atualizado para:
-  - Criar registro na tabela `propostas` (alem de atualizar o lead)
-  - O lead permanece em "docs_received" (Proposta) ao registrar proposta
-  - Somente ao aprovar uma proposta o botao "Confirmar Venda" fica disponivel
-  - Proposta rejeitada permite: nova proposta ou marcar como perda
-
-## 8. Timeline
-
-Interacoes de proposta serao registradas no `lead_interactions`:
-- `proposta_enviada` (ja existe)
-- Novos tipos nao sao necessarios pois usaremos notes descritivas dentro de `proposta_enviada`
+Os campos `valor_entrada`, `forma_pagamento_entrada`, `parcelamento` continuam existindo no banco para retrocompatibilidade, mas o modal novo usara a tabela `proposta_parcelas` como fonte principal. O campo `valor_proposta` continua sendo o valor total.
 
 ---
 
-## Secao Tecnica - Arquivos
+## Secao Tecnica
 
-### Novos arquivos:
-1. `supabase/migrations/xxx.sql` - Criacao da tabela propostas + RLS + realtime
-2. `src/components/crm/PropostaModal.tsx` - Reescrita completa do modal
-3. `src/components/crm/PropostasList.tsx` - Lista de propostas do lead
-4. `src/components/crm/PropostaPDF.tsx` - Componente de geracao de PDF
-5. `src/hooks/use-propostas.ts` - Hook para CRUD de propostas
+### Migracao SQL
 
-### Arquivos modificados:
-1. `src/pages/LeadPage.tsx` - Integrar secao de propostas e ajustar fluxo
-2. `src/hooks/use-kanban-leads.ts` - Ajustar `registrarProposta` para criar na nova tabela
-3. `src/components/crm/index.ts` - Exportar novos componentes
-4. `src/types/crm.ts` - Adicionar tipo `Proposta` e status
-
-### Migracao SQL:
 ```text
-CREATE TABLE public.propostas (
+CREATE TABLE public.proposta_parcelas (
   id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
-  lead_id uuid NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
-  project_id uuid REFERENCES public.projects(id),
-  broker_id uuid,
-  created_by uuid,
-  unidade text,
-  valor_proposta numeric NOT NULL,
-  valor_entrada numeric,
-  forma_pagamento_entrada text DEFAULT 'a_vista',
-  parcelamento text,
-  permuta boolean DEFAULT false,
-  descricao_permuta text,
-  observacoes_corretor text,
-  condicoes_especiais text,
-  status_proposta text DEFAULT 'pendente',
-  enviada_vendedor_em timestamptz,
-  aprovada_em timestamptz,
-  rejeitada_em timestamptz,
-  motivo_rejeicao text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+  proposta_id uuid NOT NULL REFERENCES public.propostas(id) ON DELETE CASCADE,
+  tipo text NOT NULL DEFAULT 'entrada',
+  valor numeric NOT NULL,
+  quantidade_parcelas integer,
+  valor_parcela numeric,
+  descricao text,
+  indice_correcao text,
+  observacao text,
+  ordem integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
 );
 
--- RLS policies (mesma logica de lead_interactions)
-ALTER TABLE public.propostas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.proposta_parcelas ENABLE ROW LEVEL SECURITY;
 
 -- Admins full access
-CREATE POLICY "Admins full access propostas"
-  ON public.propostas FOR ALL
+CREATE POLICY "Admins full access proposta_parcelas"
+  ON public.proposta_parcelas FOR ALL
   USING (has_role(auth.uid(), 'admin'));
 
--- Corretores podem ver/inserir/atualizar propostas dos seus leads
-CREATE POLICY "Corretores select propostas"
-  ON public.propostas FOR SELECT
-  USING (has_role(auth.uid(), 'broker') AND lead_id IN (
-    SELECT id FROM leads WHERE broker_id = get_my_broker_id()
-  ));
-
-CREATE POLICY "Corretores insert propostas"
-  ON public.propostas FOR INSERT
-  WITH CHECK (has_role(auth.uid(), 'broker') AND lead_id IN (
-    SELECT id FROM leads WHERE broker_id = get_my_broker_id()
-  ));
-
-CREATE POLICY "Corretores update propostas"
-  ON public.propostas FOR UPDATE
-  USING (has_role(auth.uid(), 'broker') AND lead_id IN (
-    SELECT id FROM leads WHERE broker_id = get_my_broker_id()
-  ));
-
--- Lideres podem ver propostas da equipe
-CREATE POLICY "Lideres select propostas"
-  ON public.propostas FOR SELECT
-  USING (has_role(auth.uid(), 'leader') AND lead_id IN (
-    SELECT id FROM leads WHERE broker_id IN (
-      SELECT id FROM brokers WHERE lider_id = get_my_broker_id()
+-- Corretores: via join com propostas -> leads
+CREATE POLICY "Corretores select proposta_parcelas"
+  ON public.proposta_parcelas FOR SELECT
+  USING (has_role(auth.uid(), 'broker') AND proposta_id IN (
+    SELECT id FROM propostas WHERE lead_id IN (
+      SELECT id FROM leads WHERE broker_id = get_my_broker_id()
     )
   ));
 
--- Realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.propostas;
+CREATE POLICY "Corretores insert proposta_parcelas"
+  ON public.proposta_parcelas FOR INSERT
+  WITH CHECK (has_role(auth.uid(), 'broker') AND proposta_id IN (
+    SELECT id FROM propostas WHERE lead_id IN (
+      SELECT id FROM leads WHERE broker_id = get_my_broker_id()
+    )
+  ));
+
+CREATE POLICY "Corretores delete proposta_parcelas"
+  ON public.proposta_parcelas FOR DELETE
+  USING (has_role(auth.uid(), 'broker') AND proposta_id IN (
+    SELECT id FROM propostas WHERE lead_id IN (
+      SELECT id FROM leads WHERE broker_id = get_my_broker_id()
+    )
+  ));
+
+-- Lideres
+CREATE POLICY "Lideres select proposta_parcelas"
+  ON public.proposta_parcelas FOR SELECT
+  USING (has_role(auth.uid(), 'leader') AND proposta_id IN (
+    SELECT id FROM propostas WHERE lead_id IN (
+      SELECT id FROM leads WHERE broker_id IN (
+        SELECT id FROM brokers WHERE lider_id = get_my_broker_id()
+      )
+    )
+  ));
+
+ALTER PUBLICATION supabase_realtime ADD TABLE public.proposta_parcelas;
+```
+
+### Arquivos modificados
+1. `src/hooks/use-propostas.ts` - Adicionar tipo ParcelaInsert, buscar parcelas junto com propostas, inserir parcelas ao criar
+2. `src/components/crm/PropostaModal.tsx` - Reformular completamente a secao financeira com lista dinamica de parcelas
+3. `src/components/crm/PropostasList.tsx` - Exibir parcelas no card expandido
+4. `src/components/crm/PropostaPDF.tsx` - Gerar tabela de parcelas no PDF
+
+### Fluxo no modal
+
+```text
+[Valor Total da Proposta: R$ 500.000,00]
+
+Fluxo de Pagamento:
++--------------------------------------------------+
+| Tipo: Entrada (parcelada)  | Valor: R$ 100.000   |
+| 10x de R$ 10.000           |                      |
++--------------------------------------------------+
+| Tipo: Dacao em Pagamento   | Valor: R$ 220.000   |
+| Descricao: Terreno em Estancia Velha             |
++--------------------------------------------------+
+| Tipo: Financiamento        | Valor: R$ 180.000   |
+| 100x | Indice: INCC                               |
+| Obs: 6 reforcos semestrais de R$ 10.000          |
++--------------------------------------------------+
+           [+ Adicionar Parcela]
+
+Resumo:
+  Total Proposta: R$ 500.000
+  Total Composto: R$ 500.000  (checkmark verde)
+  Diferenca: R$ 0,00
 ```
