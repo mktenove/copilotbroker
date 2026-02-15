@@ -1,45 +1,36 @@
 
-# Adicionar campo de Data/Hora de inicio ao Follow-Up
 
-## O que muda
-
-Atualmente a primeira mensagem do follow-up e agendada para "agora" (com um pequeno intervalo aleatorio). O corretor precisa poder escolher **quando** o follow-up comeca.
+# Mover botoes de acao para o header e renomear "Registrar Agendamento"
 
 ## Alteracoes
 
-### Arquivo: `src/components/crm/FollowUpSheet.tsx`
+### Arquivo: `src/pages/LeadPage.tsx`
 
-1. **Novo estado** `startDate` (Date | undefined) e `startTime` (string, formato "HH:mm") -- resetados ao abrir o sheet.
+1. **Renomear "Registrar Agendamento" para "Agendar Reuniao"**
+   - No `primaryAction` (linha 241), trocar o label de `"Registrar Agendamento"` para `"Agendar Reunião"`
 
-2. **Nova secao visual** acima das etapas, com titulo "Inicio do envio":
-   - DatePicker usando `Popover` + `Calendar` (mesmo padrao do `AgendamentoModal`)
-   - Input de horario (type="time") ao lado da data
-   - Opcao rapida "Enviar agora" como alternativa (botao toggle)
-   - Quando "Enviar agora" esta selecionado, os campos de data/hora ficam desabilitados
+2. **Mover todos os botoes de acao da coluna direita para a primeira secao (header estrategico)**
+   - Os botoes que atualmente ficam na secao "Acoes" da coluna direita (linhas 494-528) serao movidos para a area do header (abaixo do progress bar ou integrados na linha de botoes do header)
+   - Botoes a mover: Acao primaria (dinamica), Reagendar, Agendar Follow-Up, Registrar Perda, Transferir Lead
+   - Layout: uma barra de acoes horizontal dentro do header, abaixo da barra de funil, com o botao primario em destaque e os secundarios ao lado
 
-3. **Validacao atualizada**: `isValid` passa a exigir que `startDate` esteja preenchido OU que "Enviar agora" esteja ativo.
+3. **Remover a secao "Acoes" da coluna direita**
+   - Eliminar o bloco `<section>` de "Acoes" (linhas 494-528) da coluna direita
+   - A coluna direita ficara apenas com os estados (Venda/Perda) e a Timeline
 
-4. **Logica de agendamento** (`handleSubmit`): em vez de `Date.now() + getRandomInterval()`, o `scheduledTime` inicial sera calculado a partir da data+hora selecionada. Se "Enviar agora", mantem o comportamento atual.
+4. **Atualizar o botao mobile** (linha 360-366) para tambem mostrar "Agendar Reuniao" e incluir os botoes secundarios
 
-### Detalhes de UI
-
-- A secao de data/hora segue o mesmo estilo dark do sheet (bg-[#0f0f11], border-[#2a2a2e])
-- Data formatada em dd/MM/yyyy, horario em formato 24h
-- Default ao abrir: "Enviar agora" ativo (comportamento atual preservado)
-- Ao desmarcar "Enviar agora", os campos de data/hora aparecem com a data de hoje e horario atual como default
-
-### Fluxo
+### Resultado visual
 
 ```text
-[Corretor abre Follow-Up]
-       |
-  [Secao: Inicio do envio]
-  [x] Enviar agora   -- ou --   [ Data: 18/02/2026 ] [ Hora: 14:30 ]
-       |
-  [Etapa 1 - mensagem]
-  [Etapa 2 - delay + mensagem]
-       |
-  [Agendar Follow-Up]
+HEADER ESTRATEGICO
+  [Nome] [Badge] [SLA]
+  [===== BARRA FUNIL =====]
+  [Agendar Reuniao (primario)] [Follow-Up] [Reagendar] [Perda] [Transferir]
+
+COLUNA ESQUERDA          |  COLUNA DIREITA
+  Dados do Lead          |    Estado (Venda/Perda)
+  Progresso Comercial    |    Linha do Tempo
+  Metricas               |
 ```
 
-Nenhuma alteracao de banco necessaria -- o campo `scheduled_at` na `whatsapp_message_queue` ja aceita qualquer timestamp futuro.
