@@ -1,55 +1,36 @@
 
+# Correção: Kanban em Tempo Real para Reassignação de Leads
 
-## Teste real de campanha com cancelamento de follow-up
+## Problema
+Quando o timeout da roleta redistribui um lead para outro corretor, o corretor anterior continua vendo o lead no seu Kanban até dar refresh manual. Isso acontece porque o Kanban não escuta mudanças em tempo real no banco de dados.
 
-### Objetivo
-Criar uma campanha real com 2 steps usando a instancia `enove_maicon` (conectada), enviar para o lead "Teste Maicon" (+5551997010323), e verificar que o Step 2 e cancelado quando voce responder.
+## Solução
+Ativar o **Realtime** na tabela `leads` e adicionar um listener no hook `useKanbanLeads` para que, quando o `broker_id` de um lead mudar (reassignação), o Kanban se atualize automaticamente.
 
-### Dados do teste
+## O que vai acontecer na prática
+- Quando um lead for reassignado (timeout ou manual), ele **desaparece automaticamente** do Kanban do corretor anterior
+- O lead **aparece automaticamente** no Kanban do novo corretor
+- Sem necessidade de refresh manual
 
-| Item | Valor |
-|------|-------|
-| Broker | Maicon (ID: `68db81c3-b187-42e0-89fb-fbb05e4a67fd`) |
-| Instancia | `enove_maicon` (conectada) |
-| Lead | Teste Maicon (ID: `cca68eab-d371-4f0b-8b9d-fcf1062d75be`) |
-| Telefone | +5551997010323 |
+---
 
-### Etapas de execucao
+## Detalhes Técnicos
 
-**1. Inserir campanha no banco**
-- Nome: "TESTE REAL: Cancelamento por Resposta"
-- Status: `running`
-- broker_id do Maicon
+### 1. Migração: Habilitar Realtime na tabela `leads`
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE public.leads;
+```
 
-**2. Inserir 2 campaign_steps**
-- Step 1: "Ola Maicon, tudo bem? Teste de campanha automatica." (delay: 0, send_if_replied: true)
-- Step 2: "Maicon, esse follow-up SO deve chegar se voce NAO responder." (delay: 3 min, send_if_replied: **false**)
+### 2. Atualizar `useKanbanLeads` com subscription Realtime
+Adicionar um `useEffect` que escuta eventos `UPDATE` na tabela `leads` via canal Realtime:
 
-**3. Inserir 2 mensagens na fila (whatsapp_message_queue)**
-- Mensagem 1: status `scheduled`, scheduled_at = agora (sera enviada no proximo ciclo do cron)
-- Mensagem 2: status `scheduled`, scheduled_at = agora + 3 minutos, step_number = 2
+- **Quando `broker_id` muda** (reassignação): remover o lead do state local se não pertence mais ao corretor atual, ou adicionar se agora pertence
+- **Quando `status` muda para `inactive`**: remover do state local
+- **Outros updates**: atualizar o lead no state local
 
-**4. Aguardar envio do Step 1** (o cron roda a cada minuto)
+A lógica será:
+- Para corretores: se o `broker_id` do lead mudou e não é mais o broker logado, o lead é removido da lista
+- Para admins: qualquer update é refletido no state local
 
-**5. Voce responde no WhatsApp** (qualquer mensagem)
-
-**6. O webhook processa a resposta e cancela o Step 2**
-
-**7. Verificar no banco que o Step 2 tem status `cancelled`**
-
-### O que valida
-
-- Envio real via UAZAPI funciona
-- Webhook recebe resposta real do WhatsApp
-- Logica de cancelamento funciona em producao
-- A mensagem "Maicon, esse follow-up SO deve chegar se voce NAO responder" **nunca sera entregue**
-
-### Secao tecnica
-
-Serao executadas 3 operacoes de INSERT no banco:
-1. `whatsapp_campaigns` - 1 registro
-2. `campaign_steps` - 2 registros  
-3. `whatsapp_message_queue` - 2 registros (step 1 agendado para agora, step 2 para +3 min)
-
-Apos confirmacao do teste, os dados serao limpos com DELETE.
-
+### 3. Cleanup
+O canal Realtime será desconectado automaticamente quando o componente desmontar (cleanup no `useEffect`).
