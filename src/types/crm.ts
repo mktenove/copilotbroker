@@ -17,7 +17,19 @@ export type InteractionType =
   | 'roleta_timeout'
   | 'roleta_fallback'
   | 'roleta_transferencia'
-  | 'atendimento_iniciado';
+  | 'atendimento_iniciado'
+  | 'agendamento_registrado'
+  | 'comparecimento_registrado'
+  | 'proposta_enviada'
+  | 'venda_confirmada'
+  | 'reagendamento';
+
+export const TIPO_AGENDAMENTO = [
+  { key: 'visita', label: 'Visita' },
+  { key: 'call', label: 'Call' },
+  { key: 'reuniao', label: 'Reunião' },
+  { key: 'envio_simulacao', label: 'Envio de Simulação' },
+] as const;
 
 export interface CRMLead {
   id: string;
@@ -51,6 +63,16 @@ export interface CRMLead {
   reserva_expira_em?: string | null;
   status_distribuicao?: DistributionStatus | null;
   motivo_atribuicao?: string | null;
+  // Commercial tracking fields (funnel)
+  data_agendamento?: string | null;
+  tipo_agendamento?: string | null;
+  comparecimento?: boolean | null;
+  valor_proposta?: number | null;
+  data_envio_proposta?: string | null;
+  valor_final_venda?: number | null;
+  data_fechamento?: string | null;
+  data_perda?: string | null;
+  etapa_perda?: string | null;
   // Relations
   broker?: {
     id: string;
@@ -218,7 +240,7 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
     bgColor: 'bg-slate-100 border-slate-300'
   },
   inactive: {
-    label: 'Inativos',
+    label: 'Perdido',
     color: 'text-red-600',
     bgColor: 'bg-red-50 border-red-200'
   }

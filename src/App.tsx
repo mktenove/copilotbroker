@@ -29,6 +29,7 @@ import BrokerSignup from "./pages/BrokerSignup";
 import BrokerWhatsApp from "./pages/BrokerWhatsApp";
 import BrokerRoletasPage from "./pages/BrokerRoletasPage";
 import Termos from "./pages/Termos";
+import LeadPage from "./pages/LeadPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -73,6 +74,7 @@ const App = () => (
             <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
             <Route path="/corretor/admin" element={<BrokerAdmin />} />
             <Route path="/corretor/roletas" element={<BrokerRoletasPage />} />
+            <Route path="/corretor/lead/:leadId" element={<LeadPage />} />
             <Route path="/termos" element={<Termos />} />
             
             {/* Dynamic city/project routes - MUST BE AFTER specific routes */}

@@ -548,10 +548,16 @@ export type Database = {
           auto_first_message_at: string | null
           auto_first_message_sent: boolean | null
           broker_id: string | null
+          comparecimento: boolean | null
           corretor_atribuido_id: string | null
           cpf: string | null
           created_at: string
+          data_agendamento: string | null
+          data_envio_proposta: string | null
+          data_fechamento: string | null
+          data_perda: string | null
           email: string | null
+          etapa_perda: string | null
           id: string
           inactivated_at: string | null
           inactivated_by: string | null
@@ -572,7 +578,10 @@ export type Database = {
           status_distribuicao:
             | Database["public"]["Enums"]["distribution_status"]
             | null
+          tipo_agendamento: string | null
           updated_at: string
+          valor_final_venda: number | null
+          valor_proposta: number | null
           whatsapp: string
         }
         Insert: {
@@ -581,10 +590,16 @@ export type Database = {
           auto_first_message_at?: string | null
           auto_first_message_sent?: boolean | null
           broker_id?: string | null
+          comparecimento?: boolean | null
           corretor_atribuido_id?: string | null
           cpf?: string | null
           created_at?: string
+          data_agendamento?: string | null
+          data_envio_proposta?: string | null
+          data_fechamento?: string | null
+          data_perda?: string | null
           email?: string | null
+          etapa_perda?: string | null
           id?: string
           inactivated_at?: string | null
           inactivated_by?: string | null
@@ -605,7 +620,10 @@ export type Database = {
           status_distribuicao?:
             | Database["public"]["Enums"]["distribution_status"]
             | null
+          tipo_agendamento?: string | null
           updated_at?: string
+          valor_final_venda?: number | null
+          valor_proposta?: number | null
           whatsapp: string
         }
         Update: {
@@ -614,10 +632,16 @@ export type Database = {
           auto_first_message_at?: string | null
           auto_first_message_sent?: boolean | null
           broker_id?: string | null
+          comparecimento?: boolean | null
           corretor_atribuido_id?: string | null
           cpf?: string | null
           created_at?: string
+          data_agendamento?: string | null
+          data_envio_proposta?: string | null
+          data_fechamento?: string | null
+          data_perda?: string | null
           email?: string | null
+          etapa_perda?: string | null
           id?: string
           inactivated_at?: string | null
           inactivated_by?: string | null
@@ -638,7 +662,10 @@ export type Database = {
           status_distribuicao?:
             | Database["public"]["Enums"]["distribution_status"]
             | null
+          tipo_agendamento?: string | null
           updated_at?: string
+          valor_final_venda?: number | null
+          valor_proposta?: number | null
           whatsapp?: string
         }
         Relationships: [
@@ -1347,6 +1374,11 @@ export type Database = {
         | "roleta_fallback"
         | "roleta_transferencia"
         | "atendimento_iniciado"
+        | "agendamento_registrado"
+        | "comparecimento_registrado"
+        | "proposta_enviada"
+        | "venda_confirmada"
+        | "reagendamento"
       lead_status:
         | "new"
         | "info_sent"
@@ -1505,6 +1537,11 @@ export const Constants = {
         "roleta_fallback",
         "roleta_transferencia",
         "atendimento_iniciado",
+        "agendamento_registrado",
+        "comparecimento_registrado",
+        "proposta_enviada",
+        "venda_confirmada",
+        "reagendamento",
       ],
       lead_status: [
         "new",

@@ -272,7 +272,9 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
         status: "inactive" as LeadStatus,
         inactivation_reason: reason,
         inactivated_at: new Date().toISOString(),
-      },
+        data_perda: new Date().toISOString(),
+        etapa_perda: oldStatus,
+      } as any,
       {
         logInactivation: true,
         oldStatus,
@@ -281,16 +283,214 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     );
   }, [updateLead]);
 
+  // === FUNNEL TRANSITION METHODS ===
+
+  const iniciarAtendimento = useCallback(async (leadId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "info_sent" as any,
+          atendimento_iniciado_em: now,
+          status_distribuicao: 'atendimento_iniciado' as any,
+          reserva_expira_em: null,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "atendimento_iniciado" as any,
+        old_status: "new",
+        new_status: "info_sent",
+        notes: "Atendimento iniciado pelo corretor",
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao iniciar atendimento:", error);
+      toast.error("Erro ao iniciar atendimento.");
+      return false;
+    }
+  }, []);
+
+  const registrarAgendamento = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "scheduling" as any,
+          data_agendamento: dataAgendamento.toISOString(),
+          tipo_agendamento: tipoAgendamento,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "agendamento_registrado" as any,
+        old_status: "info_sent",
+        new_status: "scheduling",
+        notes: `Agendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}`,
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao registrar agendamento:", error);
+      toast.error("Erro ao registrar agendamento.");
+      return false;
+    }
+  }, []);
+
+  const registrarComparecimentoEProposta = useCallback(async (leadId: string, valorProposta: number) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "docs_received" as any,
+          comparecimento: true,
+          valor_proposta: valorProposta,
+          data_envio_proposta: now,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert([
+        {
+          lead_id: leadId,
+          interaction_type: "comparecimento_registrado" as any,
+          notes: "✅ Cliente compareceu",
+        },
+        {
+          lead_id: leadId,
+          interaction_type: "proposta_enviada" as any,
+          old_status: "scheduling",
+          new_status: "docs_received",
+          notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+        }
+      ]);
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao registrar comparecimento:", error);
+      toast.error("Erro ao registrar comparecimento.");
+      return false;
+    }
+  }, []);
+
+  const registrarNaoComparecimento = useCallback(async (leadId: string) => {
+    try {
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          comparecimento: false,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "comparecimento_registrado" as any,
+        notes: "❌ Cliente não compareceu",
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, comparecimento: false } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro:", error);
+      return false;
+    }
+  }, []);
+
+  const reagendarLead = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          data_agendamento: dataAgendamento.toISOString(),
+          tipo_agendamento: tipoAgendamento,
+          comparecimento: null,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "reagendamento" as any,
+        notes: `Reagendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}`,
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro:", error);
+      return false;
+    }
+  }, []);
+
+  const confirmarVenda = useCallback(async (leadId: string, valorFinal: number, dataFechamento: Date) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "registered" as any,
+          valor_final_venda: valorFinal,
+          data_fechamento: dataFechamento.toISOString(),
+          registered_at: now,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "venda_confirmada" as any,
+        old_status: "docs_received",
+        new_status: "registered",
+        notes: `Venda confirmada: R$ ${valorFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
+      });
+
+      setLeads(prev => prev.map(l =>
+        l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now } : l
+      ));
+      return true;
+    } catch (error) {
+      console.error("Erro ao confirmar venda:", error);
+      toast.error("Erro ao confirmar venda.");
+      return false;
+    }
+  }, []);
+
   const deleteLead = useCallback(async (leadId: string) => {
     try {
-      // Deletar dados relacionados primeiro
       await supabase.from("lead_documents").delete().eq("lead_id", leadId);
       await supabase.from("lead_interactions").delete().eq("lead_id", leadId);
       await supabase.from("lead_attribution").delete().eq("lead_id", leadId);
       
-      // Deletar o lead
       const { error } = await supabase.from("leads").delete().eq("id", leadId);
-      
       if (error) throw error;
       
       setLeads(prev => prev.filter(lead => lead.id !== leadId));
@@ -315,6 +515,13 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     updateLead,
     inactivateLead,
     deleteLead,
-    getLeadsByStatus
+    getLeadsByStatus,
+    // Funnel transition methods
+    iniciarAtendimento,
+    registrarAgendamento,
+    registrarComparecimentoEProposta,
+    registrarNaoComparecimento,
+    reagendarLead,
+    confirmarVenda,
   };
 }

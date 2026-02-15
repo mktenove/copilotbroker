@@ -17,15 +17,15 @@ interface KanbanColumnProps {
   leads: CRMLead[];
   onCardClick: (lead: CRMLead) => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
-  onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
-  onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
-  onRegressStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
+  onIniciarAtendimento?: (leadId: string) => Promise<void>;
+  onOpenAgendamento?: (leadId: string) => void;
+  onOpenComparecimento?: (leadId: string) => void;
+  onOpenVenda?: (leadId: string) => void;
+  onOpenPerda?: (leadId: string, currentStatus: LeadStatus) => void;
   onDispatchWhatsApp?: (status: LeadStatus) => void;
-  onStartService?: (leadId: string) => Promise<void>;
 }
 
-// Status square colors for TaskWhiz style headers
 const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   new: "bg-blue-500",
   info_sent: "bg-enove-yellow",
@@ -36,41 +36,22 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onRegressStatus, onDispatchWhatsApp, onStartService }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
 
   return (
     <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0 min-h-[600px]">
-      {/* Column Header - TaskWhiz minimalist style with square indicator */}
       <div className="flex items-center gap-2.5 px-2 py-3 mb-2">
-        {/* Status square (not dot) */}
-        <div className={cn(
-          "w-2 h-2 rounded-sm shrink-0",
-          STATUS_SQUARE_COLORS[status]
-        )} />
-        
-        {/* Column title with count in parentheses */}
+        <div className={cn("w-2 h-2 rounded-sm shrink-0", STATUS_SQUARE_COLORS[status])} />
         <h3 className="font-medium text-sm text-slate-300">
           {config.label} <span className="text-slate-500">({leads.length})</span>
         </h3>
-
-        {/* Spacer */}
         <div className="flex-1" />
-
-        {/* Add button - icon only */}
-        <button
-          className={cn(
-            "w-7 h-7 rounded-lg flex items-center justify-center",
-            "text-slate-500 hover:text-primary hover:bg-primary/10",
-            "transition-all duration-200"
-          )}
-        >
+        <button className={cn("w-7 h-7 rounded-lg flex items-center justify-center", "text-slate-500 hover:text-primary hover:bg-primary/10", "transition-all duration-200")}>
           <Plus className="w-4 h-4" />
         </button>
-
-        {/* Column menu */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors">
@@ -80,27 +61,18 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
           <DropdownMenuContent align="end" className="bg-[#1e1e22] border-[#2a2a2e]">
             {canDispatchWhatsApp && leads.length > 0 && (
               <>
-                <DropdownMenuItem 
-                  className="text-green-400 focus:bg-green-500/10 focus:text-green-400"
-                  onClick={() => onDispatchWhatsApp?.(status)}
-                >
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Disparar WhatsApp ({leads.length})
+                <DropdownMenuItem className="text-green-400 focus:bg-green-500/10 focus:text-green-400" onClick={() => onDispatchWhatsApp?.(status)}>
+                  <MessageSquare className="w-4 h-4 mr-2" />Disparar WhatsApp ({leads.length})
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-[#2a2a2e]" />
               </>
             )}
-            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
-              Ordenar por data
-            </DropdownMenuItem>
-            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">
-              Ordenar por nome
-            </DropdownMenuItem>
+            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">Ordenar por data</DropdownMenuItem>
+            <DropdownMenuItem className="text-slate-200 focus:bg-slate-700/50">Ordenar por nome</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* Column Content - more transparent background */}
       <div
         ref={setNodeRef}
         className={cn(
@@ -116,11 +88,12 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
               lead={lead}
               onClick={() => onCardClick(lead)}
               onUpdateOrigin={onUpdateOrigin}
-              onInactivate={onInactivate}
               onDelete={onDelete}
-              onAdvanceStatus={onAdvanceStatus}
-              onRegressStatus={onRegressStatus}
-              onStartService={onStartService}
+              onIniciarAtendimento={onIniciarAtendimento}
+              onOpenAgendamento={onOpenAgendamento}
+              onOpenComparecimento={onOpenComparecimento}
+              onOpenVenda={onOpenVenda}
+              onOpenPerda={onOpenPerda}
             />
           ))}
         </SortableContext>
@@ -128,9 +101,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
         {leads.length === 0 && (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <div className="text-slate-600 text-sm">Nenhum lead</div>
-            <button className="mt-2 text-xs text-primary/70 hover:text-primary transition-colors">
-              + Adicionar
-            </button>
+            <button className="mt-2 text-xs text-primary/70 hover:text-primary transition-colors">+ Adicionar</button>
           </div>
         )}
       </div>

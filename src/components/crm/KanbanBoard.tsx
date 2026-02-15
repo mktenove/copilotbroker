@@ -19,6 +19,10 @@ import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
 import { KanbanCard } from "./KanbanCard";
 import { LeadDetailSheet } from "./LeadDetailSheet";
+import { AgendamentoModal } from "./AgendamentoModal";
+import { ComparecimentoModal } from "./ComparecimentoModal";
+import { VendaModal } from "./VendaModal";
+import { PerdaModal } from "./PerdaModal";
 import { NewCampaignSheet } from "@/components/whatsapp/NewCampaignSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -49,6 +53,7 @@ interface KanbanBoardProps {
 }
 
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
+const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
@@ -62,9 +67,14 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
   const [localBrokers, setLocalBrokers] = useState<{ id: string; name: string; slug: string }[]>([]);
 
+  // Modal states
+  const [agendamentoModal, setAgendamentoModal] = useState<{ open: boolean; leadId: string | null; isReagendamento?: boolean }>({ open: false, leadId: null });
+  const [comparecimentoModal, setComparecimentoModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
+  const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
+  const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
+
   const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
 
-  // Fetch brokers for transfer when not provided via props
   useEffect(() => {
     if (brokersProp.length > 0) return;
     const fetchBrokers = async () => {
@@ -78,38 +88,32 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     fetchBrokers();
   }, [brokersProp.length]);
 
-  const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus } = useKanbanLeads({
+  const {
+    leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus,
+    iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
+  } = useKanbanLeads({
     brokerId,
     isAdmin,
     projectId: selectedProject === "all" ? null : selectedProject
   });
 
-  // Fetch projects for filter (admin sees all, broker sees their associated projects)
   useEffect(() => {
     const fetchProjects = async () => {
       if (isAdmin) {
-        // Admin sees all active projects
         const { data } = await supabase
           .from("projects")
           .select("id, name, slug, city_slug")
           .eq("is_active", true)
           .order("name");
-        
-        if (data) {
-          setProjects(data);
-        }
+        if (data) setProjects(data);
       } else if (brokerId) {
-        // Broker sees only their associated projects
         const { data } = await supabase
           .from("broker_projects")
           .select("project:projects(id, name, slug, city_slug)")
           .eq("broker_id", brokerId)
           .eq("is_active", true);
-        
         if (data) {
-          const brokerProjects = data
-            .map(bp => bp.project)
-            .filter((p): p is Project => p !== null);
+          const brokerProjects = data.map(bp => bp.project).filter((p): p is Project => p !== null);
           setProjects(brokerProjects);
         }
       }
@@ -118,36 +122,25 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   }, [isAdmin, brokerId]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8
-      }
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates
-    })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
-  // Filter leads based on search, broker, and project
   const filteredLeads = leads.filter(lead => {
-    const matchesSearch = 
+    const matchesSearch =
       lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       lead.whatsapp.includes(searchTerm);
-    
-    const matchesBroker = 
-      selectedBroker === "all" || 
+    const matchesBroker =
+      selectedBroker === "all" ||
       lead.broker_id === selectedBroker ||
       (selectedBroker === "enove" && !lead.broker_id);
-
     const matchesProject =
       selectedProject === "all" ||
       lead.project_id === selectedProject;
-
     const matchesOrigin =
       selectedOrigins.length === 0 ||
       (selectedOrigins.includes("sem_origem") && !lead.lead_origin) ||
       (lead.lead_origin != null && selectedOrigins.includes(lead.lead_origin));
-
     return matchesSearch && matchesBroker && matchesProject && matchesOrigin;
   });
 
@@ -156,34 +149,42 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     if (lead) setActiveLead(lead);
   };
 
+  // Block drag that skips stages
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveLead(null);
-
     if (!over) return;
 
     const leadId = active.id as string;
-    
-    // Valid status values
     const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered', 'inactive'];
-    
+
     let newStatus: LeadStatus;
-    
-    // Check if over.id is a valid status (dropped on column)
     if (VALID_STATUSES.includes(over.id as LeadStatus)) {
       newStatus = over.id as LeadStatus;
     } else {
-      // over.id is a lead UUID - find target lead's status
       const targetLead = leads.find(l => l.id === over.id);
       if (!targetLead) return;
       newStatus = targetLead.status;
     }
 
-    // Find the lead being moved
     const lead = leads.find(l => l.id === leadId);
     if (!lead || lead.status === newStatus) return;
 
-    // Update status
+    // Validate adjacency
+    const srcIdx = STATUS_ORDER.indexOf(lead.status);
+    const dstIdx = STATUS_ORDER.indexOf(newStatus);
+    if (srcIdx === -1 || dstIdx === -1 || Math.abs(dstIdx - srcIdx) > 1) {
+      toast.error("Não é possível pular etapas no funil. Use os botões de ação.");
+      return;
+    }
+
+    // For forward moves, require the modal flow (don't allow free advance via drag)
+    if (dstIdx > srcIdx) {
+      toast.info("Use o botão de ação para avançar o lead com os dados obrigatórios.");
+      return;
+    }
+
+    // Backward move is allowed via drag (1 step back)
     await updateLeadStatus(leadId, lead.status, newStatus);
   }, [leads, updateLeadStatus]);
 
@@ -207,79 +208,49 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   const handleUpdateOrigin = async (leadId: string, origin: string) => {
     const lead = leads.find(l => l.id === leadId);
-    await updateLead(leadId, { lead_origin: origin }, { 
-      logOriginChange: true, 
-      oldOrigin: lead?.lead_origin 
+    await updateLead(leadId, { lead_origin: origin }, {
+      logOriginChange: true,
+      oldOrigin: lead?.lead_origin
     });
   };
 
-  const handleInactivateLead = async (leadId: string, reason: string) => {
-    const lead = leads.find(l => l.id === leadId);
-    if (lead) {
-      const success = await inactivateLead(leadId, reason, lead.status);
-      if (success) {
-        toast.success("Lead inativado com sucesso!");
+  // Contextual action handlers
+  const handleIniciarAtendimento = async (leadId: string) => {
+    const success = await iniciarAtendimento(leadId);
+    if (success) {
+      toast.success("Atendimento iniciado!");
+      // Open WhatsApp
+      const lead = leads.find(l => l.id === leadId);
+      if (lead) {
+        const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+        window.open(`https://wa.me/55${cleanPhone}`, '_blank');
       }
     }
+  };
+
+  const handleOpenAgendamento = (leadId: string) => {
+    setAgendamentoModal({ open: true, leadId });
+  };
+
+  const handleOpenComparecimento = (leadId: string) => {
+    setComparecimentoModal({ open: true, leadId });
+  };
+
+  const handleOpenVenda = (leadId: string) => {
+    setVendaModal({ open: true, leadId });
+  };
+
+  const handleOpenPerda = (leadId: string, currentStatus: LeadStatus) => {
+    setPerdaModal({ open: true, leadId, currentStatus });
   };
 
   const handleDeleteLead = async (leadId: string) => {
     await deleteLead(leadId);
   };
 
-  const handleAdvanceStatus = async (leadId: string, currentStatus: LeadStatus) => {
-    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
-    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
-    if (currentIndex === -1 || currentIndex >= STATUS_ORDER.length - 1) return;
-    
-    const nextStatus = STATUS_ORDER[currentIndex + 1];
-    const success = await updateLeadStatus(leadId, currentStatus, nextStatus);
-    if (success) {
-      toast.success(`Lead avançado para "${STATUS_CONFIG[nextStatus].label}"`);
-    }
-  };
-
-  const handleRegressStatus = async (leadId: string, currentStatus: LeadStatus) => {
-    const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
-    const currentIndex = STATUS_ORDER.indexOf(currentStatus);
-    if (currentIndex <= 0) return;
-    
-    const prevStatus = STATUS_ORDER[currentIndex - 1];
-    const success = await updateLeadStatus(leadId, currentStatus, prevStatus);
-    if (success) {
-      toast.success(`Lead retornado para "${STATUS_CONFIG[prevStatus].label}"`);
-    }
-  };
-
   const handleDispatchWhatsApp = (status: LeadStatus) => {
     setWhatsappPreselectedStatus(status);
     setWhatsappCampaignOpen(true);
-  };
-
-  const handleStartService = async (leadId: string) => {
-    const { error } = await supabase
-      .from("leads")
-      .update({
-        atendimento_iniciado_em: new Date().toISOString(),
-        status_distribuicao: 'atendimento_iniciado' as any,
-        reserva_expira_em: null,
-      })
-      .eq("id", leadId);
-
-    if (error) {
-      toast.error("Erro ao iniciar atendimento");
-      throw error;
-    }
-
-    // Log the interaction
-    await supabase.from("lead_interactions").insert({
-      lead_id: leadId,
-      interaction_type: "atendimento_iniciado",
-      notes: "Atendimento iniciado pelo corretor via Kanban",
-    });
-
-    toast.success("Atendimento iniciado!");
-    fetchLeads();
   };
 
   return (
@@ -300,7 +271,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
       {/* Toolbar - Filters */}
       <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 px-1">
-        {/* Desktop: Refresh Button compacto */}
         <button
           onClick={fetchLeads}
           disabled={isLoading}
@@ -312,7 +282,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
           <RefreshCw className={cn("w-4 h-4", isLoading && "animate-spin")} />
         </button>
 
-        {/* Filtro de Empreendimentos - admin ou corretor com múltiplos projetos */}
         {(isAdmin || projects.length > 1) && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
@@ -322,78 +291,48 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
             <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
               <SelectItem value="all">Todos</SelectItem>
               {projects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
+                <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
 
-        {/* Filtro de Origem */}
         <Popover>
           <PopoverTrigger asChild>
             <button className="flex items-center gap-1 md:gap-2 h-9 px-2 text-sm text-slate-400 hover:text-slate-200 transition-colors rounded-lg hover:bg-[#2a2a2e]">
               <MapPin className="w-4 h-4 shrink-0" />
               <span className="truncate max-w-[100px] md:max-w-none">
-                {selectedOrigins.length === 0
-                  ? "Todas origens"
-                  : `${selectedOrigins.length} origem${selectedOrigins.length > 1 ? "s" : ""}`}
+                {selectedOrigins.length === 0 ? "Todas origens" : `${selectedOrigins.length} origem${selectedOrigins.length > 1 ? "s" : ""}`}
               </span>
               {selectedOrigins.length > 0 && (
-                <X
-                  className="w-3.5 h-3.5 ml-0.5 hover:text-destructive"
-                  onClick={(e) => { e.stopPropagation(); setSelectedOrigins([]); }}
-                />
+                <X className="w-3.5 h-3.5 ml-0.5 hover:text-destructive" onClick={(e) => { e.stopPropagation(); setSelectedOrigins([]); }} />
               )}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-56 p-2 bg-[#1e1e22] border-[#2a2a2e]" align="start">
             <ScrollArea className="h-[256px]">
-            <div className="flex flex-col gap-1">
-              <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
-                <Checkbox
-                  checked={selectedOrigins.includes("sem_origem")}
-                  onCheckedChange={() => {
-                    setSelectedOrigins(prev =>
-                      prev.includes("sem_origem") ? prev.filter(o => o !== "sem_origem") : [...prev, "sem_origem"]
-                    );
-                  }}
-                />
-                Sem origem
-              </label>
-              {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
-                <label key={origin.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
-                  <Checkbox
-                    checked={selectedOrigins.includes(origin.key)}
-                    onCheckedChange={() => {
-                      setSelectedOrigins(prev =>
-                        prev.includes(origin.key) ? prev.filter(o => o !== origin.key) : [...prev, origin.key]
-                      );
-                    }}
-                  />
-                  {origin.label}
+              <div className="flex flex-col gap-1">
+                <label className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
+                  <Checkbox checked={selectedOrigins.includes("sem_origem")} onCheckedChange={() => setSelectedOrigins(prev => prev.includes("sem_origem") ? prev.filter(o => o !== "sem_origem") : [...prev, "sem_origem"])} />
+                  Sem origem
                 </label>
-              ))}
-              {customOrigins.map(origin => (
-                <label key={origin} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
-                  <Checkbox
-                    checked={selectedOrigins.includes(origin)}
-                    onCheckedChange={() => {
-                      setSelectedOrigins(prev =>
-                        prev.includes(origin) ? prev.filter(o => o !== origin) : [...prev, origin]
-                      );
-                    }}
-                  />
-                  {origin}
-                </label>
-              ))}
-            </div>
+                {LEAD_ORIGINS.filter(o => o.key !== 'outro').map(origin => (
+                  <label key={origin.key} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
+                    <Checkbox checked={selectedOrigins.includes(origin.key)} onCheckedChange={() => setSelectedOrigins(prev => prev.includes(origin.key) ? prev.filter(o => o !== origin.key) : [...prev, origin.key])} />
+                    {origin.label}
+                  </label>
+                ))}
+                {customOrigins.map(origin => (
+                  <label key={origin} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#2a2a2e] cursor-pointer text-sm">
+                    <Checkbox checked={selectedOrigins.includes(origin)} onCheckedChange={() => setSelectedOrigins(prev => prev.includes(origin) ? prev.filter(o => o !== origin) : [...prev, origin])} />
+                    {origin}
+                  </label>
+                ))}
+              </div>
             </ScrollArea>
           </PopoverContent>
         </Popover>
 
-        {/* Filtro de Corretor */}
         {isAdmin && brokers.length > 0 && (
           <Select value={selectedBroker} onValueChange={setSelectedBroker}>
             <SelectTrigger className="w-auto h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-2 px-2">
@@ -404,15 +343,12 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
               <SelectItem value="all">Corretor</SelectItem>
               <SelectItem value="enove">Enove (Direto)</SelectItem>
               {brokers.map(broker => (
-                <SelectItem key={broker.id} value={broker.id}>
-                  {broker.name}
-                </SelectItem>
+                <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         )}
 
-        {/* Campo de Busca */}
         <div className="relative ml-auto flex-1 md:flex-none">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
@@ -447,12 +383,13 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 leads={filteredLeads.filter(l => l.status === status)}
                 onCardClick={handleCardClick}
                 onUpdateOrigin={handleUpdateOrigin}
-                onInactivate={handleInactivateLead}
                 onDelete={isAdmin ? handleDeleteLead : undefined}
-                onAdvanceStatus={handleAdvanceStatus}
-                onRegressStatus={handleRegressStatus}
+                onIniciarAtendimento={handleIniciarAtendimento}
+                onOpenAgendamento={handleOpenAgendamento}
+                onOpenComparecimento={handleOpenComparecimento}
+                onOpenVenda={handleOpenVenda}
+                onOpenPerda={handleOpenPerda}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
-                onStartService={handleStartService}
               />
             ))}
           </div>
@@ -481,7 +418,63 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         }}
       />
 
-      {/* WhatsApp Campaign Sheet */}
+      {/* Modals */}
+      <AgendamentoModal
+        open={agendamentoModal.open}
+        onOpenChange={(v) => setAgendamentoModal(prev => ({ ...prev, open: v }))}
+        title={agendamentoModal.isReagendamento ? "Reagendar" : "Registrar Agendamento"}
+        onConfirm={async (data, tipo) => {
+          if (!agendamentoModal.leadId) return;
+          if (agendamentoModal.isReagendamento) {
+            const success = await reagendarLead(agendamentoModal.leadId, data, tipo);
+            if (success) toast.success("Reagendamento registrado!");
+          } else {
+            const success = await registrarAgendamento(agendamentoModal.leadId, data, tipo);
+            if (success) toast.success("Agendamento registrado!");
+          }
+        }}
+      />
+
+      <ComparecimentoModal
+        open={comparecimentoModal.open}
+        onOpenChange={(v) => setComparecimentoModal(prev => ({ ...prev, open: v }))}
+        onCompareceu={async (valorProposta) => {
+          if (!comparecimentoModal.leadId) return;
+          const success = await registrarComparecimentoEProposta(comparecimentoModal.leadId, valorProposta);
+          if (success) toast.success("Proposta registrada!");
+        }}
+        onNaoCompareceu={() => {
+          if (!comparecimentoModal.leadId) return;
+          registrarNaoComparecimento(comparecimentoModal.leadId);
+          // Open options: reagendar or perda
+          const lead = leads.find(l => l.id === comparecimentoModal.leadId);
+          if (lead) {
+            // Show reagendamento modal
+            setAgendamentoModal({ open: true, leadId: comparecimentoModal.leadId, isReagendamento: true });
+          }
+        }}
+      />
+
+      <VendaModal
+        open={vendaModal.open}
+        onOpenChange={(v) => setVendaModal(prev => ({ ...prev, open: v }))}
+        onConfirm={async (valorFinal, dataFechamento) => {
+          if (!vendaModal.leadId) return;
+          const success = await confirmarVenda(vendaModal.leadId, valorFinal, dataFechamento);
+          if (success) toast.success("Venda confirmada! 🎉");
+        }}
+      />
+
+      <PerdaModal
+        open={perdaModal.open}
+        onOpenChange={(v) => setPerdaModal(prev => ({ ...prev, open: v }))}
+        onConfirm={async (reason) => {
+          if (!perdaModal.leadId) return;
+          const success = await inactivateLead(perdaModal.leadId, reason, perdaModal.currentStatus);
+          if (success) toast.success("Lead marcado como perdido.");
+        }}
+      />
+
       <NewCampaignSheet
         open={whatsappCampaignOpen}
         onOpenChange={setWhatsappCampaignOpen}

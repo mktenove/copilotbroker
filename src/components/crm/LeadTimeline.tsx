@@ -1,5 +1,5 @@
 import { LeadInteraction, STATUS_CONFIG, getInactivationReasonLabel } from "@/types/crm";
-import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin, UserX, Bell } from "lucide-react";
+import { Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin, UserX, Bell, Calendar, XCircle, DollarSign, Trophy, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeadTimelineProps {
@@ -16,7 +16,12 @@ const INTERACTION_ICONS: Record<string, React.ElementType> = {
   registration: CheckCircle,
   origin_change: MapPin,
   inactivation: UserX,
-  notification: Bell
+  notification: Bell,
+  agendamento_registrado: Calendar,
+  comparecimento_registrado: CheckCircle,
+  proposta_enviada: DollarSign,
+  venda_confirmada: Trophy,
+  reagendamento: RefreshCw,
 };
 
 const INTERACTION_LABELS: Record<string, string> = {
@@ -28,8 +33,13 @@ const INTERACTION_LABELS: Record<string, string> = {
   contact_attempt: "Tentativa de Contato",
   registration: "Cadastro no Ábaco",
   origin_change: "Origem Alterada",
-  inactivation: "Lead Inativado",
-  notification: "Notificação Enviada"
+  inactivation: "Lead Perdido",
+  notification: "Notificação Enviada",
+  agendamento_registrado: "Agendamento Registrado",
+  comparecimento_registrado: "Comparecimento",
+  proposta_enviada: "Proposta Enviada",
+  venda_confirmada: "Venda Confirmada",
+  reagendamento: "Reagendamento",
 };
 
 export function LeadTimeline({ interactions }: LeadTimelineProps) {
