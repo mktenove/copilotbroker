@@ -558,6 +558,7 @@ export type Database = {
           inactivation_reason: string | null
           last_interaction_at: string | null
           lead_origin: string | null
+          lead_origin_detail: string | null
           motivo_atribuicao: string | null
           name: string
           notes: string | null
@@ -590,6 +591,7 @@ export type Database = {
           inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
+          lead_origin_detail?: string | null
           motivo_atribuicao?: string | null
           name: string
           notes?: string | null
@@ -622,6 +624,7 @@ export type Database = {
           inactivation_reason?: string | null
           last_interaction_at?: string | null
           lead_origin?: string | null
+          lead_origin_detail?: string | null
           motivo_atribuicao?: string | null
           name?: string
           notes?: string | null
