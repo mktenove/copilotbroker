@@ -1,11 +1,17 @@
 import { useState, useEffect } from "react";
+import { format } from "date-fns";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Loader2, Send, Plus, Trash2, GripVertical, MessageCircle } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Loader2, Send, Plus, Trash2, GripVertical, MessageCircle, CalendarIcon, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -63,10 +69,17 @@ export function FollowUpSheet({
   const [steps, setSteps] = useState<Array<{ messageContent: string; delayMinutes: number; sendIfReplied?: boolean }>>([
     { messageContent: "", delayMinutes: 0 },
   ]);
+  const [isSendNow, setIsSendNow] = useState(true);
+  const [startDate, setStartDate] = useState<Date>();
+  const [startTime, setStartTime] = useState("09:00");
 
   useEffect(() => {
     if (open) {
       setSteps([{ messageContent: "", delayMinutes: 0 }]);
+      setIsSendNow(true);
+      setStartDate(undefined);
+      const now = new Date();
+      setStartTime(`${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`);
     }
   }, [open]);
 
@@ -92,7 +105,8 @@ export function FollowUpSheet({
   };
 
   const stepsValid = steps.every((s) => s.messageContent.trim().length > 0);
-  const isValid = steps.length > 0 && stepsValid;
+  const dateValid = isSendNow || !!startDate;
+  const isValid = steps.length > 0 && stepsValid && dateValid;
 
   const handleSubmit = async () => {
     if (!isValid || !isValidPhone(leadPhone)) {
@@ -129,7 +143,14 @@ export function FollowUpSheet({
 
       // Schedule messages
       const phone = formatPhoneE164(leadPhone);
-      let scheduledTime = new Date(Date.now() + getRandomInterval());
+      let scheduledTime: Date;
+      if (isSendNow) {
+        scheduledTime = new Date(Date.now() + getRandomInterval());
+      } else {
+        const [h, m] = startTime.split(":").map(Number);
+        scheduledTime = new Date(startDate!);
+        scheduledTime.setHours(h, m, 0, 0);
+      }
 
       const queueItems = steps.map((step, i) => {
         if (i > 0) {
@@ -188,7 +209,56 @@ export function FollowUpSheet({
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 pb-2">
-          <div className="mt-6 space-y-3">
+          {/* Início do envio */}
+          <div className="mt-6 rounded-lg border border-[#2a2a2e] bg-[#1a1a1d] p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium text-slate-300 flex items-center gap-2">
+                <Clock className="w-4 h-4 text-emerald-400" />
+                Início do envio
+              </Label>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs text-slate-400 cursor-pointer" htmlFor="send-now-toggle">Enviar agora</Label>
+                <Switch id="send-now-toggle" checked={isSendNow} onCheckedChange={setIsSendNow} />
+              </div>
+            </div>
+
+            {!isSendNow && (
+              <div className="flex gap-3">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "flex-1 justify-start text-left font-normal bg-[#0f0f11] border-[#2a2a2e] h-9 text-sm",
+                        !startDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {startDate ? format(startDate, "dd/MM/yyyy") : "Selecione a data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0 bg-[#1e1e22] border-[#2a2a2e]" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={setStartDate}
+                      initialFocus
+                      disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                      className={cn("p-3 pointer-events-auto")}
+                    />
+                  </PopoverContent>
+                </Popover>
+                <Input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="w-28 bg-[#0f0f11] border-[#2a2a2e] text-white h-9 text-sm"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 space-y-3">
             {steps.map((step, index) => (
               <div key={index}>
                 {index > 0 && (
