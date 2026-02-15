@@ -17,6 +17,7 @@ interface VendaModalProps {
 export function VendaModal({ open, onOpenChange, onConfirm }: VendaModalProps) {
   const [valor, setValor] = useState("");
   const [date, setDate] = useState<Date>(new Date());
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (value: string) => {
@@ -59,7 +60,7 @@ export function VendaModal({ open, onOpenChange, onConfirm }: VendaModalProps) {
 
           <div className="space-y-2">
             <label className="text-sm text-slate-400">Data do Fechamento *</label>
-            <Popover>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -76,7 +77,7 @@ export function VendaModal({ open, onOpenChange, onConfirm }: VendaModalProps) {
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={(d) => d && setDate(d)}
+                  onSelect={(d) => { if (d) setDate(d); setCalendarOpen(false); }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />

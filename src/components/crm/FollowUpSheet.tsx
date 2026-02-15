@@ -72,6 +72,7 @@ export function FollowUpSheet({
   const [isSendNow, setIsSendNow] = useState(false);
   const [startDate, setStartDate] = useState<Date>();
   const [startTime, setStartTime] = useState("09:00");
+  const [calendarOpen, setCalendarOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -226,7 +227,7 @@ export function FollowUpSheet({
 
             {!isSendNow && (
               <div className="flex gap-3">
-                <Popover>
+                <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
                   <PopoverTrigger asChild>
                     <Button
                       variant="outline"
@@ -243,7 +244,7 @@ export function FollowUpSheet({
                     <Calendar
                       mode="single"
                       selected={startDate}
-                      onSelect={setStartDate}
+                      onSelect={(d) => { setStartDate(d); setCalendarOpen(false); }}
                       initialFocus
                       disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                       className={cn("p-3 pointer-events-auto")}

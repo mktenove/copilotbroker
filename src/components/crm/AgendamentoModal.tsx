@@ -18,6 +18,7 @@ interface AgendamentoModalProps {
 
 export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Registrar Agendamento" }: AgendamentoModalProps) {
   const [date, setDate] = useState<Date>();
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [tipo, setTipo] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
@@ -44,7 +45,7 @@ export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Regis
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <label className="text-sm text-slate-400">Data do Agendamento *</label>
-            <Popover>
+            <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
@@ -61,7 +62,7 @@ export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Regis
                 <Calendar
                   mode="single"
                   selected={date}
-                  onSelect={setDate}
+                  onSelect={(d) => { setDate(d); setCalendarOpen(false); }}
                   initialFocus
                   className={cn("p-3 pointer-events-auto")}
                 />
