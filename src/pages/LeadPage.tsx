@@ -452,6 +452,22 @@ export default function LeadPage() {
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
           <div className="lg:col-span-3 space-y-6">
 
+            {/* Propostas Section */}
+            <PropostasList
+              propostas={propostas}
+              loading={propostasLoading}
+              onNovaProposta={() => setPropostaOpen(true)}
+              onAprovar={aprovarProposta}
+              onRejeitar={rejeitarProposta}
+              onEncaminhar={encaminharVendedor}
+              leadName={lead.name}
+              leadWhatsapp={lead.whatsapp}
+              leadEmail={lead.email}
+              leadCpf={lead.cpf || null}
+              brokerName={lead.broker?.name || null}
+              projectName={lead.project?.name || null}
+            />
+
             {/* Lead Data - Editable */}
             <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
               <div className="px-5 py-3 border-b border-[#1e1e22]">
@@ -529,29 +545,20 @@ export default function LeadPage() {
                     </div>
                   </div>
                 )}
-                <EditableField icon={Mail} label="Email" field="email" value={lead.email || ""} placeholder="Não informado"
+
+                <EditableField icon={Mail} label="E-mail" field="email" value={lead.email || "—"}
                   editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
                   onEditValueChange={(v) => setEditValues({ ...editValues, email: v })} />
 
-                <EditableSelectField
-                  icon={Building2}
-                  label="Empreendimento"
-                  field="project_id"
-                  displayValue={lead.project?.name || ""}
-                  currentValue={lead.project?.id || ""}
-                  options={allProjects.map(p => ({ value: p.id, label: p.name }))}
-                  editingField={editingField}
-                  onStartEdit={() => setEditingField("project_id")}
-                  onCancel={cancelEdit}
-                  onSave={saveField}
-                  highlight
-                />
+                <EditableField icon={FileText} label="CPF" field="cpf" value={lead.cpf || "—"}
+                  editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
+                  onEditValueChange={(v) => setEditValues({ ...editValues, cpf: v })} />
 
                 <EditableSelectField
-                  icon={TrendingUp}
+                  icon={Building2}
                   label="Origem"
                   field="lead_origin"
-                  displayValue={getOriginDisplayLabel(lead.lead_origin)}
+                  displayValue={lead.lead_origin ? getOriginDisplayLabel(lead.lead_origin) : "—"}
                   currentValue={lead.lead_origin || ""}
                   options={LEAD_ORIGINS.map(o => ({ value: o.key, label: o.label }))}
                   editingField={editingField}
@@ -561,12 +568,25 @@ export default function LeadPage() {
                 />
 
                 <EditableSelectField
+                  icon={Building2}
+                  label="Empreendimento"
+                  field="project_id"
+                  displayValue={lead.project?.name || "—"}
+                  currentValue={lead.project_id || ""}
+                  options={allProjects.map((p: any) => ({ value: p.id, label: p.name }))}
+                  editingField={editingField}
+                  onStartEdit={() => setEditingField("project_id")}
+                  onCancel={cancelEdit}
+                  onSave={saveField}
+                />
+
+                <EditableSelectField
                   icon={Users}
                   label="Corretor"
                   field="broker_id"
-                  displayValue={lead.broker?.name || "Enove"}
-                  currentValue={lead.broker?.id || ""}
-                  options={allBrokers.map(b => ({ value: b.id, label: b.name }))}
+                  displayValue={lead.broker?.name || "—"}
+                  currentValue={lead.broker_id || ""}
+                  options={allBrokers.map((b: any) => ({ value: b.id, label: b.name }))}
                   editingField={editingField}
                   onStartEdit={() => setEditingField("broker_id")}
                   onCancel={cancelEdit}
@@ -602,22 +622,6 @@ export default function LeadPage() {
                 </div>
               </div>
             </section>
-
-            {/* Propostas Section */}
-            <PropostasList
-              propostas={propostas}
-              loading={propostasLoading}
-              onNovaProposta={() => setPropostaOpen(true)}
-              onAprovar={aprovarProposta}
-              onRejeitar={rejeitarProposta}
-              onEncaminhar={encaminharVendedor}
-              leadName={lead.name}
-              leadWhatsapp={lead.whatsapp}
-              leadEmail={lead.email}
-              leadCpf={lead.cpf || null}
-              brokerName={lead.broker?.name || null}
-              projectName={lead.project?.name || null}
-            />
 
             {/* Metrics */}
             <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
