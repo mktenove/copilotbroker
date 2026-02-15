@@ -1,41 +1,53 @@
 
-# Fechar calendario automaticamente ao selecionar data
+# Atualizar timeline automaticamente com Realtime
 
 ## Problema
-Em todos os date pickers do sistema, ao clicar em um dia no calendario, a data e selecionada mas o popover permanece aberto. O usuario precisa clicar fora para fecha-lo.
+A timeline do lead so atualiza quando a pagina e recarregada manualmente. Interacoes adicionadas por outros usuarios (ou pelo sistema, como roleta/timeout) nao aparecem em tempo real.
 
 ## Solucao
-Converter os `Popover` que envolvem calendarios de "nao controlados" para "controlados" (com estado `open`/`onOpenChange`), e fechar automaticamente ao selecionar uma data.
+Adicionar uma subscription Realtime na tabela `lead_interactions` dentro do hook `use-lead-interactions.ts`, filtrando pelo `lead_id`. Quando uma nova interacao e inserida, ela e adicionada automaticamente ao estado local.
 
-## Arquivos afetados
+## Alteracoes
 
-### 1. `src/components/crm/AgendamentoModal.tsx`
-- Adicionar estado `calendarOpen` controlando o Popover
-- No `onSelect` do Calendar, setar a data e fechar o popover
+### Arquivo 1: Habilitar Realtime na tabela `lead_interactions`
+- Migracao SQL: `ALTER PUBLICATION supabase_realtime ADD TABLE public.lead_interactions;`
 
-### 2. `src/components/crm/VendaModal.tsx`
-- Mesmo ajuste: estado `calendarOpen` + fechar ao selecionar
+### Arquivo 2: `src/hooks/use-lead-interactions.ts`
+- Adicionar um `useEffect` com subscription Realtime no canal `lead_interactions` filtrado por `lead_id`
+- Ao receber evento `INSERT`, adicionar a nova interacao no inicio da lista (se nao existir ja)
+- Ao receber evento `DELETE`, remover do estado local
+- Cleanup: remover o channel no return do useEffect
 
-### 3. `src/components/crm/FollowUpSheet.tsx`
-- Mesmo ajuste para o date picker de agendamento do follow-up
+### Detalhe tecnico
 
-## Detalhe tecnico
-
-O padrao e o mesmo nos 3 arquivos. De:
 ```typescript
-<Popover>
-```
-Para:
-```typescript
-const [calendarOpen, setCalendarOpen] = useState(false);
+useEffect(() => {
+  if (!leadId) return;
 
-<Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+  const channel = supabase
+    .channel(`lead-interactions-${leadId}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "INSERT",
+        schema: "public",
+        table: "lead_interactions",
+        filter: `lead_id=eq.${leadId}`,
+      },
+      (payload) => {
+        const newInteraction = payload.new as unknown as LeadInteraction;
+        setInteractions((prev) => {
+          if (prev.some((i) => i.id === newInteraction.id)) return prev;
+          return [newInteraction, ...prev];
+        });
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [leadId]);
 ```
 
-E no `onSelect` do Calendar:
-```typescript
-onSelect={(d) => {
-  setDate(d);
-  setCalendarOpen(false);
-}}
-```
+Alteracao minima: uma migracao de 1 linha + um useEffect adicional no hook existente.
