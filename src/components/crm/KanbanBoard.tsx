@@ -482,10 +482,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
       <PropostaModal
         open={propostaModal.open}
         onOpenChange={(v) => setPropostaModal(prev => ({ ...prev, open: v }))}
-        onConfirm={async (valorProposta) => {
-          if (!propostaModal.leadId) return;
-          const success = await registrarProposta(propostaModal.leadId, valorProposta);
+        onConfirm={async (data) => {
+          if (!propostaModal.leadId) return false;
+          const success = await registrarProposta(propostaModal.leadId, data.valor_proposta);
           if (success) toast.success("Proposta registrada!");
+          return !!success;
         }}
       />
 

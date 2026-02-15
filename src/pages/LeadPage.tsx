@@ -6,11 +6,13 @@ import { LeadTimeline } from "@/components/crm/LeadTimeline";
 import { AgendamentoModal } from "@/components/crm/AgendamentoModal";
 import { ComparecimentoModal } from "@/components/crm/ComparecimentoModal";
 import { PropostaModal } from "@/components/crm/PropostaModal";
+import { PropostasList } from "@/components/crm/PropostasList";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
 import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
+import { usePropostas } from "@/hooks/use-propostas";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -61,6 +63,7 @@ export default function LeadPage() {
 
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
+  const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
 
   // Fetch brokers & projects for editable selects
   const { data: allBrokers = [] } = useQuery({
@@ -253,7 +256,11 @@ export default function LeadPage() {
           return { label: "Inserir Proposta", icon: DollarSign, color: "bg-purple-500 hover:bg-purple-600", action: "proposta" };
         }
         return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
-      case "docs_received": return { label: "Confirmar Venda", icon: Trophy, color: "bg-emerald-500 hover:bg-emerald-600", action: "venda" };
+      case "docs_received":
+        if (hasApprovedProposta) {
+          return { label: "Confirmar Venda", icon: Trophy, color: "bg-emerald-500 hover:bg-emerald-600", action: "venda" };
+        }
+        return { label: "Nova Proposta", icon: DollarSign, color: "bg-yellow-500 hover:bg-yellow-600 text-black", action: "proposta" };
       default: return null;
     }
   }, [lead]);
@@ -596,6 +603,22 @@ export default function LeadPage() {
               </div>
             </section>
 
+            {/* Propostas Section */}
+            <PropostasList
+              propostas={propostas}
+              loading={propostasLoading}
+              onNovaProposta={() => setPropostaOpen(true)}
+              onAprovar={aprovarProposta}
+              onRejeitar={rejeitarProposta}
+              onEncaminhar={encaminharVendedor}
+              leadName={lead.name}
+              leadWhatsapp={lead.whatsapp}
+              leadEmail={lead.email}
+              leadCpf={lead.cpf || null}
+              brokerName={lead.broker?.name || null}
+              projectName={lead.project?.name || null}
+            />
+
             {/* Metrics */}
             <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
               <div className="px-5 py-3 border-b border-[#1e1e22]">
@@ -680,10 +703,15 @@ export default function LeadPage() {
       <PropostaModal
         open={propostaOpen}
         onOpenChange={setPropostaOpen}
-        onConfirm={async (valor) => {
-          const ok = await registrarProposta(lead.id, valor);
-          if (ok) { toast.success("Proposta registrada!"); refreshLead(); }
+        onConfirm={async (data) => {
+          const ok = await criarProposta({ ...data, lead_id: lead.id, project_id: data.project_id || lead.project?.id || null, broker_id: lead.broker?.id || null });
+          if (ok) { refreshLead(); }
+          return !!ok;
         }}
+        leadProjectId={lead.project?.id}
+        leadProjectName={lead.project?.name}
+        leadBrokerId={lead.broker?.id}
+        projects={allProjects}
       />
       <VendaModal
         open={vendaOpen}
