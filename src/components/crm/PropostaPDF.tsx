@@ -13,16 +13,19 @@ interface PropostaPDFData {
 const fmt = (v: number) => `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
 const TIPO_LABELS: Record<string, string> = {
+  entrada: "Entrada",
+  parcelamento: "Parcelamento",
+  reforco: "Reforço",
+  balao: "Balão",
+  dacao: "Dação",
+  financiamento_bancario: "Financiamento Bancário",
   sinal: "Sinal",
   entrada_vista: "Entrada (à vista)",
   entrada_parcelada: "Entrada (parcelada)",
   dacao_pagamento: "Dação em Pagamento",
   financiamento: "Financiamento",
   parcelas_mensais: "Parcelas Mensais",
-  reforco: "Reforço",
-  balao: "Balão",
   outro: "Outro",
-  entrada: "Entrada",
 };
 
 export function gerarPropostaPDF(data: PropostaPDFData) {
@@ -36,8 +39,7 @@ export function gerarPropostaPDF(data: PropostaPDFData) {
         const detalhes: string[] = [];
         if (p.quantidade_parcelas) detalhes.push(`${p.quantidade_parcelas}x${p.valor_parcela ? ` de ${fmt(p.valor_parcela)}` : ""}`);
         if (p.indice_correcao) detalhes.push(`Índice: ${p.indice_correcao}`);
-        if (p.descricao) detalhes.push(p.descricao);
-        if (p.observacao) detalhes.push(p.observacao);
+        if (p.descricao || p.observacao) detalhes.push((p.descricao || p.observacao)!);
         return `<tr>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;color:#444;">${TIPO_LABELS[p.tipo] || p.tipo}</td>
           <td style="padding:8px 12px;border-bottom:1px solid #eee;font-size:13px;font-weight:600;text-align:right;">${fmt(p.valor)}</td>

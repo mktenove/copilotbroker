@@ -30,16 +30,20 @@ const STATUS_BADGES: Record<PropostaStatus, { label: string; className: string }
 };
 
 const TIPO_LABELS: Record<string, string> = {
+  entrada: "Entrada",
+  parcelamento: "Parcelamento",
+  reforco: "Reforço",
+  balao: "Balão",
+  dacao: "Dação",
+  financiamento_bancario: "Financiamento Bancário",
+  // Legacy
   sinal: "Sinal",
   entrada_vista: "Entrada (à vista)",
   entrada_parcelada: "Entrada (parcelada)",
   dacao_pagamento: "Dação em Pagamento",
   financiamento: "Financiamento",
   parcelas_mensais: "Parcelas Mensais",
-  reforco: "Reforço",
-  balao: "Balão",
   outro: "Outro",
-  entrada: "Entrada",
 };
 
 export function PropostasList({
@@ -162,8 +166,7 @@ export function PropostasList({
                               <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1 text-[10px] text-slate-500">
                                 {p.quantidade_parcelas && <span>{p.quantidade_parcelas}x{p.valor_parcela ? ` de ${fmt(p.valor_parcela)}` : ""}</span>}
                                 {p.indice_correcao && <span>Índice: {p.indice_correcao}</span>}
-                                {p.descricao && <span>{p.descricao}</span>}
-                                {p.observacao && <span className="text-slate-400 italic">{p.observacao}</span>}
+                                {(p.descricao || p.observacao) && <span>{p.descricao || p.observacao}</span>}
                               </div>
                             </div>
                           ))}
