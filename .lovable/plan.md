@@ -1,63 +1,80 @@
 
-# Unificar Origens de Leads + Campo de Campanha Mensuravel
+# Controle de Timeout na Roleta + Notificacao WhatsApp Completa
 
-## Problema
-O campo `lead_origin` armazena strings longas como "Metaads (videos_publico_segmentado) - conversao - 13/02/26 - condominioportao..." criando dezenas de origens diferentes para a mesma plataforma. Isso impossibilita medir corretamente quantos leads vieram do Meta ADS vs Google ADS no Analytics.
+## Problema 1: Vazamento de dados do lead na notificacao
+Quando o timeout da roleta e ativado, o corretor anterior ja recebeu uma notificacao WhatsApp com nome e telefone do lead. Se o lead for transferido automaticamente, o corretor anterior ainda tem esses dados e poderia contatar o lead por fora do sistema.
+
+## Problema 2: Corretor nao recebe WhatsApp no timeout
+A edge function `roleta-timeout` cria uma notificacao no banco (in-app), mas nao envia notificacao via WhatsApp ao novo corretor.
+
+---
 
 ## Solucao
-Separar em dois campos: `lead_origin` (plataforma padrao) + novo campo `lead_origin_detail` (campanha/conjunto). Ambos ficam na tabela `leads` para serem facilmente mensuráveis e filtraveis no Analytics.
 
-### Exemplo pratico:
-```text
-ANTES:
-  lead_origin: "Metaads (videos_publico_segmentado) - conversao - 13/02/26 - condominioportao..."
+### 1. Nova coluna na tabela `roletas`: `timeout_ativo`
+Adicionar um campo booleano `timeout_ativo` (default: true) que o lider pode ativar/desativar por roleta.
 
-DEPOIS:
-  lead_origin: "meta_ads"
-  lead_origin_detail: "conversao - 13/02/26 - condominioportao - cadastrolead - CBO - Videos - todos"
-```
+- **timeout_ativo = true**: O sistema aplica o tempo maximo de atendimento. A notificacao WhatsApp da atribuicao inicial **nao inclui nome e telefone do lead** (apenas avisa que ha um novo lead e pede para abrir o sistema). Quando ocorre timeout, o lead e redistribuido normalmente.
+- **timeout_ativo = false**: O corretor recebe o lead sem prazo. A notificacao WhatsApp **inclui todos os dados do lead** (nome, telefone, empreendimento) como funciona hoje. Nao ha redistribuicao por timeout.
+
+Quando `timeout_ativo = false`:
+- O campo `reserva_expira_em` nao sera preenchido na atribuicao
+- A function `roleta-timeout` ignorara esses leads (ja ignora pois so busca leads com `reserva_expira_em` preenchido)
+
+### 2. Atualizar `roleta-distribuir` (Edge Function)
+- Buscar o campo `timeout_ativo` da roleta
+- Condicionar a mensagem WhatsApp:
+  - Se `timeout_ativo = true`: mensagem sem dados do lead ("Novo lead disponivel no sistema. Acesse o CRM para atender.")
+  - Se `timeout_ativo = false`: mensagem completa com nome, telefone e empreendimento (como hoje)
+- Quando `timeout_ativo = false`, nao preencher `reserva_expira_em`
+
+### 3. Atualizar `roleta-timeout` (Edge Function)
+Adicionar envio de notificacao WhatsApp para o novo corretor quando o lead e reassinado por timeout. A mensagem tambem sera sem dados do lead (ja que timeout so ocorre quando `timeout_ativo = true`).
+
+### 4. Atualizar `transfer_lead` (RPC / transferencia manual)
+Apos a transferencia manual, enviar notificacao WhatsApp ao novo corretor com os dados completos do lead (transferencia manual nao tem restricao de dados).
+
+Isso sera feito criando uma nova edge function `notify-transfer` que sera chamada pelo frontend apos a RPC `transfer_lead` retornar sucesso.
+
+### 5. Atualizar UI de gerenciamento da roleta
+No formulario de criacao e no painel expandido de cada roleta, adicionar um toggle "Tempo maximo para atendimento" que controla o campo `timeout_ativo`. Quando ativado, exibir o slider de tempo. Quando desativado, ocultar o slider.
 
 ---
 
 ## Detalhes Tecnicos
 
-### 1. Migracao de banco de dados
-- Adicionar coluna `lead_origin_detail` (text, nullable) na tabela `leads`
-- Normalizar dados existentes com UPDATE:
-  - Origens que comecam com "Metaads (" -> `lead_origin = 'meta_ads'`, extrair o detalhe para `lead_origin_detail`
-  - "Meta Ads (auto)" -> `lead_origin = 'meta_ads'`
-  - "Google Ads (auto)" -> `lead_origin = 'google_ads'`
-  - "Google (Organico)" -> `lead_origin = 'google_organico'`
-  - "Instagram Organico" -> `lead_origin = 'meta_organico'`
-  - Origens manuais como "WhatsApp Direto", "Indicacao" etc permanecem como estao
-
-### 2. Atualizar `use-page-tracking.ts`
-- `getLeadOriginFromUTM()` retorna agora um objeto `{ origin: string, detail: string | null }` em vez de string
-- `formatUTMOrigin()` mapeia utm_source para chaves padrao:
-  - metaads/facebook/instagram/fb/ig -> `meta_ads`
-  - google (cpc/paid) -> `google_ads`
-  - google (organic) -> `google_organico`
-  - tiktok -> `tiktok_ads`
-- O detalhe (utm_medium + utm_campaign) vai para `lead_origin_detail`
-- Exportar tambem uma funcao `getLeadOriginDetailFromUTM()` para uso nos formularios
-
-### 3. Atualizar formularios de landing page
-- Nos formularios que salvam leads (FormSection, GVFormSection, MCFormSection, etc), salvar tambem o `lead_origin_detail` junto com `lead_origin`
-
-### 4. Atualizar o Analytics Dashboard
-- O grafico "Origem de Marketing" continua agrupando por `lead_origin` (agora padronizado)
-- Adicionar um **segundo nivel de drill-down**: ao clicar numa origem, mostrar a lista de campanhas (`lead_origin_detail`) com a contagem de leads de cada uma
-- Buscar `lead_origin_detail` no fetch de leads do Analytics
-
-### 5. Atualizar UI do CRM
-- No `LeadDetailSheet`, exibir o campo "Campanha/Detalhe" abaixo da origem quando disponivel
-- No `KanbanCard`, mostrar tooltip com o detalhe da campanha ao passar o mouse sobre o badge de origem
+### Migracao SQL
+```sql
+ALTER TABLE public.roletas ADD COLUMN timeout_ativo boolean NOT NULL DEFAULT true;
+```
 
 ### Arquivos afetados
-- Migracao SQL (nova coluna + normalizar dados existentes)
-- `src/hooks/use-page-tracking.ts` - Simplificar origens e separar detalhe
-- `src/components/admin/AnalyticsDashboard.tsx` - Drill-down por campanha
-- `src/components/crm/LeadDetailSheet.tsx` - Exibir campo de campanha
-- `src/components/crm/KanbanCard.tsx` - Tooltip com detalhe
-- Formularios de landing pages - Salvar `lead_origin_detail`
-- `src/types/crm.ts` - Adicionar campo ao CRMLead
+- **Migracao SQL**: adicionar coluna `timeout_ativo` em `roletas`
+- **`supabase/functions/roleta-distribuir/index.ts`**: ler `timeout_ativo`, condicionar mensagem WhatsApp e `reserva_expira_em`
+- **`supabase/functions/roleta-timeout/index.ts`**: adicionar envio WhatsApp ao novo corretor (mensagem sem dados do lead)
+- **`supabase/functions/notify-transfer/index.ts`** (novo): enviar WhatsApp ao corretor destino com dados completos do lead na transferencia manual
+- **`src/components/crm/TransferLeadDialog.tsx`**: chamar `notify-transfer` apos sucesso da RPC
+- **`src/components/admin/RoletaManagement.tsx`**: toggle de timeout no formulario de criacao e no painel expandido
+- **`src/components/broker/BrokerRoletas.tsx`**: exibir se o timeout esta ativo na visualizacao do corretor (informativo)
+- **`src/types/roleta.ts`**: adicionar campo `timeout_ativo` na interface
+- **`src/hooks/use-roletas.ts`**: nenhuma alteracao necessaria (ja usa `select *`)
+
+### Fluxo de notificacao resumido
+
+```text
+Atribuicao inicial (timeout_ativo=true):
+  WhatsApp: "Novo lead disponivel. Acesse o CRM para atender. Tempo: 10min"
+  (sem nome/telefone do lead)
+
+Atribuicao inicial (timeout_ativo=false):
+  WhatsApp: "Novo lead: Joao - 51999... - GoldenView"
+  (com todos os dados, como funciona hoje)
+
+Timeout (reassinacao automatica):
+  WhatsApp: "Lead reassinado por timeout. Acesse o CRM para atender."
+  (sem nome/telefone)
+
+Transferencia manual:
+  WhatsApp: "Lead transferido: Joao - 51999... - GoldenView"
+  (com todos os dados)
+```
