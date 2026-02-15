@@ -1,28 +1,41 @@
 
-# Corrigir botao de voltar na pagina do Lead
+# Fechar calendario automaticamente ao selecionar data
 
 ## Problema
-O botao de voltar navega para `/corretor`, que nao existe como rota. As rotas corretas sao:
-- `/admin` para usuarios com role `admin`
-- `/corretor/admin` para corretores e lideres
-
-A rota `/corretor` acaba sendo capturada pela rota dinamica `/:citySlug/:projectSlug`, que nao encontra nenhum projeto e resulta em 404.
+Em todos os date pickers do sistema, ao clicar em um dia no calendario, a data e selecionada mas o popover permanece aberto. O usuario precisa clicar fora para fecha-lo.
 
 ## Solucao
+Converter os `Popover` que envolvem calendarios de "nao controlados" para "controlados" (com estado `open`/`onOpenChange`), e fechar automaticamente ao selecionar uma data.
 
-### Arquivo: `src/pages/LeadPage.tsx`
-- Usar o `role` ja disponivel via `useUserRole()` para determinar o destino do botao de voltar
-- Se `role === "admin"`: navegar para `/admin`
-- Caso contrario: navegar para `/corretor/admin`
+## Arquivos afetados
 
-### Codigo
-Linha 300 alterada de:
+### 1. `src/components/crm/AgendamentoModal.tsx`
+- Adicionar estado `calendarOpen` controlando o Popover
+- No `onSelect` do Calendar, setar a data e fechar o popover
+
+### 2. `src/components/crm/VendaModal.tsx`
+- Mesmo ajuste: estado `calendarOpen` + fechar ao selecionar
+
+### 3. `src/components/crm/FollowUpSheet.tsx`
+- Mesmo ajuste para o date picker de agendamento do follow-up
+
+## Detalhe tecnico
+
+O padrao e o mesmo nos 3 arquivos. De:
 ```typescript
-<button onClick={() => navigate("/corretor")} ...>
+<Popover>
 ```
 Para:
 ```typescript
-<button onClick={() => navigate(role === "admin" ? "/admin" : "/corretor/admin")} ...>
+const [calendarOpen, setCalendarOpen] = useState(false);
+
+<Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
 ```
 
-Alteracao minima de uma unica linha.
+E no `onSelect` do Calendar:
+```typescript
+onSelect={(d) => {
+  setDate(d);
+  setCalendarOpen(false);
+}}
+```
