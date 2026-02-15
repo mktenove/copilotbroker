@@ -721,7 +721,7 @@ function EditableField({ icon: Icon, label, field, value, placeholder, action, h
       <div className="flex-1 min-w-0">
         <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">{label}</p>
         <div className="flex items-center gap-2">
-          <p className={cn("text-sm truncate", value ? (highlight ? "text-yellow-400 font-medium" : "text-slate-200") : "text-slate-600 italic")}>
+          <p className={cn("text-sm truncate", value ? (highlight ? "text-yellow-400 font-medium" : "text-slate-400") : "text-slate-600 italic")}>
             {value || placeholder || "—"}
           </p>
           <button onClick={() => onStartEdit(field, value)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#1e1e22] transition-all">
