@@ -1,24 +1,27 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayLabel } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayLabel, LEAD_ORIGINS } from "@/types/crm";
 import { LeadTimeline } from "@/components/crm/LeadTimeline";
 import { AgendamentoModal } from "@/components/crm/AgendamentoModal";
 import { ComparecimentoModal } from "@/components/crm/ComparecimentoModal";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
-// TransferLeadDialog requires brokers list - we'll handle transfer inline
+import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
   UserX, Play, FileText, Users, ChevronRight, AlertTriangle, Zap, Eye,
-  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft
+  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const FUNNEL_STAGES: { status: LeadStatus; label: string; percent: number }[] = [
   { status: "new", label: "Pré Atend.", percent: 10 },
@@ -41,9 +44,33 @@ export default function LeadPage() {
   const [vendaOpen, setVendaOpen] = useState(false);
   const [perdaOpen, setPerdaOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+
+  // Inline editing state
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
 
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions } = useLeadInteractions(leadId || "");
+
+  // Fetch brokers & projects for editable selects
+  const { data: allBrokers = [] } = useQuery({
+    queryKey: ["all-brokers-leadpage"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("brokers").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const { data: allProjects = [] } = useQuery({
+    queryKey: ["all-projects-leadpage"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("projects").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data;
+    },
+  });
 
   useEffect(() => {
     if (!leadId) return;
@@ -79,6 +106,74 @@ export default function LeadPage() {
     if (data) {
       const transformed = { ...data, attribution: Array.isArray(data.attribution) && data.attribution.length > 0 ? data.attribution[0] : data.attribution };
       setLead(transformed as unknown as CRMLead);
+    }
+  };
+
+  // ─── Inline edit helpers ───
+  const startEdit = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditValues({ ...editValues, [field]: currentValue });
+  };
+
+  const cancelEdit = () => {
+    setEditingField(null);
+  };
+
+  const saveField = async (field: string, value: string) => {
+    if (!lead || !leadId) return;
+    const oldValue = getFieldCurrentValue(field);
+    if (value === oldValue) { cancelEdit(); return; }
+
+    try {
+      // Special case: broker transfer
+      if (field === "broker_id") {
+        const { error } = await supabase.rpc("transfer_lead", { _lead_id: leadId, _new_broker_id: value });
+        if (error) throw error;
+        // Notify (non-blocking)
+        supabase.functions.invoke("notify-transfer", { body: { lead_id: leadId, new_broker_id: value } }).catch(() => {});
+        const targetBroker = allBrokers.find(b => b.id === value);
+        toast.success(`Lead transferido para ${targetBroker?.name || "corretor"}`);
+      } else {
+        const updatePayload: Record<string, string | null> = {};
+        if (field === "project_id") {
+          updatePayload.project_id = value || null;
+        } else {
+          updatePayload[field] = value;
+        }
+        const { error } = await supabase.from("leads").update(updatePayload).eq("id", leadId);
+        if (error) throw error;
+
+        // Log the change
+        const fieldLabels: Record<string, string> = { name: "Nome", whatsapp: "Telefone", email: "Email", project_id: "Empreendimento", lead_origin: "Origem", notes: "Observações" };
+        const label = fieldLabels[field] || field;
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          interaction_type: "note_added" as any,
+          notes: `${label} alterado para: ${value || "(vazio)"}`,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        });
+
+        toast.success("Dados atualizados");
+      }
+
+      await refreshLead();
+      setEditingField(null);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar");
+    }
+  };
+
+  const getFieldCurrentValue = (field: string): string => {
+    if (!lead) return "";
+    switch (field) {
+      case "name": return lead.name;
+      case "whatsapp": return lead.whatsapp;
+      case "email": return lead.email || "";
+      case "project_id": return lead.project?.id || "";
+      case "lead_origin": return lead.lead_origin || "";
+      case "broker_id": return lead.broker?.id || "";
+      case "notes": return lead.notes || "";
+      default: return "";
     }
   };
 
@@ -188,12 +283,8 @@ export default function LeadPage() {
       {/* ━━━━━━━━━━━━━━ STRATEGIC HEADER ━━━━━━━━━━━━━━ */}
       <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          {/* Top row: Back + Name + Actions */}
           <div className="flex items-center gap-4 mb-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group"
-            >
+            <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
               <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </button>
 
@@ -210,54 +301,26 @@ export default function LeadPage() {
                 </span>
               </div>
               <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
-                <span className="flex items-center gap-1">
-                  <Timer className="w-3 h-3" />
-                  {tempoNoFunil} no funil
-                </span>
-                <span className={cn("flex items-center gap-1 font-medium", slaColor)}>
-                  <Zap className="w-3 h-3" />
-                  {slaLabel}
-                </span>
-                {lead.project?.name && (
-                  <span className="hidden sm:flex items-center gap-1">
-                    <Building2 className="w-3 h-3" />
-                    {lead.project.name}
-                  </span>
-                )}
+                <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{tempoNoFunil} no funil</span>
+                <span className={cn("flex items-center gap-1 font-medium", slaColor)}><Zap className="w-3 h-3" />{slaLabel}</span>
+                {lead.project?.name && <span className="hidden sm:flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.project.name}</span>}
               </div>
             </div>
 
-            {/* Header actions */}
             <div className="flex items-center gap-2 shrink-0">
               {primaryAction && (
-                <Button
-                  onClick={handlePrimaryAction}
-                  className={cn("hidden sm:inline-flex h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}
-                >
-                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />
-                  {primaryAction.label}
+                <Button onClick={handlePrimaryAction} className={cn("hidden sm:inline-flex h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}>
+                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />{primaryAction.label}
                 </Button>
               )}
               {canTransfer && !isSold && !isLost && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setTransferOpen(true)}
-                  className="text-slate-400 hover:text-white h-9"
-                >
-                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="hidden sm:inline">Transferir</span>
+                <Button variant="ghost" size="sm" onClick={() => setTransferOpen(true)} className="text-slate-400 hover:text-white h-9">
+                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" /><span className="hidden sm:inline">Transferir</span>
                 </Button>
               )}
               {!isSold && !isLost && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setPerdaOpen(true)}
-                  className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10 h-9"
-                >
-                  <UserX className="w-3.5 h-3.5 mr-1.5" />
-                  <span className="hidden sm:inline">Perda</span>
+                <Button variant="ghost" size="sm" onClick={() => setPerdaOpen(true)} className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10 h-9">
+                  <UserX className="w-3.5 h-3.5 mr-1.5" /><span className="hidden sm:inline">Perda</span>
                 </Button>
               )}
             </div>
@@ -270,22 +333,14 @@ export default function LeadPage() {
               const isCurrent = i === currentStageIndex;
               return (
                 <div key={stage.status} className="flex-1 relative group">
-                  <div
-                    className={cn(
-                      "h-1.5 rounded-full transition-all duration-500",
-                      isActive
-                        ? isCurrent
-                          ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]"
-                          : "bg-yellow-500/60"
-                        : "bg-[#1e1e22]"
-                    )}
-                  />
+                  <div className={cn(
+                    "h-1.5 rounded-full transition-all duration-500",
+                    isActive ? (isCurrent ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]" : "bg-yellow-500/60") : "bg-[#1e1e22]"
+                  )} />
                   <span className={cn(
                     "absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium whitespace-nowrap transition-colors",
                     isCurrent ? "text-yellow-400" : isActive ? "text-slate-500" : "text-slate-600"
-                  )}>
-                    {stage.label}
-                  </span>
+                  )}>{stage.label}</span>
                 </div>
               );
             })}
@@ -295,25 +350,17 @@ export default function LeadPage() {
 
       {/* ━━━━━━━━━━━━━━ MAIN CONTENT ━━━━━━━━━━━━━━ */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-24">
-        {/* SLA Alert */}
         {slaLabel === "SLA estourado" && (
           <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
-            <p className="text-xs text-red-300">
-              Este lead está sem interação há mais de 48h. Ação imediata é necessária.
-            </p>
+            <p className="text-xs text-red-300">Este lead está sem interação há mais de 48h. Ação imediata é necessária.</p>
           </div>
         )}
 
-        {/* Mobile primary action */}
         {primaryAction && (
           <div className="sm:hidden mb-6">
-            <Button
-              onClick={handlePrimaryAction}
-              className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}
-            >
-              <primaryAction.icon className="w-4 h-4 mr-2" />
-              {primaryAction.label}
+            <Button onClick={handlePrimaryAction} className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}>
+              <primaryAction.icon className="w-4 h-4 mr-2" />{primaryAction.label}
             </Button>
           </div>
         )}
@@ -322,29 +369,81 @@ export default function LeadPage() {
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
           <div className="lg:col-span-3 space-y-6">
 
-            {/* Lead Data */}
+            {/* Lead Data - Editable */}
             <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
               <div className="px-5 py-3 border-b border-[#1e1e22]">
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Dados do Lead</h2>
               </div>
               <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <DataField
+                <EditableField
                   icon={Phone}
                   label="Telefone"
+                  field="whatsapp"
                   value={lead.whatsapp}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onStartEdit={startEdit}
+                  onCancel={cancelEdit}
+                  onSave={saveField}
+                  onEditValueChange={(v) => setEditValues({ ...editValues, whatsapp: v })}
                   action={
                     <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
-                      <MessageCircle className="w-3 h-3" />
-                      WhatsApp
-                      <ExternalLink className="w-2.5 h-2.5" />
+                      <MessageCircle className="w-3 h-3" />WhatsApp<ExternalLink className="w-2.5 h-2.5" />
                     </a>
                   }
                 />
-                <DataField icon={Mail} label="Email" value={lead.email} placeholder="Não informado" />
-                <DataField icon={Building2} label="Empreendimento" value={lead.project?.name} placeholder="Sem projeto" highlight />
-                <DataField icon={TrendingUp} label="Origem" value={getOriginDisplayLabel(lead.lead_origin)} />
-                <DataField icon={Users} label="Corretor" value={lead.broker?.name || "Enove"} />
+                <EditableField icon={Mail} label="Email" field="email" value={lead.email || ""} placeholder="Não informado"
+                  editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
+                  onEditValueChange={(v) => setEditValues({ ...editValues, email: v })} />
+
+                <EditableSelectField
+                  icon={Building2}
+                  label="Empreendimento"
+                  field="project_id"
+                  displayValue={lead.project?.name || ""}
+                  currentValue={lead.project?.id || ""}
+                  options={allProjects.map(p => ({ value: p.id, label: p.name }))}
+                  editingField={editingField}
+                  onStartEdit={() => setEditingField("project_id")}
+                  onCancel={cancelEdit}
+                  onSave={saveField}
+                  highlight
+                />
+
+                <EditableSelectField
+                  icon={TrendingUp}
+                  label="Origem"
+                  field="lead_origin"
+                  displayValue={getOriginDisplayLabel(lead.lead_origin)}
+                  currentValue={lead.lead_origin || ""}
+                  options={LEAD_ORIGINS.map(o => ({ value: o.key, label: o.label }))}
+                  editingField={editingField}
+                  onStartEdit={() => setEditingField("lead_origin")}
+                  onCancel={cancelEdit}
+                  onSave={saveField}
+                />
+
+                <EditableSelectField
+                  icon={Users}
+                  label="Corretor"
+                  field="broker_id"
+                  displayValue={lead.broker?.name || "Enove"}
+                  currentValue={lead.broker?.id || ""}
+                  options={allBrokers.map(b => ({ value: b.id, label: b.name }))}
+                  editingField={editingField}
+                  onStartEdit={() => setEditingField("broker_id")}
+                  onCancel={cancelEdit}
+                  onSave={saveField}
+                />
+
                 <DataField icon={Calendar} label="Entrada" value={new Date(lead.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })} />
+
+                {/* Editable Name - full width */}
+                <div className="sm:col-span-2">
+                  <EditableField icon={FileText} label="Nome" field="name" value={lead.name}
+                    editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
+                    onEditValueChange={(v) => setEditValues({ ...editValues, name: v })} />
+                </div>
               </div>
             </section>
 
@@ -355,45 +454,13 @@ export default function LeadPage() {
               </div>
               <div className="p-5">
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <CommercialCard
-                    label="Agendamento"
-                    value={lead.data_agendamento ? new Date(lead.data_agendamento).toLocaleDateString("pt-BR") : null}
-                    sub={tipoAgLabel || undefined}
-                    icon={Calendar}
-                  />
-                  <CommercialCard
-                    label="Comparecimento"
-                    value={lead.comparecimento === true ? "Compareceu" : lead.comparecimento === false ? "Não compareceu" : null}
-                    icon={Eye}
-                    variant={lead.comparecimento === true ? "success" : lead.comparecimento === false ? "danger" : "default"}
-                  />
-                  <CommercialCard
-                    label="Valor Proposta"
-                    value={lead.valor_proposta ? formatCurrency(lead.valor_proposta) : null}
-                    icon={FileText}
-                    highlight
-                  />
-                  <CommercialCard
-                    label="Valor Venda"
-                    value={lead.valor_final_venda ? formatCurrency(lead.valor_final_venda) : null}
-                    icon={DollarSign}
-                    highlight
-                    variant={lead.valor_final_venda ? "success" : "default"}
-                  />
-                  <CommercialCard
-                    label="Fechamento"
-                    value={lead.data_fechamento ? new Date(lead.data_fechamento).toLocaleDateString("pt-BR") : null}
-                    icon={Trophy}
-                    variant={lead.data_fechamento ? "success" : "default"}
-                  />
+                  <CommercialCard label="Agendamento" value={lead.data_agendamento ? new Date(lead.data_agendamento).toLocaleDateString("pt-BR") : null} sub={tipoAgLabel || undefined} icon={Calendar} />
+                  <CommercialCard label="Comparecimento" value={lead.comparecimento === true ? "Compareceu" : lead.comparecimento === false ? "Não compareceu" : null} icon={Eye} variant={lead.comparecimento === true ? "success" : lead.comparecimento === false ? "danger" : "default"} />
+                  <CommercialCard label="Valor Proposta" value={lead.valor_proposta ? formatCurrency(lead.valor_proposta) : null} icon={FileText} highlight />
+                  <CommercialCard label="Valor Venda" value={lead.valor_final_venda ? formatCurrency(lead.valor_final_venda) : null} icon={DollarSign} highlight variant={lead.valor_final_venda ? "success" : "default"} />
+                  <CommercialCard label="Fechamento" value={lead.data_fechamento ? new Date(lead.data_fechamento).toLocaleDateString("pt-BR") : null} icon={Trophy} variant={lead.data_fechamento ? "success" : "default"} />
                   {lead.data_perda && (
-                    <CommercialCard
-                      label="Perda"
-                      value={new Date(lead.data_perda).toLocaleDateString("pt-BR")}
-                      sub={lead.etapa_perda ? STATUS_CONFIG[lead.etapa_perda as LeadStatus]?.label : undefined}
-                      icon={UserX}
-                      variant="danger"
-                    />
+                    <CommercialCard label="Perda" value={new Date(lead.data_perda).toLocaleDateString("pt-BR")} sub={lead.etapa_perda ? STATUS_CONFIG[lead.etapa_perda as LeadStatus]?.label : undefined} icon={UserX} variant="danger" />
                   )}
                 </div>
               </div>
@@ -405,11 +472,7 @@ export default function LeadPage() {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Métricas</h2>
               </div>
               <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
-                <MetricCard
-                  label="1º Atendimento"
-                  value={slaPrimeiroAtendimento || (lead.status === "new" ? "Aguardando" : "—")}
-                  color={slaPrimeiroAtendimento ? "text-emerald-400" : "text-slate-500"}
-                />
+                <MetricCard label="1º Atendimento" value={slaPrimeiroAtendimento || (lead.status === "new" ? "Aguardando" : "—")} color={slaPrimeiroAtendimento ? "text-emerald-400" : "text-slate-500"} />
                 <MetricCard label="Na etapa atual" value={tempoNaEtapa} color="text-slate-300" />
                 <MetricCard label="No funil" value={tempoNoFunil} color="text-slate-300" />
                 <MetricCard label="Interações" value={String(interactions.length)} color="text-yellow-400" />
@@ -436,44 +499,29 @@ export default function LeadPage() {
                 </div>
                 <div className="p-5 space-y-2.5">
                   {primaryAction && (
-                    <button
-                      onClick={handlePrimaryAction}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all",
-                        primaryAction.color, "shadow-lg"
-                      )}
-                    >
-                      <primaryAction.icon className="w-4 h-4" />
-                      {primaryAction.label}
-                      <ChevronRight className="w-4 h-4 ml-auto opacity-60" />
+                    <button onClick={handlePrimaryAction} className={cn("w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all", primaryAction.color, "shadow-lg")}>
+                      <primaryAction.icon className="w-4 h-4" />{primaryAction.label}<ChevronRight className="w-4 h-4 ml-auto opacity-60" />
                     </button>
                   )}
 
                   {lead.status === "scheduling" && (
-                    <button
-                      onClick={() => setAgendamentoReagendar(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all"
-                    >
-                      <Calendar className="w-4 h-4 text-slate-500" />
-                      Reagendar
+                    <button onClick={() => setAgendamentoReagendar(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all">
+                      <Calendar className="w-4 h-4 text-slate-500" />Reagendar
                     </button>
                   )}
 
-                  <button
-                    onClick={() => setPerdaOpen(true)}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/80 bg-[#1a1a1e] hover:bg-red-500/10 border border-[#2a2a2e] hover:border-red-500/20 transition-all"
-                  >
-                    <UserX className="w-4 h-4" />
-                    Registrar Perda
+                  {/* Follow-Up WhatsApp */}
+                  <button onClick={() => setFollowUpOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-emerald-400 bg-emerald-500/5 hover:bg-emerald-500/10 border border-emerald-500/20 transition-all">
+                    <MessageCircle className="w-4 h-4" />Agendar Follow-Up<ChevronRight className="w-4 h-4 ml-auto opacity-60" />
+                  </button>
+
+                  <button onClick={() => setPerdaOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/80 bg-[#1a1a1e] hover:bg-red-500/10 border border-[#2a2a2e] hover:border-red-500/20 transition-all">
+                    <UserX className="w-4 h-4" />Registrar Perda
                   </button>
 
                   {canTransfer && (
-                    <button
-                      onClick={() => setTransferOpen(true)}
-                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all"
-                    >
-                      <ArrowRightLeft className="w-4 h-4 text-slate-500" />
-                      Transferir Lead
+                    <button onClick={() => setTransferOpen(true)} className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all">
+                      <ArrowRightLeft className="w-4 h-4 text-slate-500" />Transferir Lead
                     </button>
                   )}
                 </div>
@@ -483,29 +531,19 @@ export default function LeadPage() {
             {/* Sold state */}
             {isSold && (
               <section className="bg-emerald-500/5 rounded-2xl border border-emerald-500/20 p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
-                  <Trophy className="w-6 h-6 text-emerald-400" />
-                </div>
+                <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3"><Trophy className="w-6 h-6 text-emerald-400" /></div>
                 <h3 className="text-base font-semibold text-emerald-400 mb-1">Venda Concluída</h3>
-                {lead.valor_final_venda && (
-                  <p className="text-2xl font-bold text-white">{formatCurrency(lead.valor_final_venda)}</p>
-                )}
-                {lead.data_fechamento && (
-                  <p className="text-xs text-slate-500 mt-2">{new Date(lead.data_fechamento).toLocaleDateString("pt-BR")}</p>
-                )}
+                {lead.valor_final_venda && <p className="text-2xl font-bold text-white">{formatCurrency(lead.valor_final_venda)}</p>}
+                {lead.data_fechamento && <p className="text-xs text-slate-500 mt-2">{new Date(lead.data_fechamento).toLocaleDateString("pt-BR")}</p>}
               </section>
             )}
 
             {/* Lost state */}
             {isLost && (
               <section className="bg-red-500/5 rounded-2xl border border-red-500/20 p-6 text-center">
-                <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-3">
-                  <UserX className="w-6 h-6 text-red-400" />
-                </div>
+                <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-3"><UserX className="w-6 h-6 text-red-400" /></div>
                 <h3 className="text-base font-semibold text-red-400 mb-1">Lead Perdido</h3>
-                {lead.inactivation_reason && (
-                  <p className="text-sm text-slate-400 mt-1">{lead.inactivation_reason}</p>
-                )}
+                {lead.inactivation_reason && <p className="text-sm text-slate-400 mt-1">{lead.inactivation_reason}</p>}
               </section>
             )}
 
@@ -544,10 +582,7 @@ export default function LeadPage() {
           const ok = await registrarComparecimentoEProposta(lead.id, valor);
           if (ok) { toast.success("Proposta registrada!"); refreshLead(); }
         }}
-        onNaoCompareceu={() => {
-          registrarNaoComparecimento(lead.id);
-          setAgendamentoReagendar(true);
-        }}
+        onNaoCompareceu={() => { registrarNaoComparecimento(lead.id); setAgendamentoReagendar(true); }}
       />
       <VendaModal
         open={vendaOpen}
@@ -565,19 +600,28 @@ export default function LeadPage() {
           if (ok) { toast.success("Lead marcado como perdido."); refreshLead(); }
         }}
       />
+      <FollowUpSheet
+        open={followUpOpen}
+        onOpenChange={setFollowUpOpen}
+        leadId={lead.id}
+        leadName={lead.name}
+        leadPhone={lead.whatsapp}
+        projectName={lead.project?.name}
+        brokerName={lead.broker?.name}
+        brokerId={lead.broker?.id || ""}
+        onCreated={refreshLead}
+      />
     </div>
   );
 }
 
 // ━━━━━━━━━━━━━━ SUB-COMPONENTS ━━━━━━━━━━━━━━
 
-function DataField({ icon: Icon, label, value, placeholder, action, highlight }: {
+function DataField({ icon: Icon, label, value, placeholder }: {
   icon: React.ElementType;
   label: string;
   value: string | null | undefined;
   placeholder?: string;
-  action?: React.ReactNode;
-  highlight?: boolean;
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -586,13 +630,140 @@ function DataField({ icon: Icon, label, value, placeholder, action, highlight }:
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">{label}</p>
-        <p className={cn(
-          "text-sm truncate",
-          value ? (highlight ? "text-yellow-400 font-medium" : "text-slate-200") : "text-slate-600 italic"
-        )}>
+        <p className={cn("text-sm truncate", value ? "text-slate-200" : "text-slate-600 italic")}>
           {value || placeholder || "—"}
         </p>
+      </div>
+    </div>
+  );
+}
+
+function EditableField({ icon: Icon, label, field, value, placeholder, action, highlight, editingField, editValues, onStartEdit, onCancel, onSave, onEditValueChange }: {
+  icon: React.ElementType;
+  label: string;
+  field: string;
+  value: string;
+  placeholder?: string;
+  action?: React.ReactNode;
+  highlight?: boolean;
+  editingField: string | null;
+  editValues: Record<string, string>;
+  onStartEdit: (field: string, currentValue: string) => void;
+  onCancel: () => void;
+  onSave: (field: string, value: string) => void;
+  onEditValueChange: (value: string) => void;
+}) {
+  const isEditing = editingField === field;
+
+  if (isEditing) {
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+          <Icon className="w-3.5 h-3.5 text-slate-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-1">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <Input
+              autoFocus
+              value={editValues[field] ?? value}
+              onChange={(e) => onEditValueChange(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") onSave(field, editValues[field] ?? value); if (e.key === "Escape") onCancel(); }}
+              className="h-8 text-sm bg-[#0f0f12] border-[#2a2a2e] text-white"
+            />
+            <button onClick={() => onSave(field, editValues[field] ?? value)} className="p-1.5 rounded-md hover:bg-emerald-500/10 text-emerald-400 transition-colors">
+              <Check className="w-3.5 h-3.5" />
+            </button>
+            <button onClick={onCancel} className="p-1.5 rounded-md hover:bg-red-500/10 text-red-400 transition-colors">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-3 group">
+      <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+        <Icon className="w-3.5 h-3.5 text-slate-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className={cn("text-sm truncate", value ? (highlight ? "text-yellow-400 font-medium" : "text-slate-200") : "text-slate-600 italic")}>
+            {value || placeholder || "—"}
+          </p>
+          <button onClick={() => onStartEdit(field, value)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#1e1e22] transition-all">
+            <Pencil className="w-3 h-3 text-slate-500" />
+          </button>
+        </div>
         {action && <div className="mt-1">{action}</div>}
+      </div>
+    </div>
+  );
+}
+
+function EditableSelectField({ icon: Icon, label, field, displayValue, currentValue, options, editingField, onStartEdit, onCancel, onSave, highlight }: {
+  icon: React.ElementType;
+  label: string;
+  field: string;
+  displayValue: string;
+  currentValue: string;
+  options: { value: string; label: string }[];
+  editingField: string | null;
+  onStartEdit: () => void;
+  onCancel: () => void;
+  onSave: (field: string, value: string) => void;
+  highlight?: boolean;
+}) {
+  const isEditing = editingField === field;
+
+  if (isEditing) {
+    return (
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+          <Icon className="w-3.5 h-3.5 text-slate-500" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-1">{label}</p>
+          <div className="flex items-center gap-1.5">
+            <Select defaultValue={currentValue} onValueChange={(v) => onSave(field, v)}>
+              <SelectTrigger className="h-8 text-sm bg-[#0f0f12] border-[#2a2a2e] text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                {options.map(opt => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-slate-200 focus:bg-[#2a2a2e] focus:text-white">
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <button onClick={onCancel} className="p-1.5 rounded-md hover:bg-red-500/10 text-red-400 transition-colors shrink-0">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-start gap-3 group">
+      <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+        <Icon className="w-3.5 h-3.5 text-slate-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">{label}</p>
+        <div className="flex items-center gap-2">
+          <p className={cn("text-sm truncate", displayValue ? (highlight ? "text-yellow-400 font-medium" : "text-slate-200") : "text-slate-600 italic")}>
+            {displayValue || "—"}
+          </p>
+          <button onClick={onStartEdit} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#1e1e22] transition-all">
+            <Pencil className="w-3 h-3 text-slate-500" />
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -606,27 +777,14 @@ function CommercialCard({ label, value, sub, icon: Icon, highlight, variant = "d
   highlight?: boolean;
   variant?: "default" | "success" | "danger";
 }) {
-  const variantStyles = {
-    default: "border-[#1e1e22]",
-    success: "border-emerald-500/20 bg-emerald-500/5",
-    danger: "border-red-500/20 bg-red-500/5",
-  };
+  const variantStyles = { default: "border-[#1e1e22]", success: "border-emerald-500/20 bg-emerald-500/5", danger: "border-red-500/20 bg-red-500/5" };
   return (
     <div className={cn("rounded-xl border p-3.5 bg-[#0f0f12] transition-colors", variantStyles[variant])}>
       <div className="flex items-center gap-2 mb-2">
-        <Icon className={cn("w-3.5 h-3.5", 
-          variant === "success" ? "text-emerald-400" : variant === "danger" ? "text-red-400" : "text-slate-500"
-        )} />
+        <Icon className={cn("w-3.5 h-3.5", variant === "success" ? "text-emerald-400" : variant === "danger" ? "text-red-400" : "text-slate-500")} />
         <span className="text-[10px] uppercase tracking-wider text-slate-600">{label}</span>
       </div>
-      <p className={cn(
-        "text-sm font-medium",
-        !value && "text-slate-600 italic text-xs",
-        value && highlight && "text-yellow-400",
-        value && variant === "success" && "text-emerald-400",
-        value && variant === "danger" && "text-red-400",
-        value && variant === "default" && !highlight && "text-slate-200"
-      )}>
+      <p className={cn("text-sm font-medium", !value && "text-slate-600 italic text-xs", value && highlight && "text-yellow-400", value && variant === "success" && "text-emerald-400", value && variant === "danger" && "text-red-400", value && variant === "default" && !highlight && "text-slate-200")}>
         {value || "—"}
       </p>
       {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
