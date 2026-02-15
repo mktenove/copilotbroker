@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DndContext,
@@ -80,8 +80,54 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
   const [iniciarModal, setIniciarModal] = useState<{ open: boolean; leadId: string | null; message: string }>({ open: false, leadId: null, message: "" });
+  const [newLeadIds, setNewLeadIds] = useState<Set<string>>(new Set());
+  const newLeadTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
+  // Notification sound (short chime as base64 data URI)
+  const playNotificationSound = useCallback(() => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
+      oscillator.frequency.setValueAtTime(1320, audioCtx.currentTime + 0.1);
+      gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      oscillator.start(audioCtx.currentTime);
+      oscillator.stop(audioCtx.currentTime + 0.4);
+    } catch {
+      // Browser may block audio before user interaction
+    }
+  }, []);
+
+  const handleNewLead = useCallback((leadId: string, leadName: string) => {
+    playNotificationSound();
+    toast.success(`🆕 Novo lead: ${leadName}`);
+    setNewLeadIds(prev => new Set(prev).add(leadId));
+    
+    // Clear previous timeout for same lead if any
+    const existing = newLeadTimeoutsRef.current.get(leadId);
+    if (existing) clearTimeout(existing);
+    
+    const timeout = setTimeout(() => {
+      setNewLeadIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+      newLeadTimeoutsRef.current.delete(leadId);
+    }, 5000);
+    newLeadTimeoutsRef.current.set(leadId, timeout);
+  }, [playNotificationSound]);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      newLeadTimeoutsRef.current.forEach(t => clearTimeout(t));
+    };
+  }, []);
 
   useEffect(() => {
     if (brokersProp.length > 0) return;
@@ -96,13 +142,16 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     fetchBrokers();
   }, [brokersProp.length]);
 
+  const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
+
   const {
     leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus,
     iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
   } = useKanbanLeads({
     brokerId,
     isAdmin,
-    projectId: selectedProject === "all" ? null : selectedProject
+    projectId: selectedProject === "all" ? null : selectedProject,
+    onNewLead: handleNewLead,
   });
 
   useEffect(() => {
@@ -378,6 +427,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 key={status}
                 status={status}
                 leads={filteredLeads.filter(l => l.status === status)}
+                newLeadIds={newLeadIds}
                 onCardClick={handleCardClick}
                 onUpdateOrigin={handleUpdateOrigin}
                 onDelete={isAdmin ? handleDeleteLead : undefined}
