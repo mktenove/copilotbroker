@@ -22,7 +22,8 @@ export type InteractionType =
   | 'comparecimento_registrado'
   | 'proposta_enviada'
   | 'venda_confirmada'
-  | 'reagendamento';
+  | 'reagendamento'
+  | 'whatsapp_manual';
 
 export const TIPO_AGENDAMENTO = [
   { key: 'visita', label: 'Visita' },
