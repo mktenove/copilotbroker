@@ -1351,6 +1351,7 @@ export type Database = {
         | "new"
         | "info_sent"
         | "awaiting_docs"
+        | "scheduling"
         | "docs_received"
         | "registered"
         | "inactive"
@@ -1509,6 +1510,7 @@ export const Constants = {
         "new",
         "info_sent",
         "awaiting_docs",
+        "scheduling",
         "docs_received",
         "registered",
         "inactive",

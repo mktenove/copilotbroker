@@ -20,6 +20,7 @@ interface KanbanColumnProps {
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
   onAdvanceStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
+  onRegressStatus?: (leadId: string, currentStatus: LeadStatus) => Promise<void>;
   onDispatchWhatsApp?: (status: LeadStatus) => void;
   onStartService?: (leadId: string) => Promise<void>;
 }
@@ -29,12 +30,13 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   new: "bg-blue-500",
   info_sent: "bg-enove-yellow",
   awaiting_docs: "bg-enove-yellow",
+  scheduling: "bg-orange-500",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onDispatchWhatsApp, onStartService }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onInactivate, onDelete, onAdvanceStatus, onRegressStatus, onDispatchWhatsApp, onStartService }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -117,6 +119,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onIna
               onInactivate={onInactivate}
               onDelete={onDelete}
               onAdvanceStatus={onAdvanceStatus}
+              onRegressStatus={onRegressStatus}
               onStartService={onStartService}
             />
           ))}
