@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   DndContext,
   DragOverlay,
@@ -56,12 +57,13 @@ const STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received
 const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
+  const navigate = useNavigate();
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
   const { data: customOrigins = [] } = useCustomOrigins();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
+  const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null); // kept for sheet fallback
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
   const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
@@ -189,7 +191,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   }, [leads, updateLeadStatus]);
 
   const handleCardClick = (lead: CRMLead) => {
-    setSelectedLead(lead);
+    navigate(`/corretor/lead/${lead.id}`);
   };
 
   const handleLeadUpdate = async (leadId: string, updates: Partial<CRMLead>) => {
