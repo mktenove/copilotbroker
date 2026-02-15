@@ -297,7 +297,7 @@ export default function LeadPage() {
       <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <button onClick={() => navigate("/corretor")} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
+            <button onClick={() => navigate(role === "admin" ? "/admin" : "/corretor/admin")} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
               <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </button>
 
