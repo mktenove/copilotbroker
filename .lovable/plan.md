@@ -1,36 +1,23 @@
 
 
-# Mover botoes de acao para o header e renomear "Registrar Agendamento"
+# Remover botões de ação fixos
 
-## Alteracoes
+O objetivo é remover os botões "Agendar Reunião", "Follow-Up" e "Perda" que aparecem de forma fixa/proeminente, tanto no header quanto no bloco mobile separado.
+
+## Alterações
 
 ### Arquivo: `src/pages/LeadPage.tsx`
 
-1. **Renomear "Registrar Agendamento" para "Agendar Reuniao"**
-   - No `primaryAction` (linha 241), trocar o label de `"Registrar Agendamento"` para `"Agendar Reunião"`
+1. **Remover o bloco mobile duplicado** (linhas 379-394)
+   - O bloco `sm:hidden` que repete os botões "Agendar Reunião", "Follow-Up" e "Perda" em tela mobile será removido por completo.
 
-2. **Mover todos os botoes de acao da coluna direita para a primeira secao (header estrategico)**
-   - Os botoes que atualmente ficam na secao "Acoes" da coluna direita (linhas 494-528) serao movidos para a area do header (abaixo do progress bar ou integrados na linha de botoes do header)
-   - Botoes a mover: Acao primaria (dinamica), Reagendar, Agendar Follow-Up, Registrar Perda, Transferir Lead
-   - Layout: uma barra de acoes horizontal dentro do header, abaixo da barra de funil, com o botao primario em destaque e os secundarios ao lado
+2. **Remover a action bar fixa do header** (linhas 337-366)
+   - Eliminar a barra de ações que contém os botões "Agendar Reunião", "Follow-Up", "Perda", "Reagendar" e "Transferir" dentro do header estratégico.
+   - Os botões de ação continuarão acessíveis dentro do conteúdo da página (seções de progresso comercial, etc.), mas não ficarão fixos no topo.
 
-3. **Remover a secao "Acoes" da coluna direita**
-   - Eliminar o bloco `<section>` de "Acoes" (linhas 494-528) da coluna direita
-   - A coluna direita ficara apenas com os estados (Venda/Perda) e a Timeline
+3. **Reduzir o padding inferior** (linha 371)
+   - Trocar `pb-24` por `pb-10`, já que não haverá mais barra fixa no rodapé ocupando espaço.
 
-4. **Atualizar o botao mobile** (linha 360-366) para tambem mostrar "Agendar Reuniao" e incluir os botoes secundarios
+### Resultado
 
-### Resultado visual
-
-```text
-HEADER ESTRATEGICO
-  [Nome] [Badge] [SLA]
-  [===== BARRA FUNIL =====]
-  [Agendar Reuniao (primario)] [Follow-Up] [Reagendar] [Perda] [Transferir]
-
-COLUNA ESQUERDA          |  COLUNA DIREITA
-  Dados do Lead          |    Estado (Venda/Perda)
-  Progresso Comercial    |    Linha do Tempo
-  Metricas               |
-```
-
+O header estratégico ficará mais limpo, apenas com nome, badge, SLA e barra de funil. As ações estarão disponíveis nas seções apropriadas dentro do conteúdo da página.
