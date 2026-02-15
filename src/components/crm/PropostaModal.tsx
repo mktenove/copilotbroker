@@ -9,15 +9,12 @@ import { cn } from "@/lib/utils";
 import type { PropostaInsert, ParcelaInsert } from "@/hooks/use-propostas";
 
 const TIPOS_PARCELA = [
-  { value: "sinal", label: "Sinal" },
-  { value: "entrada_vista", label: "Entrada (à vista)" },
-  { value: "entrada_parcelada", label: "Entrada (parcelada)" },
-  { value: "dacao_pagamento", label: "Dação em Pagamento" },
-  { value: "financiamento", label: "Financiamento" },
-  { value: "parcelas_mensais", label: "Parcelas Mensais" },
-  { value: "reforco", label: "Reforço Semestral/Anual" },
+  { value: "entrada", label: "Entrada" },
+  { value: "parcelamento", label: "Parcelamento" },
+  { value: "reforco", label: "Reforço" },
   { value: "balao", label: "Balão" },
-  { value: "outro", label: "Outro" },
+  { value: "dacao", label: "Dação" },
+  { value: "financiamento_bancario", label: "Financiamento Bancário" },
 ];
 
 const INDICES = [
@@ -34,18 +31,16 @@ interface ParcelaForm {
   valor: string;
   quantidade_parcelas: string;
   valor_parcela: string;
-  descricao: string;
   indice_correcao: string;
   observacao: string;
 }
 
 const emptyParcela = (): ParcelaForm => ({
   id: crypto.randomUUID(),
-  tipo: "entrada_vista",
+  tipo: "entrada",
   valor: "",
   quantidade_parcelas: "",
   valor_parcela: "",
-  descricao: "",
   indice_correcao: "nenhum",
   observacao: "",
 });
@@ -107,15 +102,15 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
           valor: parseCurrency(p.valor),
           quantidade_parcelas: p.quantidade_parcelas ? parseInt(p.quantidade_parcelas) : null,
           valor_parcela: p.valor_parcela ? parseCurrency(p.valor_parcela) : null,
-          descricao: p.descricao || null,
+          descricao: p.observacao || null,
           indice_correcao: p.indice_correcao !== "nenhum" ? p.indice_correcao : null,
-          observacao: p.observacao || null,
+          observacao: null,
           ordem: i,
         }));
 
-      // Check for dacao_pagamento as permuta
-      const hasDacao = parcelasData.some(p => p.tipo === "dacao_pagamento");
-      const dacaoDesc = parcelas.find(p => p.tipo === "dacao_pagamento")?.descricao || "";
+      // Check for dacao as permuta
+      const hasDacao = parcelasData.some(p => p.tipo === "dacao");
+      const dacaoDesc = parcelas.find(p => p.tipo === "dacao")?.observacao || "";
 
       const ok = await onConfirm({
         lead_id: "",
@@ -269,18 +264,9 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
                     </div>
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[10px] text-slate-500">Descrição</label>
-                    <Input
-                      placeholder="Ex: Terreno em Estância Velha"
-                      value={parcela.descricao}
-                      onChange={(e) => updateParcela(parcela.id, "descricao", e.target.value)}
-                      className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
-                    />
-                  </div>
-                  <div className="space-y-1">
                     <label className="text-[10px] text-slate-500">Observação</label>
                     <Input
-                      placeholder="Ex: 6 reforços semestrais de R$ 10.000"
+                      placeholder="Ex: Terreno em Estância Velha, 6 reforços semestrais..."
                       value={parcela.observacao}
                       onChange={(e) => updateParcela(parcela.id, "observacao", e.target.value)}
                       className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
