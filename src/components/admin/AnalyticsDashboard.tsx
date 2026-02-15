@@ -62,6 +62,7 @@ interface Lead {
   id: string;
   source: string;
   lead_origin: string | null;
+  lead_origin_detail: string | null;
   created_at: string;
   status: LeadStatus;
   broker_id: string | null;
@@ -99,6 +100,7 @@ interface OriginStats {
   displayName: string;
   leads: number;
   type: OriginType;
+  details: { name: string; count: number }[];
 }
 
 interface SourceStats {
@@ -156,6 +158,7 @@ const AnalyticsDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState(30);
   const [selectedProject, setSelectedProject] = useState<string>("all");
+  const [drillDownOrigin, setDrillDownOrigin] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
@@ -191,7 +194,7 @@ const AnalyticsDashboard = () => {
 
       let leadsQuery = supabase
         .from("leads")
-        .select("id, source, lead_origin, created_at, status, broker_id, project_id")
+        .select("id, source, lead_origin, lead_origin_detail, created_at, status, broker_id, project_id")
         .gte("created_at", startDate)
         .lte("created_at", endDate)
         .order("created_at", { ascending: false });
@@ -306,24 +309,41 @@ const AnalyticsDashboard = () => {
     }).filter(b => b.totalLeads > 0).sort((a, b) => b.conversionRate - a.conversionRate);
   }, [brokers, leads, interactions]);
 
-  // Calculate lead origin stats
+  // Calculate lead origin stats with detail drill-down
   const originStats: OriginStats[] = useMemo(() => {
-    const originMap = new Map<string, number>();
+    const originMap = new Map<string, { count: number; details: Map<string, number> }>();
     leads.forEach((lead) => {
       const origin = lead.lead_origin || "unknown";
-      originMap.set(origin, (originMap.get(origin) || 0) + 1);
+      if (!originMap.has(origin)) {
+        originMap.set(origin, { count: 0, details: new Map() });
+      }
+      const entry = originMap.get(origin)!;
+      entry.count += 1;
+      
+      // Track detail
+      const detail = lead.lead_origin_detail || "(sem detalhe)";
+      entry.details.set(detail, (entry.details.get(detail) || 0) + 1);
     });
 
     return Array.from(originMap.entries())
-      .map(([name, count]) => ({
+      .map(([name, data]) => ({
         name,
         displayName: getOriginDisplayLabel(name === "unknown" ? null : name),
-        leads: count,
+        leads: data.count,
         type: getOriginType(name === "unknown" ? null : name),
+        details: Array.from(data.details.entries())
+          .map(([n, c]) => ({ name: n, count: c }))
+          .sort((a, b) => b.count - a.count),
       }))
       .sort((a, b) => b.leads - a.leads)
       .slice(0, 8);
   }, [leads]);
+
+  // Get drill-down data for selected origin
+  const drillDownData = useMemo(() => {
+    if (!drillDownOrigin) return null;
+    return originStats.find(o => o.name === drillDownOrigin) || null;
+  }, [drillDownOrigin, originStats]);
 
   // Calculate source stats
   const sourceStats: SourceStats[] = useMemo(() => {
@@ -589,20 +609,54 @@ const AnalyticsDashboard = () => {
 
         {/* Origem Marketing */}
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
-            <Megaphone className="w-4 h-4 text-[#FFFF00]" />
-            Origem de Marketing
-          </h3>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm sm:text-base font-medium text-white flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-[#FFFF00]" />
+              {drillDownOrigin ? `Campanhas: ${getOriginDisplayLabel(drillDownOrigin)}` : "Origem de Marketing"}
+            </h3>
+            {drillDownOrigin && (
+              <button
+                onClick={() => setDrillDownOrigin(null)}
+                className="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1 rounded bg-[#2a2a2e]"
+              >
+                ← Voltar
+              </button>
+            )}
+          </div>
           <div className="h-[280px]">
             {isLoading ? (
               <LoadingChart />
+            ) : drillDownData ? (
+              /* Drill-down: show campaign details */
+              <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2">
+                {drillDownData.details.map((detail, idx) => (
+                  <div key={idx} className="flex items-center justify-between py-2 px-3 bg-[#0f0f12] rounded-lg">
+                    <span className="text-xs text-slate-300 truncate flex-1 mr-3" title={detail.name}>
+                      {detail.name}
+                    </span>
+                    <span className="text-sm font-bold text-white shrink-0">{detail.count}</span>
+                  </div>
+                ))}
+                {drillDownData.details.length === 0 && (
+                  <div className="h-full flex items-center justify-center text-slate-500 text-sm">Sem detalhes de campanha</div>
+                )}
+              </div>
             ) : originStats.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={originStats.slice(0, 6).map(o => ({ ...o, shortName: o.displayName.length > 15 ? o.displayName.substring(0, 12) + "..." : o.displayName }))} margin={{ bottom: 60 }}>
+                <BarChart 
+                  data={originStats.slice(0, 6).map(o => ({ ...o, shortName: o.displayName.length > 15 ? o.displayName.substring(0, 12) + "..." : o.displayName }))} 
+                  margin={{ bottom: 60 }}
+                  onClick={(data) => {
+                    if (data?.activePayload?.[0]?.payload?.name) {
+                      setDrillDownOrigin(data.activePayload[0].payload.name);
+                    }
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" vertical={false} />
                   <XAxis dataKey="shortName" tick={{ fontSize: 9, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} interval={0} angle={-35} textAnchor="end" height={60} />
                   <YAxis tick={{ fontSize: 10, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} />
-                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} labelFormatter={(label, payload) => payload?.[0]?.payload?.displayName || label} />
+                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads (clique para detalhes)`, "Leads"]} labelFormatter={(label, payload) => payload?.[0]?.payload?.displayName || label} />
                   <Bar dataKey="leads" radius={[4, 4, 0, 0]} barSize={32}>
                     {originStats.slice(0, 6).map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={ORIGIN_COLORS[entry.type]} />
@@ -614,13 +668,18 @@ const AnalyticsDashboard = () => {
               <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
             )}
           </div>
-          <div className="flex flex-wrap gap-3 mt-3 justify-center">
-            <LegendItem color={ORIGIN_COLORS.paid} label="Pago" />
-            <LegendItem color={ORIGIN_COLORS.organic} label="Orgânico" />
-            <LegendItem color={ORIGIN_COLORS.referral} label="Referral" />
-            <LegendItem color={ORIGIN_COLORS.manual} label="Manual" />
-            <LegendItem color={ORIGIN_COLORS.unknown} label="Outros" />
-          </div>
+          {!drillDownOrigin && (
+            <div className="flex flex-wrap gap-3 mt-3 justify-center">
+              <LegendItem color={ORIGIN_COLORS.paid} label="Pago" />
+              <LegendItem color={ORIGIN_COLORS.organic} label="Orgânico" />
+              <LegendItem color={ORIGIN_COLORS.referral} label="Referral" />
+              <LegendItem color={ORIGIN_COLORS.manual} label="Manual" />
+              <LegendItem color={ORIGIN_COLORS.unknown} label="Outros" />
+            </div>
+          )}
+          {!drillDownOrigin && originStats.length > 0 && (
+            <p className="text-[10px] text-slate-600 text-center mt-2">Clique em uma barra para ver campanhas</p>
+          )}
         </div>
       </div>
 

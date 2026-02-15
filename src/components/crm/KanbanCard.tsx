@@ -405,35 +405,48 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onInactivate, onDele
               </div>
             </div>
             
-            {/* Origin Combobox */}
-            <OriginCombobox
-              currentOrigin={lead.lead_origin}
-              onSelect={handleOriginSelect}
-              trigger={
-                lead.lead_origin ? (
-                  <button
-                    className={cn(
-                      "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
-                      "hover:opacity-80 transition-opacity border",
-                      ORIGIN_COLORS[originType]
-                    )}
-                  >
-                    {getOriginDisplayLabel(lead.lead_origin)}
-                  </button>
-                ) : (
-                  <button
-                    className={cn(
-                      "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
-                      "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
-                      "hover:border-slate-400 transition-colors"
-                    )}
-                  >
-                    <Plus className="w-2.5 h-2.5" />
-                    Origem
-                  </button>
-                )
-              }
-            />
+            {/* Origin Combobox with campaign tooltip */}
+            <TooltipProvider delayDuration={300}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <OriginCombobox
+                      currentOrigin={lead.lead_origin}
+                      onSelect={handleOriginSelect}
+                      trigger={
+                        lead.lead_origin ? (
+                          <button
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide",
+                              "hover:opacity-80 transition-opacity border",
+                              ORIGIN_COLORS[originType]
+                            )}
+                          >
+                            {getOriginDisplayLabel(lead.lead_origin)}
+                          </button>
+                        ) : (
+                          <button
+                            className={cn(
+                              "flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium",
+                              "text-slate-500 hover:text-slate-300 border border-dashed border-slate-600",
+                              "hover:border-slate-400 transition-colors"
+                            )}
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            Origem
+                          </button>
+                        )
+                      }
+                    />
+                  </div>
+                </TooltipTrigger>
+                {(lead as any).lead_origin_detail && (
+                  <TooltipContent side="top" className="bg-[#1e1e22] border-[#2a2a2e] text-xs max-w-[250px]">
+                    <span className="text-slate-300">{(lead as any).lead_origin_detail}</span>
+                  </TooltipContent>
+                )}
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
       </div>

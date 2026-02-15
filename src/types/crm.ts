@@ -28,6 +28,7 @@ export interface CRMLead {
   notes: string | null;
   source: string;
   lead_origin: string | null;
+  lead_origin_detail: string | null;
   status: LeadStatus;
   created_at: string;
   updated_at: string;

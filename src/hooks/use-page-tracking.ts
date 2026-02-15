@@ -260,29 +260,49 @@ const isOwnDomain = (referrer: string): boolean => {
   return ownDomains.some(domain => lower.includes(domain));
 };
 
-// Format UTM params into a descriptive origin string
-const formatUTMOrigin = (utmParams: UTMParams): string => {
-  const parts: string[] = [];
+// Map UTM source to standardized origin key
+const mapSourceToOriginKey = (source: string, medium?: string | null): string => {
+  const s = source.toLowerCase();
   
-  // Source name
-  if (utmParams.utm_source) {
-    parts.push(formatSourceName(utmParams.utm_source));
+  // Meta / Facebook / Instagram
+  if (['metaads', 'facebook', 'instagram', 'fb', 'ig', 'meta'].includes(s)) {
+    return 'meta_ads';
   }
   
-  // Medium in parentheses
-  if (utmParams.utm_medium) {
-    parts.push(`(${formatMediumName(utmParams.utm_medium)})`);
+  // Google
+  if (s === 'google' || s === 'gads') {
+    const m = (medium || '').toLowerCase();
+    if (['cpc', 'paid', 'ppc', 'cpm', 'paid_social', 'display', 'banner'].includes(m)) {
+      return 'google_ads';
+    }
+    if (m === 'organic' || m === 'organico') {
+      return 'google_organico';
+    }
+    return 'google_ads'; // Default google with UTM = ads
   }
   
-  // Campaign after dash
-  if (utmParams.utm_campaign) {
-    parts.push(`- ${utmParams.utm_campaign}`);
-  }
+  // TikTok
+  if (['tiktok', 'tt'].includes(s)) return 'tiktok_ads';
   
-  return parts.join(' ');
+  // LinkedIn
+  if (['linkedin', 'li'].includes(s)) return 'linkedin_ads';
+  
+  // Bing
+  if (s === 'bing') return 'bing_ads';
+  
+  // Return source as-is for unknown sources
+  return source;
 };
 
-// Get lead origin from tracking params - returns descriptive string
+// Build detail string from UTM medium + campaign
+const buildOriginDetail = (utmParams: UTMParams): string | null => {
+  const parts: string[] = [];
+  if (utmParams.utm_medium) parts.push(utmParams.utm_medium);
+  if (utmParams.utm_campaign) parts.push(utmParams.utm_campaign);
+  return parts.length > 0 ? parts.join(' - ') : null;
+};
+
+// Get lead origin from tracking params - returns standardized key
 export const getLeadOriginFromUTM = (): string | null => {
   const utmParams = getStoredUTMParams();
   const clickParams = getStoredClickParams();
@@ -290,34 +310,15 @@ export const getLeadOriginFromUTM = (): string | null => {
   
   // PRIORITY 1: UTM Parameters (most precise - user-defined)
   if (utmParams.utm_source) {
-    return formatUTMOrigin(utmParams);
+    return mapSourceToOriginKey(utmParams.utm_source, utmParams.utm_medium);
   }
   
   // PRIORITY 2: Click IDs (indicates paid ad click - auto-detected)
-  // Google Ads
-  if (clickParams.gclid || clickParams.gbraid || clickParams.wbraid) {
-    return 'Google Ads (auto)';
-  }
-  
-  // Meta Ads (Facebook/Instagram)
-  if (clickParams.fbclid) {
-    return 'Meta Ads (auto)';
-  }
-  
-  // TikTok Ads
-  if (clickParams.ttclid) {
-    return 'TikTok Ads (auto)';
-  }
-  
-  // LinkedIn Ads
-  if (clickParams.li_fat_id) {
-    return 'LinkedIn Ads (auto)';
-  }
-  
-  // Microsoft/Bing Ads
-  if (clickParams.msclkid) {
-    return 'Bing Ads (auto)';
-  }
+  if (clickParams.gclid || clickParams.gbraid || clickParams.wbraid) return 'google_ads';
+  if (clickParams.fbclid) return 'meta_ads';
+  if (clickParams.ttclid) return 'tiktok_ads';
+  if (clickParams.li_fat_id) return 'linkedin_ads';
+  if (clickParams.msclkid) return 'bing_ads';
   
   // PRIORITY 3: Referrer detection
   if (referrer && !isOwnDomain(referrer)) {
@@ -328,7 +329,7 @@ export const getLeadOriginFromUTM = (): string | null => {
       // Detectar se é busca orgânica
       const searchEngines = ['Google', 'Bing', 'DuckDuckGo', 'Yahoo', 'Ecosia', 'Baidu'];
       if (searchEngines.includes(formattedDomain)) {
-        return `${formattedDomain} (Orgânico)`;
+        return 'google_organico';
       }
       
       // Para redes sociais, indicar como referral
@@ -337,6 +338,13 @@ export const getLeadOriginFromUTM = (): string | null => {
   }
   
   return null; // Origem não detectável - corretor preenche manualmente
+};
+
+// Get lead origin detail from UTM params (campaign/medium info)
+export const getLeadOriginDetailFromUTM = (): string | null => {
+  const utmParams = getStoredUTMParams();
+  if (!utmParams.utm_source) return null;
+  return buildOriginDetail(utmParams);
 };
 
 // Track a page view

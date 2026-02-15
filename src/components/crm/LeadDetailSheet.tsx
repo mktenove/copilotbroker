@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin, Play, RotateCw, ArrowRightLeft } from "lucide-react";
+import { Phone, Mail, User, Calendar, Clock, FileText, MessageSquare, Send, CheckCircle, X, MapPin, Play, RotateCw, ArrowRightLeft, Megaphone } from "lucide-react";
 import { CRMLead, LeadStatus, STATUS_CONFIG, INTERACTION_CHANNELS, LEAD_ORIGINS, getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS } from "@/types/crm";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { useLeadDocuments } from "@/hooks/use-lead-documents";
@@ -342,6 +342,14 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                       ORIGIN_TYPE_COLORS[getOriginType(lead.lead_origin)]
                     )}>
                       {getOriginDisplayLabel(lead.lead_origin)}
+                    </span>
+                  </div>
+                )}
+                {lead.lead_origin_detail && (
+                  <div className="flex items-center gap-3">
+                    <Megaphone className="w-4 h-4 text-slate-500 shrink-0" />
+                    <span className="text-xs text-slate-400 truncate" title={lead.lead_origin_detail}>
+                      {lead.lead_origin_detail}
                     </span>
                   </div>
                 )}

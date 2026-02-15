@@ -231,6 +231,7 @@ const Admin = () => {
       notes: null,
       source: lead.source,
       lead_origin: lead.lead_origin || null,
+      lead_origin_detail: (lead as any).lead_origin_detail || null,
       status: lead.status,
       created_at: lead.created_at,
       updated_at: lead.created_at,

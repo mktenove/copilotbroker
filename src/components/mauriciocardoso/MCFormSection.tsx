@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
+import { getLeadOriginFromUTM, getLeadOriginDetailFromUTM } from "@/hooks/use-page-tracking";
 
 interface MCFormSectionProps {
   projectId?: string;
@@ -61,6 +62,8 @@ const MCFormSection = ({ projectId, brokerId }: MCFormSectionProps) => {
         project_id: projectId || null,
         broker_id: brokerId || null,
         source: brokerId ? "broker_landing" : "landing_page",
+        lead_origin: getLeadOriginFromUTM(),
+        lead_origin_detail: getLeadOriginDetailFromUTM(),
       });
 
       if (error) throw error;

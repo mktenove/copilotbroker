@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { trackLeadAttribution, getLeadOriginFromUTM } from "@/hooks/use-page-tracking";
+import { trackLeadAttribution, getLeadOriginFromUTM, getLeadOriginDetailFromUTM } from "@/hooks/use-page-tracking";
 
 interface FormSectionProps {
   projectId?: string | null;
@@ -123,12 +123,14 @@ const FormSection = ({
         project_id?: string;
         source: string;
         lead_origin?: string | null;
+        lead_origin_detail?: string | null;
       } = {
         id: leadId,
         name: formData.name.trim(),
         whatsapp: formData.whatsapp.trim(),
         source: brokerSlug || projectSlug || "enove",
         lead_origin: getLeadOriginFromUTM(),
+        lead_origin_detail: getLeadOriginDetailFromUTM(),
       };
 
       // Add project_id if available
