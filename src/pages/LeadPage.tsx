@@ -1,32 +1,46 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayLabel, getInactivationReasonLabel } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayLabel } from "@/types/crm";
 import { LeadTimeline } from "@/components/crm/LeadTimeline";
 import { AgendamentoModal } from "@/components/crm/AgendamentoModal";
 import { ComparecimentoModal } from "@/components/crm/ComparecimentoModal";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
+// TransferLeadDialog requires brokers list - we'll handle transfer inline
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
-import { ArrowLeft, Phone, Mail, Building2, MapPin, Clock, Calendar, DollarSign, Trophy, UserX, Play, FileText, Users } from "lucide-react";
+import { useUserRole } from "@/hooks/use-user-role";
+import {
+  ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
+  UserX, Play, FileText, Users, ChevronRight, AlertTriangle, Zap, Eye,
+  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
+const FUNNEL_STAGES: { status: LeadStatus; label: string; percent: number }[] = [
+  { status: "new", label: "Pré Atend.", percent: 10 },
+  { status: "info_sent", label: "Atendimento", percent: 30 },
+  { status: "scheduling", label: "Agendamento", percent: 50 },
+  { status: "docs_received", label: "Proposta", percent: 75 },
+  { status: "registered", label: "Vendido", percent: 100 },
+];
 
 export default function LeadPage() {
   const { leadId } = useParams<{ leadId: string }>();
   const navigate = useNavigate();
   const [lead, setLead] = useState<CRMLead | null>(null);
   const [loading, setLoading] = useState(true);
+  const { role, isLeader } = useUserRole();
 
-  // Modal states
   const [agendamentoOpen, setAgendamentoOpen] = useState(false);
   const [agendamentoReagendar, setAgendamentoReagendar] = useState(false);
   const [comparecimentoOpen, setComparecimentoOpen] = useState(false);
   const [vendaOpen, setVendaOpen] = useState(false);
   const [perdaOpen, setPerdaOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
 
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions } = useLeadInteractions(leadId || "");
@@ -68,6 +82,7 @@ export default function LeadPage() {
     }
   };
 
+  // Computed metrics
   const tempoNoFunil = useMemo(() => {
     if (!lead) return "";
     const diff = Date.now() - new Date(lead.created_at).getTime();
@@ -77,9 +92,18 @@ export default function LeadPage() {
     return `${days}d ${hours}h`;
   }, [lead]);
 
-  const sla = useMemo(() => {
+  const tempoNaEtapa = useMemo(() => {
+    if (!lead) return "";
+    const diff = Date.now() - new Date(lead.updated_at).getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (days === 0) return `${hours}h`;
+    return `${days}d ${hours}h`;
+  }, [lead]);
+
+  const slaPrimeiroAtendimento = useMemo(() => {
     if (!lead) return null;
-    if (!lead.atendimento_iniciado_em) return "Aguardando";
+    if (!lead.atendimento_iniciado_em) return null;
     const diff = new Date(lead.atendimento_iniciado_em).getTime() - new Date(lead.created_at).getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     if (minutes < 60) return `${minutes}min`;
@@ -87,109 +111,418 @@ export default function LeadPage() {
     return `${hours}h ${minutes % 60}min`;
   }, [lead]);
 
+  const slaColor = useMemo(() => {
+    if (!lead) return "text-slate-500";
+    if (lead.status === "registered") return "text-emerald-400";
+    const lastInteraction = lead.last_interaction_at || lead.updated_at;
+    const diff = Date.now() - new Date(lastInteraction).getTime();
+    const hours = diff / (1000 * 60 * 60);
+    if (hours < 24) return "text-emerald-400";
+    if (hours < 48) return "text-yellow-400";
+    return "text-red-400";
+  }, [lead]);
+
+  const slaLabel = useMemo(() => {
+    if (!lead) return "";
+    if (lead.status === "registered") return "Concluído";
+    const lastInteraction = lead.last_interaction_at || lead.updated_at;
+    const diff = Date.now() - new Date(lastInteraction).getTime();
+    const hours = diff / (1000 * 60 * 60);
+    if (hours < 24) return "No prazo";
+    if (hours < 48) return "Atenção";
+    return "SLA estourado";
+  }, [lead]);
+
+  const currentStageIndex = useMemo(() => {
+    if (!lead) return 0;
+    const idx = FUNNEL_STAGES.findIndex(s => s.status === lead.status);
+    return idx >= 0 ? idx : 0;
+  }, [lead]);
+
+  const primaryAction = useMemo(() => {
+    if (!lead) return null;
+    switch (lead.status) {
+      case "new": return { label: "Iniciar Atendimento", icon: Play, color: "bg-emerald-500 hover:bg-emerald-600", action: "iniciar" };
+      case "info_sent": return { label: "Registrar Agendamento", icon: Calendar, color: "bg-yellow-500 hover:bg-yellow-600 text-black", action: "agendar" };
+      case "scheduling": return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
+      case "docs_received": return { label: "Confirmar Venda", icon: Trophy, color: "bg-emerald-500 hover:bg-emerald-600", action: "venda" };
+      default: return null;
+    }
+  }, [lead]);
+
   if (loading || !lead) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#0f0f12]">
-        <div className="text-slate-400">Carregando...</div>
+        <div className="flex items-center gap-3">
+          <div className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-slate-400 text-sm">Carregando lead...</span>
+        </div>
       </div>
     );
   }
 
   const statusConfig = STATUS_CONFIG[lead.status];
   const tipoAgLabel = TIPO_AGENDAMENTO.find(t => t.key === lead.tipo_agendamento)?.label || lead.tipo_agendamento;
+  const isLost = lead.status === "inactive";
+  const isSold = lead.status === "registered";
+  const canTransfer = role === "admin" || isLeader;
+
+  const handlePrimaryAction = async () => {
+    if (!primaryAction) return;
+    switch (primaryAction.action) {
+      case "iniciar": {
+        const ok = await iniciarAtendimento(lead.id);
+        if (ok) { toast.success("Atendimento iniciado!"); refreshLead(); }
+        break;
+      }
+      case "agendar": setAgendamentoOpen(true); break;
+      case "comparecimento": setComparecimentoOpen(true); break;
+      case "venda": setVendaOpen(true); break;
+    }
+  };
+
+  const whatsappLink = `https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`;
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] text-white">
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-colors">
-            <ArrowLeft className="w-5 h-5 text-slate-400" />
-          </button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{lead.name}</h1>
-            <div className="flex items-center gap-2 mt-1">
-              <Badge className={cn("text-xs", statusConfig.bgColor, statusConfig.color)}>{statusConfig.label}</Badge>
-              <span className="text-xs text-slate-500">Tempo no funil: {tempoNoFunil}</span>
-            </div>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#0a0a0d] text-white">
+      {/* ━━━━━━━━━━━━━━ STRATEGIC HEADER ━━━━━━━━━━━━━━ */}
+      <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22]">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
+          {/* Top row: Back + Name + Actions */}
+          <div className="flex items-center gap-4 mb-4">
+            <button
+              onClick={() => navigate(-1)}
+              className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group"
+            >
+              <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
+            </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Section 1 - Dados Principais */}
-          <div className="bg-[#1e1e22] rounded-xl p-4 border border-[#2a2a2e]">
-            <h3 className="text-sm font-medium text-slate-400 mb-3">Dados Principais</h3>
-            <div className="space-y-2.5">
-              <InfoRow icon={Phone} label="Telefone" value={lead.whatsapp} />
-              <InfoRow icon={Mail} label="Email" value={lead.email || "—"} />
-              <InfoRow icon={Building2} label="Empreendimento" value={lead.project?.name || "—"} />
-              <InfoRow icon={MapPin} label="Origem" value={getOriginDisplayLabel(lead.lead_origin)} />
-              <InfoRow icon={Users} label="Corretor" value={lead.broker?.name || "Enove"} />
-              <InfoRow icon={Clock} label="Cadastro" value={new Date(lead.created_at).toLocaleString("pt-BR")} />
-              {lead.attribution?.landing_page && (
-                <InfoRow icon={MapPin} label="Tipo" value={lead.attribution.landing_page === "admin_manual" ? "Manual" : "Automático"} />
-              )}
-              {sla && <InfoRow icon={Clock} label="SLA (1º atendimento)" value={sla} />}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-3">
+                <h1 className="text-lg sm:text-xl font-semibold truncate">{lead.name}</h1>
+                <span className={cn(
+                  "inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wide uppercase",
+                  isSold && "bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/30",
+                  isLost && "bg-red-500/15 text-red-400 ring-1 ring-red-500/30",
+                  !isSold && !isLost && "bg-yellow-500/10 text-yellow-400 ring-1 ring-yellow-500/20"
+                )}>
+                  {statusConfig.label}
+                </span>
+              </div>
+              <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
+                <span className="flex items-center gap-1">
+                  <Timer className="w-3 h-3" />
+                  {tempoNoFunil} no funil
+                </span>
+                <span className={cn("flex items-center gap-1 font-medium", slaColor)}>
+                  <Zap className="w-3 h-3" />
+                  {slaLabel}
+                </span>
+                {lead.project?.name && (
+                  <span className="hidden sm:flex items-center gap-1">
+                    <Building2 className="w-3 h-3" />
+                    {lead.project.name}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
 
-          {/* Section 3 - Ações Disponíveis */}
-          <div className="bg-[#1e1e22] rounded-xl p-4 border border-[#2a2a2e]">
-            <h3 className="text-sm font-medium text-slate-400 mb-3">Ações Disponíveis</h3>
-            <div className="space-y-2">
-              {lead.status === "new" && (
-                <Button onClick={async () => { const ok = await iniciarAtendimento(lead.id); if (ok) { toast.success("Atendimento iniciado!"); refreshLead(); } }} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  <Play className="w-4 h-4 mr-2" />Iniciar Atendimento
+            {/* Header actions */}
+            <div className="flex items-center gap-2 shrink-0">
+              {primaryAction && (
+                <Button
+                  onClick={handlePrimaryAction}
+                  className={cn("hidden sm:inline-flex h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}
+                >
+                  <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />
+                  {primaryAction.label}
                 </Button>
               )}
-              {lead.status === "info_sent" && (
-                <Button onClick={() => setAgendamentoOpen(true)} className="w-full bg-orange-600 hover:bg-orange-700">
-                  <Calendar className="w-4 h-4 mr-2" />Registrar Agendamento
+              {canTransfer && !isSold && !isLost && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setTransferOpen(true)}
+                  className="text-slate-400 hover:text-white h-9"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />
+                  <span className="hidden sm:inline">Transferir</span>
                 </Button>
               )}
-              {lead.status === "scheduling" && (
-                <Button onClick={() => setComparecimentoOpen(true)} className="w-full bg-blue-600 hover:bg-blue-700">
-                  <FileText className="w-4 h-4 mr-2" />Registrar Comparecimento
+              {!isSold && !isLost && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPerdaOpen(true)}
+                  className="text-red-400/70 hover:text-red-400 hover:bg-red-500/10 h-9"
+                >
+                  <UserX className="w-3.5 h-3.5 mr-1.5" />
+                  <span className="hidden sm:inline">Perda</span>
                 </Button>
               )}
-              {lead.status === "docs_received" && (
-                <Button onClick={() => setVendaOpen(true)} className="w-full bg-emerald-600 hover:bg-emerald-700">
-                  <Trophy className="w-4 h-4 mr-2" />Confirmar Venda
-                </Button>
-              )}
-              {lead.status !== "registered" && lead.status !== "inactive" && (
-                <Button variant="outline" onClick={() => setPerdaOpen(true)} className="w-full border-red-500/30 text-red-400 hover:bg-red-500/10">
-                  <UserX className="w-4 h-4 mr-2" />Registrar Perda
-                </Button>
-              )}
-              {lead.status === "registered" && (
-                <p className="text-sm text-emerald-400 text-center py-4">🎉 Venda concluída!</p>
-              )}
-            </div>
-          </div>
-
-          {/* Section 4 - Informações Comerciais */}
-          <div className="bg-[#1e1e22] rounded-xl p-4 border border-[#2a2a2e]">
-            <h3 className="text-sm font-medium text-slate-400 mb-3">Informações Comerciais</h3>
-            <div className="space-y-2.5">
-              <CommRow label="Agendamento" value={lead.data_agendamento ? new Date(lead.data_agendamento).toLocaleDateString("pt-BR") : null} />
-              <CommRow label="Tipo" value={tipoAgLabel} />
-              <CommRow label="Comparecimento" value={lead.comparecimento === true ? "✅ Sim" : lead.comparecimento === false ? "❌ Não" : null} />
-              <CommRow label="Valor Proposta" value={lead.valor_proposta ? `R$ ${lead.valor_proposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : null} />
-              <CommRow label="Valor Venda" value={lead.valor_final_venda ? `R$ ${lead.valor_final_venda.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : null} />
-              <CommRow label="Fechamento" value={lead.data_fechamento ? new Date(lead.data_fechamento).toLocaleDateString("pt-BR") : null} />
-              {lead.notes && <CommRow label="Observações" value={lead.notes} />}
             </div>
           </div>
 
-          {/* Section 5 - Timeline */}
-          <div className="bg-[#1e1e22] rounded-xl p-4 border border-[#2a2a2e]">
-            <LeadTimeline interactions={interactions} />
+          {/* Funnel progress bar */}
+          <div className="flex items-center gap-1">
+            {FUNNEL_STAGES.map((stage, i) => {
+              const isActive = i <= currentStageIndex;
+              const isCurrent = i === currentStageIndex;
+              return (
+                <div key={stage.status} className="flex-1 relative group">
+                  <div
+                    className={cn(
+                      "h-1.5 rounded-full transition-all duration-500",
+                      isActive
+                        ? isCurrent
+                          ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]"
+                          : "bg-yellow-500/60"
+                        : "bg-[#1e1e22]"
+                    )}
+                  />
+                  <span className={cn(
+                    "absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium whitespace-nowrap transition-colors",
+                    isCurrent ? "text-yellow-400" : isActive ? "text-slate-500" : "text-slate-600"
+                  )}>
+                    {stage.label}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Modals */}
+      {/* ━━━━━━━━━━━━━━ MAIN CONTENT ━━━━━━━━━━━━━━ */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-24">
+        {/* SLA Alert */}
+        {slaLabel === "SLA estourado" && (
+          <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+            <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
+            <p className="text-xs text-red-300">
+              Este lead está sem interação há mais de 48h. Ação imediata é necessária.
+            </p>
+          </div>
+        )}
+
+        {/* Mobile primary action */}
+        {primaryAction && (
+          <div className="sm:hidden mb-6">
+            <Button
+              onClick={handlePrimaryAction}
+              className={cn("w-full h-12 text-sm font-semibold rounded-xl shadow-lg", primaryAction.color)}
+            >
+              <primaryAction.icon className="w-4 h-4 mr-2" />
+              {primaryAction.label}
+            </Button>
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+          {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* Lead Data */}
+            <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e1e22]">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Dados do Lead</h2>
+              </div>
+              <div className="p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <DataField
+                  icon={Phone}
+                  label="Telefone"
+                  value={lead.whatsapp}
+                  action={
+                    <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] font-medium text-emerald-400 hover:text-emerald-300 transition-colors">
+                      <MessageCircle className="w-3 h-3" />
+                      WhatsApp
+                      <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  }
+                />
+                <DataField icon={Mail} label="Email" value={lead.email} placeholder="Não informado" />
+                <DataField icon={Building2} label="Empreendimento" value={lead.project?.name} placeholder="Sem projeto" highlight />
+                <DataField icon={TrendingUp} label="Origem" value={getOriginDisplayLabel(lead.lead_origin)} />
+                <DataField icon={Users} label="Corretor" value={lead.broker?.name || "Enove"} />
+                <DataField icon={Calendar} label="Entrada" value={new Date(lead.created_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" })} />
+              </div>
+            </section>
+
+            {/* Commercial Progress */}
+            <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e1e22]">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Progresso Comercial</h2>
+              </div>
+              <div className="p-5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <CommercialCard
+                    label="Agendamento"
+                    value={lead.data_agendamento ? new Date(lead.data_agendamento).toLocaleDateString("pt-BR") : null}
+                    sub={tipoAgLabel || undefined}
+                    icon={Calendar}
+                  />
+                  <CommercialCard
+                    label="Comparecimento"
+                    value={lead.comparecimento === true ? "Compareceu" : lead.comparecimento === false ? "Não compareceu" : null}
+                    icon={Eye}
+                    variant={lead.comparecimento === true ? "success" : lead.comparecimento === false ? "danger" : "default"}
+                  />
+                  <CommercialCard
+                    label="Valor Proposta"
+                    value={lead.valor_proposta ? formatCurrency(lead.valor_proposta) : null}
+                    icon={FileText}
+                    highlight
+                  />
+                  <CommercialCard
+                    label="Valor Venda"
+                    value={lead.valor_final_venda ? formatCurrency(lead.valor_final_venda) : null}
+                    icon={DollarSign}
+                    highlight
+                    variant={lead.valor_final_venda ? "success" : "default"}
+                  />
+                  <CommercialCard
+                    label="Fechamento"
+                    value={lead.data_fechamento ? new Date(lead.data_fechamento).toLocaleDateString("pt-BR") : null}
+                    icon={Trophy}
+                    variant={lead.data_fechamento ? "success" : "default"}
+                  />
+                  {lead.data_perda && (
+                    <CommercialCard
+                      label="Perda"
+                      value={new Date(lead.data_perda).toLocaleDateString("pt-BR")}
+                      sub={lead.etapa_perda ? STATUS_CONFIG[lead.etapa_perda as LeadStatus]?.label : undefined}
+                      icon={UserX}
+                      variant="danger"
+                    />
+                  )}
+                </div>
+              </div>
+            </section>
+
+            {/* Metrics */}
+            <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e1e22]">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Métricas</h2>
+              </div>
+              <div className="p-5 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <MetricCard
+                  label="1º Atendimento"
+                  value={slaPrimeiroAtendimento || (lead.status === "new" ? "Aguardando" : "—")}
+                  color={slaPrimeiroAtendimento ? "text-emerald-400" : "text-slate-500"}
+                />
+                <MetricCard label="Na etapa atual" value={tempoNaEtapa} color="text-slate-300" />
+                <MetricCard label="No funil" value={tempoNoFunil} color="text-slate-300" />
+                <MetricCard label="Interações" value={String(interactions.length)} color="text-yellow-400" />
+              </div>
+            </section>
+
+            {/* Notes */}
+            {lead.notes && (
+              <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] p-5">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3">Observações</h2>
+                <p className="text-sm text-slate-300 leading-relaxed">{lead.notes}</p>
+              </section>
+            )}
+          </div>
+
+          {/* ━━━━ RIGHT COLUMN (40%) ━━━━ */}
+          <div className="lg:col-span-2 space-y-6">
+
+            {/* Smart Actions */}
+            {!isSold && !isLost && (
+              <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
+                <div className="px-5 py-3 border-b border-[#1e1e22]">
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Ações</h2>
+                </div>
+                <div className="p-5 space-y-2.5">
+                  {primaryAction && (
+                    <button
+                      onClick={handlePrimaryAction}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-xl text-sm font-semibold transition-all",
+                        primaryAction.color, "shadow-lg"
+                      )}
+                    >
+                      <primaryAction.icon className="w-4 h-4" />
+                      {primaryAction.label}
+                      <ChevronRight className="w-4 h-4 ml-auto opacity-60" />
+                    </button>
+                  )}
+
+                  {lead.status === "scheduling" && (
+                    <button
+                      onClick={() => setAgendamentoReagendar(true)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-300 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all"
+                    >
+                      <Calendar className="w-4 h-4 text-slate-500" />
+                      Reagendar
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setPerdaOpen(true)}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-400/80 bg-[#1a1a1e] hover:bg-red-500/10 border border-[#2a2a2e] hover:border-red-500/20 transition-all"
+                  >
+                    <UserX className="w-4 h-4" />
+                    Registrar Perda
+                  </button>
+
+                  {canTransfer && (
+                    <button
+                      onClick={() => setTransferOpen(true)}
+                      className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-slate-400 bg-[#1a1a1e] hover:bg-[#1e1e22] border border-[#2a2a2e] transition-all"
+                    >
+                      <ArrowRightLeft className="w-4 h-4 text-slate-500" />
+                      Transferir Lead
+                    </button>
+                  )}
+                </div>
+              </section>
+            )}
+
+            {/* Sold state */}
+            {isSold && (
+              <section className="bg-emerald-500/5 rounded-2xl border border-emerald-500/20 p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto mb-3">
+                  <Trophy className="w-6 h-6 text-emerald-400" />
+                </div>
+                <h3 className="text-base font-semibold text-emerald-400 mb-1">Venda Concluída</h3>
+                {lead.valor_final_venda && (
+                  <p className="text-2xl font-bold text-white">{formatCurrency(lead.valor_final_venda)}</p>
+                )}
+                {lead.data_fechamento && (
+                  <p className="text-xs text-slate-500 mt-2">{new Date(lead.data_fechamento).toLocaleDateString("pt-BR")}</p>
+                )}
+              </section>
+            )}
+
+            {/* Lost state */}
+            {isLost && (
+              <section className="bg-red-500/5 rounded-2xl border border-red-500/20 p-6 text-center">
+                <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-3">
+                  <UserX className="w-6 h-6 text-red-400" />
+                </div>
+                <h3 className="text-base font-semibold text-red-400 mb-1">Lead Perdido</h3>
+                {lead.inactivation_reason && (
+                  <p className="text-sm text-slate-400 mt-1">{lead.inactivation_reason}</p>
+                )}
+              </section>
+            )}
+
+            {/* Timeline */}
+            <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e1e22]">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Linha do Tempo</h2>
+              </div>
+              <div className="p-5 max-h-[600px] overflow-y-auto scrollbar-subtle">
+                <LeadTimeline interactions={interactions} />
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+
+      {/* ━━━━━━━━━━━━━━ MODALS ━━━━━━━━━━━━━━ */}
       <AgendamentoModal
         open={agendamentoOpen || agendamentoReagendar}
         onOpenChange={(v) => { setAgendamentoOpen(v); setAgendamentoReagendar(v); }}
@@ -236,21 +569,80 @@ export default function LeadPage() {
   );
 }
 
-function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label: string; value: string }) {
+// ━━━━━━━━━━━━━━ SUB-COMPONENTS ━━━━━━━━━━━━━━
+
+function DataField({ icon: Icon, label, value, placeholder, action, highlight }: {
+  icon: React.ElementType;
+  label: string;
+  value: string | null | undefined;
+  placeholder?: string;
+  action?: React.ReactNode;
+  highlight?: boolean;
+}) {
   return (
-    <div className="flex items-center gap-2">
-      <Icon className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-      <span className="text-xs text-slate-500 w-24 shrink-0">{label}</span>
-      <span className="text-xs text-slate-300 truncate">{value}</span>
+    <div className="flex items-start gap-3">
+      <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+        <Icon className="w-3.5 h-3.5 text-slate-500" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">{label}</p>
+        <p className={cn(
+          "text-sm truncate",
+          value ? (highlight ? "text-yellow-400 font-medium" : "text-slate-200") : "text-slate-600 italic"
+        )}>
+          {value || placeholder || "—"}
+        </p>
+        {action && <div className="mt-1">{action}</div>}
+      </div>
     </div>
   );
 }
 
-function CommRow({ label, value }: { label: string; value: string | null }) {
+function CommercialCard({ label, value, sub, icon: Icon, highlight, variant = "default" }: {
+  label: string;
+  value: string | null;
+  sub?: string;
+  icon: React.ElementType;
+  highlight?: boolean;
+  variant?: "default" | "success" | "danger";
+}) {
+  const variantStyles = {
+    default: "border-[#1e1e22]",
+    success: "border-emerald-500/20 bg-emerald-500/5",
+    danger: "border-red-500/20 bg-red-500/5",
+  };
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs text-slate-500">{label}</span>
-      <span className={cn("text-xs", value ? "text-slate-300" : "text-slate-600")}>{value || "Pendente"}</span>
+    <div className={cn("rounded-xl border p-3.5 bg-[#0f0f12] transition-colors", variantStyles[variant])}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className={cn("w-3.5 h-3.5", 
+          variant === "success" ? "text-emerald-400" : variant === "danger" ? "text-red-400" : "text-slate-500"
+        )} />
+        <span className="text-[10px] uppercase tracking-wider text-slate-600">{label}</span>
+      </div>
+      <p className={cn(
+        "text-sm font-medium",
+        !value && "text-slate-600 italic text-xs",
+        value && highlight && "text-yellow-400",
+        value && variant === "success" && "text-emerald-400",
+        value && variant === "danger" && "text-red-400",
+        value && variant === "default" && !highlight && "text-slate-200"
+      )}>
+        {value || "—"}
+      </p>
+      {sub && <p className="text-[10px] text-slate-500 mt-0.5">{sub}</p>}
     </div>
   );
+}
+
+function MetricCard({ label, value, color }: { label: string; value: string; color: string }) {
+  return (
+    <div className="text-center">
+      <p className={cn("text-lg font-bold tabular-nums", color)}>{value}</p>
+      <p className="text-[10px] uppercase tracking-wider text-slate-600 mt-0.5">{label}</p>
+    </div>
+  );
+}
+
+function formatCurrency(value: number): string {
+  return `R$ ${value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 }
