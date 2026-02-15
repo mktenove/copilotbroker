@@ -1,36 +1,90 @@
 
-# Correção: Kanban em Tempo Real para Reassignação de Leads
+# Transferencia Manual de Leads entre Corretores
 
-## Problema
-Quando o timeout da roleta redistribui um lead para outro corretor, o corretor anterior continua vendo o lead no seu Kanban até dar refresh manual. Isso acontece porque o Kanban não escuta mudanças em tempo real no banco de dados.
+## O que sera implementado
+Um botao "Transferir Lead" no painel de detalhes do lead (LeadDetailSheet) que abre um dialog com a lista de corretores disponiveis. Ao selecionar o corretor destino e confirmar, o lead sera transferido, registrando a acao na timeline.
 
-## Solução
-Ativar o **Realtime** na tabela `leads` e adicionar um listener no hook `useKanbanLeads` para que, quando o `broker_id` de um lead mudar (reassignação), o Kanban se atualize automaticamente.
+## Como vai funcionar
+1. O usuario abre os detalhes de um lead no Kanban
+2. Clica em "Transferir" nas acoes rapidas
+3. Um dialog aparece com a lista de corretores ativos
+4. O usuario seleciona o corretor destino e confirma
+5. O lead desaparece do Kanban do corretor antigo (via Realtime ja implementado) e aparece no Kanban do novo corretor
+6. A transferencia e registrada na timeline do lead
 
-## O que vai acontecer na prática
-- Quando um lead for reassignado (timeout ou manual), ele **desaparece automaticamente** do Kanban do corretor anterior
-- O lead **aparece automaticamente** no Kanban do novo corretor
-- Sem necessidade de refresh manual
+## Detalhes Tecnicos
 
----
+### 1. Migracao: Nova RLS policy para permitir transferencia
+Os corretores atualmente so podem atualizar seus proprios leads. Precisamos de uma funcao SECURITY DEFINER para transferir leads de forma segura, sem abrir permissoes demais:
 
-## Detalhes Técnicos
-
-### 1. Migração: Habilitar Realtime na tabela `leads`
 ```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.leads;
+CREATE OR REPLACE FUNCTION public.transfer_lead(
+  _lead_id uuid,
+  _new_broker_id uuid
+) RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $$
+DECLARE
+  _old_broker_id uuid;
+  _caller_broker_id uuid;
+  _is_admin boolean;
+BEGIN
+  _is_admin := has_role(auth.uid(), 'admin');
+  
+  SELECT id INTO _caller_broker_id 
+  FROM brokers WHERE user_id = auth.uid() LIMIT 1;
+  
+  SELECT broker_id INTO _old_broker_id 
+  FROM leads WHERE id = _lead_id;
+  
+  -- Verificar permissao: admin, ou dono do lead, ou leader do dono
+  IF NOT _is_admin 
+     AND _caller_broker_id IS DISTINCT FROM _old_broker_id
+     AND NOT EXISTS (
+       SELECT 1 FROM brokers 
+       WHERE id = _old_broker_id AND lider_id = _caller_broker_id
+     )
+  THEN
+    RAISE EXCEPTION 'Sem permissao para transferir este lead';
+  END IF;
+  
+  -- Atualizar o lead
+  UPDATE leads SET 
+    broker_id = _new_broker_id,
+    updated_at = now(),
+    status_distribuicao = NULL,
+    reserva_expira_em = NULL
+  WHERE id = _lead_id;
+  
+  -- Registrar na timeline
+  INSERT INTO lead_interactions (lead_id, interaction_type, notes, created_by)
+  VALUES (
+    _lead_id, 
+    'roleta_transferencia',
+    'Lead transferido manualmente de corretor ' || 
+      COALESCE((SELECT name FROM brokers WHERE id = _old_broker_id), 'Enove') || 
+      ' para ' || 
+      (SELECT name FROM brokers WHERE id = _new_broker_id),
+    auth.uid()
+  );
+END;
+$$;
 ```
 
-### 2. Atualizar `useKanbanLeads` com subscription Realtime
-Adicionar um `useEffect` que escuta eventos `UPDATE` na tabela `leads` via canal Realtime:
+### 2. Novo componente: TransferLeadDialog
+Um dialog simples com:
+- Select/combobox para escolher o corretor destino
+- Lista dos corretores ativos (excluindo o atual)
+- Botao de confirmar
 
-- **Quando `broker_id` muda** (reassignação): remover o lead do state local se não pertence mais ao corretor atual, ou adicionar se agora pertence
-- **Quando `status` muda para `inactive`**: remover do state local
-- **Outros updates**: atualizar o lead no state local
+### 3. Alteracoes no LeadDetailSheet
+- Adicionar botao "Transferir" na secao de Acoes Rapidas
+- Ao clicar, abre o TransferLeadDialog
+- Ao confirmar, chama `supabase.rpc('transfer_lead', { ... })`
+- Fecha o dialog e o sheet, o Realtime cuida de atualizar os Kanbans
 
-A lógica será:
-- Para corretores: se o `broker_id` do lead mudou e não é mais o broker logado, o lead é removido da lista
-- Para admins: qualquer update é refletido no state local
-
-### 3. Cleanup
-O canal Realtime será desconectado automaticamente quando o componente desmontar (cleanup no `useEffect`).
+### 4. Alteracoes no KanbanBoard
+- Passar a lista de `brokers` para o LeadDetailSheet (ja disponivel via props)
+- Adicionar callback `onTransfer` que chama a RPC e faz refetch
