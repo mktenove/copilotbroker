@@ -79,7 +79,19 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
   const addParcela = () => setParcelas(prev => [...prev, emptyParcela()]);
   const removeParcela = (id: string) => setParcelas(prev => prev.filter(p => p.id !== id));
   const updateParcela = (id: string, field: keyof ParcelaForm, value: string) => {
-    setParcelas(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+    setParcelas(prev => prev.map(p => {
+      if (p.id !== id) return p;
+      const updated = { ...p, [field]: value };
+      if (field === "valor" || field === "quantidade_parcelas") {
+        const val = parseCurrency(field === "valor" ? value : updated.valor);
+        const qty = parseInt(field === "quantidade_parcelas" ? value : updated.quantidade_parcelas);
+        if (val > 0 && qty > 0) {
+          const perInstallment = Math.round((val / qty) * 100);
+          updated.valor_parcela = String(perInstallment);
+        }
+      }
+      return updated;
+    }));
   };
 
   const resetForm = () => {
