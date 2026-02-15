@@ -44,19 +44,15 @@ const Auth = () => {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (event === "TOKEN_REFRESHED") return;
+
         if (session) {
           await checkUserRoleAndRedirect(session.user.id);
+        } else {
+          setIsCheckingAuth(false);
         }
       }
     );
-
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session) {
-        await checkUserRoleAndRedirect(session.user.id);
-      } else {
-        setIsCheckingAuth(false);
-      }
-    });
 
     return () => subscription.unsubscribe();
   }, [navigate]);
