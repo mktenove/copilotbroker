@@ -4,6 +4,31 @@ import { toast } from "sonner";
 
 export type PropostaStatus = "pendente" | "enviada_vendedor" | "aprovada" | "rejeitada";
 
+export interface PropostaParcela {
+  id: string;
+  proposta_id: string;
+  tipo: string;
+  valor: number;
+  quantidade_parcelas: number | null;
+  valor_parcela: number | null;
+  descricao: string | null;
+  indice_correcao: string | null;
+  observacao: string | null;
+  ordem: number;
+  created_at: string;
+}
+
+export interface ParcelaInsert {
+  tipo: string;
+  valor: number;
+  quantidade_parcelas?: number | null;
+  valor_parcela?: number | null;
+  descricao?: string | null;
+  indice_correcao?: string | null;
+  observacao?: string | null;
+  ordem?: number;
+}
+
 export interface Proposta {
   id: string;
   lead_id: string;
@@ -26,6 +51,7 @@ export interface Proposta {
   motivo_rejeicao: string | null;
   created_at: string;
   updated_at: string;
+  parcelas: PropostaParcela[];
 }
 
 export interface PropostaInsert {
@@ -42,6 +68,7 @@ export interface PropostaInsert {
   descricao_permuta?: string;
   observacoes_corretor?: string;
   condicoes_especiais?: string;
+  parcelas?: ParcelaInsert[];
 }
 
 export function usePropostas(leadId: string) {
@@ -59,7 +86,27 @@ export function usePropostas(leadId: string) {
       console.error("Erro ao buscar propostas:", error);
       return;
     }
-    setPropostas((data || []) as unknown as Proposta[]);
+
+    const propostasRaw = (data || []) as unknown as Omit<Proposta, "parcelas">[];
+
+    // Fetch parcelas for all propostas
+    const ids = propostasRaw.map(p => p.id);
+    let parcelasMap: Record<string, PropostaParcela[]> = {};
+    if (ids.length > 0) {
+      const { data: parcelasData } = await supabase
+        .from("proposta_parcelas")
+        .select("*")
+        .in("proposta_id", ids)
+        .order("ordem", { ascending: true });
+      if (parcelasData) {
+        for (const p of parcelasData as unknown as PropostaParcela[]) {
+          if (!parcelasMap[p.proposta_id]) parcelasMap[p.proposta_id] = [];
+          parcelasMap[p.proposta_id].push(p);
+        }
+      }
+    }
+
+    setPropostas(propostasRaw.map(p => ({ ...p, parcelas: parcelasMap[p.id] || [] })));
     setLoading(false);
   }, [leadId]);
 
@@ -80,6 +127,13 @@ export function usePropostas(leadId: string) {
       }, () => {
         fetchPropostas();
       })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "proposta_parcelas",
+      }, () => {
+        fetchPropostas();
+      })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [leadId, fetchPropostas]);
@@ -87,11 +141,28 @@ export function usePropostas(leadId: string) {
   const criarProposta = useCallback(async (data: PropostaInsert) => {
     try {
       const user = (await supabase.auth.getUser()).data.user;
-      const { error } = await supabase.from("propostas").insert({
-        ...data,
+      const { parcelas, ...propostaData } = data;
+      const { data: inserted, error } = await supabase.from("propostas").insert({
+        ...propostaData,
         created_by: user?.id,
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
+
+      // Insert parcelas
+      if (parcelas && parcelas.length > 0 && inserted) {
+        const parcelasToInsert = parcelas.map((p, i) => ({
+          proposta_id: inserted.id,
+          tipo: p.tipo,
+          valor: p.valor,
+          quantidade_parcelas: p.quantidade_parcelas || null,
+          valor_parcela: p.valor_parcela || null,
+          descricao: p.descricao || null,
+          indice_correcao: p.indice_correcao || null,
+          observacao: p.observacao || null,
+          ordem: p.ordem ?? i,
+        }));
+        await supabase.from("proposta_parcelas").insert(parcelasToInsert as any);
+      }
 
       // Also update lead status to docs_received and register interaction
       await supabase.from("leads").update({
@@ -101,10 +172,15 @@ export function usePropostas(leadId: string) {
         updated_at: new Date().toISOString(),
       }).eq("id", data.lead_id);
 
+      // Build notes with parcelas summary
+      const parcelasSummary = parcelas && parcelas.length > 0
+        ? "\n" + parcelas.map(p => `  • ${p.tipo}: R$ ${p.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}${p.quantidade_parcelas ? ` (${p.quantidade_parcelas}x)` : ""}${p.descricao ? ` — ${p.descricao}` : ""}`).join("\n")
+        : "";
+
       await supabase.from("lead_interactions").insert({
         lead_id: data.lead_id,
         interaction_type: "proposta_enviada" as any,
-        notes: `Proposta registrada: R$ ${data.valor_proposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} | Unidade: ${data.unidade || "N/A"}`,
+        notes: `Proposta registrada: R$ ${data.valor_proposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} | Unidade: ${data.unidade || "N/A"}${parcelasSummary}`,
         created_by: user?.id,
       });
 
