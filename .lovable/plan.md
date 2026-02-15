@@ -1,23 +1,18 @@
 
+# Botões de ação mais evidentes no mobile
 
-# Remover botões de ação fixos
+## Alteração
 
-O objetivo é remover os botões "Agendar Reunião", "Follow-Up" e "Perda" que aparecem de forma fixa/proeminente, tanto no header quanto no bloco mobile separado.
+### Arquivo: `src/pages/LeadPage.tsx` (linhas 351)
 
-## Alterações
+Trocar o container dos botões de `flex items-center gap-2 flex-wrap` para usar layout responsivo:
+- **Mobile**: `flex flex-col gap-2` -- cada botão ocupa uma linha inteira, com largura total (`w-full`)
+- **Desktop**: mantém o layout horizontal atual (`sm:flex-row sm:w-auto`)
 
-### Arquivo: `src/pages/LeadPage.tsx`
+Aumentar a altura dos botões no mobile de `h-9` para `h-11` e o texto de `text-xs` para `text-sm` para melhor toque.
 
-1. **Remover o bloco mobile duplicado** (linhas 379-394)
-   - O bloco `sm:hidden` que repete os botões "Agendar Reunião", "Follow-Up" e "Perda" em tela mobile será removido por completo.
+### Detalhes
 
-2. **Remover a action bar fixa do header** (linhas 337-366)
-   - Eliminar a barra de ações que contém os botões "Agendar Reunião", "Follow-Up", "Perda", "Reagendar" e "Transferir" dentro do header estratégico.
-   - Os botões de ação continuarão acessíveis dentro do conteúdo da página (seções de progresso comercial, etc.), mas não ficarão fixos no topo.
-
-3. **Reduzir o padding inferior** (linha 371)
-   - Trocar `pb-24` por `pb-10`, já que não haverá mais barra fixa no rodapé ocupando espaço.
-
-### Resultado
-
-O header estratégico ficará mais limpo, apenas com nome, badge, SLA e barra de funil. As ações estarão disponíveis nas seções apropriadas dentro do conteúdo da página.
+- Container: `flex flex-col sm:flex-row sm:items-center gap-2 mb-6 sm:flex-wrap`
+- Cada Button recebe: `w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs`
+- Nenhuma mudança funcional, apenas visual/responsiva
