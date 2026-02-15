@@ -4,6 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Search, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { useCallback } from "react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
 import { AddLeadModal } from "@/components/admin/AddLeadModal";
@@ -50,12 +51,56 @@ const BrokerAdmin = () => {
     }
   }, [role, isRoleLoading, navigate]);
 
+  const fetchLeads = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await (supabase
+        .from("leads" as any)
+        .select("*")
+        .eq("broker_id", brokerId)
+        .order("created_at", { ascending: false }) as any);
+
+      if (error) throw error;
+      setLeads((data || []) as Lead[]);
+    } catch (error) {
+      console.error("Erro ao buscar leads:", error);
+      toast.error("Erro ao carregar leads.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [brokerId]);
+
   useEffect(() => {
     if (role === "broker" && brokerId) {
       fetchBrokerInfo();
       fetchLeads();
     }
-  }, [role, brokerId]);
+  }, [role, brokerId, fetchLeads]);
+
+  // Realtime subscription for leads
+  useEffect(() => {
+    if (!brokerId) return;
+
+    const channel = supabase
+      .channel(`broker-leads-${brokerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'leads',
+          filter: `broker_id=eq.${brokerId}`,
+        },
+        () => {
+          fetchLeads();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [brokerId, fetchLeads]);
 
   const fetchBrokerInfo = async () => {
     try {
@@ -72,25 +117,6 @@ const BrokerAdmin = () => {
       setBroker(data as BrokerInfo);
     } catch (error) {
       console.error("Erro ao buscar info do corretor:", error);
-    }
-  };
-
-  const fetchLeads = async () => {
-    setIsLoading(true);
-    try {
-      const { data, error } = await (supabase
-        .from("leads" as any)
-        .select("*")
-        .eq("broker_id", brokerId)
-        .order("created_at", { ascending: false }) as any);
-
-      if (error) throw error;
-      setLeads((data || []) as Lead[]);
-    } catch (error) {
-      console.error("Erro ao buscar leads:", error);
-      toast.error("Erro ao carregar leads.");
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -173,14 +199,6 @@ const BrokerAdmin = () => {
               >
                 <FileSpreadsheet className="w-5 h-5" />
                 <span>Importar CSV</span>
-              </button>
-              <button
-                onClick={fetchLeads}
-                disabled={isLoading}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-5 h-5 ${isLoading ? "animate-spin" : ""}`} />
-                <span>Atualizar</span>
               </button>
             </div>
 
