@@ -1,90 +1,63 @@
 
-# Transferencia Manual de Leads entre Corretores
+# Unificar Origens de Leads + Campo de Campanha Mensuravel
 
-## O que sera implementado
-Um botao "Transferir Lead" no painel de detalhes do lead (LeadDetailSheet) que abre um dialog com a lista de corretores disponiveis. Ao selecionar o corretor destino e confirmar, o lead sera transferido, registrando a acao na timeline.
+## Problema
+O campo `lead_origin` armazena strings longas como "Metaads (videos_publico_segmentado) - conversao - 13/02/26 - condominioportao..." criando dezenas de origens diferentes para a mesma plataforma. Isso impossibilita medir corretamente quantos leads vieram do Meta ADS vs Google ADS no Analytics.
 
-## Como vai funcionar
-1. O usuario abre os detalhes de um lead no Kanban
-2. Clica em "Transferir" nas acoes rapidas
-3. Um dialog aparece com a lista de corretores ativos
-4. O usuario seleciona o corretor destino e confirma
-5. O lead desaparece do Kanban do corretor antigo (via Realtime ja implementado) e aparece no Kanban do novo corretor
-6. A transferencia e registrada na timeline do lead
+## Solucao
+Separar em dois campos: `lead_origin` (plataforma padrao) + novo campo `lead_origin_detail` (campanha/conjunto). Ambos ficam na tabela `leads` para serem facilmente mensuráveis e filtraveis no Analytics.
+
+### Exemplo pratico:
+```text
+ANTES:
+  lead_origin: "Metaads (videos_publico_segmentado) - conversao - 13/02/26 - condominioportao..."
+
+DEPOIS:
+  lead_origin: "meta_ads"
+  lead_origin_detail: "conversao - 13/02/26 - condominioportao - cadastrolead - CBO - Videos - todos"
+```
+
+---
 
 ## Detalhes Tecnicos
 
-### 1. Migracao: Nova RLS policy para permitir transferencia
-Os corretores atualmente so podem atualizar seus proprios leads. Precisamos de uma funcao SECURITY DEFINER para transferir leads de forma segura, sem abrir permissoes demais:
+### 1. Migracao de banco de dados
+- Adicionar coluna `lead_origin_detail` (text, nullable) na tabela `leads`
+- Normalizar dados existentes com UPDATE:
+  - Origens que comecam com "Metaads (" -> `lead_origin = 'meta_ads'`, extrair o detalhe para `lead_origin_detail`
+  - "Meta Ads (auto)" -> `lead_origin = 'meta_ads'`
+  - "Google Ads (auto)" -> `lead_origin = 'google_ads'`
+  - "Google (Organico)" -> `lead_origin = 'google_organico'`
+  - "Instagram Organico" -> `lead_origin = 'meta_organico'`
+  - Origens manuais como "WhatsApp Direto", "Indicacao" etc permanecem como estao
 
-```sql
-CREATE OR REPLACE FUNCTION public.transfer_lead(
-  _lead_id uuid,
-  _new_broker_id uuid
-) RETURNS void
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $$
-DECLARE
-  _old_broker_id uuid;
-  _caller_broker_id uuid;
-  _is_admin boolean;
-BEGIN
-  _is_admin := has_role(auth.uid(), 'admin');
-  
-  SELECT id INTO _caller_broker_id 
-  FROM brokers WHERE user_id = auth.uid() LIMIT 1;
-  
-  SELECT broker_id INTO _old_broker_id 
-  FROM leads WHERE id = _lead_id;
-  
-  -- Verificar permissao: admin, ou dono do lead, ou leader do dono
-  IF NOT _is_admin 
-     AND _caller_broker_id IS DISTINCT FROM _old_broker_id
-     AND NOT EXISTS (
-       SELECT 1 FROM brokers 
-       WHERE id = _old_broker_id AND lider_id = _caller_broker_id
-     )
-  THEN
-    RAISE EXCEPTION 'Sem permissao para transferir este lead';
-  END IF;
-  
-  -- Atualizar o lead
-  UPDATE leads SET 
-    broker_id = _new_broker_id,
-    updated_at = now(),
-    status_distribuicao = NULL,
-    reserva_expira_em = NULL
-  WHERE id = _lead_id;
-  
-  -- Registrar na timeline
-  INSERT INTO lead_interactions (lead_id, interaction_type, notes, created_by)
-  VALUES (
-    _lead_id, 
-    'roleta_transferencia',
-    'Lead transferido manualmente de corretor ' || 
-      COALESCE((SELECT name FROM brokers WHERE id = _old_broker_id), 'Enove') || 
-      ' para ' || 
-      (SELECT name FROM brokers WHERE id = _new_broker_id),
-    auth.uid()
-  );
-END;
-$$;
-```
+### 2. Atualizar `use-page-tracking.ts`
+- `getLeadOriginFromUTM()` retorna agora um objeto `{ origin: string, detail: string | null }` em vez de string
+- `formatUTMOrigin()` mapeia utm_source para chaves padrao:
+  - metaads/facebook/instagram/fb/ig -> `meta_ads`
+  - google (cpc/paid) -> `google_ads`
+  - google (organic) -> `google_organico`
+  - tiktok -> `tiktok_ads`
+- O detalhe (utm_medium + utm_campaign) vai para `lead_origin_detail`
+- Exportar tambem uma funcao `getLeadOriginDetailFromUTM()` para uso nos formularios
 
-### 2. Novo componente: TransferLeadDialog
-Um dialog simples com:
-- Select/combobox para escolher o corretor destino
-- Lista dos corretores ativos (excluindo o atual)
-- Botao de confirmar
+### 3. Atualizar formularios de landing page
+- Nos formularios que salvam leads (FormSection, GVFormSection, MCFormSection, etc), salvar tambem o `lead_origin_detail` junto com `lead_origin`
 
-### 3. Alteracoes no LeadDetailSheet
-- Adicionar botao "Transferir" na secao de Acoes Rapidas
-- Ao clicar, abre o TransferLeadDialog
-- Ao confirmar, chama `supabase.rpc('transfer_lead', { ... })`
-- Fecha o dialog e o sheet, o Realtime cuida de atualizar os Kanbans
+### 4. Atualizar o Analytics Dashboard
+- O grafico "Origem de Marketing" continua agrupando por `lead_origin` (agora padronizado)
+- Adicionar um **segundo nivel de drill-down**: ao clicar numa origem, mostrar a lista de campanhas (`lead_origin_detail`) com a contagem de leads de cada uma
+- Buscar `lead_origin_detail` no fetch de leads do Analytics
 
-### 4. Alteracoes no KanbanBoard
-- Passar a lista de `brokers` para o LeadDetailSheet (ja disponivel via props)
-- Adicionar callback `onTransfer` que chama a RPC e faz refetch
+### 5. Atualizar UI do CRM
+- No `LeadDetailSheet`, exibir o campo "Campanha/Detalhe" abaixo da origem quando disponivel
+- No `KanbanCard`, mostrar tooltip com o detalhe da campanha ao passar o mouse sobre o badge de origem
+
+### Arquivos afetados
+- Migracao SQL (nova coluna + normalizar dados existentes)
+- `src/hooks/use-page-tracking.ts` - Simplificar origens e separar detalhe
+- `src/components/admin/AnalyticsDashboard.tsx` - Drill-down por campanha
+- `src/components/crm/LeadDetailSheet.tsx` - Exibir campo de campanha
+- `src/components/crm/KanbanCard.tsx` - Tooltip com detalhe
+- Formularios de landing pages - Salvar `lead_origin_detail`
+- `src/types/crm.ts` - Adicionar campo ao CRMLead
