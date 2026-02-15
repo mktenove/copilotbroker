@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
 
     const roletaId = reData.roleta_id;
 
-    // 2. Get roleta with FOR UPDATE lock (using RPC would be ideal, but we'll use sequential updates)
+    // 2. Get roleta
     const { data: roleta, error: roletaError } = await supabase
       .from("roletas")
       .select("*")
@@ -56,6 +56,8 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const timeoutAtivo = roleta.timeout_ativo ?? true;
 
     // 3. Get active members with checkin
     const { data: membros } = await supabase
@@ -73,18 +75,16 @@ Deno.serve(async (req) => {
     let novaOrdem: number;
 
     if (activeMembros.length === 0) {
-      // Fallback to leader
       assignedBrokerId = roleta.lider_id;
       statusDistribuicao = "fallback_lider";
       motivo = "Nenhum corretor online - atribuído ao líder";
       novaOrdem = roleta.ultimo_membro_ordem_atribuida;
       console.log("Fallback to leader:", assignedBrokerId);
     } else {
-      // Round-robin: find next member after last assigned order
       const lastOrder = roleta.ultimo_membro_ordem_atribuida;
       let nextMembro = activeMembros.find(m => m.ordem > lastOrder);
       if (!nextMembro) {
-        nextMembro = activeMembros[0]; // wrap around
+        nextMembro = activeMembros[0];
       }
 
       assignedBrokerId = nextMembro.corretor_id;
@@ -95,7 +95,11 @@ Deno.serve(async (req) => {
     }
 
     const now = new Date();
-    const reservaExpira = new Date(now.getTime() + roleta.tempo_reserva_minutos * 60 * 1000);
+    // Only set expiration if timeout is active and not fallback
+    const shouldSetExpiration = timeoutAtivo && statusDistribuicao !== "fallback_lider";
+    const reservaExpira = shouldSetExpiration
+      ? new Date(now.getTime() + roleta.tempo_reserva_minutos * 60 * 1000)
+      : null;
 
     // 4. Update lead
     const { error: updateLeadError } = await supabase
@@ -105,7 +109,7 @@ Deno.serve(async (req) => {
         roleta_id: roletaId,
         corretor_atribuido_id: assignedBrokerId,
         atribuido_em: now.toISOString(),
-        reserva_expira_em: statusDistribuicao === "fallback_lider" ? null : reservaExpira.toISOString(),
+        reserva_expira_em: reservaExpira ? reservaExpira.toISOString() : null,
         status_distribuicao: statusDistribuicao,
         motivo_atribuicao: motivo,
       })
@@ -134,7 +138,7 @@ Deno.serve(async (req) => {
     // 7. Create notification for the assigned broker
     const { data: brokerData } = await supabase
       .from("brokers")
-      .select("user_id")
+      .select("user_id, whatsapp")
       .eq("id", assignedBrokerId)
       .single();
 
@@ -160,7 +164,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 8. Try to notify via WhatsApp (global instance) using global_whatsapp_config
+    // 8. WhatsApp notification via global instance
     try {
       const { data: globalConfig } = await supabase
         .from("global_whatsapp_config")
@@ -169,53 +173,45 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      console.log("WhatsApp config:", {
-        hasConfig: !!globalConfig,
-        status: globalConfig?.status,
-        hasToken: !!globalConfig?.instance_token,
-      });
+      if (globalConfig?.instance_token && brokerData?.whatsapp && leadData) {
+        const envUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+        let baseUrl: string;
+        try {
+          baseUrl = new URL(envUrl).origin;
+        } catch {
+          baseUrl = envUrl.replace(/\/[^\/]+\/?$/, "");
+        }
 
-      if (globalConfig?.instance_token && brokerData) {
-        const { data: brokerInfo } = await supabase
-          .from("brokers")
-          .select("whatsapp")
-          .eq("id", assignedBrokerId)
-          .single();
+        if (baseUrl) {
+          const cleanBrokerPhone = brokerData.whatsapp.replace(/\D/g, "");
 
-        if (brokerInfo?.whatsapp && leadData) {
-          // Build base URL from env var (extract origin only)
-          const envUrl = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
-          let baseUrl: string;
-          try {
-            baseUrl = new URL(envUrl).origin;
-          } catch {
-            baseUrl = envUrl.replace(/\/[^\/]+\/?$/, "");
-          }
-
-          if (baseUrl) {
-            const cleanBrokerPhone = brokerInfo.whatsapp.replace(/\D/g, "");
-            const message = `🔔 *Novo lead via Roleta*\n\n📋 *${projectData?.name || "Empreendimento"}*\n👤 ${leadData.name}\n📱 ${leadData.whatsapp}\n\n⏱️ Tempo para atendimento: ${roleta.tempo_reserva_minutos} min`;
-            
-            const apiUrl = `${baseUrl}/send/text`;
-            console.log("Sending WhatsApp notification to:", cleanBrokerPhone, "via:", apiUrl);
-
-            const whatsappResp = await fetch(apiUrl, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "token": globalConfig.instance_token,
-              },
-              body: JSON.stringify({
-                number: cleanBrokerPhone,
-                text: message,
-              }),
-            });
-
-            const respText = await whatsappResp.text();
-            console.log(`WhatsApp response (${whatsappResp.status}):`, respText.substring(0, 300));
+          // Conditional message based on timeout_ativo
+          let message: string;
+          if (timeoutAtivo) {
+            // Timeout active: hide lead data to prevent data leakage on reassignment
+            message = `🔔 *Novo lead via Roleta*\n\n📋 *${projectData?.name || "Empreendimento"}*\n\n⚡ Acesse o CRM para ver os dados e iniciar o atendimento.\n⏱️ Tempo para atendimento: ${roleta.tempo_reserva_minutos} min`;
           } else {
-            console.warn("No UAZAPI base URL available");
+            // No timeout: full lead data (no risk of reassignment)
+            message = `🔔 *Novo lead via Roleta*\n\n📋 *${projectData?.name || "Empreendimento"}*\n👤 ${leadData.name}\n📱 ${leadData.whatsapp}\n\n⚡ Acesse o CRM para iniciar o atendimento.`;
           }
+
+          const apiUrl = `${baseUrl}/send/text`;
+          console.log("Sending WhatsApp notification to:", cleanBrokerPhone, "timeout_ativo:", timeoutAtivo);
+
+          const whatsappResp = await fetch(apiUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "token": globalConfig.instance_token,
+            },
+            body: JSON.stringify({
+              number: cleanBrokerPhone,
+              text: message,
+            }),
+          });
+
+          const respText = await whatsappResp.text();
+          console.log(`WhatsApp response (${whatsappResp.status}):`, respText.substring(0, 300));
         }
       } else {
         console.log("WhatsApp notification skipped: no config or no broker data");

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History, Target } from "lucide-react";
+import { Plus, Shuffle, Users, Building2, Clock, Power, PowerOff, RefreshCw, ChevronDown, ChevronUp, Trash2, UserPlus, History, Target, Timer, TimerOff } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useRoletas, useRoletaLogs } from "@/hooks/use-roletas";
 import { Roleta } from "@/types/roleta";
@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
@@ -70,6 +71,7 @@ const RoletaManagement = () => {
   const [formNome, setFormNome] = useState("");
   const [formLiderId, setFormLiderId] = useState("");
   const [formTimeout, setFormTimeout] = useState(10);
+  const [formTimeoutAtivo, setFormTimeoutAtivo] = useState(true);
   const [formSelectedProjects, setFormSelectedProjects] = useState<string[]>([]);
 
   // Add member state
@@ -102,7 +104,8 @@ const RoletaManagement = () => {
       nome: formNome.trim(),
       lider_id: formLiderId,
       tempo_reserva_minutos: formTimeout,
-    });
+      timeout_ativo: formTimeoutAtivo,
+    } as any);
     if (roletaId) {
       // Vincular empreendimentos selecionados
       for (const projectId of formSelectedProjects) {
@@ -112,6 +115,7 @@ const RoletaManagement = () => {
       setFormNome("");
       setFormLiderId("");
       setFormTimeout(10);
+      setFormTimeoutAtivo(true);
       setFormSelectedProjects([]);
     }
   };
@@ -168,6 +172,7 @@ const RoletaManagement = () => {
             setFormNome("");
             setFormLiderId("");
             setFormTimeout(10);
+            setFormTimeoutAtivo(true);
             setFormSelectedProjects([]);
           }
         }}>
@@ -205,15 +210,31 @@ const RoletaManagement = () => {
                 </Select>
               </div>
               <div>
-                <Label>Tempo de Reserva: {formTimeout} min</Label>
-                <Slider
-                  value={[formTimeout]}
-                  onValueChange={([v]) => setFormTimeout(v)}
-                  min={1}
-                  max={60}
-                  step={1}
-                  className="mt-2"
-                />
+                <div className="flex items-center justify-between">
+                  <Label>Tempo máximo para atendimento</Label>
+                  <Switch
+                    checked={formTimeoutAtivo}
+                    onCheckedChange={setFormTimeoutAtivo}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {formTimeoutAtivo
+                    ? "Lead será redistribuído automaticamente se não atendido. A notificação WhatsApp não exibirá os dados do lead."
+                    : "Sem prazo para atendimento. A notificação WhatsApp incluirá nome e telefone do lead."}
+                </p>
+                {formTimeoutAtivo && (
+                  <>
+                    <Label className="mt-3 block">Tempo de Reserva: {formTimeout} min</Label>
+                    <Slider
+                      value={[formTimeout]}
+                      onValueChange={([v]) => setFormTimeout(v)}
+                      min={1}
+                      max={60}
+                      step={1}
+                      className="mt-2"
+                    />
+                  </>
+                )}
               </div>
               <div>
                 <Label>Empreendimentos</Label>
@@ -283,7 +304,7 @@ const RoletaManagement = () => {
                       <h3 className="font-semibold text-foreground">{roleta.nome}</h3>
                       <Badge variant="outline" className="text-xs">
                         <Clock className="w-3 h-3 mr-1" />
-                        {roleta.tempo_reserva_minutos}min
+                        {(roleta as any).timeout_ativo !== false ? `${roleta.tempo_reserva_minutos}min` : "Sem timeout"}
                       </Badge>
                     </div>
                     <div className="flex items-center gap-3">
@@ -306,6 +327,42 @@ const RoletaManagement = () => {
                 {/* Expanded Content */}
                 {isExpanded && (
                   <div className="border-t border-[#2a2a2e] p-4 space-y-4">
+                    {/* Timeout Settings */}
+                    <div className="bg-[#141417] rounded-lg p-3 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {(roleta as any).timeout_ativo !== false ? (
+                            <Timer className="w-4 h-4 text-amber-400" />
+                          ) : (
+                            <TimerOff className="w-4 h-4 text-muted-foreground" />
+                          )}
+                          <span className="text-sm font-medium text-foreground">Tempo máximo para atendimento</span>
+                        </div>
+                        <Switch
+                          checked={(roleta as any).timeout_ativo !== false}
+                          onCheckedChange={(checked) => updateRoleta(roleta.id, { timeout_ativo: checked } as any)}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {(roleta as any).timeout_ativo !== false
+                          ? "Lead redistribuído automaticamente se não atendido. Notificação WhatsApp sem dados do lead."
+                          : "Sem prazo. Notificação WhatsApp com nome e telefone do lead."}
+                      </p>
+                      {(roleta as any).timeout_ativo !== false && (
+                        <div>
+                          <Label className="text-xs">Tempo: {roleta.tempo_reserva_minutos} min</Label>
+                          <Slider
+                            value={[roleta.tempo_reserva_minutos]}
+                            onValueChange={([v]) => updateRoleta(roleta.id, { tempo_reserva_minutos: v } as any)}
+                            min={1}
+                            max={60}
+                            step={1}
+                            className="mt-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+
                     {/* Actions */}
                     <div className="flex flex-wrap gap-2">
                       <Button

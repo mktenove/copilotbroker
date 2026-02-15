@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.roleta-timeout]
 verify_jwt = false
+
+[functions.notify-transfer]
+verify_jwt = false

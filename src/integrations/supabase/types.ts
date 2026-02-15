@@ -816,6 +816,7 @@ export type Database = {
           lider_id: string
           nome: string
           tempo_reserva_minutos: number
+          timeout_ativo: boolean
           ultimo_membro_ordem_atribuida: number
           updated_at: string
         }
@@ -826,6 +827,7 @@ export type Database = {
           lider_id: string
           nome: string
           tempo_reserva_minutos?: number
+          timeout_ativo?: boolean
           ultimo_membro_ordem_atribuida?: number
           updated_at?: string
         }
@@ -836,6 +838,7 @@ export type Database = {
           lider_id?: string
           nome?: string
           tempo_reserva_minutos?: number
+          timeout_ativo?: boolean
           ultimo_membro_ordem_atribuida?: number
           updated_at?: string
         }

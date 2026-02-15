@@ -1,0 +1,1 @@
+ALTER TABLE public.roletas ADD COLUMN timeout_ativo boolean NOT NULL DEFAULT true;
