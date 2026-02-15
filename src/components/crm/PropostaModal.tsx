@@ -4,9 +4,51 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
-import { DollarSign, Building2, FileText } from "lucide-react";
-import type { PropostaInsert } from "@/hooks/use-propostas";
+import { DollarSign, Building2, FileText, Plus, Trash2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import type { PropostaInsert, ParcelaInsert } from "@/hooks/use-propostas";
+
+const TIPOS_PARCELA = [
+  { value: "sinal", label: "Sinal" },
+  { value: "entrada_vista", label: "Entrada (à vista)" },
+  { value: "entrada_parcelada", label: "Entrada (parcelada)" },
+  { value: "dacao_pagamento", label: "Dação em Pagamento" },
+  { value: "financiamento", label: "Financiamento" },
+  { value: "parcelas_mensais", label: "Parcelas Mensais" },
+  { value: "reforco", label: "Reforço Semestral/Anual" },
+  { value: "balao", label: "Balão" },
+  { value: "outro", label: "Outro" },
+];
+
+const INDICES = [
+  { value: "nenhum", label: "Nenhum" },
+  { value: "INCC", label: "INCC" },
+  { value: "IGPM", label: "IGP-M" },
+  { value: "IPCA", label: "IPCA" },
+  { value: "outro", label: "Outro" },
+];
+
+interface ParcelaForm {
+  id: string;
+  tipo: string;
+  valor: string;
+  quantidade_parcelas: string;
+  valor_parcela: string;
+  descricao: string;
+  indice_correcao: string;
+  observacao: string;
+}
+
+const emptyParcela = (): ParcelaForm => ({
+  id: crypto.randomUUID(),
+  tipo: "entrada_vista",
+  valor: "",
+  quantidade_parcelas: "",
+  valor_parcela: "",
+  descricao: "",
+  indice_correcao: "nenhum",
+  observacao: "",
+});
 
 interface PropostaModalProps {
   open: boolean;
@@ -23,16 +65,11 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
   const [projectId, setProjectId] = useState(leadProjectId || "");
   const [unidade, setUnidade] = useState("");
   const [valorProposta, setValorProposta] = useState("");
-  const [valorEntrada, setValorEntrada] = useState("");
-  const [formaPagamento, setFormaPagamento] = useState("a_vista");
-  const [parcelamento, setParcelamento] = useState("");
-  const [permuta, setPermuta] = useState(false);
-  const [descricaoPermuta, setDescricaoPermuta] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [condicoesEspeciais, setCondicoesEspeciais] = useState("");
+  const [parcelas, setParcelas] = useState<ParcelaForm[]>([emptyParcela()]);
 
   const parseCurrency = (v: string) => parseFloat(v.replace(/\D/g, "")) / 100 || 0;
-
   const formatCurrency = (value: string) => {
     const digits = value.replace(/\D/g, "");
     const number = parseInt(digits || "0") / 100;
@@ -40,39 +77,57 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
   };
 
   const valorPropostaNum = parseCurrency(valorProposta);
-  const valorEntradaNum = parseCurrency(valorEntrada);
-  const saldoFinanciar = useMemo(() => Math.max(0, valorPropostaNum - valorEntradaNum), [valorPropostaNum, valorEntradaNum]);
+  const totalParcelas = useMemo(() => parcelas.reduce((sum, p) => sum + parseCurrency(p.valor), 0), [parcelas]);
+  const diferenca = valorPropostaNum - totalParcelas;
+  const isComposicaoOk = Math.abs(diferenca) < 0.01 && valorPropostaNum > 0;
+
+  const addParcela = () => setParcelas(prev => [...prev, emptyParcela()]);
+  const removeParcela = (id: string) => setParcelas(prev => prev.filter(p => p.id !== id));
+  const updateParcela = (id: string, field: keyof ParcelaForm, value: string) => {
+    setParcelas(prev => prev.map(p => p.id === id ? { ...p, [field]: value } : p));
+  };
 
   const resetForm = () => {
     setProjectId(leadProjectId || "");
     setUnidade("");
     setValorProposta("");
-    setValorEntrada("");
-    setFormaPagamento("a_vista");
-    setParcelamento("");
-    setPermuta(false);
-    setDescricaoPermuta("");
     setObservacoes("");
     setCondicoesEspeciais("");
+    setParcelas([emptyParcela()]);
   };
 
   const handleConfirm = async () => {
     if (valorPropostaNum <= 0) return;
     setLoading(true);
     try {
+      const parcelasData: ParcelaInsert[] = parcelas
+        .filter(p => parseCurrency(p.valor) > 0)
+        .map((p, i) => ({
+          tipo: p.tipo,
+          valor: parseCurrency(p.valor),
+          quantidade_parcelas: p.quantidade_parcelas ? parseInt(p.quantidade_parcelas) : null,
+          valor_parcela: p.valor_parcela ? parseCurrency(p.valor_parcela) : null,
+          descricao: p.descricao || null,
+          indice_correcao: p.indice_correcao !== "nenhum" ? p.indice_correcao : null,
+          observacao: p.observacao || null,
+          ordem: i,
+        }));
+
+      // Check for dacao_pagamento as permuta
+      const hasDacao = parcelasData.some(p => p.tipo === "dacao_pagamento");
+      const dacaoDesc = parcelas.find(p => p.tipo === "dacao_pagamento")?.descricao || "";
+
       const ok = await onConfirm({
-        lead_id: "", // filled by parent
+        lead_id: "",
         project_id: projectId || null,
         broker_id: leadBrokerId || null,
         unidade: unidade || undefined,
         valor_proposta: valorPropostaNum,
-        valor_entrada: valorEntradaNum || undefined,
-        forma_pagamento_entrada: formaPagamento,
-        parcelamento: parcelamento || undefined,
-        permuta,
-        descricao_permuta: permuta ? descricaoPermuta : undefined,
+        permuta: hasDacao,
+        descricao_permuta: hasDacao ? dacaoDesc : undefined,
         observacoes_corretor: observacoes || undefined,
         condicoes_especiais: condicoesEspeciais || undefined,
+        parcelas: parcelasData,
       });
       if (ok) {
         onOpenChange(false);
@@ -82,6 +137,8 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
       setLoading(false);
     }
   };
+
+  const tipoLabel = (tipo: string) => TIPOS_PARCELA.find(t => t.value === tipo)?.label || tipo;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) resetForm(); }}>
@@ -124,78 +181,156 @@ export function PropostaModal({ open, onOpenChange, onConfirm, leadProjectId, le
             </div>
           </div>
 
-          {/* Dados Financeiros */}
+          {/* Valor Total */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
-              <DollarSign className="w-3.5 h-3.5" /> Dados Financeiros
+              <DollarSign className="w-3.5 h-3.5" /> Valor Total da Proposta
             </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">Valor da Proposta *</label>
-                <Input
-                  placeholder="R$ 0,00"
-                  value={valorProposta ? formatCurrency(valorProposta) : ""}
-                  onChange={(e) => setValorProposta(e.target.value.replace(/\D/g, ""))}
-                  className="bg-[#0f0f12] border-[#2a2a2e] text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">Valor de Entrada</label>
-                <Input
-                  placeholder="R$ 0,00"
-                  value={valorEntrada ? formatCurrency(valorEntrada) : ""}
-                  onChange={(e) => setValorEntrada(e.target.value.replace(/\D/g, ""))}
-                  className="bg-[#0f0f12] border-[#2a2a2e] text-sm"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">Forma de Pgto da Entrada</label>
-                <Select value={formaPagamento} onValueChange={setFormaPagamento}>
-                  <SelectTrigger className="bg-[#0f0f12] border-[#2a2a2e] text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                    <SelectItem value="a_vista" className="text-slate-200 focus:bg-[#2a2a2e] focus:text-white">À Vista</SelectItem>
-                    <SelectItem value="parcelado" className="text-slate-200 focus:bg-[#2a2a2e] focus:text-white">Parcelado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs text-slate-400">Parcelamento</label>
-                <Input placeholder="Ex: 36x de R$ 1.500" value={parcelamento} onChange={(e) => setParcelamento(e.target.value)} className="bg-[#0f0f12] border-[#2a2a2e] text-sm" />
-              </div>
+            <Input
+              placeholder="R$ 0,00"
+              value={valorProposta ? formatCurrency(valorProposta) : ""}
+              onChange={(e) => setValorProposta(e.target.value.replace(/\D/g, ""))}
+              className="bg-[#0f0f12] border-[#2a2a2e] text-lg font-semibold"
+            />
+          </div>
+
+          {/* Fluxo de Pagamento */}
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 flex items-center gap-2">
+              <FileText className="w-3.5 h-3.5" /> Fluxo de Pagamento
+            </h3>
+            <div className="space-y-3">
+              {parcelas.map((parcela, idx) => (
+                <div key={parcela.id} className="bg-[#0f0f12] rounded-xl border border-[#2a2a2e] p-3 space-y-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[10px] font-mono text-slate-600">#{idx + 1}</span>
+                    {parcelas.length > 1 && (
+                      <Button size="sm" variant="ghost" onClick={() => removeParcela(parcela.id)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500">Tipo</label>
+                      <Select value={parcela.tipo} onValueChange={(v) => updateParcela(parcela.id, "tipo", v)}>
+                        <SelectTrigger className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                          {TIPOS_PARCELA.map(t => (
+                            <SelectItem key={t.value} value={t.value} className="text-slate-200 text-xs focus:bg-[#2a2a2e] focus:text-white">{t.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500">Valor *</label>
+                      <Input
+                        placeholder="R$ 0,00"
+                        value={parcela.valor ? formatCurrency(parcela.valor) : ""}
+                        onChange={(e) => updateParcela(parcela.id, "valor", e.target.value.replace(/\D/g, ""))}
+                        className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500">Qtd Parcelas</label>
+                      <Input
+                        type="number"
+                        placeholder="Ex: 10"
+                        value={parcela.quantidade_parcelas}
+                        onChange={(e) => updateParcela(parcela.id, "quantidade_parcelas", e.target.value)}
+                        className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500">Valor/Parcela</label>
+                      <Input
+                        placeholder="R$ 0,00"
+                        value={parcela.valor_parcela ? formatCurrency(parcela.valor_parcela) : ""}
+                        onChange={(e) => updateParcela(parcela.id, "valor_parcela", e.target.value.replace(/\D/g, ""))}
+                        className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-500">Índice</label>
+                      <Select value={parcela.indice_correcao} onValueChange={(v) => updateParcela(parcela.id, "indice_correcao", v)}>
+                        <SelectTrigger className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                          {INDICES.map(i => (
+                            <SelectItem key={i.value} value={i.value} className="text-slate-200 text-xs focus:bg-[#2a2a2e] focus:text-white">{i.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">Descrição</label>
+                    <Input
+                      placeholder="Ex: Terreno em Estância Velha"
+                      value={parcela.descricao}
+                      onChange={(e) => updateParcela(parcela.id, "descricao", e.target.value)}
+                      className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-500">Observação</label>
+                    <Input
+                      placeholder="Ex: 6 reforços semestrais de R$ 10.000"
+                      value={parcela.observacao}
+                      onChange={(e) => updateParcela(parcela.id, "observacao", e.target.value)}
+                      className="bg-[#1e1e22] border-[#2a2a2e] text-xs h-8"
+                    />
+                  </div>
+                </div>
+              ))}
+
+              <Button variant="outline" onClick={addParcela} className="w-full border-dashed border-[#2a2a2e] text-slate-400 hover:text-slate-200 hover:bg-[#1e1e22] text-xs">
+                <Plus className="w-3 h-3 mr-1" /> Adicionar Parcela
+              </Button>
             </div>
 
-            {/* Resumo */}
+            {/* Resumo Composição */}
             {valorPropostaNum > 0 && (
-              <div className="mt-4 bg-[#0f0f12] rounded-xl border border-[#2a2a2e] p-4">
-                <h4 className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Resumo</h4>
+              <div className={cn(
+                "mt-4 rounded-xl border p-4",
+                isComposicaoOk ? "border-emerald-500/30 bg-emerald-500/5" :
+                totalParcelas > 0 ? "border-yellow-500/30 bg-yellow-500/5" :
+                "border-[#2a2a2e] bg-[#0f0f12]"
+              )}>
+                <h4 className="text-[10px] uppercase tracking-wider text-slate-500 mb-2">Resumo da Composição</h4>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
-                    <p className="text-xs text-slate-500">Proposta</p>
+                    <p className="text-xs text-slate-500">Total Proposta</p>
                     <p className="text-sm font-semibold text-yellow-400">{formatCurrency(valorProposta)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Entrada</p>
-                    <p className="text-sm font-semibold text-emerald-400">{valorEntradaNum > 0 ? formatCurrency(valorEntrada) : "—"}</p>
+                    <p className="text-xs text-slate-500">Total Composto</p>
+                    <p className="text-sm font-semibold text-slate-200">R$ {totalParcelas.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-slate-500">Saldo a Financiar</p>
-                    <p className="text-sm font-semibold text-slate-200">R$ {saldoFinanciar.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</p>
+                    <p className="text-xs text-slate-500">Diferença</p>
+                    <div className="flex items-center justify-center gap-1">
+                      {isComposicaoOk ? (
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      ) : diferenca !== valorPropostaNum ? (
+                        <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
+                      ) : null}
+                      <p className={cn(
+                        "text-sm font-semibold",
+                        isComposicaoOk ? "text-emerald-400" : "text-yellow-400"
+                      )}>
+                        R$ {Math.abs(diferenca).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        {!isComposicaoOk && diferenca > 0 && totalParcelas > 0 && " (falta)"}
+                        {!isComposicaoOk && diferenca < 0 && " (excede)"}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Permuta */}
-            <div className="mt-4 flex items-center justify-between bg-[#0f0f12] rounded-xl border border-[#2a2a2e] px-4 py-3">
-              <label className="text-sm text-slate-300">Permuta?</label>
-              <Switch checked={permuta} onCheckedChange={setPermuta} />
-            </div>
-            {permuta && (
-              <div className="mt-2 space-y-1.5">
-                <label className="text-xs text-slate-400">Descrição da Permuta</label>
-                <Textarea placeholder="Descreva o bem ofertado em permuta..." value={descricaoPermuta} onChange={(e) => setDescricaoPermuta(e.target.value)} className="bg-[#0f0f12] border-[#2a2a2e] text-sm min-h-[60px]" />
               </div>
             )}
           </div>

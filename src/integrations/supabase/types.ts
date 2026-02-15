@@ -835,6 +835,56 @@ export type Database = {
         }
         Relationships: []
       }
+      proposta_parcelas: {
+        Row: {
+          created_at: string | null
+          descricao: string | null
+          id: string
+          indice_correcao: string | null
+          observacao: string | null
+          ordem: number | null
+          proposta_id: string
+          quantidade_parcelas: number | null
+          tipo: string
+          valor: number
+          valor_parcela: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          indice_correcao?: string | null
+          observacao?: string | null
+          ordem?: number | null
+          proposta_id: string
+          quantidade_parcelas?: number | null
+          tipo?: string
+          valor: number
+          valor_parcela?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          descricao?: string | null
+          id?: string
+          indice_correcao?: string | null
+          observacao?: string | null
+          ordem?: number | null
+          proposta_id?: string
+          quantidade_parcelas?: number | null
+          tipo?: string
+          valor?: number
+          valor_parcela?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "proposta_parcelas_proposta_id_fkey"
+            columns: ["proposta_id"]
+            isOneToOne: false
+            referencedRelation: "propostas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       propostas: {
         Row: {
           aprovada_em: string | null
