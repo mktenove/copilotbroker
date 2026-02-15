@@ -835,6 +835,93 @@ export type Database = {
         }
         Relationships: []
       }
+      propostas: {
+        Row: {
+          aprovada_em: string | null
+          broker_id: string | null
+          condicoes_especiais: string | null
+          created_at: string | null
+          created_by: string | null
+          descricao_permuta: string | null
+          enviada_vendedor_em: string | null
+          forma_pagamento_entrada: string | null
+          id: string
+          lead_id: string
+          motivo_rejeicao: string | null
+          observacoes_corretor: string | null
+          parcelamento: string | null
+          permuta: boolean | null
+          project_id: string | null
+          rejeitada_em: string | null
+          status_proposta: string | null
+          unidade: string | null
+          updated_at: string | null
+          valor_entrada: number | null
+          valor_proposta: number
+        }
+        Insert: {
+          aprovada_em?: string | null
+          broker_id?: string | null
+          condicoes_especiais?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao_permuta?: string | null
+          enviada_vendedor_em?: string | null
+          forma_pagamento_entrada?: string | null
+          id?: string
+          lead_id: string
+          motivo_rejeicao?: string | null
+          observacoes_corretor?: string | null
+          parcelamento?: string | null
+          permuta?: boolean | null
+          project_id?: string | null
+          rejeitada_em?: string | null
+          status_proposta?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          valor_entrada?: number | null
+          valor_proposta: number
+        }
+        Update: {
+          aprovada_em?: string | null
+          broker_id?: string | null
+          condicoes_especiais?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          descricao_permuta?: string | null
+          enviada_vendedor_em?: string | null
+          forma_pagamento_entrada?: string | null
+          id?: string
+          lead_id?: string
+          motivo_rejeicao?: string | null
+          observacoes_corretor?: string | null
+          parcelamento?: string | null
+          permuta?: boolean | null
+          project_id?: string | null
+          rejeitada_em?: string | null
+          status_proposta?: string | null
+          unidade?: string | null
+          updated_at?: string | null
+          valor_entrada?: number | null
+          valor_proposta?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "propostas_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "propostas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       roletas: {
         Row: {
           ativa: boolean

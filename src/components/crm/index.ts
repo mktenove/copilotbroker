@@ -10,6 +10,7 @@ export { InactivationPicker } from "./InactivationPicker";
 export { AgendamentoModal } from "./AgendamentoModal";
 export { ComparecimentoModal } from "./ComparecimentoModal";
 export { PropostaModal } from "./PropostaModal";
+export { PropostasList } from "./PropostasList";
 export { VendaModal } from "./VendaModal";
 export { PerdaModal } from "./PerdaModal";
 export { FollowUpSheet } from "./FollowUpSheet";
