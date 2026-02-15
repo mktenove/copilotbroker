@@ -8,9 +8,10 @@ interface UseKanbanLeadsOptions {
   brokerId?: string | null;
   isAdmin?: boolean;
   projectId?: string | null;
+  onNewLead?: (leadId: string, leadName: string) => void;
 }
 
-export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanbanLeadsOptions) {
+export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead }: UseKanbanLeadsOptions) {
   const [leads, setLeads] = useState<CRMLead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const channelRef = useRef<RealtimeChannel | null>(null);
@@ -133,6 +134,9 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
           if (!isAdmin && brokerId && newLead.broker_id !== brokerId) return;
           if (newLead.status === 'inactive') return;
 
+          // Notify parent about new lead
+          onNewLead?.(newLead.id, newLead.name || 'Novo lead');
+
           // Refetch to get full join data (broker, project, attribution)
           fetchLeads();
         }
@@ -144,7 +148,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [brokerId, isAdmin, fetchLeads]);
+  }, [brokerId, isAdmin, fetchLeads, onNewLead]);
 
   const updateLeadStatus = useCallback(async (
     leadId: string,

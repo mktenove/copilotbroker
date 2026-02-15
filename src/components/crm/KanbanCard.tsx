@@ -22,6 +22,7 @@ import {
 
 interface KanbanCardProps {
   lead: CRMLead;
+  isNew?: boolean;
   onClick: () => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
@@ -69,7 +70,7 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   registered: null,
 };
 
-export function KanbanCard({ lead, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
+export function KanbanCard({ lead, isNew, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
   const isMobile = useIsMobile();
   const actionConfig = ACTION_CONFIG[lead.status];
 
@@ -159,7 +160,8 @@ export function KanbanCard({ lead, onClick, onUpdateOrigin, onDelete, onIniciarA
         "transition-all duration-200 ease-out",
         "group overflow-hidden",
         isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
-        isStale && "ring-2 ring-red-400/50"
+        isStale && "ring-2 ring-red-400/50",
+        isNew && "ring-2 ring-emerald-400/60 animate-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]"
       )}
     >
       <div className="p-3">

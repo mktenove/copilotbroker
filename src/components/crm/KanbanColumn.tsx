@@ -15,6 +15,7 @@ import {
 interface KanbanColumnProps {
   status: LeadStatus;
   leads: CRMLead[];
+  newLeadIds?: Set<string>;
   onCardClick: (lead: CRMLead) => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
@@ -36,7 +37,7 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, newLeadIds, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -86,6 +87,7 @@ export function KanbanColumn({ status, leads, onCardClick, onUpdateOrigin, onDel
             <KanbanCard
               key={lead.id}
               lead={lead}
+              isNew={newLeadIds?.has(lead.id)}
               onClick={() => onCardClick(lead)}
               onUpdateOrigin={onUpdateOrigin}
               onDelete={onDelete}
