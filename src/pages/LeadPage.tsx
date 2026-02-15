@@ -346,6 +346,33 @@ export default function LeadPage() {
           </div>
         )}
 
+        {/* Action buttons */}
+        {!isSold && !isLost && (
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            {primaryAction && (
+              <Button onClick={handlePrimaryAction} className={cn("h-9 px-4 text-xs font-semibold rounded-lg shadow-lg transition-all", primaryAction.color)}>
+                <primaryAction.icon className="w-3.5 h-3.5 mr-1.5" />{primaryAction.label}
+              </Button>
+            )}
+            {lead.status === "scheduling" && (
+              <Button variant="outline" size="sm" onClick={() => setAgendamentoReagendar(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-300 hover:bg-[#1e1e22]">
+                <Calendar className="w-3.5 h-3.5 mr-1.5" />Reagendar
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="h-9 text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
+              <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Follow-Up
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
+              <UserX className="w-3.5 h-3.5 mr-1.5" />Perda
+            </Button>
+            {canTransfer && (
+              <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="h-9 text-xs border-[#2a2a2e] text-slate-400 hover:bg-[#1e1e22]">
+                <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5" />Transferir
+              </Button>
+            )}
+          </div>
+        )}
+
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
