@@ -399,7 +399,7 @@ app.post("/process", async (c) => {
               broker_id: instance.broker_id,
               interaction_type: "contact_attempt",
               channel: "whatsapp",
-              notes: `${notePrefix}: ${queueMsg.message.substring(0, 80)}...`
+              notes: `${notePrefix}\n\n${queueMsg.message}`
             });
         }
 

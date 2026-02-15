@@ -312,7 +312,8 @@ Deno.serve(async (req) => {
       lead_id: leadId,
       broker_id: lead.broker_id,
       interaction_type: "notification",
-      notes: `Primeira mensagem automática agendada para ${scheduledAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}`,
+      channel: "whatsapp",
+      notes: `1ª mensagem automática agendada para ${scheduledAt.toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}\n\n${personalizedMessage}`,
     });
 
     console.log(`[auto-first-message] Message queued for lead ${leadId} at ${scheduledAt.toISOString()}`);
