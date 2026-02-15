@@ -175,11 +175,13 @@ export function FollowUpSheet({
       const { error: qErr } = await supabase.from("whatsapp_message_queue").insert(queueItems);
       if (qErr) throw qErr;
 
-      // Log interaction
+      // Log interaction with full message content
+      const stepsPreview = steps.map((s, i) => `Etapa ${i + 1}: ${s.messageContent}`).join("\n");
       await supabase.from("lead_interactions").insert({
         lead_id: leadId,
         interaction_type: "note_added" as any,
-        notes: `Follow-up WhatsApp agendado: ${steps.length} mensagem(ns)`,
+        channel: "whatsapp",
+        notes: `Follow-up WhatsApp agendado (${steps.length} etapas):\n\n${stepsPreview}`,
         created_by: (await supabase.auth.getUser()).data.user?.id,
       });
 

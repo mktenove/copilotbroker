@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { LeadInteraction, STATUS_CONFIG } from "@/types/crm";
 import {
-  Clock, MessageSquare, Send, FileText, CheckCircle, ArrowRight, MapPin,
+  Clock, MessageSquare, MessageCircle, Send, FileText, CheckCircle, ArrowRight, MapPin,
   UserX, Bell, Calendar, DollarSign, Trophy, RefreshCw, Play, ChevronDown,
   ChevronUp, Zap
 } from "lucide-react";
@@ -38,6 +38,7 @@ const INTERACTION_META: Record<string, {
   proposta_enviada: { icon: DollarSign, label: "Proposta Enviada", color: "text-emerald-400", dotColor: "bg-emerald-500", isHighlight: true },
   venda_confirmada: { icon: Trophy, label: "Venda Confirmada", color: "text-yellow-400", dotColor: "bg-yellow-500", isHighlight: true },
   reagendamento: { icon: RefreshCw, label: "Reagendamento", color: "text-orange-400", dotColor: "bg-orange-500", isHighlight: true },
+  whatsapp_manual: { icon: MessageCircle, label: "WhatsApp Manual", color: "text-emerald-400", dotColor: "bg-emerald-500", isHighlight: true },
 };
 
 const AUTOMATION_TYPES = new Set([
