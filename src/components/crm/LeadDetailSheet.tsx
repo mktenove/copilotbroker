@@ -27,6 +27,7 @@ import { DocumentChecklist } from "./DocumentChecklist";
 import { QuickNotes } from "./QuickNotes";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { TransferLeadDialog } from "./TransferLeadDialog";
 
 interface LeadDetailSheetProps {
   lead: CRMLead | null;
@@ -34,14 +35,17 @@ interface LeadDetailSheetProps {
   onClose: () => void;
   onUpdate: (leadId: string, updates: Partial<CRMLead>) => Promise<void>;
   onStatusChange: (leadId: string, oldStatus: LeadStatus, newStatus: LeadStatus) => Promise<void>;
+  brokers?: { id: string; name: string }[];
+  onTransferred?: () => void;
 }
 
-export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChange }: LeadDetailSheetProps) {
+export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChange, brokers = [], onTransferred }: LeadDetailSheetProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedLead, setEditedLead] = useState<Partial<CRMLead> & { custom_origin?: string }>({});
   const [newNote, setNewNote] = useState("");
   const [selectedTemplates, setSelectedTemplates] = useState<string[]>([]);
   const [selectedChannel, setSelectedChannel] = useState<string>("whatsapp");
+  const [transferOpen, setTransferOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
 
   const { interactions, addInteraction, fetchInteractions } = useLeadInteractions(lead?.id || null);
@@ -458,6 +462,19 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                   Cadastrar no Ábaco
                 </Button>
               )}
+
+              {/* Transfer Button */}
+              {brokers.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="col-span-2 border-[#3a3a3e] bg-[#1e1e22] text-slate-300 hover:bg-[#2a2a2e] hover:text-white"
+                  onClick={() => setTransferOpen(true)}
+                >
+                  <ArrowRightLeft className="w-4 h-4 mr-2" />
+                  Transferir Lead
+                </Button>
+              )}
             </div>
           </div>
 
@@ -520,6 +537,20 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
           </div>
         </div>
       </SheetContent>
+
+      {/* Transfer Dialog */}
+      <TransferLeadDialog
+        leadId={lead.id}
+        leadName={lead.name}
+        currentBrokerId={lead.broker_id}
+        brokers={brokers}
+        isOpen={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        onTransferred={() => {
+          onTransferred?.();
+          onClose();
+        }}
+      />
     </Sheet>
   );
 }

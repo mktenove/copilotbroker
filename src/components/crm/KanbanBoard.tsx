@@ -50,7 +50,7 @@ interface KanbanBoardProps {
 
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
 
-export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
+export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
@@ -60,6 +60,23 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
   const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
+  const [localBrokers, setLocalBrokers] = useState<{ id: string; name: string; slug: string }[]>([]);
+
+  const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
+
+  // Fetch brokers for transfer when not provided via props
+  useEffect(() => {
+    if (brokersProp.length > 0) return;
+    const fetchBrokers = async () => {
+      const { data } = await supabase
+        .from("brokers")
+        .select("id, name, slug")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setLocalBrokers(data);
+    };
+    fetchBrokers();
+  }, [brokersProp.length]);
 
   const { leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus } = useKanbanLeads({
     brokerId,
@@ -444,6 +461,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers = [], searchTer
         onClose={() => setSelectedLead(null)}
         onUpdate={handleLeadUpdate}
         onStatusChange={handleStatusUpdate}
+        brokers={brokers}
+        onTransferred={() => {
+          setSelectedLead(null);
+          fetchLeads();
+        }}
       />
 
       {/* WhatsApp Campaign Sheet */}
