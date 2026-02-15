@@ -452,21 +452,24 @@ export default function LeadPage() {
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}
           <div className="lg:col-span-3 space-y-6">
 
-            {/* Propostas Section */}
-            <PropostasList
-              propostas={propostas}
-              loading={propostasLoading}
-              onNovaProposta={() => setPropostaOpen(true)}
-              onAprovar={aprovarProposta}
-              onRejeitar={rejeitarProposta}
-              onEncaminhar={encaminharVendedor}
-              leadName={lead.name}
-              leadWhatsapp={lead.whatsapp}
-              leadEmail={lead.email}
-              leadCpf={lead.cpf || null}
-              brokerName={lead.broker?.name || null}
-              projectName={lead.project?.name || null}
-            />
+            {/* Propostas Section - only visible in Proposta/Vendido stages, or inactive with existing propostas */}
+            {(lead.status === "docs_received" || lead.status === "registered" || 
+              (lead.status === "inactive" && propostas.length > 0)) && (
+              <PropostasList
+                propostas={propostas}
+                loading={propostasLoading}
+                onNovaProposta={() => setPropostaOpen(true)}
+                onAprovar={aprovarProposta}
+                onRejeitar={rejeitarProposta}
+                onEncaminhar={encaminharVendedor}
+                leadName={lead.name}
+                leadWhatsapp={lead.whatsapp}
+                leadEmail={lead.email}
+                leadCpf={lead.cpf || null}
+                brokerName={lead.broker?.name || null}
+                projectName={lead.project?.name || null}
+              />
+            )}
 
             {/* Lead Data - Editable */}
             <section className="bg-[#111114] rounded-2xl border border-[#1e1e22] overflow-hidden">
