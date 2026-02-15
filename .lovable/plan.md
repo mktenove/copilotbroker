@@ -1,26 +1,34 @@
 
-# Restringir seção Propostas à aba correta
+# Auto-calcular Valor/Parcela
 
-## Problema
-A seção `PropostasList` está sendo renderizada incondicionalmente na página do lead, independente do status. Isso permite que o usuário veja e crie propostas nas etapas de Pré Atendimento, Atendimento e Agendamento, podendo pular etapas do funil.
+## Alteracao
 
-## Solução
-Adicionar uma condição no `src/pages/LeadPage.tsx` para que o componente `PropostasList` só seja exibido quando o lead estiver nos status `docs_received` (Proposta) ou `registered` (Vendido), ou nos status finais (`sold`, `inactive`) caso já existam propostas registradas.
+**Arquivo:** `src/components/crm/PropostaModal.tsx`
 
-## Alteração
+Modificar a funcao `updateParcela` para que, ao alterar o campo `valor` ou `quantidade_parcelas`, o sistema calcule automaticamente o `valor_parcela` dividindo valor pela quantidade de parcelas.
 
-**Arquivo:** `src/pages/LeadPage.tsx`
+A logica sera:
+- Quando o usuario alterar `valor` ou `quantidade_parcelas`, verificar se ambos os campos tem valores validos
+- Se sim, calcular `valor_parcela = valor / quantidade_parcelas` e atualizar automaticamente
+- O campo Valor/Parcela continuara editavel manualmente (o usuario pode sobrescrever o calculo)
 
-Envolver o bloco `<PropostasList ... />` (linhas 455-469) em uma condição:
-
-```tsx
-{(lead.status === "docs_received" || lead.status === "registered" || 
-  ((lead.status === "sold" || lead.status === "inactive") && propostas.length > 0)) && (
-  <PropostasList ... />
-)}
+```typescript
+const updateParcela = (id: string, field: keyof ParcelaForm, value: string) => {
+  setParcelas(prev => prev.map(p => {
+    if (p.id !== id) return p;
+    const updated = { ...p, [field]: value };
+    // Auto-calculate valor_parcela
+    if (field === "valor" || field === "quantidade_parcelas") {
+      const val = parseCurrency(field === "valor" ? value : updated.valor);
+      const qty = parseInt(field === "quantidade_parcelas" ? value : updated.quantidade_parcelas);
+      if (val > 0 && qty > 0) {
+        const perInstallment = Math.round((val / qty) * 100);
+        updated.valor_parcela = String(perInstallment);
+      }
+    }
+    return updated;
+  }));
+};
 ```
 
-Isso garante que:
-- Nas etapas Pré Atendimento, Atendimento e Agendamento a seção não aparece
-- Na etapa Proposta e Vendido ela aparece normalmente
-- Em leads finalizados (venda/perda) ela aparece somente se houver propostas existentes
+Nenhuma outra alteracao necessaria -- o campo continua editavel e os dados sao salvos normalmente.
