@@ -12,7 +12,7 @@ export function BrokerHeader({
   onSearchChange,
 }: BrokerHeaderProps) {
   return (
-    <header className="sticky top-0 z-30 bg-[#141417]/95 backdrop-blur-sm border-b border-[#2a2a2e]">
+    <header className="sticky top-0 z-30 bg-[#141417]/95 backdrop-blur-sm border-b border-[#2a2a2e] pt-safe">
       {/* Mobile Header */}
       <div className="lg:hidden flex items-center justify-between px-4 py-3">
         <h1 className="text-lg font-bold text-white">Meus Leads</h1>
