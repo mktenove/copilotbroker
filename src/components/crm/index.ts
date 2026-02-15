@@ -11,3 +11,4 @@ export { AgendamentoModal } from "./AgendamentoModal";
 export { ComparecimentoModal } from "./ComparecimentoModal";
 export { VendaModal } from "./VendaModal";
 export { PerdaModal } from "./PerdaModal";
+export { FollowUpSheet } from "./FollowUpSheet";
