@@ -184,13 +184,14 @@ export function usePropostas(leadId: string) {
         created_by: user?.id,
       });
 
+      await fetchPropostas();
       toast.success("Proposta registrada!");
       return true;
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar proposta");
       return false;
     }
-  }, []);
+  }, [fetchPropostas]);
 
   const aprovarProposta = useCallback(async (propostaId: string) => {
     try {
