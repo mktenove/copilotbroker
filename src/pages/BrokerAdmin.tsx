@@ -42,28 +42,10 @@ const BrokerAdmin = () => {
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        if (!session) {
-          navigate("/auth");
-        }
-      }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (!session) {
-        navigate("/auth");
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [navigate]);
-
-  useEffect(() => {
-    if (!isRoleLoading && role === "admin") {
+    if (isRoleLoading) return;
+    if (role === "admin") {
       navigate("/admin");
-    }
-    if (!isRoleLoading && role !== "broker" && role !== "admin") {
+    } else if (role !== "broker") {
       navigate("/auth");
     }
   }, [role, isRoleLoading, navigate]);
