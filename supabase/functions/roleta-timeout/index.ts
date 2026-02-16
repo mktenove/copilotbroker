@@ -49,8 +49,32 @@ Deno.serve(async (req) => {
       baseUrl = envUrl.replace(/\/[^\/]+\/?$/, "");
     }
 
+    // Helper: check if current time (Brasilia UTC-3) is within pause window
+    function isInPauseWindow(pausaInicio: string | null, pausaFim: string | null): boolean {
+      if (!pausaInicio || !pausaFim) return false;
+      const now = new Date();
+      // Convert to Brasilia time (UTC-3)
+      const brasiliaOffset = -3 * 60;
+      const utcMs = now.getTime() + now.getTimezoneOffset() * 60000;
+      const brasiliaTime = new Date(utcMs + brasiliaOffset * 60000);
+      const currentMinutes = brasiliaTime.getHours() * 60 + brasiliaTime.getMinutes();
+
+      const [startH, startM] = pausaInicio.split(":").map(Number);
+      const [endH, endM] = pausaFim.split(":").map(Number);
+      const startMinutes = startH * 60 + (startM || 0);
+      const endMinutes = endH * 60 + (endM || 0);
+
+      if (startMinutes > endMinutes) {
+        // Crosses midnight (e.g. 21:00 - 09:00)
+        return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+      } else {
+        return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+      }
+    }
+
     console.log(`Processing ${expiredLeads.length} expired leads`);
     let processed = 0;
+    let skippedPause = 0;
 
     for (const lead of expiredLeads) {
       if (!lead.roleta_id) continue;
@@ -64,6 +88,13 @@ Deno.serve(async (req) => {
         .single();
 
       if (!roleta) continue;
+
+      // Check if we're in the pause window
+      if (isInPauseWindow(roleta.timeout_pausa_inicio, roleta.timeout_pausa_fim)) {
+        console.log(`Roleta ${roleta.nome}: timeout pausado (${roleta.timeout_pausa_inicio}-${roleta.timeout_pausa_fim})`);
+        skippedPause++;
+        continue;
+      }
 
       // Get active members (excluding current assignee)
       const { data: membros } = await supabase
@@ -203,7 +234,7 @@ Deno.serve(async (req) => {
       processed++;
     }
 
-    return new Response(JSON.stringify({ success: true, processed }), {
+    return new Response(JSON.stringify({ success: true, processed, skippedPause }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
