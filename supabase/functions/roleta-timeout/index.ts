@@ -128,6 +128,25 @@ Deno.serve(async (req) => {
         motivo,
       });
 
+      // Get broker names for timeline
+      const { data: deBroker } = await supabase
+        .from("brokers")
+        .select("name")
+        .eq("id", lead.corretor_atribuido_id)
+        .single();
+      const { data: paraBroker } = await supabase
+        .from("brokers")
+        .select("name")
+        .eq("id", newBrokerId)
+        .single();
+
+      // Register in lead timeline
+      await supabase.from("lead_interactions").insert({
+        lead_id: lead.id,
+        interaction_type: statusDistribuicao === "fallback_lider" ? "roleta_fallback" : "roleta_timeout",
+        notes: `Timeout de ${roleta.tempo_reserva_minutos}min. Transferido de ${deBroker?.name || "corretor anterior"} para ${paraBroker?.name || "novo corretor"}.`,
+      });
+
       // Notify new broker (in-app)
       const { data: brokerData } = await supabase
         .from("brokers")
