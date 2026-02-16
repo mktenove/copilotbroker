@@ -220,6 +220,42 @@ const Admin = () => {
     }
   };
 
+  const handleReactivateLead = async (leadId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error: updateError } = await (supabase
+        .from("leads" as any)
+        .update({
+          status: "new",
+          inactivation_reason: null,
+          inactivated_at: null,
+          data_perda: null,
+          etapa_perda: null,
+          updated_at: now,
+        })
+        .eq("id", leadId) as any);
+
+      if (updateError) throw updateError;
+
+      await (supabase.from("lead_interactions" as any).insert({
+        lead_id: leadId,
+        interaction_type: "reactivation",
+        old_status: "inactive",
+        new_status: "new",
+        notes: "Lead reativado",
+      }) as any);
+
+      setLeads(prev => prev.map(l => 
+        l.id === leadId ? { ...l, status: "new" as LeadStatus, inactivation_reason: null } : l
+      ));
+      
+      toast.success("Lead reativado com sucesso!");
+    } catch (error) {
+      console.error("Erro ao reativar lead:", error);
+      toast.error("Erro ao reativar lead.");
+    }
+  };
+
   const handleLeadClick = (lead: Lead) => {
     navigate(`/corretor/lead/${lead.id}`);
   };
@@ -462,6 +498,7 @@ const Admin = () => {
               onLeadClick={handleLeadClick}
               onDelete={handleDeleteLead}
               onInactivate={handleInactivateLead}
+              onReactivate={handleReactivateLead}
             />
           </div>
         </>

@@ -550,6 +550,41 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     }
   }, []);
 
+  const reactivateLead = useCallback(async (leadId: string) => {
+    try {
+      const now = new Date().toISOString();
+      const { error } = await supabase
+        .from("leads")
+        .update({
+          status: "new" as any,
+          inactivation_reason: null,
+          inactivated_at: null,
+          data_perda: null,
+          etapa_perda: null,
+          updated_at: now,
+        })
+        .eq("id", leadId);
+      if (error) throw error;
+
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "reactivation" as any,
+        old_status: "inactive",
+        new_status: "new",
+        notes: "Lead reativado",
+      });
+
+      // Add back to local state
+      fetchLeads();
+      toast.success("Lead reativado com sucesso!");
+      return true;
+    } catch (error) {
+      console.error("Erro ao reativar lead:", error);
+      toast.error("Erro ao reativar lead.");
+      return false;
+    }
+  }, [fetchLeads]);
+
   const deleteLead = useCallback(async (leadId: string) => {
     try {
       await supabase.from("lead_documents").delete().eq("lead_id", leadId);
@@ -580,6 +615,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     updateLeadStatus,
     updateLead,
     inactivateLead,
+    reactivateLead,
     deleteLead,
     getLeadsByStatus,
     // Funnel transition methods

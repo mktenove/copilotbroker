@@ -18,7 +18,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
   UserX, Play, FileText, Users, ChevronRight, AlertTriangle, Zap, Eye,
-  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X
+  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -61,7 +61,7 @@ export default function LeadPage() {
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
-  const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead } = useKanbanLeads({ isAdmin: true });
+  const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead, reactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
   const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
 
@@ -667,6 +667,15 @@ export default function LeadPage() {
                 <div className="w-12 h-12 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-3"><UserX className="w-6 h-6 text-red-400" /></div>
                 <h3 className="text-base font-semibold text-red-400 mb-1">Lead Perdido</h3>
                 {lead.inactivation_reason && <p className="text-sm text-slate-400 mt-1">{lead.inactivation_reason}</p>}
+                <Button
+                  onClick={async () => {
+                    const ok = await reactivateLead(lead.id);
+                    if (ok) refreshLead();
+                  }}
+                  className="mt-4 h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                >
+                  <RotateCw className="w-3.5 h-3.5 mr-1.5" />Reativar Lead
+                </Button>
               </section>
             )}
 
