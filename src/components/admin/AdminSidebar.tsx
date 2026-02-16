@@ -4,7 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   Building2, 
-  BarChart3, 
+  Brain, 
   Settings,
   Plus,
   MessageSquare,
@@ -37,7 +37,7 @@ const NAV_ITEMS = [
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "analytics", label: "Inteligência", icon: Brain },
 ];
 
 export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: AdminSidebarProps) {

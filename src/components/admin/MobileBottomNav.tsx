@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { 
-  LayoutDashboard, Users, BarChart3, Plus, Bell, LogOut, 
+  LayoutDashboard, Users, Brain, Plus, Bell, LogOut, 
   MoreHorizontal, Building2, MessageSquare, Shuffle, Settings 
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -28,7 +28,7 @@ const DRAWER_ITEMS = [
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
-  { id: "analytics", label: "Analytics", icon: BarChart3 },
+  { id: "analytics", label: "Inteligência", icon: Brain },
   { id: "settings", label: "Configurações", icon: Settings },
 ];
 
