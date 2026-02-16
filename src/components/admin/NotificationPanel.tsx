@@ -111,7 +111,7 @@ export function NotificationPanel({
     }
 
     return (
-      <ScrollArea className="max-h-80">
+      <ScrollArea className={variant === "inline" ? "max-h-[70vh]" : "max-h-[60vh]"}>
         <div className="divide-y divide-[#2a2a2e]">
           {notifications.map((notification) => {
             const Icon = NOTIFICATION_ICONS[notification.type] || Bell;
@@ -190,8 +190,15 @@ export function NotificationPanel({
     );
   }
 
+  const handleOpenChange = (open: boolean) => {
+    setIsOpen(open);
+    if (open && unreadCount > 0) {
+      markAllAsRead();
+    }
+  };
+
   return (
-    <Popover open={isOpen} onOpenChange={setIsOpen}>
+    <Popover open={isOpen} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <button
           className={cn(
