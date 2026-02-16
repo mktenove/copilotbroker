@@ -299,44 +299,28 @@ app.post("/process", async (c) => {
             continue;
           }
 
-          // Check 2: Direct fallback - look for any sent message to this phone followed by
-          // a newer message received (detected by checking if the webhook processed a reply
-          // by looking at the queue for this phone where status=sent and checking lead_interactions)
-          if (queueMsg.lead_id) {
-            const { data: prevSent } = await supabase
-              .from("whatsapp_message_queue")
-              .select("sent_at")
+          // Check 2: Per-phone per-campaign reply tracking (whatsapp_lead_replies table)
+          if (queueMsg.campaign_id) {
+            const { data: leadReplied } = await supabase
+              .from("whatsapp_lead_replies")
+              .select("phone")
               .eq("phone", queueMsg.phone)
               .eq("campaign_id", queueMsg.campaign_id)
-              .eq("status", "sent")
-              .lt("step_number", stepNumber)
-              .order("sent_at", { ascending: false })
-              .limit(1)
               .maybeSingle();
 
-            if (prevSent) {
-              // Check lead_interactions for any whatsapp contact_attempt AFTER the first message was sent
-              // If the webhook processed a reply, it would have updated reply_count on campaigns
-              const { data: campaign } = await supabase
-                .from("whatsapp_campaigns")
-                .select("reply_count")
-                .eq("id", queueMsg.campaign_id)
-                .single();
+            if (leadReplied) {
+              await supabase
+                .from("whatsapp_message_queue")
+                .update({
+                  status: "cancelled",
+                  error_message: "Lead respondeu - follow-up cancelado (per-phone tracking)",
+                  updated_at: new Date().toISOString()
+                })
+                .eq("id", queueMsg.id);
 
-              if (campaign && (campaign as { reply_count: number }).reply_count > 0) {
-                await supabase
-                  .from("whatsapp_message_queue")
-                  .update({
-                    status: "cancelled",
-                    error_message: "Lead respondeu - follow-up cancelado (reply_count detectado)",
-                    updated_at: new Date().toISOString()
-                  })
-                  .eq("id", queueMsg.id);
-
-                console.log(`🚫 Preventive cancel (reply_count): message ${queueMsg.id} for ${queueMsg.phone}`);
-                results.push({ brokerId: instance.broker_id, sent: false, error: "reply_detected" });
-                continue;
-              }
+              console.log(`🚫 Preventive cancel (lead_replies): message ${queueMsg.id} for ${queueMsg.phone}`);
+              results.push({ brokerId: instance.broker_id, sent: false, error: "reply_detected" });
+              continue;
             }
           }
         }
