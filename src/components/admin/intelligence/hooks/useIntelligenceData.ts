@@ -29,11 +29,28 @@ export function getDefaultFilters(): IntelligenceFilters {
   };
 }
 
+export interface StrategicAlert {
+  id: string;
+  severity: "warning" | "critical";
+  title: string;
+  description: string;
+}
+
+export interface BrokerRankItem {
+  id: string;
+  name: string;
+  score: number;
+  vendas: number;
+  vgv: number;
+}
+
 // Types for processed data
 export interface OverviewData {
   totalLeads: number;
   leadsDistributed: number;
   leadsFallback: number;
+  leadsInProgress: number;
+  activeProposals: number;
   avgFirstResponse: number | null;
   slaPercent: number;
   totalProposals: number;
@@ -43,11 +60,12 @@ export interface OverviewData {
   ticketMedio: number;
   leadsLost: number;
   lossRate: number;
-  // variations vs previous period
   variations: Record<string, number | null>;
-  // daily data for charts
-  dailyLeads: { date: string; count: number }[];
-  dailySales: { date: string; count: number; vgv: number }[];
+  alerts: StrategicAlert[];
+  topPerformers: BrokerRankItem[];
+  needsAttention: BrokerRankItem[];
+  // mini funnel for overview
+  miniFunnel: { name: string; count: number; convRate: number | null }[];
 }
 
 export interface BrokerPerformance {
@@ -105,7 +123,7 @@ export interface SLADistribution {
 }
 
 export interface HeatmapCell {
-  day: number; // 0=Sun..6=Sat
+  day: number;
   hour: number;
   volume: number;
   slaPercent: number;
@@ -144,7 +162,6 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
     const fetchAll = async () => {
       setIsLoading(true);
       try {
-        // Build lead query with filters
         const buildLeadQuery = (from: string, to: string) => {
           let q = supabase
             .from("leads")
@@ -160,15 +177,8 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
         };
 
         const [
-          leadsRes,
-          prevLeadsRes,
-          interactionsRes,
-          logRes,
-          roletasRes,
-          membrosRes,
-          propostasRes,
-          brokersRes,
-          projectsRes,
+          leadsRes, prevLeadsRes, interactionsRes, logRes,
+          roletasRes, membrosRes, propostasRes, brokersRes, projectsRes,
         ] = await Promise.all([
           buildLeadQuery(fromISO, toISO),
           buildLeadQuery(prevFromISO, prevToISO),
@@ -201,71 +211,7 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
     return () => { cancelled = true; };
   }, [fromISO, toISO, prevFromISO, prevToISO, filters.projectIds.join(","), filters.roletaId, filters.brokerId, filters.origins.join(","), filters.campaign]);
 
-  // ---- OVERVIEW ----
-  const overview = useMemo<OverviewData>(() => {
-    const totalLeads = leads.length;
-    const distributed = leads.filter((l: any) => l.status_distribuicao).length;
-    const fallback = leads.filter((l: any) => (l.motivo_atribuicao || "").toLowerCase().includes("fallback")).length;
-
-    // First response times
-    const responseTimes = leads
-      .map((l: any) => diffMinutes(l.atribuido_em, l.atendimento_iniciado_em))
-      .filter((t): t is number => t !== null && t >= 0);
-    const avgFirstResponse = responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : null;
-
-    // SLA (default 10min threshold)
-    const slaThreshold = 10;
-    const withinSLA = responseTimes.filter(t => t <= slaThreshold).length;
-    const slaPercent = responseTimes.length > 0 ? withinSLA / responseTimes.length : 0;
-
-    const sales = leads.filter((l: any) => l.data_fechamento);
-    const totalSales = sales.length;
-    const vgvTotal = sales.reduce((sum: number, l: any) => sum + (Number(l.valor_final_venda) || 0), 0);
-    const ticketMedio = totalSales > 0 ? vgvTotal / totalSales : 0;
-    const conversionRate = distributed > 0 ? totalSales / distributed : 0;
-    const leadsLost = leads.filter((l: any) => l.status === "inactive").length;
-    const lossRate = totalLeads > 0 ? leadsLost / totalLeads : 0;
-
-    // Previous period for variation
-    const prevTotal = prevLeads.length;
-    const prevSales = prevLeads.filter((l: any) => l.data_fechamento).length;
-    const prevVGV = prevLeads.filter((l: any) => l.data_fechamento).reduce((s: number, l: any) => s + (Number(l.valor_final_venda) || 0), 0);
-    const prevLost = prevLeads.filter((l: any) => l.status === "inactive").length;
-
-    const variations: Record<string, number | null> = {
-      totalLeads: calcVariation(totalLeads, prevTotal),
-      totalSales: calcVariation(totalSales, prevSales),
-      vgvTotal: calcVariation(vgvTotal, prevVGV),
-      leadsLost: calcVariation(leadsLost, prevLost),
-    };
-
-    // Daily aggregations
-    const dailyMap: Record<string, { leads: number; sales: number; vgv: number }> = {};
-    leads.forEach((l: any) => {
-      const d = l.created_at.slice(0, 10);
-      if (!dailyMap[d]) dailyMap[d] = { leads: 0, sales: 0, vgv: 0 };
-      dailyMap[d].leads++;
-    });
-    sales.forEach((l: any) => {
-      const d = (l.data_fechamento || l.created_at).slice(0, 10);
-      if (!dailyMap[d]) dailyMap[d] = { leads: 0, sales: 0, vgv: 0 };
-      dailyMap[d].sales++;
-      dailyMap[d].vgv += Number(l.valor_final_venda) || 0;
-    });
-    const sortedDays = Object.keys(dailyMap).sort();
-    const dailyLeads = sortedDays.map(d => ({ date: d, count: dailyMap[d].leads }));
-    const dailySales = sortedDays.map(d => ({ date: d, count: dailyMap[d].sales, vgv: dailyMap[d].vgv }));
-
-    return {
-      totalLeads, leadsDistributed: distributed, leadsFallback: fallback,
-      avgFirstResponse, slaPercent,
-      totalProposals: propostas.length, totalSales, conversionRate,
-      vgvTotal, ticketMedio, leadsLost, lossRate,
-      variations, dailyLeads, dailySales,
-    };
-  }, [leads, prevLeads, propostas]);
-
-  // ---- BROKERS PERFORMANCE ----
+  // ---- BROKERS PERFORMANCE (computed first since overview needs it) ----
   const brokerPerformance = useMemo<BrokerPerformance[]>(() => {
     const timeoutsByBroker: Record<string, number> = {};
     roletasLog.filter((l: any) => l.acao === "timeout_reassinado").forEach((l: any) => {
@@ -287,7 +233,6 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
       const avgResp = times.length > 0 ? times.reduce((a, v) => a + v, 0) / times.length : null;
       const sla = times.length > 0 ? times.filter(t => t <= 10).length / times.length : 0;
       const tos = timeoutsByBroker[b.id] || 0;
-      const lost = bLeads.filter((l: any) => l.status === "inactive").length;
       const agend = bLeads.filter((l: any) => l.data_agendamento).length;
       const props = propostas.filter((p: any) => p.broker_id === b.id).length;
       const sales = bLeads.filter((l: any) => l.data_fechamento);
@@ -308,6 +253,96 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
       };
     }).sort((a, b) => b.score - a.score);
   }, [leads, brokers, roletasLog, propostas]);
+
+  // ---- OVERVIEW ----
+  const overview = useMemo<OverviewData>(() => {
+    const totalLeads = leads.length;
+    const distributed = leads.filter((l: any) => l.status_distribuicao).length;
+    const fallback = leads.filter((l: any) => (l.motivo_atribuicao || "").toLowerCase().includes("fallback")).length;
+    const leadsInProgress = leads.filter((l: any) => ["info_sent", "awaiting_docs"].includes(l.status)).length;
+
+    // Active proposals (no closing date, no loss date)
+    const activeProposals = propostas.filter((p: any) => {
+      const lead = leads.find((l: any) => l.id === p.lead_id);
+      return lead && !lead.data_fechamento && !lead.data_perda;
+    }).length;
+
+    const responseTimes = leads
+      .map((l: any) => diffMinutes(l.atribuido_em, l.atendimento_iniciado_em))
+      .filter((t): t is number => t !== null && t >= 0);
+    const avgFirstResponse = responseTimes.length > 0 ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length : null;
+
+    const slaThreshold = 10;
+    const withinSLA = responseTimes.filter(t => t <= slaThreshold).length;
+    const slaPercent = responseTimes.length > 0 ? withinSLA / responseTimes.length : 0;
+
+    const sales = leads.filter((l: any) => l.data_fechamento);
+    const totalSales = sales.length;
+    const vgvTotal = sales.reduce((sum: number, l: any) => sum + (Number(l.valor_final_venda) || 0), 0);
+    const ticketMedio = totalSales > 0 ? vgvTotal / totalSales : 0;
+    const conversionRate = distributed > 0 ? totalSales / distributed : 0;
+    const leadsLost = leads.filter((l: any) => l.status === "inactive").length;
+    const lossRate = totalLeads > 0 ? leadsLost / totalLeads : 0;
+
+    // Previous period
+    const prevTotal = prevLeads.length;
+    const prevSales = prevLeads.filter((l: any) => l.data_fechamento).length;
+    const prevVGV = prevLeads.filter((l: any) => l.data_fechamento).reduce((s: number, l: any) => s + (Number(l.valor_final_venda) || 0), 0);
+    const prevLost = prevLeads.filter((l: any) => l.status === "inactive").length;
+
+    const variations: Record<string, number | null> = {
+      totalLeads: calcVariation(totalLeads, prevTotal),
+      totalSales: calcVariation(totalSales, prevSales),
+      vgvTotal: calcVariation(vgvTotal, prevVGV),
+      leadsLost: calcVariation(leadsLost, prevLost),
+    };
+
+    // Strategic Alerts
+    const alerts: StrategicAlert[] = [];
+    if (slaPercent < 0.7 && responseTimes.length > 0) {
+      alerts.push({ id: "sla_low", severity: "critical", title: "SLA abaixo de 70%", description: `Apenas ${(slaPercent * 100).toFixed(0)}% dos leads estão sendo atendidos dentro do prazo.` });
+    }
+    if (lossRate > 0.3 && totalLeads > 0) {
+      alerts.push({ id: "loss_high", severity: "critical", title: "Taxa de perda acima de 30%", description: `${(lossRate * 100).toFixed(0)}% dos leads foram perdidos no período.` });
+    }
+    const brokersZeroSales = brokerPerformance.filter(b => b.leads > 0 && b.vendas === 0);
+    if (brokersZeroSales.length > 0) {
+      alerts.push({ id: "zero_sales", severity: "warning", title: `${brokersZeroSales.length} corretor(es) sem vendas`, description: `${brokersZeroSales.map(b => b.name).slice(0, 3).join(", ")}${brokersZeroSales.length > 3 ? "..." : ""} não realizaram vendas no período.` });
+    }
+
+    // Top performers
+    const topPerformers: BrokerRankItem[] = brokerPerformance.filter(b => b.leads > 0).slice(0, 3).map(b => ({
+      id: b.id, name: b.name, score: b.score, vendas: b.vendas, vgv: b.vgv,
+    }));
+    const needsAttention: BrokerRankItem[] = [...brokerPerformance].filter(b => b.leads > 0).reverse().slice(0, 3).map(b => ({
+      id: b.id, name: b.name, score: b.score, vendas: b.vendas, vgv: b.vgv,
+    }));
+
+    // Mini funnel
+    const funnelStages = [
+      { name: "Leads", count: totalLeads },
+      { name: "Atendimento", count: leadsInProgress },
+      { name: "Agendamento", count: leads.filter((l: any) => l.data_agendamento).length },
+      { name: "Proposta", count: leads.filter((l: any) => l.data_envio_proposta).length },
+      { name: "Venda", count: totalSales },
+    ];
+    const miniFunnel = funnelStages.map((s, i) => ({
+      name: s.name,
+      count: s.count,
+      convRate: i > 0 && funnelStages[i - 1].count > 0 ? s.count / funnelStages[i - 1].count : null,
+    }));
+
+    return {
+      totalLeads, leadsDistributed: distributed, leadsFallback: fallback,
+      leadsInProgress, activeProposals,
+      avgFirstResponse, slaPercent,
+      totalProposals: propostas.length, totalSales, conversionRate,
+      vgvTotal, ticketMedio, leadsLost, lossRate,
+      variations,
+      alerts, topPerformers, needsAttention,
+      miniFunnel,
+    };
+  }, [leads, prevLeads, propostas, brokerPerformance]);
 
   // ---- ROLETAS ----
   const roletaAnalysis = useMemo<RoletaAnalysis[]>(() => {
@@ -491,7 +526,6 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
     slaDistribution,
     heatmap,
     lossAnalysis,
-    // Raw data for filters
     brokers,
     projects,
     roletas,
