@@ -1,0 +1,4 @@
+
+ALTER TABLE public.roletas
+ADD COLUMN timeout_pausa_inicio time WITHOUT TIME ZONE NOT NULL DEFAULT '21:00',
+ADD COLUMN timeout_pausa_fim time WITHOUT TIME ZONE NOT NULL DEFAULT '09:00';

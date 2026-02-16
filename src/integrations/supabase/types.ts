@@ -981,6 +981,8 @@ export type Database = {
           nome: string
           tempo_reserva_minutos: number
           timeout_ativo: boolean
+          timeout_pausa_fim: string
+          timeout_pausa_inicio: string
           ultimo_membro_ordem_atribuida: number
           updated_at: string
         }
@@ -992,6 +994,8 @@ export type Database = {
           nome: string
           tempo_reserva_minutos?: number
           timeout_ativo?: boolean
+          timeout_pausa_fim?: string
+          timeout_pausa_inicio?: string
           ultimo_membro_ordem_atribuida?: number
           updated_at?: string
         }
@@ -1003,6 +1007,8 @@ export type Database = {
           nome?: string
           tempo_reserva_minutos?: number
           timeout_ativo?: boolean
+          timeout_pausa_fim?: string
+          timeout_pausa_inicio?: string
           ultimo_membro_ordem_atribuida?: number
           updated_at?: string
         }

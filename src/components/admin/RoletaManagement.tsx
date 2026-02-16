@@ -72,6 +72,8 @@ const RoletaManagement = () => {
   const [formLiderId, setFormLiderId] = useState("");
   const [formTimeout, setFormTimeout] = useState(10);
   const [formTimeoutAtivo, setFormTimeoutAtivo] = useState(true);
+  const [formPausaInicio, setFormPausaInicio] = useState("21:00");
+  const [formPausaFim, setFormPausaFim] = useState("09:00");
   const [formSelectedProjects, setFormSelectedProjects] = useState<string[]>([]);
 
   // Add member state
@@ -105,6 +107,8 @@ const RoletaManagement = () => {
       lider_id: formLiderId,
       tempo_reserva_minutos: formTimeout,
       timeout_ativo: formTimeoutAtivo,
+      timeout_pausa_inicio: formPausaInicio,
+      timeout_pausa_fim: formPausaFim,
     } as any);
     if (roletaId) {
       // Vincular empreendimentos selecionados
@@ -116,6 +120,8 @@ const RoletaManagement = () => {
       setFormLiderId("");
       setFormTimeout(10);
       setFormTimeoutAtivo(true);
+      setFormPausaInicio("21:00");
+      setFormPausaFim("09:00");
       setFormSelectedProjects([]);
     }
   };
@@ -173,6 +179,8 @@ const RoletaManagement = () => {
             setFormLiderId("");
             setFormTimeout(10);
             setFormTimeoutAtivo(true);
+            setFormPausaInicio("21:00");
+            setFormPausaFim("09:00");
             setFormSelectedProjects([]);
           }
         }}>
@@ -233,6 +241,35 @@ const RoletaManagement = () => {
                       step={1}
                       className="mt-2"
                     />
+                    <div className="mt-3">
+                      <Label className="text-xs">Horário sem transferência</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Select value={formPausaInicio} onValueChange={setFormPausaInicio}>
+                          <SelectTrigger className="w-24 bg-[#141417] border-[#2a2a2e] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => {
+                              const h = String(i).padStart(2, "0") + ":00";
+                              return <SelectItem key={h} value={h}>{h}</SelectItem>;
+                            })}
+                          </SelectContent>
+                        </Select>
+                        <span className="text-xs text-muted-foreground">até</span>
+                        <Select value={formPausaFim} onValueChange={setFormPausaFim}>
+                          <SelectTrigger className="w-24 bg-[#141417] border-[#2a2a2e] h-8 text-xs">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Array.from({ length: 24 }, (_, i) => {
+                              const h = String(i).padStart(2, "0") + ":00";
+                              return <SelectItem key={h} value={h}>{h}</SelectItem>;
+                            })}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Nesse horário, leads não serão redistribuídos.</p>
+                    </div>
                   </>
                 )}
               </div>
@@ -349,17 +386,54 @@ const RoletaManagement = () => {
                           : "Sem prazo. Notificação WhatsApp com nome e telefone do lead."}
                       </p>
                       {(roleta as any).timeout_ativo !== false && (
-                        <div>
-                          <Label className="text-xs">Tempo: {roleta.tempo_reserva_minutos} min</Label>
-                          <Slider
-                            value={[roleta.tempo_reserva_minutos]}
-                            onValueChange={([v]) => updateRoleta(roleta.id, { tempo_reserva_minutos: v } as any)}
-                            min={1}
-                            max={60}
-                            step={1}
-                            className="mt-1"
-                          />
-                        </div>
+                        <>
+                          <div>
+                            <Label className="text-xs">Tempo: {roleta.tempo_reserva_minutos} min</Label>
+                            <Slider
+                              value={[roleta.tempo_reserva_minutos]}
+                              onValueChange={([v]) => updateRoleta(roleta.id, { tempo_reserva_minutos: v } as any)}
+                              min={1}
+                              max={60}
+                              step={1}
+                              className="mt-1"
+                            />
+                          </div>
+                          <div>
+                            <Label className="text-xs">Horário sem transferência</Label>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Select
+                                value={(roleta as any).timeout_pausa_inicio?.slice(0, 5) || "21:00"}
+                                onValueChange={(v) => updateRoleta(roleta.id, { timeout_pausa_inicio: v } as any)}
+                              >
+                                <SelectTrigger className="w-24 bg-[#0e0e11] border-[#2a2a2e] h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => {
+                                    const h = String(i).padStart(2, "0") + ":00";
+                                    return <SelectItem key={h} value={h}>{h}</SelectItem>;
+                                  })}
+                                </SelectContent>
+                              </Select>
+                              <span className="text-xs text-muted-foreground">até</span>
+                              <Select
+                                value={(roleta as any).timeout_pausa_fim?.slice(0, 5) || "09:00"}
+                                onValueChange={(v) => updateRoleta(roleta.id, { timeout_pausa_fim: v } as any)}
+                              >
+                                <SelectTrigger className="w-24 bg-[#0e0e11] border-[#2a2a2e] h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {Array.from({ length: 24 }, (_, i) => {
+                                    const h = String(i).padStart(2, "0") + ":00";
+                                    return <SelectItem key={h} value={h}>{h}</SelectItem>;
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">Nesse horário, leads não serão redistribuídos.</p>
+                          </div>
+                        </>
                       )}
                     </div>
 

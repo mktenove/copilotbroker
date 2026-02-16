@@ -12,6 +12,8 @@ export interface Roleta {
   timeout_ativo: boolean;
   ativa: boolean;
   ultimo_membro_ordem_atribuida: number;
+  timeout_pausa_inicio: string;
+  timeout_pausa_fim: string;
   created_at: string;
   updated_at: string;
   // Relations
