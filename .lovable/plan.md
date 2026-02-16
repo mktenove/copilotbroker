@@ -1,101 +1,56 @@
 
 
-# Reformulacao do Dashboard de Inteligencia Comercial
+# Corrigir acesso ao campo de busca no CRM mobile
 
-## Problema Atual
-- 12 KPI cards amontoados em grid 6 colunas, sem hierarquia visual
-- Graficos "Leads por Dia" e "VGV por Dia" removidos (nao fazem sentido no negocio)
-- Tabela de corretores e muito densa, sem destaque visual
-- Falta contexto nos numeros (o que e bom? o que precisa atencao?)
-- Nao ha "alertas" ou insights automaticos para tomada de decisao
+## Problema
+Na versao mobile, os filtros (Empreendimento, Origens, Corretor) ocupam toda a largura da barra horizontal, empurrando o campo de busca para fora da tela. O usuario ve apenas o icone da lupa no canto direito, sem espaco para digitar.
 
-## Melhorias Propostas
+## Solucao
 
-### 1. Overview -- Reorganizar com hierarquia visual clara
+**Arquivo:** `src/components/crm/KanbanBoard.tsx`
 
-**Secao "Resultado" (destaque principal):** 3 cards grandes em linha
-- Vendas (quantidade + variacao)
-- VGV Total (valor + variacao)
-- Conversao Geral (% + variacao)
+Reorganizar a barra de filtros em **duas linhas no mobile**:
+- **Linha 1:** Campo de busca ocupando largura total (visivel e acessivel)
+- **Linha 2:** Filtros (Empreendimento, Origens, Corretor) em scroll horizontal
 
-**Secao "Pipeline" (cards medios):** 4 cards
-- Total de Leads | Distribuidos | Em Atendimento | Propostas Ativas
+No desktop, manter o layout atual em uma unica linha.
 
-**Secao "Saude Operacional" (cards menores):** 4 cards
-- Tempo medio 1o Atendimento | % SLA | Fallbacks | Taxa de Perda
+### Implementacao
 
-**Secao "Alertas Estrategicos" (novo):** Cards condicionais que so aparecem quando ha problemas:
-- Alerta se SLA < 70%
-- Alerta se taxa de perda > 30%
-- Alerta se algum corretor tem 0 vendas no periodo
-- Alerta se alguma roleta esta "vermelha"
+Trocar o container dos filtros de um unico `flex` para um layout com `flex flex-col md:flex-row`:
 
-**Secao "Top Performers" (novo):** Mini ranking horizontal dos 3 melhores corretores por score, e os 3 com mais oportunidades de melhoria.
+1. No mobile: busca fica em cima (primeira linha, largura total) e os filtros ficam abaixo (segunda linha, scroll horizontal)
+2. No desktop: tudo continua em uma linha como esta hoje
 
-Remover completamente: graficos "Leads & Vendas por Dia" e "VGV por Dia".
+### Mudanca especifica (linhas ~330-414)
 
-### 2. Corretores -- Cards individuais ao inves de tabela densa
+```
+<!-- ANTES: tudo em uma linha -->
+<div class="flex items-center gap-2 ...">
+  [filtros...] [busca com ml-auto]
+</div>
 
-Substituir a tabela unica por **cards individuais** para cada corretor:
-- Score em destaque (badge grande colorido)
-- Barra de progresso visual para SLA
-- Micro-metricas organizadas em 2 colunas
-- Indicador visual de tendencia (seta para cima/baixo)
-- Manter opcao de "ver como tabela" via toggle para quem preferir
+<!-- DEPOIS: duas linhas no mobile -->
+<div class="flex flex-col gap-2 md:gap-0 mb-4 md:mb-6 px-1">
+  <!-- Busca: visivel no topo no mobile, reposicionada no desktop -->
+  <div class="md:hidden relative">
+    <Search .../> <input ... class="w-full ..." />
+  </div>
+  <!-- Filtros + busca desktop -->
+  <div class="flex items-center gap-2 md:gap-3 overflow-x-auto">
+    [filtros...]
+    <!-- Busca desktop only -->
+    <div class="hidden md:block relative ml-auto">
+      <Search .../> <input ... />
+    </div>
+  </div>
+</div>
+```
 
-### 3. Funil -- Adicionar tempos medios entre etapas
+O campo de busca e renderizado duas vezes no JSX mas com `md:hidden` e `hidden md:block`, garantindo que o mesmo state (`searchTerm` / `onSearchChange`) controla ambos. Apenas um aparece por vez.
 
-- Calcular tempo medio entre etapas usando timestamps de `lead_interactions`
-- Exibir entre cada barra do funil: "Tempo medio: X dias"
-- Melhorar o visual do badge de gargalo
-
-### 4. Overview: Substituir graficos removidos por mini-funil horizontal
-
-No lugar dos graficos diarios, colocar um **mini-funil horizontal** mostrando a conversao resumida: Leads -> Atendimento -> Agendamento -> Proposta -> Venda, com as taxas de conversao entre cada etapa.
-
-### 5. Melhorias visuais gerais
-
-- Adicionar secao de titulo em cada grupo de cards ("Resultado", "Pipeline", "Saude")
-- Usar separadores sutis entre secoes
-- MetricCard: adicionar indicador de cor de fundo sutil (verde para bom, vermelho para atencao)
-- Aumentar contraste nos numeros principais
-
-## Detalhamento Tecnico
-
-### Arquivos a editar:
-
-**`src/components/admin/intelligence/tabs/OverviewTab.tsx`** -- Reescrever completamente:
-- Remover graficos LineChart e BarChart
-- Criar 3 secoes hierarquicas de KPIs com titulos
-- Adicionar secao de Alertas Estrategicos (condicional)
-- Adicionar mini ranking de Top Performers
-- Adicionar mini-funil horizontal resumido
-
-**`src/components/admin/intelligence/hooks/useIntelligenceData.ts`** -- Adicionar dados:
-- Novos campos em `OverviewData`: `leadsInProgress` (em atendimento), `activeProposals` (propostas ativas sem fechamento), `alerts` (lista de alertas estrategicos), `topPerformers` e `needsAttention` (arrays de nomes/scores dos corretores)
-- Calcular alertas: SLA < 70%, perda > 30%, corretores com 0 vendas, roletas vermelhas
-
-**`src/components/admin/intelligence/tabs/CorretoresTab.tsx`** -- Adicionar toggle tabela/cards:
-- Manter tabela como esta (modo compacto)
-- Adicionar modo "cards" como visualizacao padrao
-- Cada card com score em destaque, barra de SLA, mini metricas
-
-**`src/components/admin/intelligence/components/MetricCard.tsx`** -- Suportar tamanhos:
-- Adicionar prop `size?: "sm" | "md" | "lg"` para hierarquia visual
-- Size "lg": texto 3xl, padding maior, fundo com borda de cor
-- Size "md": texto 2xl (atual)
-- Size "sm": texto lg, mais compacto
-
-**`src/components/admin/intelligence/components/AlertCard.tsx`** -- Novo componente:
-- Card de alerta com icone, titulo, descricao e severidade
-- Cor de fundo baseada em severidade (amarelo para warning, vermelho para critical)
-
-### Dados necessarios (todos ja disponiveis no hook):
-- `leadsInProgress`: leads com status `info_sent` ou `awaiting_docs`
-- `activeProposals`: propostas sem `data_fechamento` e sem `data_perda`
-- Alertas: calculados comparando metricas ja existentes com thresholds fixos
-- Top performers: ja ordenados por score no `brokerPerformance`
-
-### Sem alteracao de banco de dados
-Todos os dados necessarios ja existem. Nenhuma migracao e necessaria.
+## Impacto
+- Apenas `KanbanBoard.tsx` precisa ser editado
+- Nenhuma mudanca de logica, apenas layout CSS
+- O campo de busca ficara grande e acessivel no mobile, como primeira coisa que o usuario ve
 
