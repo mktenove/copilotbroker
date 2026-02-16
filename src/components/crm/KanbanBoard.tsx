@@ -327,7 +327,26 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   return (
     <div className="flex flex-col min-h-[700px]">
       {/* Toolbar - Filters */}
-      <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6 px-1">
+      <div className="flex flex-col gap-2 md:gap-0 mb-4 md:mb-6 px-1">
+        {/* Mobile search - full width on top */}
+        <div className="md:hidden relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            type="text"
+            placeholder="Buscar por nome ou WhatsApp..."
+            value={searchTerm}
+            onChange={(e) => onSearchChange?.(e.target.value)}
+            className={cn(
+              "w-full pl-9 pr-3 py-2 rounded-lg text-sm",
+              "bg-[#1e1e22] border border-[#2a2a2e]",
+              "text-slate-200 placeholder:text-slate-500",
+              "focus:outline-none focus:ring-2 focus:ring-primary/50",
+              "transition-all duration-200"
+            )}
+          />
+        </div>
+        {/* Filters row + desktop search */}
+        <div className="flex items-center gap-2 md:gap-3 overflow-x-auto">
         {(isAdmin || projects.length > 1) && projects.length > 0 && (
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-auto max-w-[140px] md:max-w-none h-9 bg-transparent border-none text-slate-400 hover:text-slate-200 text-sm gap-1 md:gap-2 px-2">
@@ -395,7 +414,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
           </Select>
         )}
 
-        <div className="relative ml-auto flex-1 md:flex-none">
+        {/* Desktop search */}
+        <div className="hidden md:block relative ml-auto">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
@@ -403,13 +423,14 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
             value={searchTerm}
             onChange={(e) => onSearchChange?.(e.target.value)}
             className={cn(
-              "w-full md:w-48 pl-9 pr-3 py-2 rounded-lg text-sm",
+              "w-48 pl-9 pr-3 py-2 rounded-lg text-sm",
               "bg-[#1e1e22] border border-[#2a2a2e]",
               "text-slate-200 placeholder:text-slate-500",
               "focus:outline-none focus:ring-2 focus:ring-primary/50",
               "transition-all duration-200"
             )}
           />
+        </div>
         </div>
       </div>
 
