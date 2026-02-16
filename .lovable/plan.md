@@ -1,56 +1,57 @@
 
 
-# Corrigir acesso ao campo de busca no CRM mobile
+# Horario de Pausa do Timeout nas Roletas
 
-## Problema
-Na versao mobile, os filtros (Empreendimento, Origens, Corretor) ocupam toda a largura da barra horizontal, empurrando o campo de busca para fora da tela. O usuario ve apenas o icone da lupa no canto direito, sem espaco para digitar.
+## O que sera feito
 
-## Solucao
+Adicionar configuracao de "horario sem timeout" em cada roleta, permitindo definir um intervalo (ex: 21h as 9h) onde a transferencia automatica por timeout nao ocorre. Leads que expirarem nesse horario permanecem com o corretor atual ate o horario permitido voltar.
 
-**Arquivo:** `src/components/crm/KanbanBoard.tsx`
+## Mudancas
 
-Reorganizar a barra de filtros em **duas linhas no mobile**:
-- **Linha 1:** Campo de busca ocupando largura total (visivel e acessivel)
-- **Linha 2:** Filtros (Empreendimento, Origens, Corretor) em scroll horizontal
+### 1. Banco de Dados (migracao)
 
-No desktop, manter o layout atual em uma unica linha.
+Adicionar duas colunas na tabela `roletas`:
 
-### Implementacao
+- `timeout_pausa_inicio` (time, default '21:00') -- hora em que o timeout para
+- `timeout_pausa_fim` (time, default '09:00') -- hora em que o timeout volta
 
-Trocar o container dos filtros de um unico `flex` para um layout com `flex flex-col md:flex-row`:
+### 2. Edge Function `roleta-timeout/index.ts`
 
-1. No mobile: busca fica em cima (primeira linha, largura total) e os filtros ficam abaixo (segunda linha, scroll horizontal)
-2. No desktop: tudo continua em uma linha como esta hoje
+Antes de processar cada lead expirado, verificar se o horario atual (Brasilia, UTC-3) esta dentro do intervalo de pausa da roleta. Se estiver, pular o lead sem redistribuir.
 
-### Mudanca especifica (linhas ~330-414)
-
-```
-<!-- ANTES: tudo em uma linha -->
-<div class="flex items-center gap-2 ...">
-  [filtros...] [busca com ml-auto]
-</div>
-
-<!-- DEPOIS: duas linhas no mobile -->
-<div class="flex flex-col gap-2 md:gap-0 mb-4 md:mb-6 px-1">
-  <!-- Busca: visivel no topo no mobile, reposicionada no desktop -->
-  <div class="md:hidden relative">
-    <Search .../> <input ... class="w-full ..." />
-  </div>
-  <!-- Filtros + busca desktop -->
-  <div class="flex items-center gap-2 md:gap-3 overflow-x-auto">
-    [filtros...]
-    <!-- Busca desktop only -->
-    <div class="hidden md:block relative ml-auto">
-      <Search .../> <input ... />
-    </div>
-  </div>
-</div>
+Logica:
+```text
+horaAtual = now em UTC-3
+se pausa_inicio > pausa_fim (cruza meia-noite, ex: 21h-9h):
+   pausado = horaAtual >= pausa_inicio OU horaAtual < pausa_fim
+senao:
+   pausado = horaAtual >= pausa_inicio E horaAtual < pausa_fim
 ```
 
-O campo de busca e renderizado duas vezes no JSX mas com `md:hidden` e `hidden md:block`, garantindo que o mesmo state (`searchTerm` / `onSearchChange`) controla ambos. Apenas um aparece por vez.
+### 3. Tipo `src/types/roleta.ts`
 
-## Impacto
-- Apenas `KanbanBoard.tsx` precisa ser editado
-- Nenhuma mudanca de logica, apenas layout CSS
-- O campo de busca ficara grande e acessivel no mobile, como primeira coisa que o usuario ve
+Adicionar `timeout_pausa_inicio` e `timeout_pausa_fim` na interface `Roleta`.
+
+### 4. UI `src/components/admin/RoletaManagement.tsx`
+
+No bloco de configuracao de timeout (quando expandido), adicionar dois campos de horario (selects de hora) para definir o intervalo de pausa. Tambem no formulario de criacao da roleta.
+
+Visualmente ficara abaixo do slider de tempo de reserva:
+```
+Horario sem transferencia:
+[21:00] ate [09:00]
+```
+
+### 5. Hook `src/hooks/use-roletas.ts`
+
+O hook ja usa `as any` para queries, entao os novos campos serao retornados automaticamente sem alteracao no hook.
+
+## Arquivos
+
+| Acao | Arquivo |
+|------|---------|
+| Migracao | Adicionar colunas `timeout_pausa_inicio` e `timeout_pausa_fim` em `roletas` |
+| Editar | `src/types/roleta.ts` |
+| Editar | `supabase/functions/roleta-timeout/index.ts` |
+| Editar | `src/components/admin/RoletaManagement.tsx` |
 
