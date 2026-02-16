@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Calendar, MapPin, UserCheck, Trash2, UserX } from "lucide-react";
+import { Phone, Calendar, MapPin, UserCheck, Trash2, UserX, RotateCw } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import { InactivationPicker } from "@/components/crm/InactivationPicker";
@@ -37,9 +37,10 @@ interface LeadCardProps {
   onClick?: () => void;
   onDelete?: (leadId: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
+  onReactivate?: (leadId: string) => Promise<void>;
 }
 
-const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelete, onInactivate }: LeadCardProps) => {
+const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelete, onInactivate, onReactivate }: LeadCardProps) => {
   const [isInactivationOpen, setIsInactivationOpen] = useState(false);
 
   const formatDate = (dateString: string) => {
@@ -166,6 +167,17 @@ const LeadCard = ({ lead, showSource = true, showStatus = true, onClick, onDelet
               title="Inativar lead"
             >
               <UserX className="w-4 h-4" />
+            </button>
+          )}
+          
+          {/* Botão Reativar */}
+          {onReactivate && isInactive && (
+            <button
+              onClick={() => onReactivate(lead.id)}
+              className="flex items-center justify-center px-4 py-3 bg-emerald-600/10 text-emerald-400 rounded-lg hover:bg-emerald-600/20 transition-colors"
+              title="Reativar lead"
+            >
+              <RotateCw className="w-4 h-4" />
             </button>
           )}
           

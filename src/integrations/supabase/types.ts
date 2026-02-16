@@ -1523,6 +1523,7 @@ export type Database = {
         | "venda_confirmada"
         | "reagendamento"
         | "whatsapp_manual"
+        | "reactivation"
       lead_status:
         | "new"
         | "info_sent"
@@ -1687,6 +1688,7 @@ export const Constants = {
         "venda_confirmada",
         "reagendamento",
         "whatsapp_manual",
+        "reactivation",
       ],
       lead_status: [
         "new",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Users, RefreshCw, MapPin, Trash2, UserX } from "lucide-react";
+import { Phone, Users, RefreshCw, MapPin, Trash2, UserX, RotateCw } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
@@ -40,9 +40,10 @@ interface LeadsTableProps {
   onLeadClick?: (lead: Lead) => void;
   onDelete?: (leadId: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
+  onReactivate?: (leadId: string) => Promise<void>;
 }
 
-const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onLeadClick, onDelete, onInactivate }: LeadsTableProps) => {
+const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onLeadClick, onDelete, onInactivate, onReactivate }: LeadsTableProps) => {
   const [inactivatingLead, setInactivatingLead] = useState<Lead | null>(null);
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
@@ -133,6 +134,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
             onClick={onLeadClick ? () => onLeadClick(lead) : undefined}
             onDelete={onDelete}
             onInactivate={onInactivate}
+            onReactivate={onReactivate}
           />
         ))}
       </div>
@@ -217,6 +219,17 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                           title="Inativar lead"
                         >
                           <UserX className="w-4 h-4" />
+                        </button>
+                      )}
+                      
+                      {/* Botão Reativar */}
+                      {onReactivate && isInactive && (
+                        <button
+                          onClick={() => onReactivate(lead.id)}
+                          className="inline-flex items-center gap-1 px-3 py-2 bg-emerald-600/10 text-emerald-400 text-sm rounded-lg hover:bg-emerald-600/20 transition-colors"
+                          title="Reativar lead"
+                        >
+                          <RotateCw className="w-4 h-4" />
                         </button>
                       )}
                       
