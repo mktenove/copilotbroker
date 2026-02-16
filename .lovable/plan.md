@@ -1,57 +1,27 @@
 
-
-# Horario de Pausa do Timeout nas Roletas
+# Abrir pagina do lead ao clicar na lista (remover formulario antigo)
 
 ## O que sera feito
 
-Adicionar configuracao de "horario sem timeout" em cada roleta, permitindo definir um intervalo (ex: 21h as 9h) onde a transferencia automatica por timeout nao ocorre. Leads que expirarem nesse horario permanecem com o corretor atual ate o horario permitido voltar.
+Quando o usuario clica em um lead na aba "Leads" (lista/tabela), em vez de abrir o `LeadDetailSheet` (formulario lateral antigo), o sistema vai navegar para a pagina dedicada do lead (`/corretor/lead/:id`).
 
 ## Mudancas
 
-### 1. Banco de Dados (migracao)
+### Arquivo: `src/pages/Admin.tsx`
 
-Adicionar duas colunas na tabela `roletas`:
+1. **Alterar `handleLeadClick`** (linhas 223-253): Em vez de converter o lead para CRMLead e abrir o sheet, simplesmente navegar para `/corretor/lead/${lead.id}`
 
-- `timeout_pausa_inicio` (time, default '21:00') -- hora em que o timeout para
-- `timeout_pausa_fim` (time, default '09:00') -- hora em que o timeout volta
+2. **Remover estado `selectedLead`** (linha 70): Nao sera mais necessario
 
-### 2. Edge Function `roleta-timeout/index.ts`
+3. **Remover `LeadDetailSheet`** (linhas 574-581): Remover o componente e seu import
 
-Antes de processar cada lead expirado, verificar se o horario atual (Brasilia, UTC-3) esta dentro do intervalo de pausa da roleta. Se estiver, pular o lead sem redistribuir.
+4. **Remover funcoes orfas**: `handleUpdateLead` e `handleStatusChange` que so eram usadas pelo LeadDetailSheet
 
-Logica:
-```text
-horaAtual = now em UTC-3
-se pausa_inicio > pausa_fim (cruza meia-noite, ex: 21h-9h):
-   pausado = horaAtual >= pausa_inicio OU horaAtual < pausa_fim
-senao:
-   pausado = horaAtual >= pausa_inicio E horaAtual < pausa_fim
-```
+5. **Limpar imports**: Remover `LeadDetailSheet` e `CRMLead` se nao forem mais usados
 
-### 3. Tipo `src/types/roleta.ts`
+### Arquivo: `src/components/admin/LeadCard.tsx`
 
-Adicionar `timeout_pausa_inicio` e `timeout_pausa_fim` na interface `Roleta`.
+Atualizar o componente para que, quando receber `onClick`, navegue para a pagina do lead. Nenhuma mudanca necessaria aqui pois o `onClick` ja e passado pelo `LeadsTable` via `onLeadClick`.
 
-### 4. UI `src/components/admin/RoletaManagement.tsx`
-
-No bloco de configuracao de timeout (quando expandido), adicionar dois campos de horario (selects de hora) para definir o intervalo de pausa. Tambem no formulario de criacao da roleta.
-
-Visualmente ficara abaixo do slider de tempo de reserva:
-```
-Horario sem transferencia:
-[21:00] ate [09:00]
-```
-
-### 5. Hook `src/hooks/use-roletas.ts`
-
-O hook ja usa `as any` para queries, entao os novos campos serao retornados automaticamente sem alteracao no hook.
-
-## Arquivos
-
-| Acao | Arquivo |
-|------|---------|
-| Migracao | Adicionar colunas `timeout_pausa_inicio` e `timeout_pausa_fim` em `roletas` |
-| Editar | `src/types/roleta.ts` |
-| Editar | `supabase/functions/roleta-timeout/index.ts` |
-| Editar | `src/components/admin/RoletaManagement.tsx` |
-
+### Sem mudancas no banco de dados
+Apenas logica de navegacao no frontend.
