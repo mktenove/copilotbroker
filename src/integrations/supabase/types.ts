@@ -1327,6 +1327,32 @@ export type Database = {
           },
         ]
       }
+      whatsapp_lead_replies: {
+        Row: {
+          campaign_id: string
+          phone: string
+          replied_at: string
+        }
+        Insert: {
+          campaign_id: string
+          phone: string
+          replied_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          phone?: string
+          replied_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_lead_replies_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_message_queue: {
         Row: {
           attempts: number | null

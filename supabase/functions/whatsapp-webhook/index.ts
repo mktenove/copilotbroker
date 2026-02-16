@@ -183,6 +183,17 @@ app.post("/", async (c) => {
         // Cancel follow-ups where send_if_replied = false
         await cancelFollowUpsOnReply(supabase, phone, campaignIds);
 
+        // Register reply permanently per-phone per-campaign
+        for (const campaignId of campaignIds) {
+          await supabase
+            .from("whatsapp_lead_replies")
+            .upsert(
+              { phone, campaign_id: campaignId, replied_at: new Date().toISOString() },
+              { onConflict: "phone,campaign_id" }
+            );
+        }
+        console.log(`📝 Registered reply for ${phone} in ${campaignIds.length} campaign(s)`);
+
         // Update campaign reply counts
         for (const campaignId of campaignIds) {
           const { data: campaign } = await supabase
