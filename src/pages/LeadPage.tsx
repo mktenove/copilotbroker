@@ -301,7 +301,7 @@ export default function LeadPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0d] text-white">
       {/* ━━━━━━━━━━━━━━ STRATEGIC HEADER ━━━━━━━━━━━━━━ */}
-      <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22]">
+      <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22] pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4 mb-4">
             <button onClick={() => navigate(role === "admin" ? "/admin" : "/corretor/admin")} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
