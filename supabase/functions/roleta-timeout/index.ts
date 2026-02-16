@@ -22,6 +22,7 @@ Deno.serve(async (req) => {
       .select("id, roleta_id, corretor_atribuido_id, project_id, name, whatsapp")
       .lte("reserva_expira_em", now)
       .is("atendimento_iniciado_em", null)
+      .neq("status", "inactive")
       .in("status_distribuicao", ["atribuicao_inicial", "reassinado_timeout"]);
 
     if (error) throw error;
