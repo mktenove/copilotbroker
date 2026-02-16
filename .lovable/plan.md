@@ -1,27 +1,55 @@
 
-# Abrir pagina do lead ao clicar na lista (remover formulario antigo)
+# Reativar Lead Inativo
 
 ## O que sera feito
 
-Quando o usuario clica em um lead na aba "Leads" (lista/tabela), em vez de abrir o `LeadDetailSheet` (formulario lateral antigo), o sistema vai navegar para a pagina dedicada do lead (`/corretor/lead/:id`).
+Adicionar a funcao de reativar leads inativos, permitindo que corretores, lideres e admins possam reativar um lead que foi previamente inativado. O lead voltara ao status "new" (Novo) e ficara visivel novamente no Kanban e na lista de leads.
 
 ## Mudancas
 
-### Arquivo: `src/pages/Admin.tsx`
+### 1. Hook `src/hooks/use-kanban-leads.ts`
 
-1. **Alterar `handleLeadClick`** (linhas 223-253): Em vez de converter o lead para CRMLead e abrir o sheet, simplesmente navegar para `/corretor/lead/${lead.id}`
+Adicionar funcao `reactivateLead(leadId)` que:
+- Atualiza o status do lead para "new"
+- Limpa os campos `inactivation_reason`, `inactivated_at`, `data_perda`, `etapa_perda`
+- Registra uma interacao do tipo "reactivation" na tabela `lead_interactions`
+- Atualiza o estado local
 
-2. **Remover estado `selectedLead`** (linha 70): Nao sera mais necessario
+### 2. Pagina do Lead `src/pages/LeadPage.tsx`
 
-3. **Remover `LeadDetailSheet`** (linhas 574-581): Remover o componente e seu import
+Na secao "Lead Perdido" (quando `isLost === true`), adicionar um botao "Reativar Lead" com icone de RotateCw. Ao clicar, chama `reactivateLead` e atualiza a pagina.
 
-4. **Remover funcoes orfas**: `handleUpdateLead` e `handleStatusChange` que so eram usadas pelo LeadDetailSheet
+Visualmente:
+```text
+[icone UserX]
+Lead Perdido
+Motivo: lead_duplicado
 
-5. **Limpar imports**: Remover `LeadDetailSheet` e `CRMLead` se nao forem mais usados
+[ Reativar Lead ]
+```
 
-### Arquivo: `src/components/admin/LeadCard.tsx`
+### 3. Card na lista `src/components/admin/LeadCard.tsx`
 
-Atualizar o componente para que, quando receber `onClick`, navegue para a pagina do lead. Nenhuma mudanca necessaria aqui pois o `onClick` ja e passado pelo `LeadsTable` via `onLeadClick`.
+Quando o lead estiver inativo e `onInactivate` estiver disponivel (indicando que o usuario tem permissao), mostrar um botao "Reativar" no lugar do botao "Inativar". Adicionar prop `onReactivate`.
 
-### Sem mudancas no banco de dados
-Apenas logica de navegacao no frontend.
+### 4. Tabela de leads `src/components/admin/LeadsTable.tsx`
+
+Adicionar prop `onReactivate` e exibir botao de reativacao na coluna de acoes para leads inativos.
+
+### 5. Pagina Admin `src/pages/Admin.tsx`
+
+Passar a funcao `onReactivate` para o `LeadsTable`, chamando a logica de reativacao.
+
+## Sem mudancas no banco de dados
+
+O tipo `lead_interactions.interaction_type` ja aceita valores dinamicos via cast. Nenhuma migracao necessaria -- apenas atualizacao do status do lead e registro de interacao.
+
+## Arquivos
+
+| Acao | Arquivo |
+|------|---------|
+| Editar | `src/hooks/use-kanban-leads.ts` |
+| Editar | `src/pages/LeadPage.tsx` |
+| Editar | `src/components/admin/LeadCard.tsx` |
+| Editar | `src/components/admin/LeadsTable.tsx` |
+| Editar | `src/pages/Admin.tsx` |
