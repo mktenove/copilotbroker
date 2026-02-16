@@ -1,87 +1,87 @@
 
-# Correcao: "Enviar somente se o lead nao responder" nao funciona
 
-## Diagnostico
+# Correção: Rastreamento de respostas por telefone/campanha
 
-Analisei os logs do webhook, o codigo e os dados do banco. Encontrei **dois problemas** que impedem o cancelamento de follow-ups quando o lead responde:
+## Problema identificado
 
-### Problema 1: Respostas com midia sao completamente ignoradas (principal)
+A implementacao atual tem dois gaps:
 
-No webhook, quando um lead responde com **audio, imagem, sticker ou qualquer midia**, o campo `text` vem vazio. O codigo atual faz:
+1. **Check 2 no message-sender usa `reply_count` global da campanha** - Se o lead A responder, o follow-up do lead B na mesma campanha tambem seria cancelado (falso positivo)
+2. **Gap de timing** - Se a resposta chega ANTES do follow-up ser agendado na fila, o webhook nao encontra nada para cancelar. O unico registro e o `reply_count` da campanha (que e global)
 
-```text
-if (!messageText) {
-    "Empty message from +55..., skipping"  ← PARA AQUI
-    return (sem processar nada)
-}
+## Solucao: Tabela de rastreamento per-phone per-campaign
 
-// ... logica de cancelamento de follow-up nunca e alcancada
-```
+Seguindo a logica que voce descreveu, vamos criar um registro de "respondido" por telefone por campanha.
 
-Nos logs, encontrei evidencias diretas deste problema:
-- `22:14:18` - Reply from +555197639730: "Entendi..." (texto processado)
-- `22:14:38` - Empty message from +555197639730, skipping (midia ignorada)
-- `22:14:47` - Empty message from +555199404363, skipping (midia ignorada)
-
-Respostas com audio (muito comum no WhatsApp brasileiro) nao disparam o cancelamento.
-
-### Problema 2: Verificacao preventiva do message-sender e fraca
-
-O message-sender faz uma verificacao antes de enviar, mas ela depende de encontrar mensagens ja canceladas com "Lead respondeu" no erro. Se o webhook nunca cancelou nada (por causa do Problema 1), essa verificacao tambem falha.
-
-**Evidencia**: Zero registros com "Lead respondeu" no banco de dados, confirmando que o cancelamento NUNCA foi acionado com sucesso.
-
-## Solucao
-
-### Arquivo: `supabase/functions/whatsapp-webhook/index.ts`
-
-Reestruturar o fluxo de processamento de mensagens recebidas:
-
-1. **Mover a logica de cancelamento de follow-up para ANTES da verificacao de texto vazio** - Qualquer mensagem recebida (texto, audio, imagem, etc.) deve disparar o cancelamento de follow-ups pendentes
-2. **Manter a verificacao de optout apenas para mensagens com texto** - Optout depende de palavras-chave, entao so faz sentido para mensagens de texto
-3. **Adicionar log para rastrear processamento de respostas com midia**
-
-Fluxo corrigido:
-```text
-Mensagem recebida (fromMe=false) →
-  1. Extrair telefone
-  2. Buscar mensagens enviadas para esse telefone (sempre)
-  3. Cancelar follow-ups com send_if_replied=false (sempre)
-  4. Se tiver texto: verificar optout
-  5. Se texto vazio: log e retorno (cancelamento ja foi feito)
-```
-
-### Arquivo: `supabase/functions/whatsapp-message-sender/index.ts`
-
-Fortalecer a verificacao preventiva no message-sender:
-
-1. **Adicionar verificacao direta de interacao** - Alem de verificar mensagens canceladas, consultar diretamente se houve alguma resposta recebida no webhook (mensagem enviada com sucesso para o lead, seguida de qualquer atividade de resposta)
-2. **Verificar a tabela `lead_interactions`** - Se o lead tem interacoes recentes do tipo `contact_attempt` de canal `whatsapp` seguidas de respostas, cancelar o envio
-
-### Sem mudancas no banco de dados
-Apenas correcoes de logica nas Edge Functions.
-
-## Secao Tecnica
-
-### Mudanca principal no webhook (pseudo-codigo)
+### 1. Nova tabela: `whatsapp_lead_replies`
 
 ```text
-// ANTES: texto vazio → skip tudo
-// DEPOIS: texto vazio → skip optout, mas SEMPRE processar cancelamento
-
-1. Extrair phone do chatid
-2. Buscar recentMessages na fila (status=sent, phone=phone)
-3. Se encontrou mensagens:
-   a. Obter campaign_ids unicos
-   b. Chamar cancelFollowUpsOnReply(phone, campaignIds)
-   c. Atualizar reply_count das campanhas
-   d. Atualizar daily_stats reply_count
-4. Se messageText nao vazio:
-   a. Verificar optout keywords
-   b. Se optout detectado: processar optout
-5. Se messageText vazio: log "Media reply processed"
+whatsapp_lead_replies
+- phone (TEXT, NOT NULL)
+- campaign_id (UUID, NOT NULL)
+- replied_at (TIMESTAMPTZ, DEFAULT now())
+- PRIMARY KEY (phone, campaign_id)
 ```
 
-### Mudanca no message-sender (verificacao extra)
+Sem RLS (acesso apenas via service_role no backend). Tabela simples e eficiente - uma linha por telefone/campanha.
 
-Adicionar uma query direta ao `lead_interactions` para verificar se o lead respondeu recentemente, como fallback caso o webhook nao tenha conseguido cancelar a tempo.
+### 2. Webhook (`whatsapp-webhook/index.ts`)
+
+Apos detectar uma resposta e identificar os campaign_ids, UPSERT na nova tabela:
+
+```text
+Para cada campaign_id detectado:
+  UPSERT whatsapp_lead_replies (phone, campaign_id, replied_at)
+```
+
+Isso garante que mesmo que nao haja mensagens agendadas para cancelar naquele momento, o fato da resposta fica registrado permanentemente.
+
+### 3. Message-sender (`whatsapp-message-sender/index.ts`)
+
+Substituir o Check 2 (reply_count global) por uma consulta direta na nova tabela:
+
+```text
+// ANTES (bugado - global):
+campaign.reply_count > 0 → cancela para QUALQUER telefone
+
+// DEPOIS (correto - per-phone):
+SELECT 1 FROM whatsapp_lead_replies
+WHERE phone = queueMsg.phone
+AND campaign_id = queueMsg.campaign_id
+→ cancela apenas para o telefone que respondeu
+```
+
+Manter o Check 1 (verificacao de mensagens ja canceladas) como esta, pois e per-phone e funciona corretamente.
+
+## Fluxo corrigido completo
+
+```text
+Etapa 1 enviada para Lead A e Lead B (mesma campanha)
+
+Lead A responde (texto ou audio):
+  1. Webhook recebe mensagem
+  2. Cancela follow-ups agendados do Lead A (se existirem)
+  3. UPSERT whatsapp_lead_replies (phone_A, campaign_id)
+  4. Incrementa reply_count da campanha
+
+Quando o sender vai processar Etapa 2 do Lead A:
+  → Check: whatsapp_lead_replies existe para phone_A + campaign_id
+  → CANCELA
+
+Quando o sender vai processar Etapa 2 do Lead B:
+  → Check: whatsapp_lead_replies NAO existe para phone_B + campaign_id
+  → ENVIA normalmente
+```
+
+## Arquivos
+
+| Acao | Arquivo |
+|------|---------|
+| Criar tabela | Migration SQL (whatsapp_lead_replies) |
+| Editar | `supabase/functions/whatsapp-webhook/index.ts` |
+| Editar | `supabase/functions/whatsapp-message-sender/index.ts` |
+
+## Sem impacto em funcionalidades existentes
+
+A tabela e write-only pelo webhook e read-only pelo sender. Nenhum componente frontend precisa ser alterado.
+
