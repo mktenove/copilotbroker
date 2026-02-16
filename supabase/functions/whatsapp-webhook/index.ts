@@ -162,12 +162,69 @@ app.post("/", async (c) => {
       const phone = extractPhoneFromChatId(chatid);
       const messageText = msg.text || "";
 
-      if (!messageText) {
-        console.log(`Empty message from ${phone}, skipping`);
-        return c.json({ success: true, event: "messages", skipped: "empty" }, 200, corsHeaders);
+      // ===== STEP 1: ALWAYS process follow-up cancellation (text OR media) =====
+      const { data: recentMessages } = await supabase
+        .from("whatsapp_message_queue")
+        .select("campaign_id, broker_id")
+        .eq("phone", phone)
+        .eq("status", "sent")
+        .order("sent_at", { ascending: false })
+        .limit(10);
+
+      if (recentMessages && recentMessages.length > 0) {
+        const firstMsg = recentMessages[0] as { campaign_id: string | null; broker_id: string };
+
+        const campaignIds = [...new Set(
+          (recentMessages as Array<{ campaign_id: string | null }>)
+            .map(m => m.campaign_id)
+            .filter((id): id is string => id !== null)
+        )];
+
+        // Cancel follow-ups where send_if_replied = false
+        await cancelFollowUpsOnReply(supabase, phone, campaignIds);
+
+        // Update campaign reply counts
+        for (const campaignId of campaignIds) {
+          const { data: campaign } = await supabase
+            .from("whatsapp_campaigns")
+            .select("reply_count")
+            .eq("id", campaignId)
+            .single();
+
+          if (campaign) {
+            await supabase
+              .from("whatsapp_campaigns")
+              .update({ reply_count: ((campaign as { reply_count: number }).reply_count || 0) + 1 })
+              .eq("id", campaignId);
+          }
+        }
+
+        // Update daily stats reply_count
+        const today = new Date().toISOString().split("T")[0];
+        const { data: stats } = await supabase
+          .from("whatsapp_daily_stats")
+          .select("*")
+          .eq("broker_id", firstMsg.broker_id)
+          .eq("date", today)
+          .maybeSingle();
+
+        if (stats) {
+          await supabase
+            .from("whatsapp_daily_stats")
+            .update({ reply_count: ((stats as { reply_count: number }).reply_count || 0) + 1 })
+            .eq("id", (stats as { id: string }).id);
+        }
+
+        console.log(`💬 Reply from ${phone} (${messageText ? "text" : "media"}) - follow-up cancellation processed`);
       }
 
-      // Check for opt-out
+      // ===== STEP 2: If no text, we're done (media reply already processed above) =====
+      if (!messageText) {
+        console.log(`📎 Media reply from ${phone} processed (follow-ups cancelled if applicable)`);
+        return c.json({ success: true, event: "messages", processed: "media_reply" }, 200, corsHeaders);
+      }
+
+      // ===== STEP 3: Text-based checks (opt-out) =====
       const detectedKeyword = detectOptout(messageText);
 
       if (detectedKeyword) {
@@ -218,61 +275,7 @@ app.post("/", async (c) => {
           }
         }
       } else {
-        // Regular reply
-        console.log(`💬 Reply from ${phone}: "${messageText.substring(0, 50)}..."`);
-
-        const { data: recentMessages } = await supabase
-          .from("whatsapp_message_queue")
-          .select("campaign_id, broker_id")
-          .eq("phone", phone)
-          .eq("status", "sent")
-          .order("sent_at", { ascending: false })
-          .limit(10);
-
-        if (recentMessages && recentMessages.length > 0) {
-          const firstMsg = recentMessages[0] as { campaign_id: string | null; broker_id: string };
-
-          const campaignIds = [...new Set(
-            (recentMessages as Array<{ campaign_id: string | null }>)
-              .map(m => m.campaign_id)
-              .filter((id): id is string => id !== null)
-          )];
-
-          // Cancel follow-ups where send_if_replied = false
-          await cancelFollowUpsOnReply(supabase, phone, campaignIds);
-
-          // Update campaign reply counts
-          for (const campaignId of campaignIds) {
-            const { data: campaign } = await supabase
-              .from("whatsapp_campaigns")
-              .select("reply_count")
-              .eq("id", campaignId)
-              .single();
-
-            if (campaign) {
-              await supabase
-                .from("whatsapp_campaigns")
-                .update({ reply_count: ((campaign as { reply_count: number }).reply_count || 0) + 1 })
-                .eq("id", campaignId);
-            }
-          }
-
-          // Update daily stats reply_count
-          const today = new Date().toISOString().split("T")[0];
-          const { data: stats } = await supabase
-            .from("whatsapp_daily_stats")
-            .select("*")
-            .eq("broker_id", firstMsg.broker_id)
-            .eq("date", today)
-            .maybeSingle();
-
-          if (stats) {
-            await supabase
-              .from("whatsapp_daily_stats")
-              .update({ reply_count: ((stats as { reply_count: number }).reply_count || 0) + 1 })
-              .eq("id", (stats as { id: string }).id);
-          }
-        }
+        console.log(`💬 Text reply from ${phone}: "${messageText.substring(0, 50)}..."`);
       }
 
       return c.json({ success: true, event: "messages" }, 200, corsHeaders);
