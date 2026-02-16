@@ -553,9 +553,6 @@ export default function LeadPage() {
                   editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
                   onEditValueChange={(v) => setEditValues({ ...editValues, email: v })} />
 
-                <EditableField icon={FileText} label="CPF" field="cpf" value={lead.cpf || "—"}
-                  editingField={editingField} editValues={editValues} onStartEdit={startEdit} onCancel={cancelEdit} onSave={saveField}
-                  onEditValueChange={(v) => setEditValues({ ...editValues, cpf: v })} />
 
                 <EditableSelectField
                   icon={Building2}
