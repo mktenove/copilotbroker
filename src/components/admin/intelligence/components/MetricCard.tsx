@@ -5,24 +5,54 @@ interface MetricCardProps {
   label: string;
   value: string | number;
   variation?: number | null;
-  invertVariation?: boolean; // true = negative is good (e.g. losses)
+  invertVariation?: boolean;
   icon?: React.ReactNode;
   subtitle?: string;
+  size?: "sm" | "md" | "lg";
+  status?: "good" | "bad" | "neutral";
 }
 
-export function MetricCard({ label, value, variation, invertVariation, icon, subtitle }: MetricCardProps) {
+export function MetricCard({ label, value, variation, invertVariation, icon, subtitle, size = "md", status }: MetricCardProps) {
   const isPositive = variation !== null && variation !== undefined && variation > 0;
   const isNegative = variation !== null && variation !== undefined && variation < 0;
   const isGood = invertVariation ? isNegative : isPositive;
   const isBad = invertVariation ? isPositive : isNegative;
 
+  const sizeClasses = {
+    sm: "p-3",
+    md: "p-4",
+    lg: "p-5",
+  };
+
+  const valueClasses = {
+    sm: "text-lg font-bold",
+    md: "text-xl font-bold",
+    lg: "text-3xl font-extrabold",
+  };
+
+  const labelClasses = {
+    sm: "text-[10px]",
+    md: "text-xs",
+    lg: "text-xs font-medium",
+  };
+
+  const statusBorder = status === "good"
+    ? "border-l-emerald-500/50 border-l-2"
+    : status === "bad"
+    ? "border-l-red-500/50 border-l-2"
+    : "";
+
   return (
-    <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 flex flex-col gap-1">
+    <div className={cn(
+      "bg-[#1e1e22] border border-[#2a2a2e] rounded-xl flex flex-col gap-1",
+      sizeClasses[size],
+      statusBorder,
+    )}>
       <div className="flex items-center justify-between">
-        <span className="text-xs text-slate-400 truncate">{label}</span>
+        <span className={cn("text-slate-400 truncate", labelClasses[size])}>{label}</span>
         {icon && <span className="text-slate-500">{icon}</span>}
       </div>
-      <span className="text-xl font-bold text-white truncate">{value}</span>
+      <span className={cn("text-white truncate", valueClasses[size])}>{value}</span>
       <div className="flex items-center gap-1 min-h-[20px]">
         {variation !== null && variation !== undefined ? (
           <>
