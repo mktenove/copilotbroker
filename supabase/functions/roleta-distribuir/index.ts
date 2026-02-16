@@ -135,6 +135,19 @@ Deno.serve(async (req) => {
       motivo: motivo,
     });
 
+    // 6b. Register in lead timeline
+    const { data: assignedBroker } = await supabase
+      .from("brokers")
+      .select("name")
+      .eq("id", assignedBrokerId)
+      .single();
+
+    await supabase.from("lead_interactions").insert({
+      lead_id: lead_id,
+      interaction_type: statusDistribuicao === "fallback_lider" ? "roleta_fallback" : "roleta_atribuicao",
+      notes: `Atribuído via roleta para ${assignedBroker?.name || "corretor"}. ${motivo}`,
+    });
+
     // 7. Create notification for the assigned broker
     const { data: brokerData } = await supabase
       .from("brokers")
