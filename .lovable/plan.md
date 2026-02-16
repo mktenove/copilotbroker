@@ -1,23 +1,33 @@
 
 
-# Corrigir safe area na pagina do Lead
+# Corrigir painel de notificacoes
 
-## Problema
-A pagina dedicada do Lead (`/corretor/lead/:id`) nao recebeu a classe `pt-safe` no header sticky, fazendo com que o nome do lead, botao de voltar e barra de progresso do funil fiquem sobrepostos a barra de status do iPhone (bateria, wifi, horario).
+## Problemas identificados
 
-## Alteracao
+1. **Contador nao zera ao abrir**: Quando o usuario clica no sino, o contador de notificacoes nao lidas permanece visivel. O correto e marcar todas como lidas automaticamente ao abrir o painel.
 
-**Arquivo:** `src/pages/LeadPage.tsx`
+2. **Notificacoes cortadas / mal exibidas**: O `ScrollArea` tem `max-h-80` (320px) fixo, que e muito pequeno especialmente no mobile. Alem disso, no modo inline (usado na Sheet mobile), o container tem altura limitada que pode cortar o conteudo.
 
-Adicionar a classe `pt-safe` ao header sticky (linha 304):
+## Alteracoes
 
-```
-// De:
-<div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22]">
+### 1. `src/components/admin/NotificationPanel.tsx`
 
-// Para:
-<div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22] pt-safe">
-```
+**Zerar contador ao abrir o sino:**
+- No `onOpenChange` do Popover, quando `isOpen` muda para `true`, chamar `markAllAsRead()` automaticamente
+- Isso garante que ao abrir e ver as notificacoes, o badge vermelho desaparece
 
-Isso utiliza a mesma classe utilitaria `pt-safe` (que usa `env(safe-area-inset-top)`) ja aplicada nos demais headers do projeto. Em dispositivos sem notch, nada muda.
+**Melhorar exibicao:**
+- Aumentar o `max-h-80` do ScrollArea para `max-h-[60vh]` no popover e `max-h-[70vh]` no inline, para aproveitar melhor a tela
+- Garantir que o container inline nao tenha restricoes de altura desnecessarias
+
+### 2. `src/components/admin/AdminLayout.tsx`
+
+- No Sheet mobile de notificacoes, remover restricoes de padding/overflow que possam estar cortando o conteudo do NotificationPanel inline
+
+## Resumo tecnico
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `NotificationPanel.tsx` | Chamar `markAllAsRead` no `onOpenChange(true)` do Popover; aumentar `max-h` do ScrollArea |
+| `AdminLayout.tsx` | Ajustar container do NotificationPanel inline no Sheet mobile |
 
