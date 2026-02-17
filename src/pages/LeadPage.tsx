@@ -419,7 +419,7 @@ export default function LeadPage() {
                         createdBy: (await supabase.auth.getUser()).data.user?.id,
                       });
                       const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-                      window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`, "_blank");
+                      window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`;
                       toast.success("Atendimento iniciado!");
                       setIniciarAtendimentoMsg("");
                       setIniciarAtendimentoOpen(false);
