@@ -293,7 +293,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
       const lead = leads.find(l => l.id === iniciarModal.leadId);
       if (lead) {
         const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-        window.open(`https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarModal.message)}`, '_blank');
+        window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarModal.message)}`;
       }
       setIniciarModal({ open: false, leadId: null, message: "" });
     }

@@ -390,7 +390,7 @@ export function LeadDetailSheet({ lead, isOpen, onClose, onUpdate, onStatusChang
                         reserva_expira_em: null,
                       });
                       toast.success("Atendimento iniciado!");
-                      window.open(`https://wa.me/55${cleanPhone}`, '_blank');
+                      window.location.href = `https://wa.me/55${cleanPhone}`;
                     }}
                   >
                     <Play className="w-3.5 h-3.5 mr-1.5" />
