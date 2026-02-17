@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { useWhatsAppInstance } from "@/hooks/use-whatsapp-instance";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
-import { Shield, AlertOctagon, ChevronDown } from "lucide-react";
+import { Shield, AlertOctagon, Check, Clock } from "lucide-react";
 import { DailyStatsChart } from "./DailyStatsChart";
 import { OptoutsList } from "./OptoutsList";
 import { ErrorLogsCard } from "./ErrorLogsCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function SecurityTab() {
   const { instance, togglePause, updateSettings } = useWhatsAppInstance();
@@ -17,22 +18,25 @@ export function SecurityTab() {
   const [dailyLimit, setDailyLimit] = useState(instance?.daily_limit || 150);
   const [workStart, setWorkStart] = useState(instance?.working_hours_start || "09:00");
   const [workEnd, setWorkEnd] = useState(instance?.working_hours_end || "21:00");
-  const [optoutsOpen, setOptoutsOpen] = useState(false);
 
+  // Fetch broker ID
   const { data: broker } = useQuery({
     queryKey: ["current-broker-security"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
+      
       const { data } = await supabase
         .from("brokers")
         .select("id")
         .eq("user_id", user.id)
         .single();
+      
       return data;
     },
   });
 
+  // Update local state when instance loads
   useEffect(() => {
     if (instance) {
       setHourlyLimit(instance.hourly_limit || 30);
@@ -57,57 +61,87 @@ export function SecurityTab() {
     });
   };
 
-  const isPaused = instance?.is_paused;
-
-  const rules = [
-    "Intervalo 60-240s",
-    "Máx. 2 links/msg",
-    "Deduplicação diária",
-    "Opt-out automático",
-    "Pausa em 5 erros",
-    `${workStart.slice(0, 5)}–${workEnd.slice(0, 5)}`,
-  ];
+  const warmupProgress = instance ? (instance.warmup_day / 14) * 100 : 0;
 
   return (
     <div className="space-y-6">
-      {/* Status Header */}
-      <div className="flex items-center justify-between pb-4 border-b border-[#2a2a2e]">
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isPaused ? "bg-red-500 animate-pulse" : "bg-green-500 animate-pulse"}`} />
-            <span className="text-sm font-medium text-slate-300">
-              {isPaused ? "Pausado" : "Protegido"}
+      {/* Kill Switch */}
+      <Card className={instance?.is_paused 
+        ? "bg-destructive/10 border-destructive/30" 
+        : "bg-[#1a1a1d] border-[#2a2a2e]"
+      }>
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <AlertOctagon className="w-5 h-5 text-destructive" />
+            Botão de Emergência
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-slate-400 mb-4">
+            {instance?.is_paused 
+              ? "Todos os envios estão pausados. Clique para retomar."
+              : "Pause imediatamente todos os envios em caso de problemas."
+            }
+          </p>
+          <Button
+            onClick={handleKillSwitch}
+            variant={instance?.is_paused ? "default" : "destructive"}
+            className={instance?.is_paused 
+              ? "bg-green-600 hover:bg-green-700" 
+              : ""
+            }
+          >
+            {instance?.is_paused ? "▶ Retomar Envios" : "⛔ PARAR TODOS OS ENVIOS"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Warmup Progress */}
+      <Card className="bg-gradient-to-r from-yellow-500/5 to-yellow-400/5 border-yellow-500/20">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            🔥 Aquecimento
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex justify-between text-sm">
+            <span className="text-slate-400">
+              Dia {instance?.warmup_day || 1} de 14
+            </span>
+            <span className="text-yellow-400">
+              {instance?.warmup_stage === "normal" ? "Completo" : "Em andamento"}
             </span>
           </div>
-          <span className="text-xs text-slate-500">
-            🔥 Dia {instance?.warmup_day || 1}/14
-          </span>
-        </div>
+          <Progress value={warmupProgress} className="h-2" />
+          <p className="text-xs text-slate-400">
+            O aquecimento gradual aumenta seus limites de envio ao longo de 14 dias para proteger seu número.
+          </p>
+        </CardContent>
+      </Card>
 
-        <Button
-          onClick={handleKillSwitch}
-          variant="ghost"
-          size="sm"
-          className={isPaused
-            ? "border border-green-500/20 text-green-400 hover:bg-green-500/10 hover:text-green-300 text-xs"
-            : "border border-red-500/20 text-red-400 hover:bg-red-500/10 hover:text-red-300 text-xs"
-          }
-        >
-          <AlertOctagon className="w-3.5 h-3.5 mr-1.5" />
-          {isPaused ? "Retomar" : "Parar envios"}
-        </Button>
-      </div>
+      {/* Daily Stats Chart */}
+      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
 
-      {/* Grid: Controls + Monitoring */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Controls */}
-        <div className="space-y-5">
-          <span className="text-sm font-medium text-slate-300">Limites de envio</span>
+      {/* Opt-outs List */}
+      <OptoutsList />
 
+      {/* Error Logs */}
+      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
+
+      {/* Limits Settings */}
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Clock className="w-5 h-5" />
+            Limites de Envio
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Hourly Limit */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-xs text-slate-500">Por hora</span>
-              <span className="text-xs text-slate-300 font-mono">{hourlyLimit}</span>
+              <span className="text-sm text-slate-400">Limite por hora</span>
+              <span className="text-sm text-white font-mono">{hourlyLimit}</span>
             </div>
             <Slider
               value={[hourlyLimit]}
@@ -115,15 +149,15 @@ export function SecurityTab() {
               min={10}
               max={60}
               step={5}
+              className="w-full"
             />
           </div>
 
-          <div className="border-t border-[#2a2a2e]" />
-
+          {/* Daily Limit */}
           <div className="space-y-3">
             <div className="flex justify-between">
-              <span className="text-xs text-slate-500">Por dia</span>
-              <span className="text-xs text-slate-300 font-mono">{dailyLimit}</span>
+              <span className="text-sm text-slate-400">Limite por dia</span>
+              <span className="text-sm text-white font-mono">{dailyLimit}</span>
             </div>
             <Slider
               value={[dailyLimit]}
@@ -131,75 +165,65 @@ export function SecurityTab() {
               min={30}
               max={300}
               step={10}
+              className="w-full"
             />
           </div>
 
-          <div className="border-t border-[#2a2a2e]" />
-
+          {/* Working Hours */}
           <div className="space-y-3">
-            <span className="text-xs text-slate-500">Horário de envio</span>
+            <span className="text-sm text-slate-400">Horário de envio</span>
             <div className="flex items-center gap-3">
               <Input
                 type="time"
                 value={workStart}
                 onChange={(e) => setWorkStart(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
+                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
               />
-              <span className="text-slate-600 text-xs">até</span>
+              <span className="text-slate-400 text-sm">até</span>
               <Input
                 type="time"
                 value={workEnd}
                 onChange={(e) => setWorkEnd(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
+                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
               />
             </div>
           </div>
 
-          <Button
+          <Button 
             onClick={handleSaveSettings}
-            variant="ghost"
-            size="sm"
-            className="border border-[#2a2a2e] text-slate-400 hover:text-slate-200 text-xs w-full"
+            className="w-full"
           >
-            Salvar
+            Salvar Configurações
           </Button>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* Right: Monitoring */}
-        <div className="space-y-4">
-          {broker?.id && <DailyStatsChart brokerId={broker.id} />}
-          {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
-        </div>
-      </div>
-
-      {/* Anti-spam rules as pills */}
-      <div className="pt-2 border-t border-[#2a2a2e]">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-3.5 h-3.5 text-slate-500" />
-          <span className="text-xs font-medium text-slate-400">Regras ativas</span>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {rules.map((rule, i) => (
-            <span
-              key={i}
-              className="bg-[#1e1e22] text-slate-400 text-xs px-3 py-1 rounded-full border border-[#2a2a2e]"
-            >
-              {rule}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      {/* Opt-outs collapsible */}
-      <Collapsible open={optoutsOpen} onOpenChange={setOptoutsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors w-full pt-2 border-t border-[#2a2a2e]">
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${optoutsOpen ? "rotate-180" : ""}`} />
-          Opt-outs
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3">
-          <OptoutsList />
-        </CollapsibleContent>
-      </Collapsible>
+      {/* Active Rules */}
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <Shield className="w-5 h-5 text-green-400" />
+            Regras Anti-Spam Ativas
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="space-y-2">
+            {[
+              "Intervalo 60-240s entre mensagens",
+              "Máx. 2 links por mensagem",
+              "Deduplicação (não repetir no mesmo dia)",
+              "Opt-out automático por palavras-chave",
+              "Pausa em 5 erros consecutivos",
+              `Horário de envio: ${workStart.slice(0, 5)} - ${workEnd.slice(0, 5)}`,
+            ].map((rule, i) => (
+              <li key={i} className="flex items-center gap-2 text-sm">
+                <Check className="w-4 h-4 text-green-400 shrink-0" />
+                <span className="text-slate-400">{rule}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
     </div>
   );
 }
