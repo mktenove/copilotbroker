@@ -62,6 +62,35 @@ export function AutoMessageRuleEditor({
   const [projectId, setProjectId] = useState<string>("all");
   const [messageContent, setMessageContent] = useState(DEFAULT_AUTO_MESSAGE);
   const [delayMinutes, setDelayMinutes] = useState(2);
+  const [checkingConflict, setCheckingConflict] = useState(false);
+  const [hasCadenciaConflict, setHasCadenciaConflict] = useState(false);
+
+  const checkConflict = async (pid: string) => {
+    if (!brokerId) return;
+    setCheckingConflict(true);
+    try {
+      let query = (supabase.from("broker_auto_cadencia_rules") as any)
+        .select("id")
+        .eq("broker_id", brokerId)
+        .eq("is_active", true);
+      if (pid !== "all") {
+        query = query.or(`project_id.eq.${pid},project_id.is.null`);
+      } else {
+        query = query.is("project_id", null);
+      }
+      const { data } = await query.limit(1);
+      setHasCadenciaConflict(!!(data && data.length > 0));
+    } catch {
+      setHasCadenciaConflict(false);
+    } finally {
+      setCheckingConflict(false);
+    }
+  };
+
+  const handleProjectChange = (value: string) => {
+    setProjectId(value);
+    if (!editingRule) checkConflict(value);
+  };
 
   // Load projects on mount
   useEffect(() => {
@@ -110,10 +139,12 @@ export function AutoMessageRuleEditor({
       setProjectId(editingRule.project_id || "all");
       setMessageContent(editingRule.message_content);
       setDelayMinutes(editingRule.delay_minutes);
+      setHasCadenciaConflict(false);
     } else {
       setProjectId("all");
       setMessageContent(DEFAULT_AUTO_MESSAGE);
       setDelayMinutes(2);
+      if (isOpen && brokerId) checkConflict("all");
     }
   }, [editingRule, isOpen]);
 
@@ -181,7 +212,7 @@ export function AutoMessageRuleEditor({
             {/* Project Selection */}
             <div className="space-y-2">
               <Label className="text-slate-300">Empreendimento</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId} onValueChange={handleProjectChange}>
                 <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
                   <SelectValue placeholder="Selecione o empreendimento" />
                 </SelectTrigger>
@@ -197,9 +228,19 @@ export function AutoMessageRuleEditor({
                 </SelectContent>
               </Select>
               
+              {checkingConflict && (
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />Verificando conflitos...
+                </div>
+              )}
               {projectHasRule && (
                 <p className="text-xs text-red-400">
                   Já existe uma regra para este empreendimento
+                </p>
+              )}
+              {!editingRule && hasCadenciaConflict && !projectHasRule && (
+                <p className="text-xs text-red-400">
+                  Já existe uma Cadência 10D ativa para este empreendimento. Desative-a primeiro.
                 </p>
               )}
             </div>
@@ -283,7 +324,7 @@ export function AutoMessageRuleEditor({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSaving || !messageContent.trim() || projectHasRule}
+                disabled={isSaving || !messageContent.trim() || projectHasRule || hasCadenciaConflict || checkingConflict}
                 className="flex-1 min-h-[44px] sm:min-h-0"
               >
                 {isSaving ? (

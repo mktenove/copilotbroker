@@ -38,6 +38,36 @@ export function AutoCadenciaRuleEditor({
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [projectId, setProjectId] = useState<string>("all");
+  const [checkingConflict, setCheckingConflict] = useState(false);
+  const [hasFirstMessageConflict, setHasFirstMessageConflict] = useState(false);
+
+  const checkConflict = async (pid: string) => {
+    if (!brokerId) return;
+    setCheckingConflict(true);
+    try {
+      let query = supabase
+        .from("broker_auto_message_rules")
+        .select("id")
+        .eq("broker_id", brokerId)
+        .eq("is_active", true);
+      if (pid !== "all") {
+        query = query.or(`project_id.eq.${pid},project_id.is.null`);
+      } else {
+        query = query.is("project_id", null);
+      }
+      const { data } = await query.limit(1);
+      setHasFirstMessageConflict(!!(data && data.length > 0));
+    } catch {
+      setHasFirstMessageConflict(false);
+    } finally {
+      setCheckingConflict(false);
+    }
+  };
+
+  const handleProjectChange = (value: string) => {
+    setProjectId(value);
+    if (!editingRule) checkConflict(value);
+  };
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -65,8 +95,10 @@ export function AutoCadenciaRuleEditor({
   useEffect(() => {
     if (editingRule) {
       setProjectId(editingRule.project_id || "all");
+      setHasFirstMessageConflict(false);
     } else {
       setProjectId("all");
+      if (isOpen && brokerId) checkConflict("all");
     }
   }, [editingRule, isOpen]);
 
@@ -113,7 +145,7 @@ export function AutoCadenciaRuleEditor({
             {/* Project Selection */}
             <div className="space-y-2">
               <Label className="text-slate-300">Empreendimento</Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Select value={projectId} onValueChange={handleProjectChange}>
                 <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
                   <SelectValue placeholder="Selecione o empreendimento" />
                 </SelectTrigger>
@@ -128,8 +160,16 @@ export function AutoCadenciaRuleEditor({
                   ))}
                 </SelectContent>
               </Select>
+              {checkingConflict && (
+                <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <Loader2 className="w-3 h-3 animate-spin" />Verificando conflitos...
+                </div>
+              )}
               {projectHasRule && (
                 <p className="text-xs text-red-400">Já existe uma regra para este empreendimento</p>
+              )}
+              {!editingRule && hasFirstMessageConflict && !projectHasRule && (
+                <p className="text-xs text-red-400">Já existe uma 1ª Mensagem ativa para este empreendimento. Desative-a primeiro.</p>
               )}
             </div>
 
@@ -167,7 +207,7 @@ export function AutoCadenciaRuleEditor({
                 className="flex-1 border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e] min-h-[44px] sm:min-h-0">
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} disabled={isSaving || projectHasRule}
+              <Button onClick={handleSubmit} disabled={isSaving || projectHasRule || hasFirstMessageConflict || checkingConflict}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 min-h-[44px] sm:min-h-0">
                 {isSaving ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</>
