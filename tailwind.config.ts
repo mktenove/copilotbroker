@@ -145,9 +145,13 @@ export default {
           from: { opacity: "0", transform: "rotate(-5deg) scale(0.95)" },
           to: { opacity: "1", transform: "rotate(0) scale(1)" },
         },
-        expandWidth: {
+      expandWidth: {
           from: { width: "0", opacity: "0" },
           to: { width: "6rem", opacity: "1" },
+        },
+        "ring-pulse": {
+          "0%, 100%": { boxShadow: "0 0 0 2px rgba(52, 211, 153, 0.6)" },
+          "50%": { boxShadow: "0 0 0 2px rgba(52, 211, 153, 0.15)" },
         },
       },
       animation: {
@@ -168,6 +172,7 @@ export default {
         blur: "blur 0.8s ease-out forwards",
         "rotate-in": "rotateIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "expand-width": "expandWidth 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+        "ring-pulse": "ring-pulse 2s ease-in-out infinite",
       },
     },
   },
