@@ -27,6 +27,7 @@ import { VendaModal } from "./VendaModal";
 import { PerdaModal } from "./PerdaModal";
 import { NewCampaignSheet } from "@/components/whatsapp/NewCampaignSheet";
 import { supabase } from "@/integrations/supabase/client";
+import { cancelCadenciaForLead } from "@/hooks/use-cadencia-ativa";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -71,6 +72,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
   const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
+  const [cadenciaLeadIds, setCadenciaLeadIds] = useState<Set<string>>(new Set());
   const [localBrokers, setLocalBrokers] = useState<{ id: string; name: string; slug: string }[]>([]);
 
   // Modal states
@@ -177,6 +179,31 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     };
     fetchProjects();
   }, [isAdmin, brokerId]);
+
+  // Fetch cadencia-active lead IDs
+  useEffect(() => {
+    const fetchCadencias = async () => {
+      const { data } = await (supabase
+        .from("whatsapp_campaigns")
+        .select("lead_id") as any)
+        .eq("status", "running")
+        .not("lead_id", "is", null);
+      if (data) {
+        setCadenciaLeadIds(new Set(data.map((c: any) => c.lead_id).filter(Boolean)));
+      }
+    };
+    fetchCadencias();
+
+    // Subscribe to campaign changes
+    const channel = supabase
+      .channel("kanban-cadencias")
+      .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_campaigns" }, () => {
+        fetchCadencias();
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -322,6 +349,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const handleDispatchWhatsApp = (status: LeadStatus) => {
     setWhatsappPreselectedStatus(status);
     setWhatsappCampaignOpen(true);
+  };
+
+  const handleCancelCadencia = async (leadId: string) => {
+    await cancelCadenciaForLead(leadId);
+    setCadenciaLeadIds(prev => { const next = new Set(prev); next.delete(leadId); return next; });
   };
 
   return (

@@ -71,7 +71,7 @@ export function useWhatsAppCampaigns() {
       
       const { data, error } = await query;
       if (error) throw error;
-      return data as WhatsAppCampaign[];
+      return data as unknown as WhatsAppCampaign[];
     },
     enabled: role === "admin" || !!broker?.id,
   });
