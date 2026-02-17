@@ -14,7 +14,7 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "
 const OPTOUT_KEYWORDS = [
   "pare", "parar", "sair", "remover", "cancelar",
   "spam", "bloquear", "não quero", "nao quero",
-  "stop", "remove", "unsubscribe", "para", "chega"
+  "stop", "remove", "unsubscribe", "chega"
 ];
 
 const getSupabaseClient = () => createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
