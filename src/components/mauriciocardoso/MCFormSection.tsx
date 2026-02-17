@@ -86,6 +86,13 @@ const MCFormSection = ({ projectId, brokerId }: MCFormSectionProps) => {
         console.warn("Auto first message trigger failed:", err);
       });
 
+      // Trigger auto cadencia 10D (non-blocking)
+      supabase.functions.invoke("auto-cadencia-10d", {
+        body: { leadId },
+      }).catch((err) => {
+        console.warn("Auto cadencia trigger failed:", err);
+      });
+
       toast({
         title: "Cadastro realizado!",
         description: "Em breve você receberá nossas atualizações.",

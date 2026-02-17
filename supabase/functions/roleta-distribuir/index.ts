@@ -233,6 +233,21 @@ Deno.serve(async (req) => {
       console.error("WhatsApp notification failed (non-critical):", whatsappError);
     }
 
+    // 9. Trigger auto-cadencia-10d (non-blocking)
+    try {
+      await fetch(`${supabaseUrl}/functions/v1/auto-cadencia-10d`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseServiceKey}`,
+        },
+        body: JSON.stringify({ leadId: lead_id }),
+      });
+      console.log("Auto cadencia 10D triggered for lead:", lead_id);
+    } catch (cadenciaError) {
+      console.error("Auto cadencia trigger failed (non-critical):", cadenciaError);
+    }
+
     return new Response(JSON.stringify({ 
       success: true, 
       assigned_to: assignedBrokerId, 
