@@ -25,6 +25,7 @@ interface CadenciaSheetProps {
   projectName?: string;
   brokerName?: string;
   brokerId: string;
+  leadStatus?: string;
   onCreated?: () => void;
 }
 
@@ -97,6 +98,7 @@ export function CadenciaSheet({
   projectName,
   brokerName,
   brokerId,
+  leadStatus,
   onCreated,
 }: CadenciaSheetProps) {
   const [isCreating, setIsCreating] = useState(false);
@@ -210,6 +212,24 @@ export function CadenciaSheet({
 
       const { error: qErr } = await supabase.from("whatsapp_message_queue").insert(queueItems);
       if (qErr) throw qErr;
+
+      // Move lead to Atendimento if in Pré Atendimento
+      if (leadStatus === "new") {
+        await supabase.from("leads").update({
+          status: "info_sent" as any,
+          atendimento_iniciado_em: new Date().toISOString(),
+          status_distribuicao: "atendimento_iniciado" as any,
+        }).eq("id", leadId);
+
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          interaction_type: "atendimento_iniciado" as any,
+          old_status: "new" as any,
+          new_status: "info_sent" as any,
+          notes: "Lead movido para Atendimento ao ativar Cadência 10D",
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        });
+      }
 
       // Log interaction
       const stepsPreview = steps.map((s, i) => `Etapa ${i + 1} (${formatDelay(i === 0 ? 0 : s.delayMinutes)}): ${s.messageContent}`).join("\n");
