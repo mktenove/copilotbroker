@@ -108,16 +108,16 @@ export function TransferLeadDialog({
           </Select>
         </div>
 
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose} className="text-slate-400 hover:text-white hover:bg-[#2a2a2e]">
-            Cancelar
-          </Button>
+        <DialogFooter className="flex flex-col items-center gap-2 sm:flex-col sm:items-center">
           <Button
             onClick={handleTransfer}
             disabled={!selectedBrokerId || isTransferring}
-            className="bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 font-semibold"
+            className="bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 font-semibold w-full"
           >
             {isTransferring ? "Transferindo..." : "Confirmar Transferência"}
+          </Button>
+          <Button variant="ghost" onClick={onClose} className="text-slate-400 hover:text-white hover:bg-[#2a2a2e] w-full">
+            Cancelar
           </Button>
         </DialogFooter>
       </DialogContent>
