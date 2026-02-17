@@ -125,6 +125,15 @@ export function SecurityTab() {
         </div>
       </div>
 
+      {/* Daily Stats Chart */}
+      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
+
+      {/* Opt-outs List */}
+      <OptoutsList />
+
+      {/* Error Logs */}
+      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
+
       {/* Warmup Progress */}
       <Card className="bg-gradient-to-r from-yellow-500/5 to-yellow-400/5 border-yellow-500/20">
         <CardHeader>
@@ -147,15 +156,6 @@ export function SecurityTab() {
           </p>
         </CardContent>
       </Card>
-
-      {/* Daily Stats Chart */}
-      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
-
-      {/* Opt-outs List */}
-      <OptoutsList />
-
-      {/* Error Logs */}
-      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
 
       {/* Active Rules */}
       <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
