@@ -1,103 +1,81 @@
 
+# Corrigir Motor de Agendamento da Cadencia - Respeitar Janela de Envio
 
-# Fila de Envio - Layout Minimalista com Preview de Mensagem
+## Problema Atual
 
-## Objetivo
+Quando uma mensagem da cadencia e agendada para fora da janela permitida (ex: 23h), ela fica bloqueada ate as 9h do dia seguinte. Como todas as etapas sao calculadas com base no horario original (sem considerar a janela), varias mensagens vencem ao mesmo tempo e sao disparadas em lote as 9h.
 
-Transformar os cards da fila de envio em linhas compactas (single-line) que mostram o inicio da mensagem, com expand/collapse ao clicar para ver a mensagem completa e as acoes (cancelar/retry).
+## Solucao
+
+Implementar logica de ajuste de horario no momento do agendamento (tanto automatico quanto manual), e tambem no processador de fila para recalcular etapas futuras apos cada envio real.
 
 ## Alteracoes
 
-### Arquivo: `src/components/whatsapp/QueueTab.tsx`
+### 1. Edge Function: `supabase/functions/auto-cadencia-10d/index.ts`
 
-#### PendingMessageCard - De card multi-linha para linha compacta
+Adicionar funcao `adjustToWorkingHours` que:
+- Recebe um `Date` e a janela de horario (start/end) do corretor
+- Se o horario estiver dentro da janela, retorna como esta
+- Se estiver fora, move para o proximo horario valido (inicio da janela do mesmo dia se antes, ou inicio da janela do dia seguinte se depois)
 
-Layout atual (3 blocos verticais com padding generoso):
-```
-[Lead Name]                    [Badge]
-[Campaign]                     [HH:mm]
-─────────────────────────────────────
-                          [Cancelar]
-```
+Modificar o bloco de agendamento (linhas 233-253):
+- Buscar `working_hours_start` e `working_hours_end` da instancia do corretor (ja disponivel na query da linha 155)
+- Para cada etapa, apos calcular `scheduledTime`, aplicar `adjustToWorkingHours`
+- Usar o horario ajustado como base para calcular a proxima etapa (encadeamento sequencial)
+- Registrar no log quando houver ajuste
 
-Novo layout (linha unica, clicavel para expandir):
-```
-[HH:mm] [Lead Name] · "Ola, tudo bem? Go..."  [Badge]
-```
+### 2. Componente: `src/components/crm/CadenciaSheet.tsx`
 
-Ao clicar, expande para mostrar:
-```
-[HH:mm] [Lead Name] · "Ola, tudo bem? Go..."  [Badge]
-  Mensagem completa aqui com quebra de linha...
-  [Campanha: Nome]                    [Cancelar]
-```
+Mesma logica para ativacao manual:
+- Buscar `working_hours_start` e `working_hours_end` da instancia do corretor (adicionar query)
+- Aplicar `adjustToWorkingHours` em cada etapa ao agendar
+- Encadear cada etapa com base no horario ajustado da anterior
 
-#### HistoryMessageCard - Mesmo tratamento
+### 3. Edge Function: `supabase/functions/whatsapp-message-sender/index.ts`
 
-Layout compacto (linha unica):
-```
-[icon] [Lead Name] · "Ola, tudo bem?..."  [HH:mm] [Badge]
-```
+Adicionar logica de recalculo pos-envio:
+- Apos enviar com sucesso uma mensagem de campanha (com `step_number` e `campaign_id`), verificar se a proxima etapa precisa ser reagendada
+- Buscar a proxima mensagem agendada da mesma campanha
+- Recalcular seu `scheduled_at` com base no horario real de envio + delay da etapa + ajuste de janela
+- Registrar no log o recalculo com horario original e ajustado
 
-Ao clicar, expande para mostrar mensagem completa e botao de retry (se falhou).
+### Detalhes Tecnicos
 
-#### Implementacao tecnica
-
-1. Adicionar `useState` local em cada card para controlar `expanded` (true/false)
-2. Reduzir padding de `p-3` para `px-3 py-2`
-3. Colocar tudo em uma unica linha (flex row) no estado colapsado
-4. Truncar `message.message` nos primeiros ~40 caracteres com `...`
-5. Ao clicar no card (cursor-pointer), toggle expanded
-6. No estado expandido, mostrar mensagem completa + acoes abaixo
-7. Reduzir espaco entre cards de `space-y-2` para `space-y-1`
-
-#### Estrutura do card colapsado (Pending)
+#### Funcao `adjustToWorkingHours`
 
 ```text
-px-3 py-2 | flex items-center gap-2
-  [HH:mm texto slate-500]
-  [Lead name truncate]
-  [message preview slate-400 italic truncate]
-  [Badge]
+Entrada: scheduledDate, workingHoursStart (ex: "09:00"), workingHoursEnd (ex: "21:00")
+Saida: Date ajustado
+
+Logica (em BRT = UTC-3):
+1. Converter scheduledDate para BRT
+2. Extrair hora:minuto
+3. Se hora >= start E hora <= end: retornar sem alteracao
+4. Se hora > end: mover para start do DIA SEGUINTE
+5. Se hora < start: mover para start do MESMO DIA
+6. Converter de volta para UTC e retornar
 ```
 
-#### Estrutura expandida (Pending)
+#### Recalculo no message-sender (pos-envio)
 
+Apos enviar step N com sucesso:
+1. Buscar step N+1 na `whatsapp_message_queue` (mesma campaign, step_number = N+1, status = scheduled)
+2. Buscar `delay_minutes` do step N+1 na `campaign_steps`
+3. Calcular novo horario: `sent_at + delay_minutes`
+4. Aplicar `adjustToWorkingHours`
+5. Atualizar `scheduled_at` da mensagem N+1
+6. Registrar interacao no lead: "Proxima etapa reagendada de HH:mm para HH:mm (fora da janela permitida)"
+
+#### Log de ajuste
+
+Quando houver ajuste, registrar em `lead_interactions`:
 ```text
-px-3 py-2 | coluna
-  linha principal (mesma do colapsado)
-  div mt-2 pt-2 border-t
-    p texto completo da mensagem
-    flex justify-between
-      span campanha
-      botao cancelar
+interaction_type: "note_added"
+notes: "⏰ Etapa X reagendada: previsto HH:mm DD/MM → ajustado para HH:mm DD/MM (fora da janela permitida HH:mm-HH:mm)"
 ```
 
-#### Estrutura do card colapsado (History)
+### Arquivos modificados
 
-```text
-px-3 py-2 | flex items-center gap-2
-  [icon 4x4]
-  [Lead name truncate]
-  [message preview slate-400 italic truncate]
-  [HH:mm]
-  [Badge]
-```
-
-#### Estrutura expandida (History)
-
-```text
-px-3 py-2 | coluna
-  linha principal
-  div mt-2 pt-2 border-t
-    p texto completo / erro
-    botao retry (se falhou)
-```
-
-### Reducoes visuais
-
-- Icons de 5x5 para 4x4 nos history cards
-- Fonte do preview da mensagem: `text-xs text-slate-500 italic`
-- Espacamento entre cards: `space-y-1`
-- Sem `CardContent` wrapper nos stats (manter como esta)
-
+1. `supabase/functions/auto-cadencia-10d/index.ts` - agendamento inteligente na criacao
+2. `supabase/functions/whatsapp-message-sender/index.ts` - recalculo pos-envio
+3. `src/components/crm/CadenciaSheet.tsx` - agendamento inteligente na ativacao manual
