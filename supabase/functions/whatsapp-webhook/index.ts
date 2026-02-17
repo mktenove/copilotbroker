@@ -29,8 +29,26 @@ const detectOptout = (message: string): string | null => {
 
 const formatPhoneE164 = (phone: string): string => {
   const cleaned = phone.replace(/\D/g, "");
-  if (cleaned.startsWith("55")) return `+${cleaned}`;
-  if (cleaned.length === 11 || cleaned.length === 10) return `+55${cleaned}`;
+  
+  if (cleaned.startsWith("55")) {
+    // 55 + DDD(2) + 8 digits = 12 digits → missing 9th digit
+    if (cleaned.length === 12) {
+      const ddd = cleaned.substring(2, 4);
+      const number = cleaned.substring(4);
+      return `+55${ddd}9${number}`;
+    }
+    return `+${cleaned}`;
+  }
+  
+  // Local number: 10 digits (DDD + 8) → add 9th digit
+  if (cleaned.length === 10) {
+    const ddd = cleaned.substring(0, 2);
+    const number = cleaned.substring(2);
+    return `+55${ddd}9${number}`;
+  }
+  // 11 digits (DDD + 9 + 8) → already has 9th digit
+  if (cleaned.length === 11) return `+55${cleaned}`;
+  
   return `+${cleaned}`;
 };
 
