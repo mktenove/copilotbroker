@@ -89,6 +89,14 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
         <Badge variant={statusConfig.variant} className="text-[10px] flex-shrink-0">
           {statusConfig.label}
         </Badge>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-6 px-1.5 text-slate-400 hover:text-red-400 flex-shrink-0"
+          onClick={(e) => { e.stopPropagation(); onCancel(message.id); }}
+        >
+          <XCircle className="w-3.5 h-3.5" />
+        </Button>
       </div>
 
       {/* Expanded content */}
@@ -97,18 +105,7 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
           {message.message && (
             <p className="text-xs text-slate-300 whitespace-pre-wrap mb-2">{message.message}</p>
           )}
-          <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-500">{message.campaign?.name}</span>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 text-slate-400 hover:text-red-400 gap-1"
-              onClick={() => onCancel(message.id)}
-            >
-              <XCircle className="w-3.5 h-3.5" />
-              <span className="text-xs">Cancelar</span>
-            </Button>
-          </div>
+          <span className="text-xs text-slate-500">{message.campaign?.name}</span>
         </div>
       )}
     </div>
