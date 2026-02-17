@@ -1,43 +1,53 @@
 
 
-# Corrigir animacao de leads novos e cadencia ativa
+# Remover todas as pulsacoes rapidas restantes dentro do card
 
 ## Diagnostico
 
-Ha dois locais no KanbanCard que aplicam animacoes verdes:
+A configuracao da borda (`animate-ring-pulse` com 4s) esta correta. O problema e que **dentro do card** ainda existem elementos usando `animate-pulse` padrao do Tailwind (que pulsa a opacidade inteira do elemento a cada 2s):
 
-1. **Linha 166 - Lead Novo** (`isNew`): Usa `animate-pulse` padrao do Tailwind, que anima a **opacidade do card inteiro** a cada 2s. Esse e o que voce esta vendo piscar rapido.
-2. **Linha 167 - Cadencia Ativa** (`hasCadenciaAtiva && !isNew`): Usa nosso `animate-ring-pulse` customizado com 4s. Esse so e aplicado quando o lead NAO e novo.
+1. **Linha 221** - O indicador de alerta "!" vermelho usa `animate-pulse`
+2. **Linha 228** - O ponto verde da cadencia ativa usa `animate-pulse`
 
-Como o lead provavelmente esta na coluna "Pre Atendimento" (status `new`), ele entra no caso 1 e ignora o caso 2.
+Esses dois elementos piscando rapidamente dentro do card dao a impressao de que o card todo ainda esta pulsando rapido.
 
 ## Solucao
 
-Aplicar a mesma tecnica de animacao por `box-shadow` para o lead novo tambem, usando duracao de 4s.
+Remover ou substituir o `animate-pulse` desses elementos internos por algo mais sutil e lento.
 
-### Alteracao no KanbanCard.tsx
+## Alteracoes
 
-Substituir a linha 166:
+### KanbanCard.tsx
 
-De:
+**Linha 221** - Indicador de alerta "!" (ponto vermelho):
+- Remover `animate-pulse` — o ponto vermelho ja e visivel o suficiente sem animacao
+
+**Linha 228** - Ponto verde da cadencia:
+- Trocar `animate-pulse` por uma animacao mais lenta usando o mesmo timing de 4s
+- Alternativa: usar uma classe customizada que pulsa a opacidade de forma lenta
+
+### tailwind.config.ts
+
+Adicionar um novo keyframe `dot-pulse` para o ponto verde, com duracao de 4s:
+
 ```text
-isNew && "ring-2 ring-emerald-400/60 animate-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]"
+"dot-pulse": {
+  "0%, 100%": { opacity: "1" },
+  "50%": { opacity: "0.3" },
+}
 ```
 
-Para:
+E a animacao correspondente:
+
 ```text
-isNew && "animate-ring-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]"
+"dot-pulse": "dot-pulse 4s ease-in-out infinite"
 ```
 
-Isso faz o lead novo usar a mesma animacao lenta de borda (4s), mantendo o glow verde sutil por baixo.
+## Resumo das mudancas
 
-### Nenhuma alteracao no tailwind.config.ts
-
-O keyframe `ring-pulse` ja esta configurado corretamente com 4s.
-
-## Arquivo afetado
-
-| Acao | Arquivo |
-|------|---------|
-| Editar | `src/components/crm/KanbanCard.tsx` (linha 166) |
+| Arquivo | Linha | Mudanca |
+|---------|-------|---------|
+| tailwind.config.ts | keyframes + animation | Adicionar `dot-pulse` com 4s |
+| KanbanCard.tsx | 221 | Remover `animate-pulse` do "!" vermelho |
+| KanbanCard.tsx | 228 | Trocar `animate-pulse` por `animate-dot-pulse` |
 
