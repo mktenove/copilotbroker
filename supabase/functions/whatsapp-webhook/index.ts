@@ -105,6 +105,7 @@ interface UAZAPIv2Payload {
     timestamp?: number;
     pushName?: string;
     status?: string;
+    sender_pn?: string;
   };
   // Legacy fields (kept for backwards compat)
   event?: string;
@@ -159,8 +160,17 @@ app.post("/", async (c) => {
         return c.json({ success: true, event: "messages", skipped: "group_jid" }, 200, corsHeaders);
       }
 
-      const phone = extractPhoneFromChatId(chatid);
+      let phone = extractPhoneFromChatId(chatid);
+      
+      // Fallback: if chatid is in LID format, use sender_pn for real phone number
+      if (chatid.includes("@lid") && msg.sender_pn) {
+        const fallbackPhone = extractPhoneFromChatId(msg.sender_pn);
+        console.log(`📱 LID fallback: chatid="${chatid}" → sender_pn="${msg.sender_pn}" → phone="${fallbackPhone}"`);
+        phone = fallbackPhone;
+      }
+      
       const messageText = msg.text || "";
+      console.log(`📞 Incoming DM: chatid="${chatid}" | phone="${phone}" | text="${messageText.substring(0, 50)}"`);
 
       // ===== STEP 1: ALWAYS process follow-up cancellation (text OR media) =====
       const { data: recentMessages } = await supabase
