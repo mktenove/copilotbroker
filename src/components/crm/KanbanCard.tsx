@@ -218,14 +218,14 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
               </Tooltip>
             </TooltipProvider>
             {isStale && (
-              <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">!</span>
+              <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full">!</span>
             )}
             {hasCadenciaAtiva && (
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-dot-pulse" />
                       <button
                         onClick={(e) => { e.stopPropagation(); onCancelCadencia?.(lead.id); }}
                         className="p-0.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
