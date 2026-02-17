@@ -72,6 +72,15 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   registered: null,
 };
 
+// Stable animation style to prevent re-render resets
+const RING_PULSE_STYLE: React.CSSProperties = {
+  animation: "ring-pulse 4s ease-in-out infinite",
+};
+const RING_PULSE_GLOW_STYLE: React.CSSProperties = {
+  animation: "ring-pulse 4s ease-in-out infinite",
+  boxShadow: "0 0 20px rgba(52,211,153,0.3)",
+};
+
 export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
   const isMobile = useIsMobile();
   const actionConfig = ACTION_CONFIG[lead.status];
@@ -85,10 +94,16 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
     isDragging
   } = useSortable({ id: lead.id, disabled: isMobile });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition
-  };
+  const shouldAnimate = isNew || (hasCadenciaAtiva && !isNew);
+  const animationStyle = useMemo(() => {
+    const base: React.CSSProperties = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    if (isNew) return { ...base, ...RING_PULSE_GLOW_STYLE };
+    if (hasCadenciaAtiva) return { ...base, ...RING_PULSE_STYLE };
+    return base;
+  }, [transform, transition, isNew, hasCadenciaAtiva]);
 
   const timeSinceInteraction = useMemo(() => {
     const date = lead.last_interaction_at ? new Date(lead.last_interaction_at) : new Date(lead.created_at);
@@ -151,7 +166,7 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
   return (
     <div
       ref={setNodeRef}
-      style={style}
+      style={animationStyle}
       {...(isMobile ? {} : { ...attributes, ...listeners })}
       onClick={onClick}
       className={cn(
@@ -163,8 +178,7 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
         "group overflow-hidden",
         isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
         isStale && !hasCadenciaAtiva && "ring-2 ring-red-400/50",
-        isNew && "animate-ring-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)] will-change-[box-shadow]",
-        hasCadenciaAtiva && !isNew && "animate-ring-pulse will-change-[box-shadow]"
+        isNew && "shadow-[0_0_20px_rgba(52,211,153,0.3)]",
       )}
     >
       <div className="p-3">
