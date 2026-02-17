@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { WhatsAppMessageQueue, QueueStatus, getRandomInterval } from "@/types/whatsapp";
@@ -53,15 +54,79 @@ export function useWhatsAppQueue() {
       return data as WhatsAppMessageQueue[];
     },
     enabled: !!broker?.id,
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
+
+  // Fetch replies count from whatsapp_lead_replies
+  const { data: repliesCount = 0 } = useQuery({
+    queryKey: ["whatsapp-replies-count", broker?.id],
+    queryFn: async () => {
+      if (!broker?.id) return 0;
+
+      // Get broker's campaign IDs
+      const { data: campaigns } = await supabase
+        .from("whatsapp_campaigns")
+        .select("id")
+        .eq("broker_id", broker.id);
+
+      if (!campaigns || campaigns.length === 0) return 0;
+
+      const campaignIds = campaigns.map(c => c.id);
+
+      const { count, error } = await supabase
+        .from("whatsapp_lead_replies")
+        .select("*", { count: "exact", head: true })
+        .in("campaign_id", campaignIds);
+
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!broker?.id,
+    refetchInterval: 30000,
+  });
+
+  // Realtime subscriptions
+  useEffect(() => {
+    if (!broker?.id) return;
+
+    const channel = supabase
+      .channel(`whatsapp-queue-realtime-${broker.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "whatsapp_message_queue",
+          filter: `broker_id=eq.${broker.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue", broker.id] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "whatsapp_lead_replies",
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["whatsapp-replies-count", broker.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [broker?.id, queryClient]);
 
   // Calculate stats
   const stats: QueueStats = {
     queued: queue.filter(m => m.status === "queued" || m.status === "scheduled").length,
     sent: queue.filter(m => m.status === "sent").length,
     failed: queue.filter(m => m.status === "failed").length,
-    replies: 0, // This would come from a separate table or campaign stats
+    replies: repliesCount,
   };
 
   // Calculate next send countdown
