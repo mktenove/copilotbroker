@@ -11,6 +11,7 @@ import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
 import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
 import { CadenciaSheet } from "@/components/crm/CadenciaSheet";
+import { TransferLeadDialog } from "@/components/crm/TransferLeadDialog";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { usePropostas } from "@/hooks/use-propostas";
@@ -811,6 +812,15 @@ export default function LeadPage() {
         brokerId={lead.broker?.id || ""}
         leadStatus={lead.status}
         onCreated={refreshLead}
+      />
+      <TransferLeadDialog
+        leadId={lead.id}
+        leadName={lead.name}
+        currentBrokerId={lead.broker?.id}
+        brokers={allBrokers}
+        isOpen={transferOpen}
+        onClose={() => setTransferOpen(false)}
+        onTransferred={refreshLead}
       />
     </div>
   );
