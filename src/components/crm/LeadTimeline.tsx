@@ -50,6 +50,32 @@ const AUTOMATION_TYPES = new Set([
   "notification", "roleta_atribuicao", "roleta_timeout", "roleta_fallback"
 ]);
 
+// Helper to detect cadência step notes
+function isCadenciaNote(notes?: string | null): boolean {
+  return !!notes && notes.startsWith("📤 Cadência");
+}
+
+// Helper to extract broker name from "Atendimento iniciado por X" notes
+function extractBrokerFromNotes(notes?: string | null): string | null {
+  if (!notes) return null;
+  const match = notes.match(/(?:iniciado|ativada?) por (.+?)$/i) 
+    || notes.match(/Cadência 10D por (.+?)$/i);
+  return match ? match[1] : null;
+}
+
+// Format time interval between two dates
+function formatTimeInterval(laterDate: string, earlierDate: string): string | null {
+  const diffMs = new Date(laterDate).getTime() - new Date(earlierDate).getTime();
+  if (diffMs < 3600_000) return null; // less than 1h, skip
+
+  const diffMinutes = Math.floor(diffMs / 60_000);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffDays > 0) return `${diffDays}d depois`;
+  return `${diffHours}h depois`;
+}
+
 export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attribution, createdAt, brokerName }: LeadTimelineProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
@@ -79,87 +105,130 @@ export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attri
       <div className="absolute left-[11px] top-3 bottom-3 w-px bg-gradient-to-b from-[#2a2a2e] via-[#1e1e22] to-transparent" />
 
       <div className="space-y-1">
-        {interactions.map((interaction) => {
-          const meta = INTERACTION_META[interaction.interaction_type] || {
+        {interactions.map((interaction, index) => {
+          const isCadencia = isCadenciaNote(interaction.notes);
+          const brokerFromNotes = interaction.interaction_type === "atendimento_iniciado"
+            ? extractBrokerFromNotes(interaction.notes)
+            : null;
+
+          // Override meta for cadência steps
+          const baseMeta = INTERACTION_META[interaction.interaction_type] || {
             icon: Clock, label: interaction.interaction_type, color: "text-slate-400", dotColor: "bg-slate-500", isHighlight: false
           };
+          
+          const meta = isCadencia ? {
+            ...baseMeta,
+            icon: Zap,
+            color: "text-emerald-400",
+            dotColor: "bg-emerald-500",
+            isHighlight: true,
+          } : baseMeta;
+
           const Icon = meta.icon;
           const isAuto = AUTOMATION_TYPES.has(interaction.interaction_type);
           const isExpanded = expandedIds.has(interaction.id);
           const hasDetails = !!interaction.notes || (interaction.old_status && interaction.new_status);
 
+          // Time interval from next item (interactions are desc order)
+          const nextInteraction = interactions[index + 1];
+          const timeInterval = nextInteraction
+            ? formatTimeInterval(interaction.created_at, nextInteraction.created_at)
+            : null;
+
           return (
-            <div
-              key={interaction.id}
-              className={cn(
-                "relative pl-8 py-2 group cursor-pointer rounded-lg transition-colors",
-                meta.isHighlight ? "hover:bg-[#1a1a1e]" : "hover:bg-[#141417]"
+            <div key={interaction.id}>
+              {/* Time interval indicator */}
+              {timeInterval && (
+                <div className="flex items-center gap-2 py-0.5 pl-6">
+                  <div className="w-3 border-t border-dashed border-[#2a2a2e]" />
+                  <span className="text-[9px] text-slate-600 font-medium tracking-wide uppercase">{timeInterval}</span>
+                </div>
               )}
-              onClick={() => hasDetails && toggleExpand(interaction.id)}
-            >
-              {/* Dot */}
-              <div className={cn(
-                "absolute left-1.5 top-3.5 w-[9px] h-[9px] rounded-full ring-2 ring-[#111114] transition-all",
-                meta.dotColor,
-                meta.isHighlight && "ring-[3px] shadow-[0_0_6px_rgba(250,204,21,0.2)]"
-              )} />
 
-              {/* Content */}
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  {isAuto && (
-                    <span className="shrink-0 text-[8px] font-bold uppercase tracking-widest text-slate-600 bg-[#1a1a1e] px-1.5 py-0.5 rounded">
-                      Auto
+              <div
+                className={cn(
+                  "relative pl-8 py-2 group cursor-pointer rounded-lg transition-colors",
+                  meta.isHighlight ? "hover:bg-[#1a1a1e]" : "hover:bg-[#141417]"
+                )}
+                onClick={() => hasDetails && toggleExpand(interaction.id)}
+              >
+                {/* Dot */}
+                <div className={cn(
+                  "absolute left-1.5 top-3.5 w-[9px] h-[9px] rounded-full ring-2 ring-[#111114] transition-all",
+                  meta.dotColor,
+                  meta.isHighlight && "ring-[3px] shadow-[0_0_6px_rgba(250,204,21,0.2)]"
+                )} />
+
+                {/* Content */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {isAuto && (
+                      <span className="shrink-0 text-[8px] font-bold uppercase tracking-widest text-slate-600 bg-[#1a1a1e] px-1.5 py-0.5 rounded">
+                        Auto
+                      </span>
+                    )}
+                    {isCadencia && (
+                      <span className="shrink-0 text-[8px] font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-1.5 py-0.5 rounded">
+                        Cadência
+                      </span>
+                    )}
+                    <Icon className={cn("w-3 h-3 shrink-0", meta.color)} />
+                    <span className={cn(
+                      "text-xs font-medium truncate",
+                      meta.isHighlight ? meta.color : "text-slate-300"
+                    )}>
+                      {isCadencia
+                        ? (interaction.notes?.match(/Etapa \d+/)?.[0] || "Cadência 10D")
+                        : meta.label}
                     </span>
-                  )}
-                  <Icon className={cn("w-3 h-3 shrink-0", meta.color)} />
-                  <span className={cn(
-                    "text-xs font-medium truncate",
-                    meta.isHighlight ? meta.color : "text-slate-300"
-                  )}>
-                    {meta.label}
+                    {/* Broker name inline for atendimento_iniciado */}
+                    {brokerFromNotes && (
+                      <span className="text-[10px] text-emerald-500/80 font-medium truncate">
+                        por {brokerFromNotes}
+                      </span>
+                    )}
+                    {hasDetails && (
+                      isExpanded
+                        ? <ChevronUp className="w-3 h-3 text-slate-600 shrink-0" />
+                        : <ChevronDown className="w-3 h-3 text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    )}
+                  </div>
+                  <span className="text-[10px] text-slate-600 tabular-nums shrink-0">
+                    {new Date(interaction.created_at).toLocaleDateString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+                    })}
                   </span>
-                  {hasDetails && (
-                    isExpanded
-                      ? <ChevronUp className="w-3 h-3 text-slate-600 shrink-0" />
-                      : <ChevronDown className="w-3 h-3 text-slate-600 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  )}
                 </div>
-                <span className="text-[10px] text-slate-600 tabular-nums shrink-0">
-                  {new Date(interaction.created_at).toLocaleDateString("pt-BR", {
-                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-                  })}
-                </span>
-              </div>
 
-              {/* Expanded details */}
-              {isExpanded && hasDetails && (
-                <div className="mt-2 ml-5 space-y-1.5 animate-fade-in">
-                  {interaction.old_status && interaction.new_status && (
-                    <div className="flex items-center gap-2 text-xs">
-                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", 
-                        STATUS_CONFIG[interaction.old_status]?.bgColor, 
-                        STATUS_CONFIG[interaction.old_status]?.color
-                      )}>
-                        {STATUS_CONFIG[interaction.old_status]?.label}
-                      </span>
-                      <ArrowRight className="w-3 h-3 text-slate-600" />
-                      <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium",
-                        STATUS_CONFIG[interaction.new_status]?.bgColor,
-                        STATUS_CONFIG[interaction.new_status]?.color
-                      )}>
-                        {STATUS_CONFIG[interaction.new_status]?.label}
-                      </span>
-                    </div>
-                  )}
-                  {interaction.notes && (
-                    <p className="text-xs text-slate-500 leading-relaxed">{interaction.notes}</p>
-                  )}
-                  {interaction.channel && (
-                    <p className="text-[10px] text-slate-600">Canal: {interaction.channel}</p>
-                  )}
-                </div>
-              )}
+                {/* Expanded details */}
+                {isExpanded && hasDetails && (
+                  <div className="mt-2 ml-5 space-y-1.5 animate-fade-in">
+                    {interaction.old_status && interaction.new_status && (
+                      <div className="flex items-center gap-2 text-xs">
+                        <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium", 
+                          STATUS_CONFIG[interaction.old_status]?.bgColor, 
+                          STATUS_CONFIG[interaction.old_status]?.color
+                        )}>
+                          {STATUS_CONFIG[interaction.old_status]?.label}
+                        </span>
+                        <ArrowRight className="w-3 h-3 text-slate-600" />
+                        <span className={cn("px-2 py-0.5 rounded-md text-[10px] font-medium",
+                          STATUS_CONFIG[interaction.new_status]?.bgColor,
+                          STATUS_CONFIG[interaction.new_status]?.color
+                        )}>
+                          {STATUS_CONFIG[interaction.new_status]?.label}
+                        </span>
+                      </div>
+                    )}
+                    {interaction.notes && (
+                      <p className="text-xs text-slate-500 leading-relaxed whitespace-pre-line break-words">{interaction.notes}</p>
+                    )}
+                    {interaction.channel && (
+                      <p className="text-[10px] text-slate-600">Canal: {interaction.channel}</p>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}
@@ -190,32 +259,46 @@ export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attri
             detail = detail ? `${detail} · por ${brokerName}` : `por ${brokerName}`;
           }
 
-          return (
-            <div className="relative pl-8 py-2.5 rounded-lg bg-[#12121a] border border-[#1e1e22] mt-1">
-              {/* Dot */}
-              <div className={cn(
-                "absolute left-1.5 top-4 w-[9px] h-[9px] rounded-full ring-[3px] ring-[#12121a]",
-                dotColor, "shadow-[0_0_8px_rgba(168,85,247,0.15)]"
-              )} />
+          // Time interval from last interaction to creation
+          const lastInteraction = interactions[interactions.length - 1];
+          const originInterval = lastInteraction
+            ? formatTimeInterval(lastInteraction.created_at, createdAt)
+            : null;
 
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                  <OriginIcon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
-                  <span className={cn("text-xs font-semibold", iconColor)}>
-                    {leadOrigin ? originLabel : "Origem não identificada"}
+          return (
+            <>
+              {originInterval && (
+                <div className="flex items-center gap-2 py-0.5 pl-6">
+                  <div className="w-3 border-t border-dashed border-[#2a2a2e]" />
+                  <span className="text-[9px] text-slate-600 font-medium tracking-wide uppercase">{originInterval}</span>
+                </div>
+              )}
+              <div className="relative pl-8 py-2.5 rounded-lg bg-[#12121a] border border-[#1e1e22] mt-1">
+                {/* Dot */}
+                <div className={cn(
+                  "absolute left-1.5 top-4 w-[9px] h-[9px] rounded-full ring-[3px] ring-[#12121a]",
+                  dotColor, "shadow-[0_0_8px_rgba(168,85,247,0.15)]"
+                )} />
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <OriginIcon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
+                    <span className={cn("text-xs font-semibold", iconColor)}>
+                      {leadOrigin ? originLabel : "Origem não identificada"}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-slate-600 tabular-nums shrink-0">
+                    {new Date(createdAt).toLocaleDateString("pt-BR", {
+                      day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+                    })}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-600 tabular-nums shrink-0">
-                  {new Date(createdAt).toLocaleDateString("pt-BR", {
-                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
-                  })}
-                </span>
-              </div>
 
-              {detail && (
-                <p className="mt-1 ml-5.5 text-[11px] text-slate-500 break-words">{detail}</p>
-              )}
-            </div>
+                {detail && (
+                  <p className="mt-1 ml-5.5 text-[11px] text-slate-500 break-words">{detail}</p>
+                )}
+              </div>
+            </>
           );
         })()}
       </div>

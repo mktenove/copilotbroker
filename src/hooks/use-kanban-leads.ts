@@ -294,6 +294,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
 
   const iniciarAtendimento = useCallback(async (leadId: string) => {
     try {
+      const user = (await supabase.auth.getUser()).data.user;
+      const { data: brokerData } = await supabase
+        .from("brokers").select("id, name").eq("user_id", user?.id ?? "").single();
+
       const now = new Date().toISOString();
       const { error } = await supabase
         .from("leads")
@@ -312,7 +316,9 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
         interaction_type: "atendimento_iniciado" as any,
         old_status: "new",
         new_status: "info_sent",
-        notes: "Atendimento iniciado pelo corretor",
+        broker_id: brokerData?.id,
+        notes: `Atendimento iniciado por ${brokerData?.name || "corretor"}`,
+        created_by: user?.id,
       });
 
       setLeads(prev => prev.map(l =>
