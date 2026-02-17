@@ -1,58 +1,81 @@
 
 
-# Diagnóstico: Follow-up enviado mesmo após resposta do lead
+# Diagnóstico e Correção: Respostas diretas nao detectadas
 
-## Problema identificado
+## Situacao atual
 
-O sistema de cancelamento de follow-ups **funciona corretamente no código**, mas **não está recebendo as respostas** porque a instância UAZAPI do Edinardo (`enove_edinardo`) não está enviando webhooks para o nosso endpoint.
+A configuracao do webhook na UAZAPI esta correta (URL, eventos, exclusoes). Os logs confirmam que:
+- Mensagens de **grupo** do `enove_edinardo` chegam ao webhook normalmente
+- Eventos de **status update** (Delivered, Read, Played) de outros corretores tambem chegam
+- A tabela `whatsapp_lead_replies` esta **vazia** -- nenhuma resposta direta foi registrada
+- Os 3 testes de campanha do Edinardo (phone +5551997010323) enviaram step 2 mesmo com `send_if_replied: false`
 
-### Evidências
+## Hipotese principal: formato LID no chatid
 
-- A tabela `whatsapp_lead_replies` está **completamente vazia** -- nenhuma resposta foi registrada desde a criação
-- Os logs do webhook mostram **apenas mensagens da instância `enove_leonardo`** (todas de grupo, que são corretamente ignoradas)
-- **Nenhum log do webhook contém o telefone `5551997010323`** (o telefone do teste do Edinardo)
-- A campanha de teste `18b52753` tinha step 2 com `send_if_replied: false`, mas foi enviada porque o sistema nunca soube que houve resposta
+Analisando os payloads da UAZAPI v2, cada mensagem traz dois identificadores:
+- `chatid`: pode ser `555XXXXXXXXX@s.whatsapp.net` OU `279246475915303@lid` (formato LID)
+- `sender_pn`: sempre o telefone real em formato `555XXXXXXXXX@s.whatsapp.net`
 
-### Causa raiz
+O codigo atual extrai o telefone APENAS do `chatid`. Se a UAZAPI enviar respostas diretas com chatid em formato LID, a extracao gera um numero invalido (`+279246475915303`) que nao casa com nenhum registro na fila, e o fluxo inteiro de cancelamento e ignorado silenciosamente.
 
-A instância `enove_edinardo` no painel da UAZAPI **não tem o Webhook URL configurado** (ou está configurado incorretamente). Sem isso, quando o lead responde no WhatsApp, a UAZAPI não notifica o nosso sistema, e todo o fluxo de cancelamento fica impossibilitado.
+## Hipotese secundaria: logs rotacionados
 
-## Solução
+Os testes foram feitos ha 3+ horas. Os logs de edge functions rotacionam rapidamente. E possivel que a resposta tenha chegado mas o log ja nao esteja disponivel. Porem, se tivesse sido processada corretamente, a tabela `whatsapp_lead_replies` teria um registro -- e esta vazia.
 
-### Passo 1: Configuração na UAZAPI (ação manual)
+## Correcoes propostas
 
-No painel da UAZAPI, para a instância `enove_edinardo`, configurar o Webhook URL:
+### 1. Fallback de extracao de telefone (whatsapp-webhook)
+
+Atualizar a funcao `extractPhoneFromChatId` e o processamento de mensagens para usar `sender_pn` como fallback quando o `chatid` nao esta em formato de telefone:
 
 ```text
-https://nckzxwxxtyeydolmdijn.supabase.co/functions/v1/whatsapp-webhook
+// Logica atualizada:
+1. Tentar extrair de chatid (formato @s.whatsapp.net)
+2. Se chatid for formato LID (@lid), usar sender_pn do payload
+3. Log de alerta quando fallback for usado
 ```
 
-Isso precisa ser feito **para todas as instâncias** que utilizam campanhas com follow-up. Recomendo verificar cada instância ativa:
-- enove_edinardo
-- enove_leonardo (já configurado)
-- Todas as demais instâncias listadas no sistema
+### 2. Logging diagnostico aprimorado
 
-### Passo 2: Melhoria no código (preventiva)
+Adicionar logs especificos para rastrear CADA resposta direta recebida:
+- Log do chatid original e phone extraido
+- Log se houve fallback para sender_pn
+- Log se encontrou ou nao mensagens enviadas correspondentes
 
-Adicionar um log de alerta no `whatsapp-message-sender` quando for enviar um step 2+ com `send_if_replied=false` e não encontrar nenhum registro no webhook para aquele telefone -- indicando que o webhook pode não estar configurado para a instância. Isso facilita a detecção futura desse problema.
+### 3. Tratamento do campo message no messages_update
 
-### Passo 3: Teste de validação
-
-Após configurar o webhook na UAZAPI:
-1. Enviar uma campanha de teste com 2 etapas (step 2 com "enviar somente se não respondeu")
-2. Responder ao step 1
-3. Verificar nos logs do webhook que a resposta foi recebida
-4. Confirmar que a tabela `whatsapp_lead_replies` foi populada
-5. Confirmar que o step 2 foi cancelado
+Os eventos `messages_update` da UAZAPI v2 usam um campo `event` (nao `message`). Atualmente o codigo ignora esses eventos silenciosamente. Embora nao sejam respostas, um log mais limpo evita confusao.
 
 ## Arquivos afetados
 
 | Acao | Arquivo |
 |------|---------|
-| Editar | `supabase/functions/whatsapp-message-sender/index.ts` (log de alerta) |
-| Manual | Painel UAZAPI: configurar webhook URL para instâncias |
+| Editar | `supabase/functions/whatsapp-webhook/index.ts` (fallback phone + logging) |
+| Deploy | whatsapp-webhook |
 
-## Resumo
+## Teste recomendado
 
-O código está correto. O problema é de **configuração externa**: as instâncias UAZAPI precisam ter o Webhook URL apontando para o nosso endpoint. Sem isso, as respostas dos leads nunca chegam ao sistema.
+Apos o deploy, o Edinardo deve:
+1. Enviar uma campanha com 2 etapas (step 2 com "enviar somente se nao respondeu", delay 5-10 min)
+2. Responder ao step 1 imediatamente
+3. Verificar nos logs se aparece o log de resposta com o telefone correto
+4. Confirmar que `whatsapp_lead_replies` foi populada
+5. Confirmar que step 2 foi cancelado (status "cancelled" na fila)
 
+## Detalhes tecnicos
+
+Mudanca principal no webhook:
+
+```text
+// ANTES (vulneravel a formato LID):
+const phone = extractPhoneFromChatId(chatid);
+
+// DEPOIS (com fallback):
+let phone = extractPhoneFromChatId(chatid);
+if (chatid.includes("@lid") && msg.sender_pn) {
+  phone = extractPhoneFromChatId(msg.sender_pn);
+  console.log("Used sender_pn fallback for phone extraction");
+}
+```
+
+Tambem adicionar `sender_pn` a interface `UAZAPIv2Payload.message`.
