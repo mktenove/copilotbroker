@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      auto_cadencia_steps: {
+        Row: {
+          created_at: string | null
+          delay_minutes: number
+          id: string
+          message_content: string
+          rule_id: string
+          send_if_replied: boolean
+          step_order: number
+        }
+        Insert: {
+          created_at?: string | null
+          delay_minutes?: number
+          id?: string
+          message_content: string
+          rule_id: string
+          send_if_replied?: boolean
+          step_order?: number
+        }
+        Update: {
+          created_at?: string | null
+          delay_minutes?: number
+          id?: string
+          message_content?: string
+          rule_id?: string
+          send_if_replied?: boolean
+          step_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_cadencia_steps_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "broker_auto_cadencia_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_activity_logs: {
         Row: {
           activity_type: string

@@ -129,7 +129,7 @@ export function AutoCadenciaSection() {
               </div>
 
               <p className="text-xs text-slate-500 mt-2">
-                7 etapas · Imediato até 10 dias
+                {rule.steps_count && rule.steps_count > 0 ? rule.steps_count : 7} etapas · Imediato até 10 dias
               </p>
             </div>
           ))}
