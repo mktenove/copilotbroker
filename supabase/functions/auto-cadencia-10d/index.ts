@@ -29,6 +29,54 @@ function formatPhoneE164(phone: string): string {
   return digits;
 }
 
+/**
+ * Adjusts a scheduled date to fit within working hours (BRT = UTC-3).
+ * If outside the window, moves to the next valid start time.
+ */
+function adjustToWorkingHours(
+  scheduledDate: Date,
+  workingHoursStart: string,
+  workingHoursEnd: string
+): { adjusted: Date; wasAdjusted: boolean } {
+  const BRT_OFFSET = -3;
+  const brtTime = new Date(scheduledDate.getTime() + BRT_OFFSET * 60 * 60 * 1000);
+
+  const [startH, startM] = workingHoursStart.split(":").map(Number);
+  const [endH, endM] = workingHoursEnd.split(":").map(Number);
+
+  const currentMinutes = brtTime.getUTCHours() * 60 + brtTime.getUTCMinutes();
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  // Within window — no adjustment needed
+  if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+    return { adjusted: scheduledDate, wasAdjusted: false };
+  }
+
+  // Build target BRT date at start of window
+  const targetBRT = new Date(brtTime);
+  targetBRT.setUTCHours(startH, startM, 0, 0);
+
+  if (currentMinutes > endMinutes) {
+    // Past end — move to start of NEXT day
+    targetBRT.setUTCDate(targetBRT.getUTCDate() + 1);
+  }
+  // If before start — targetBRT is already correct (same day)
+
+  // Convert back to UTC
+  const adjustedUTC = new Date(targetBRT.getTime() - BRT_OFFSET * 60 * 60 * 1000);
+  return { adjusted: adjustedUTC, wasAdjusted: true };
+}
+
+function formatBRT(date: Date): string {
+  const brt = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  const h = String(brt.getUTCHours()).padStart(2, "0");
+  const m = String(brt.getUTCMinutes()).padStart(2, "0");
+  const d = String(brt.getUTCDate()).padStart(2, "0");
+  const mo = String(brt.getUTCMonth() + 1).padStart(2, "0");
+  return `${h}:${m} ${d}/${mo}`;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -151,10 +199,10 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 6. Check broker WhatsApp instance
+    // 6. Check broker WhatsApp instance (also get working hours)
     const { data: instance } = await supabase
       .from("broker_whatsapp_instances")
-      .select("id, instance_token, status")
+      .select("id, instance_token, status, working_hours_start, working_hours_end")
       .eq("broker_id", lead.broker_id)
       .single();
 
@@ -164,6 +212,9 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const whStart = instance.working_hours_start || "09:00";
+    const whEnd = instance.working_hours_end || "21:00";
 
     // 7. Fetch custom steps from auto_cadencia_steps (or fallback to DEFAULT_STEPS)
     const { data: customSteps } = await supabase
@@ -230,9 +281,10 @@ Deno.serve(async (req) => {
 
     await supabase.from("campaign_steps").insert(stepsToInsert);
 
-    // 11. Schedule messages in queue
+    // 11. Schedule messages with working hours adjustment
     const phone = formatPhoneE164(lead.whatsapp);
     let scheduledTime = new Date(Date.now() + Math.floor(Math.random() * 30 + 15) * 1000);
+    const adjustmentLogs: string[] = [];
 
     const queueItems = stepsToUse.map((step, i) => {
       if (i > 0) {
@@ -240,6 +292,19 @@ Deno.serve(async (req) => {
           scheduledTime.getTime() + step.delayMinutes * 60 * 1000 + Math.floor(Math.random() * 60) * 1000
         );
       }
+
+      // Apply working hours adjustment
+      const originalTime = new Date(scheduledTime);
+      const { adjusted, wasAdjusted } = adjustToWorkingHours(scheduledTime, whStart, whEnd);
+      scheduledTime = adjusted; // Chain from adjusted time for next step
+
+      if (wasAdjusted) {
+        adjustmentLogs.push(
+          `⏰ Etapa ${i + 1} reagendada: previsto ${formatBRT(originalTime)} → ajustado para ${formatBRT(adjusted)} (fora da janela permitida ${whStart}-${whEnd})`
+        );
+        console.log(`Adjusted step ${i + 1}: ${originalTime.toISOString()} → ${adjusted.toISOString()}`);
+      }
+
       return {
         broker_id: lead.broker_id,
         campaign_id: campaign.id,
@@ -278,9 +343,18 @@ Deno.serve(async (req) => {
       notes: `⚡ Cadência 10D ativada automaticamente (${stepsToUse.length} etapas):\n\n${stepsPreview}`,
     });
 
-    console.log("Auto cadencia 10D activated for lead:", leadId, "broker:", lead.broker_id);
+    // 14. Log working hours adjustments if any
+    if (adjustmentLogs.length > 0) {
+      await supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "note_added",
+        notes: adjustmentLogs.join("\n"),
+      });
+    }
 
-    return new Response(JSON.stringify({ status: "activated", campaign_id: campaign.id }), {
+    console.log("Auto cadencia 10D activated for lead:", leadId, "broker:", lead.broker_id, "adjustments:", adjustmentLogs.length);
+
+    return new Response(JSON.stringify({ status: "activated", campaign_id: campaign.id, adjustments: adjustmentLogs.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
