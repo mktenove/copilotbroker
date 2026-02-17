@@ -140,6 +140,114 @@ const sendMessageViaUAZAPI = async (
   }
 };
 
+/**
+ * Adjusts a scheduled date to fit within working hours (BRT = UTC-3).
+ */
+function adjustToWorkingHours(
+  scheduledDate: Date,
+  workingHoursStart: string,
+  workingHoursEnd: string
+): { adjusted: Date; wasAdjusted: boolean } {
+  const BRT_OFFSET = -3;
+  const brtTime = new Date(scheduledDate.getTime() + BRT_OFFSET * 60 * 60 * 1000);
+
+  const [startH, startM] = workingHoursStart.split(":").map(Number);
+  const [endH, endM] = workingHoursEnd.split(":").map(Number);
+
+  const currentMinutes = brtTime.getUTCHours() * 60 + brtTime.getUTCMinutes();
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+
+  if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+    return { adjusted: scheduledDate, wasAdjusted: false };
+  }
+
+  const targetBRT = new Date(brtTime);
+  targetBRT.setUTCHours(startH, startM, 0, 0);
+
+  if (currentMinutes > endMinutes) {
+    targetBRT.setUTCDate(targetBRT.getUTCDate() + 1);
+  }
+
+  const adjustedUTC = new Date(targetBRT.getTime() - BRT_OFFSET * 60 * 60 * 1000);
+  return { adjusted: adjustedUTC, wasAdjusted: true };
+}
+
+function formatBRT(date: Date): string {
+  const brt = new Date(date.getTime() - 3 * 60 * 60 * 1000);
+  const h = String(brt.getUTCHours()).padStart(2, "0");
+  const m = String(brt.getUTCMinutes()).padStart(2, "0");
+  const d = String(brt.getUTCDate()).padStart(2, "0");
+  const mo = String(brt.getUTCMonth() + 1).padStart(2, "0");
+  return `${h}:${m} ${d}/${mo}`;
+}
+
+/**
+ * After sending step N, recalculate step N+1's scheduled_at based on actual send time + delay + working hours.
+ */
+async function rescheduleNextStep(
+  supabase: ReturnType<typeof createClient>,
+  sentMsg: QueueMessage,
+  sentStepNumber: number,
+  instance: BrokerInstance
+) {
+  try {
+    const nextStepNumber = sentStepNumber + 1;
+
+    // Find next scheduled message in same campaign
+    const { data: nextMsg } = await supabase
+      .from("whatsapp_message_queue")
+      .select("id, scheduled_at, lead_id")
+      .eq("campaign_id", sentMsg.campaign_id)
+      .eq("step_number", nextStepNumber)
+      .eq("status", "scheduled")
+      .maybeSingle();
+
+    if (!nextMsg) return; // No next step or already processed
+
+    // Get delay_minutes for next step
+    const { data: nextStep } = await supabase
+      .from("campaign_steps")
+      .select("delay_minutes")
+      .eq("campaign_id", sentMsg.campaign_id)
+      .eq("step_order", nextStepNumber)
+      .maybeSingle();
+
+    if (!nextStep) return;
+
+    const sentAt = new Date();
+    const newScheduled = new Date(sentAt.getTime() + (nextStep as { delay_minutes: number }).delay_minutes * 60 * 1000);
+    const whStart = instance.working_hours_start || "09:00";
+    const whEnd = instance.working_hours_end || "21:00";
+
+    const { adjusted, wasAdjusted } = adjustToWorkingHours(newScheduled, whStart, whEnd);
+
+    const originalScheduled = new Date((nextMsg as { scheduled_at: string }).scheduled_at);
+
+    // Only update if the new time is meaningfully different (>1 min)
+    const diffMs = Math.abs(adjusted.getTime() - originalScheduled.getTime());
+    if (diffMs < 60000) return;
+
+    await supabase
+      .from("whatsapp_message_queue")
+      .update({ scheduled_at: adjusted.toISOString(), updated_at: new Date().toISOString() })
+      .eq("id", (nextMsg as { id: string }).id);
+
+    console.log(`🔄 Reschedule step ${nextStepNumber}: ${originalScheduled.toISOString()} → ${adjusted.toISOString()} (wasAdjusted: ${wasAdjusted})`);
+
+    // Log adjustment if it was shifted due to working hours
+    if (wasAdjusted && (nextMsg as { lead_id: string | null }).lead_id) {
+      await supabase.from("lead_interactions").insert({
+        lead_id: (nextMsg as { lead_id: string }).lead_id,
+        interaction_type: "note_added",
+        notes: `⏰ Etapa ${nextStepNumber} reagendada: previsto ${formatBRT(newScheduled)} → ajustado para ${formatBRT(adjusted)} (fora da janela permitida ${whStart}-${whEnd})`,
+      });
+    }
+  } catch (err) {
+    console.error("Error rescheduling next step:", err);
+  }
+}
+
 // Interface for instance data
 interface BrokerInstance {
   id: string;
@@ -451,6 +559,11 @@ app.post("/process", async (c) => {
               .from("whatsapp_campaigns")
               .update({ sent_count: ((campaignData as { sent_count: number }).sent_count || 0) + 1 })
               .eq("id", queueMsg.campaign_id);
+          }
+
+          // POST-SEND RESCHEDULE: Recalculate next step based on actual send time
+          if (stepNumber && queueMsg.campaign_id) {
+            await rescheduleNextStep(supabase, queueMsg, stepNumber, instance);
           }
         }
 

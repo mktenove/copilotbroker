@@ -136,6 +136,39 @@ export function CadenciaSheet({
   const stepsValid = steps.every(s => s.messageContent.trim().length > 0);
   const isValid = steps.length > 0 && stepsValid;
 
+  /**
+   * Adjusts a scheduled date to fit within working hours (BRT = UTC-3).
+   */
+  const adjustToWorkingHours = (
+    scheduledDate: Date,
+    whStart: string,
+    whEnd: string
+  ): { adjusted: Date; wasAdjusted: boolean } => {
+    const BRT_OFFSET = -3;
+    const brtTime = new Date(scheduledDate.getTime() + BRT_OFFSET * 60 * 60 * 1000);
+
+    const [startH, startM] = whStart.split(":").map(Number);
+    const [endH, endM] = whEnd.split(":").map(Number);
+
+    const currentMinutes = brtTime.getUTCHours() * 60 + brtTime.getUTCMinutes();
+    const startMinutes = startH * 60 + startM;
+    const endMinutes = endH * 60 + endM;
+
+    if (currentMinutes >= startMinutes && currentMinutes <= endMinutes) {
+      return { adjusted: scheduledDate, wasAdjusted: false };
+    }
+
+    const targetBRT = new Date(brtTime);
+    targetBRT.setUTCHours(startH, startM, 0, 0);
+
+    if (currentMinutes > endMinutes) {
+      targetBRT.setUTCDate(targetBRT.getUTCDate() + 1);
+    }
+
+    const adjustedUTC = new Date(targetBRT.getTime() - BRT_OFFSET * 60 * 60 * 1000);
+    return { adjusted: adjustedUTC, wasAdjusted: true };
+  };
+
   const handleSubmit = async () => {
     if (!isValid || !isValidPhone(leadPhone)) {
       toast.error("Telefone do lead inválido");
@@ -157,6 +190,16 @@ export function CadenciaSheet({
         setIsCreating(false);
         return;
       }
+
+      // Fetch broker working hours
+      const { data: instanceData } = await supabase
+        .from("broker_whatsapp_instances")
+        .select("working_hours_start, working_hours_end")
+        .eq("broker_id", brokerId)
+        .single();
+
+      const whStart = instanceData?.working_hours_start || "09:00";
+      const whEnd = instanceData?.working_hours_end || "21:00";
 
       // Create campaign with lead_id
       const { data: campaign, error: campErr } = await (supabase
@@ -184,7 +227,7 @@ export function CadenciaSheet({
 
       await supabase.from("campaign_steps").insert(stepsToInsert);
 
-      // Schedule messages
+      // Schedule messages with working hours adjustment
       const phone = formatPhoneE164(leadPhone);
       let scheduledTime = new Date(Date.now() + getRandomInterval());
 
@@ -194,6 +237,11 @@ export function CadenciaSheet({
             scheduledTime.getTime() + step.delayMinutes * 60 * 1000 + Math.floor(Math.random() * 60) * 1000
           );
         }
+
+        // Apply working hours adjustment and chain from adjusted time
+        const { adjusted } = adjustToWorkingHours(scheduledTime, whStart, whEnd);
+        scheduledTime = adjusted;
+
         return {
           broker_id: brokerId,
           campaign_id: campaign.id,
