@@ -1,45 +1,25 @@
 
-
-# Reorganizar topo da aba Seguranca
+# Mover Aquecimento acima das Regras Anti-Spam
 
 ## O que sera feito
 
-Mover a secao de Limites de Envio (sliders + horario) para o topo da pagina, ocupando 3/4 da largura, e colocar o Botao de Emergencia no 1/4 restante ao lado. O card do Kill Switch atual sera removido e substituido por uma versao compacta que ocupa apenas a coluna direita.
+Reordenar os blocos na aba Seguranca para que a secao "Aquecimento" fique imediatamente acima de "Regras Anti-Spam Ativas", em vez de ficar logo abaixo do grid de limites.
 
-## Nova estrutura do topo
+## Nova ordem dos blocos
 
-```text
-+---------------------------------------------+---------------+
-|  Limites de Envio (3/4)                      | Emergencia    |
-|  - Slider limite por hora                    | (1/4)         |
-|  - Slider limite por dia                     |               |
-|  - Horario de envio (inicio/fim)             | [Botao]       |
-|  - Botao Salvar                              |               |
-+---------------------------------------------+---------------+
-```
-
-- Desktop: `grid grid-cols-4 gap-4` -- limites em `col-span-3`, emergencia em `col-span-1`
-- Mobile: stack vertical normal (grid-cols-1)
-
-## O que muda na ordem dos blocos
-
-1. **Topo**: Grid com Limites (3/4) + Kill Switch (1/4)
-2. Aquecimento (warmup card -- mantido como esta)
-3. DailyStatsChart
-4. OptoutsList
-5. ErrorLogsCard
-6. Regras Anti-Spam
+1. Grid Limites (3/4) + Emergencia (1/4)
+2. DailyStatsChart
+3. OptoutsList
+4. ErrorLogsCard
+5. **Aquecimento** (movido para ca)
+6. Regras Anti-Spam Ativas
 
 ## Arquivo a modificar
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/whatsapp/SecurityTab.tsx` | Reorganizar blocos: mover limites para cima, criar grid 3/4 + 1/4 com kill switch |
+| `src/components/whatsapp/SecurityTab.tsx` | Mover o bloco Warmup (linhas 128-149) para depois do ErrorLogsCard (linha 158) e antes do card de Regras (linha 160) |
 
-## Detalhes tecnicos
+## Detalhe tecnico
 
-- Wrapper do topo: `div` com `grid grid-cols-1 lg:grid-cols-4 gap-4`
-- Coluna limites: `div className="lg:col-span-3"` contendo o Card de Limites de Envio atual (sem alteracoes internas)
-- Coluna emergencia: `div className="lg:col-span-1"` contendo o Card do Kill Switch, ajustado para layout vertical compacto (botao ocupa largura total, texto menor)
-- O restante da pagina permanece inalterado na ordem: warmup, chart, optouts, errors, regras
-
+Apenas reordenacao de blocos JSX, sem alteracao de conteudo ou estilo.
