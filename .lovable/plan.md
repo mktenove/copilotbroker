@@ -1,25 +1,39 @@
 
-# Mover Aquecimento acima das Regras Anti-Spam
+
+# Remover keyword "para" e limpar falsos positivos
 
 ## O que sera feito
 
-Reordenar os blocos na aba Seguranca para que a secao "Aquecimento" fique imediatamente acima de "Regras Anti-Spam Ativas", em vez de ficar logo abaixo do grid de limites.
+1. Remover a keyword "para" da lista `OPTOUT_KEYWORDS` no webhook `whatsapp-webhook`
+2. Deletar os 131 registros de opt-out que foram detectados com a keyword "para" do banco de dados
 
-## Nova ordem dos blocos
+## Alteracoes
 
-1. Grid Limites (3/4) + Emergencia (1/4)
-2. DailyStatsChart
-3. OptoutsList
-4. ErrorLogsCard
-5. **Aquecimento** (movido para ca)
-6. Regras Anti-Spam Ativas
+### 1. Webhook (`supabase/functions/whatsapp-webhook/index.ts`)
 
-## Arquivo a modificar
+Linha 17 - remover `"para"` do array:
 
-| Arquivo | Acao |
-|---------|------|
-| `src/components/whatsapp/SecurityTab.tsx` | Mover o bloco Warmup (linhas 128-149) para depois do ErrorLogsCard (linha 158) e antes do card de Regras (linha 160) |
+De:
+```
+"stop", "remove", "unsubscribe", "para", "chega"
+```
 
-## Detalhe tecnico
+Para:
+```
+"stop", "remove", "unsubscribe", "chega"
+```
 
-Apenas reordenacao de blocos JSX, sem alteracao de conteudo ou estilo.
+### 2. Banco de dados
+
+Executar DELETE para remover os 131 opt-outs falsos positivos:
+
+```sql
+DELETE FROM whatsapp_optouts WHERE detected_keyword = 'para';
+```
+
+## Impacto
+
+- Nenhum contato que escreveu "para" (como preposicao) sera mais bloqueado
+- 131 contatos que estavam bloqueados indevidamente voltarao a poder receber mensagens
+- Keywords legitimas (pare, sair, cancelar, stop, etc.) continuam funcionando normalmente
+
