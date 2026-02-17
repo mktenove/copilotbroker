@@ -1,66 +1,58 @@
 
 
-# Completar: Rastreamento de respostas por telefone/campanha
+# Diagnóstico: Follow-up enviado mesmo após resposta do lead
 
-## O que ja esta funcionando
+## Problema identificado
 
-- O webhook processa respostas com midia (audio, imagem) e cancela follow-ups agendados na hora
-- O cancelamento imediato de follow-ups via webhook funciona corretamente (per-phone)
+O sistema de cancelamento de follow-ups **funciona corretamente no código**, mas **não está recebendo as respostas** porque a instância UAZAPI do Edinardo (`enove_edinardo`) não está enviando webhooks para o nosso endpoint.
 
-## O que falta implementar
+### Evidências
 
-### 1. Criar tabela `whatsapp_lead_replies`
+- A tabela `whatsapp_lead_replies` está **completamente vazia** -- nenhuma resposta foi registrada desde a criação
+- Os logs do webhook mostram **apenas mensagens da instância `enove_leonardo`** (todas de grupo, que são corretamente ignoradas)
+- **Nenhum log do webhook contém o telefone `5551997010323`** (o telefone do teste do Edinardo)
+- A campanha de teste `18b52753` tinha step 2 com `send_if_replied: false`, mas foi enviada porque o sistema nunca soube que houve resposta
 
-Migracacao SQL para criar a tabela de rastreamento:
+### Causa raiz
 
-```text
-whatsapp_lead_replies
-- phone (TEXT, NOT NULL)
-- campaign_id (UUID, NOT NULL, FK -> whatsapp_campaigns.id ON DELETE CASCADE)
-- replied_at (TIMESTAMPTZ, DEFAULT now())
-- PRIMARY KEY (phone, campaign_id)
-- INDEX em phone para buscas rapidas
-```
+A instância `enove_edinardo` no painel da UAZAPI **não tem o Webhook URL configurado** (ou está configurado incorretamente). Sem isso, quando o lead responde no WhatsApp, a UAZAPI não notifica o nosso sistema, e todo o fluxo de cancelamento fica impossibilitado.
 
-Sem RLS (acesso apenas via service_role nas Edge Functions).
+## Solução
 
-### 2. Webhook: adicionar UPSERT na tabela
+### Passo 1: Configuração na UAZAPI (ação manual)
 
-No `whatsapp-webhook/index.ts`, apos identificar os campaign_ids da resposta (linha ~187), adicionar:
+No painel da UAZAPI, para a instância `enove_edinardo`, configurar o Webhook URL:
 
 ```text
-Para cada campaign_id detectado:
-  UPSERT whatsapp_lead_replies (phone, campaign_id, replied_at = now())
+https://nckzxwxxtyeydolmdijn.supabase.co/functions/v1/whatsapp-webhook
 ```
 
-Isso registra permanentemente que aquele telefone respondeu naquela campanha, mesmo que nao haja follow-ups agendados no momento.
+Isso precisa ser feito **para todas as instâncias** que utilizam campanhas com follow-up. Recomendo verificar cada instância ativa:
+- enove_edinardo
+- enove_leonardo (já configurado)
+- Todas as demais instâncias listadas no sistema
 
-### 3. Message-sender: substituir Check 2 (reply_count global)
+### Passo 2: Melhoria no código (preventiva)
 
-No `whatsapp-message-sender/index.ts`, substituir o Check 2 (linhas 305-341) que usa `reply_count` global da campanha por uma consulta direta:
+Adicionar um log de alerta no `whatsapp-message-sender` quando for enviar um step 2+ com `send_if_replied=false` e não encontrar nenhum registro no webhook para aquele telefone -- indicando que o webhook pode não estar configurado para a instância. Isso facilita a detecção futura desse problema.
 
-```text
-// ANTES (bugado):
-campaign.reply_count > 0 -> cancela para TODOS os telefones
+### Passo 3: Teste de validação
 
-// DEPOIS (correto):
-SELECT 1 FROM whatsapp_lead_replies
-WHERE phone = queueMsg.phone AND campaign_id = queueMsg.campaign_id
--> cancela apenas para o telefone que respondeu
-```
+Após configurar o webhook na UAZAPI:
+1. Enviar uma campanha de teste com 2 etapas (step 2 com "enviar somente se não respondeu")
+2. Responder ao step 1
+3. Verificar nos logs do webhook que a resposta foi recebida
+4. Confirmar que a tabela `whatsapp_lead_replies` foi populada
+5. Confirmar que o step 2 foi cancelado
 
 ## Arquivos afetados
 
 | Acao | Arquivo |
 |------|---------|
-| Criar | Migration SQL (tabela whatsapp_lead_replies) |
-| Editar | `supabase/functions/whatsapp-webhook/index.ts` (adicionar UPSERT) |
-| Editar | `supabase/functions/whatsapp-message-sender/index.ts` (substituir Check 2) |
-| Deploy | Ambas as Edge Functions |
+| Editar | `supabase/functions/whatsapp-message-sender/index.ts` (log de alerta) |
+| Manual | Painel UAZAPI: configurar webhook URL para instâncias |
 
-## Resultado esperado
+## Resumo
 
-- Lead A responde -> follow-ups do Lead A sao cancelados
-- Lead B (mesma campanha, nao respondeu) -> continua recebendo follow-ups normalmente
-- Gap de timing eliminado: mesmo que a resposta chegue antes do follow-up ser agendado, o registro na tabela impede o envio
+O código está correto. O problema é de **configuração externa**: as instâncias UAZAPI precisam ter o Webhook URL apontando para o nosso endpoint. Sem isso, as respostas dos leads nunca chegam ao sistema.
 
