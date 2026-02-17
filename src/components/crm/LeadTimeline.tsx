@@ -1,14 +1,19 @@
 import { useState } from "react";
-import { LeadInteraction, STATUS_CONFIG } from "@/types/crm";
+import { LeadInteraction, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import {
   Clock, MessageSquare, MessageCircle, Send, FileText, CheckCircle, ArrowRight, MapPin,
   UserX, Bell, Calendar, DollarSign, Trophy, RefreshCw, Play, ChevronDown,
-  ChevronUp, Zap
+  ChevronUp, Zap, Globe, UserPlus, Megaphone, HelpCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface LeadTimelineProps {
   interactions: LeadInteraction[];
+  leadOrigin?: string | null;
+  leadOriginDetail?: string | null;
+  attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; landing_page?: string } | null;
+  createdAt?: string;
+  brokerName?: string | null;
 }
 
 const INTERACTION_META: Record<string, {
@@ -45,7 +50,7 @@ const AUTOMATION_TYPES = new Set([
   "notification", "roleta_atribuicao", "roleta_timeout", "roleta_fallback"
 ]);
 
-export function LeadTimeline({ interactions }: LeadTimelineProps) {
+export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attribution, createdAt, brokerName }: LeadTimelineProps) {
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   if (interactions.length === 0) {
@@ -158,6 +163,61 @@ export function LeadTimeline({ interactions }: LeadTimelineProps) {
             </div>
           );
         })}
+
+        {/* Origin card - first event chronologically, shown last */}
+        {createdAt && (() => {
+          const originType = getOriginType(leadOrigin);
+          const isPaid = originType === 'paid';
+          const isManual = originType === 'manual';
+          const isOrganic = originType === 'organic';
+          const originLabel = getOriginDisplayLabel(leadOrigin);
+
+          const OriginIcon = isPaid ? Megaphone : isManual ? UserPlus : isOrganic ? Globe : HelpCircle;
+          const dotColor = isPaid ? "bg-purple-500" : isManual ? "bg-yellow-500" : isOrganic ? "bg-green-500" : "bg-slate-500";
+          const iconColor = isPaid ? "text-purple-400" : isManual ? "text-yellow-400" : isOrganic ? "text-green-400" : "text-slate-400";
+
+          // Build detail line
+          let detail = "";
+          if (leadOriginDetail) {
+            detail = leadOriginDetail;
+          } else if (attribution?.utm_medium && attribution?.utm_campaign) {
+            detail = `${attribution.utm_medium} | ${attribution.utm_campaign}`;
+          } else if (attribution?.utm_campaign) {
+            detail = attribution.utm_campaign;
+          }
+
+          if (isManual && brokerName) {
+            detail = detail ? `${detail} · por ${brokerName}` : `por ${brokerName}`;
+          }
+
+          return (
+            <div className="relative pl-8 py-2.5 rounded-lg bg-[#12121a] border border-[#1e1e22] mt-1">
+              {/* Dot */}
+              <div className={cn(
+                "absolute left-1.5 top-4 w-[9px] h-[9px] rounded-full ring-[3px] ring-[#12121a]",
+                dotColor, "shadow-[0_0_8px_rgba(168,85,247,0.15)]"
+              )} />
+
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <OriginIcon className={cn("w-3.5 h-3.5 shrink-0", iconColor)} />
+                  <span className={cn("text-xs font-semibold", iconColor)}>
+                    {leadOrigin ? originLabel : "Origem não identificada"}
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-600 tabular-nums shrink-0">
+                  {new Date(createdAt).toLocaleDateString("pt-BR", {
+                    day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit"
+                  })}
+                </span>
+              </div>
+
+              {detail && (
+                <p className="mt-1 ml-5.5 text-[11px] text-slate-500 truncate">{detail}</p>
+              )}
+            </div>
+          );
+        })()}
       </div>
     </div>
   );
