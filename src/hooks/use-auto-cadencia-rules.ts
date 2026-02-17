@@ -43,10 +43,41 @@ export function useAutoCadenciaRules() {
     if (brokerId) fetchRules();
   }, [brokerId, fetchRules]);
 
+  // Check if 1ª Mensagem is active for same project
+  const checkFirstMessageConflict = async (projectId: string | null): Promise<boolean> => {
+    if (!brokerId) return false;
+    try {
+      let query = supabase
+        .from("broker_auto_message_rules")
+        .select("id")
+        .eq("broker_id", brokerId)
+        .eq("is_active", true);
+      
+      if (projectId) {
+        query = query.or(`project_id.eq.${projectId},project_id.is.null`);
+      } else {
+        query = query.is("project_id", null);
+      }
+
+      const { data } = await query.limit(1);
+      return (data && data.length > 0);
+    } catch { return false; }
+  };
+
   const createRule = async (data: { project_id: string | null; is_active: boolean }) => {
     if (!brokerId) return null;
     setIsSaving(true);
     try {
+      // Check for 1ª Mensagem conflict
+      if (data.is_active) {
+        const hasConflict = await checkFirstMessageConflict(data.project_id);
+        if (hasConflict) {
+          toast.error("Já existe uma 1ª Mensagem ativa para este empreendimento. Desative-a antes de ativar a Cadência 10D.");
+          setIsSaving(false);
+          return null;
+        }
+      }
+
       const { data: newRule, error } = await (supabase
         .from("broker_auto_cadencia_rules") as any)
         .insert({
@@ -113,6 +144,16 @@ export function useAutoCadenciaRules() {
   };
 
   const toggleRuleActive = async (id: string, is_active: boolean) => {
+    if (is_active) {
+      const rule = rules.find(r => r.id === id);
+      if (rule) {
+        const hasConflict = await checkFirstMessageConflict(rule.project_id);
+        if (hasConflict) {
+          toast.error("Já existe uma 1ª Mensagem ativa para este empreendimento. Desative-a primeiro.");
+          return null;
+        }
+      }
+    }
     return updateRule(id, { is_active });
   };
 
