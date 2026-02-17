@@ -1,0 +1,2 @@
+ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_message_queue;
+ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_lead_replies;
