@@ -802,6 +802,7 @@ export default function LeadPage() {
         projectName={lead.project?.name}
         brokerName={lead.broker?.name}
         brokerId={lead.broker?.id || ""}
+        leadStatus={lead.status}
         onCreated={refreshLead}
       />
     </div>

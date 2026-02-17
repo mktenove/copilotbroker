@@ -162,8 +162,9 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
         "transition-all duration-200 ease-out",
         "group overflow-hidden",
         isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
-        isStale && "ring-2 ring-red-400/50",
-        isNew && "ring-2 ring-emerald-400/60 animate-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]"
+        isStale && !hasCadenciaAtiva && "ring-2 ring-red-400/50",
+        isNew && "ring-2 ring-emerald-400/60 animate-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]",
+        hasCadenciaAtiva && !isNew && "ring-2 ring-emerald-400/60 animate-[pulse_1s_ease-in-out_infinite]"
       )}
     >
       <div className="p-3">
