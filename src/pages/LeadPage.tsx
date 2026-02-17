@@ -722,7 +722,14 @@ export default function LeadPage() {
                 <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Linha do Tempo</h2>
               </div>
               <div className="p-5 max-h-[600px] overflow-y-auto scrollbar-subtle">
-                <LeadTimeline interactions={interactions} />
+                <LeadTimeline
+                  interactions={interactions}
+                  leadOrigin={lead?.lead_origin}
+                  leadOriginDetail={lead?.lead_origin_detail}
+                  attribution={lead?.attribution}
+                  createdAt={lead?.created_at}
+                  brokerName={lead?.broker?.name}
+                />
               </div>
             </section>
           </div>
