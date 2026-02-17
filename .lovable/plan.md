@@ -1,21 +1,27 @@
 
-
-# Remover "Saiba como funciona"
+# Warmup - Mensagem Discreta
 
 ## O que sera feito
 
-Remover o bloco Collapsible "Saiba como funciona" da aba "1a Mensagem" no componente `AutoMessageTab.tsx`, incluindo os dois Alerts informativos dentro dele. Tambem remover os imports que ficarao sem uso (`Info`, `XCircle`, `ChevronDown`, `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger`, `Alert`, `AlertDescription`) e o estado `infoOpen` com seu `useEffect`.
+Substituir o Card amarelo chamativo do "Periodo de Aquecimento" por uma linha simples e discreta, sem fundo colorido, apenas um texto sutil com icone pequeno inline -- seguindo a estetica minimalista do projeto.
 
 ## Arquivo a modificar
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/whatsapp/AutoMessageTab.tsx` | Remover bloco Collapsible, imports e estado relacionados |
+| `src/components/whatsapp/ConnectionTab.tsx` | Substituir o bloco Card/CardContent (linhas 235-253) por um div simples com texto em slate |
 
 ## Detalhes tecnicos
 
-- Remover imports: `Info`, `XCircle`, `ChevronDown` do lucide-react; `Alert`, `AlertDescription` do ui/alert; `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger` do ui/collapsible
-- Remover estado `infoOpen` e o `useEffect` que o controla
-- Remover todo o bloco `<Collapsible>...</Collapsible>` (linhas 147-165 aproximadamente)
-- Import de `useIsMobile` tambem pode ser removido se nao for usado em outro lugar do componente
+Remover o `Card` com gradiente amarelo e substituir por:
 
+```text
+<div className="flex items-center gap-2 text-sm text-slate-500 px-1">
+  <span>🔥</span>
+  <span>Aquecimento dia {instance.warmup_day}/14</span>
+  <span className="text-slate-600">·</span>
+  <span>{instance.daily_limit} msgs/dia · {instance.hourly_limit} msgs/hora</span>
+</div>
+```
+
+Resultado: uma linha discreta em cinza claro, sem card, sem fundo amarelo, sem bordas. Apenas informacao sutil.
