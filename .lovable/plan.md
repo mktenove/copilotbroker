@@ -1,49 +1,56 @@
 
-
-# Redesign Aba Seguranca - Layout 1 Coluna
+# Redesign Completo - Aba Seguranca (1 coluna, Opt-outs visiveis)
 
 ## Visao geral
 
-Redesign completo da aba Seguranca em layout vertical de coluna unica, com secoes bem separadas por divisores finos, seguindo uma hierarquia visual de cima para baixo: status, controles, monitoramento, regras, opt-outs.
+Reescrever o SecurityTab com um layout de coluna unica organizado em secoes claras separadas por titulos discretos, com todas as informacoes visiveis sem necessidade de clicar -- incluindo os Opt-outs sempre abertos.
 
-## Nova estrutura (coluna unica, top-down)
+## Estrutura final (de cima para baixo)
 
-### 1. Status Header (mantido)
-Barra compacta com indicador pulsante + warmup + kill switch -- igual ao atual, funciona bem.
+### 1. Status Bar
+Barra compacta horizontal com:
+- Indicador pulsante verde/vermelho + "Protegido" ou "Pausado"
+- Warmup inline (Dia X/14)
+- Botao Kill Switch discreto a direita
 
-### 2. Controles de Limites
-Sliders lado a lado (hora e dia na mesma linha usando flex) para economizar espaco vertical. Horario de envio na linha seguinte. Botao salvar alinhado a direita, compacto.
+### 2. Secao "Controles"
+Label "Limites de envio" em `text-sm font-medium text-slate-300`, seguido de:
+- Sliders hora/dia lado a lado (`flex gap-6`)
+- Horario de envio com inputs de time
+- Botao "Salvar" alinhado a direita
+- Tudo separado por bordas finas `border-[#2a2a2e]`
 
-### 3. Grafico de 7 dias
-DailyStatsChart em largura total -- ocupa melhor o espaco em 1 coluna.
+### 3. Secao "Regras anti-spam"
+Linha de pills/badges horizontais com as regras ativas -- visual discreto em slate
 
-### 4. Erros recentes
-ErrorLogsCard em largura total logo abaixo.
+### 4. Secao "Estatisticas"
+DailyStatsChart em largura total
 
-### 5. Regras ativas (pills)
-Mantido como esta -- ja funciona bem em 1 coluna.
+### 5. Secao "Erros recentes"
+ErrorLogsCard em largura total
 
-### 6. Opt-outs (collapsible)
-Mantido no final.
+### 6. Secao "Opt-outs" (SEMPRE VISIVEL)
+OptoutsList renderizado diretamente, sem collapsible, sem necessidade de clicar para abrir. Aparece como secao natural do fluxo.
 
-## Diferencas visuais em relacao ao layout anterior
+## Mudancas em relacao ao layout atual
 
-- Remover o `grid grid-cols-1 lg:grid-cols-2` -- tudo em stack vertical simples
-- Sliders de hora e dia lado a lado em `flex gap-6` para compactar a area de controles
-- Botao salvar alinhado a direita (`flex justify-end`) em vez de largura total
-- Grafico e erros ocupam 100% da largura, ficam mais legíveis
+| Antes | Depois |
+|-------|--------|
+| Opt-outs escondido em Collapsible | Opt-outs sempre visivel como secao propria |
+| Regras ativas ficam abaixo do monitoramento | Regras ativas sobem para logo depois dos controles |
+| Collapsible + ChevronDown import | Removidos (nao necessarios mais) |
 
 ## Arquivo a modificar
 
 | Arquivo | Acao |
 |---------|------|
-| `src/components/whatsapp/SecurityTab.tsx` | Refazer layout para 1 coluna com sliders inline |
+| `src/components/whatsapp/SecurityTab.tsx` | Reescrever layout completo |
 
 ## Detalhes tecnicos
 
-- Substituir `grid grid-cols-1 lg:grid-cols-2 gap-6` por `space-y-6` simples
-- Sliders hora/dia: `div className="flex gap-6"` com dois `div className="flex-1 space-y-3"` lado a lado
-- Botao salvar: `div className="flex justify-end"` + `Button` sem `w-full`
-- DailyStatsChart e ErrorLogsCard sem wrapper, direto no fluxo vertical
-- Manter todo o restante (status header, pills, collapsible opt-outs) inalterado
-
+- Remover imports de `Collapsible`, `CollapsibleContent`, `CollapsibleTrigger`, `ChevronDown`
+- Remover estado `optoutsOpen`
+- Reordenar secoes: Status > Controles > Regras > Grafico > Erros > Opt-outs
+- OptoutsList renderizado diretamente: `<OptoutsList />` sem wrapper collapsible
+- Manter toda a logica de estado (sliders, save, kill switch) inalterada
+- Manter sub-componentes (DailyStatsChart, ErrorLogsCard, OptoutsList) sem modificacao
