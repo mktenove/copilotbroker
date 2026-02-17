@@ -507,9 +507,16 @@ app.post("/process", async (c) => {
         // Register interaction if lead_id exists
         if (queueMsg.lead_id) {
           const isAutoFirstMessage = !queueMsg.campaign_id;
-          const notePrefix = isAutoFirstMessage 
-            ? "✅ 1ª mensagem automática enviada com sucesso" 
-            : "✅ Mensagem enviada via WhatsApp";
+          const isCadenciaStep = !!queueMsg.campaign_id && !!queueMsg.step_number;
+
+          let notePrefix: string;
+          if (isAutoFirstMessage) {
+            notePrefix = "✅ 1ª mensagem automática enviada com sucesso";
+          } else if (isCadenciaStep) {
+            notePrefix = `📤 Cadência 10D — Etapa ${queueMsg.step_number} enviada`;
+          } else {
+            notePrefix = "✅ Mensagem enviada via WhatsApp";
+          }
           
           await supabase
             .from("lead_interactions")

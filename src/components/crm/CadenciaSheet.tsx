@@ -269,13 +269,18 @@ export function CadenciaSheet({
           status_distribuicao: "atendimento_iniciado" as any,
         }).eq("id", leadId);
 
+        const cadUser = (await supabase.auth.getUser()).data.user;
+        const { data: cadBroker } = await supabase
+          .from("brokers").select("id, name").eq("user_id", cadUser?.id ?? "").single();
+
         await supabase.from("lead_interactions").insert({
           lead_id: leadId,
           interaction_type: "atendimento_iniciado" as any,
           old_status: "new" as any,
           new_status: "info_sent" as any,
-          notes: "Lead movido para Atendimento ao ativar Cadência 10D",
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          broker_id: cadBroker?.id,
+          notes: `Lead movido para Atendimento ao ativar Cadência 10D por ${cadBroker?.name || "corretor"}`,
+          created_by: cadUser?.id,
         });
       }
 
