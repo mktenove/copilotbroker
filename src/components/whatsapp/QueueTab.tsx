@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,11 @@ const STATUS_BADGE: Record<QueueStatus, { label: string; variant: "default" | "s
   cancelled: { label: "Cancelado", variant: "secondary" },
   paused_by_system: { label: "Pausado", variant: "outline" },
 };
+
+function truncateMessage(msg?: string, len = 40) {
+  if (!msg) return "";
+  return msg.length > len ? msg.slice(0, len) + "…" : msg;
+}
 
 function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: number; replies: number } }) {
   return (
@@ -58,96 +64,121 @@ function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: 
 }
 
 function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
   const statusConfig = STATUS_BADGE[message.status as QueueStatus];
+
   return (
-    <div className="flex flex-col p-3 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e]">
-      {/* Top: Lead name + Badge */}
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-sm text-white font-medium truncate flex-1 min-w-0">
+    <div
+      className="px-3 py-2 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e] cursor-pointer select-none"
+      onClick={() => setExpanded(!expanded)}
+    >
+      {/* Collapsed row */}
+      <div className="flex items-center gap-2 min-w-0">
+        <span className="text-xs text-slate-500 flex-shrink-0">
+          <Clock className="w-3 h-3 inline mr-0.5" />
+          {format(new Date(message.scheduled_at), "HH:mm")}
+        </span>
+        <span className="text-sm text-white font-medium truncate flex-shrink-0 max-w-[120px]">
           {message.lead?.name || message.phone}
-        </p>
-        <Badge variant={statusConfig.variant} className="text-xs flex-shrink-0">
+        </span>
+        {message.message && (
+          <span className="text-xs text-slate-500 italic truncate flex-1 min-w-0">
+            · "{truncateMessage(message.message)}"
+          </span>
+        )}
+        <Badge variant={statusConfig.variant} className="text-[10px] flex-shrink-0">
           {statusConfig.label}
         </Badge>
       </div>
-      {/* Middle: Campaign + Time */}
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-xs text-slate-500 truncate flex-1 min-w-0">
-          {message.campaign?.name}
-        </p>
-        <p className="text-xs text-slate-500 flex-shrink-0">
-          <Clock className="w-3 h-3 inline mr-1" />
-          {format(new Date(message.scheduled_at), "HH:mm")}
-        </p>
-      </div>
-      {/* Bottom: Cancel action */}
-      <div className="flex justify-end mt-2 pt-2 border-t border-[#2a2a2e]">
-        <Button
-          size="sm"
-          variant="ghost"
-          className="h-8 text-slate-400 hover:text-red-400 gap-1.5"
-          onClick={() => onCancel(message.id)}
-        >
-          <XCircle className="w-4 h-4" />
-          <span className="text-xs">Cancelar</span>
-        </Button>
-      </div>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-[#2a2a2e]" onClick={(e) => e.stopPropagation()}>
+          {message.message && (
+            <p className="text-xs text-slate-300 whitespace-pre-wrap mb-2">{message.message}</p>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-slate-500">{message.campaign?.name}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-7 text-slate-400 hover:text-red-400 gap-1"
+              onClick={() => onCancel(message.id)}
+            >
+              <XCircle className="w-3.5 h-3.5" />
+              <span className="text-xs">Cancelar</span>
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
   const statusConfig = STATUS_BADGE[message.status as QueueStatus];
   const isFailed = message.status === "failed";
+
   return (
     <div
       className={cn(
-        "flex flex-col p-3 rounded-lg border",
-        isFailed
-          ? "bg-red-500/5 border-red-500/20"
-          : "bg-[#1a1a1d] border-[#2a2a2e]"
+        "px-3 py-2 rounded-lg border cursor-pointer select-none",
+        isFailed ? "bg-red-500/5 border-red-500/20" : "bg-[#1a1a1d] border-[#2a2a2e]"
       )}
+      onClick={() => setExpanded(!expanded)}
     >
-      {/* Top: Icon + Lead name + Badge */}
-      <div className="flex items-center gap-2">
+      {/* Collapsed row */}
+      <div className="flex items-center gap-2 min-w-0">
         <div className="flex-shrink-0">
           {message.status === "sent" ? (
-            <CheckCircle className="w-5 h-5 text-green-400" />
+            <CheckCircle className="w-4 h-4 text-green-400" />
           ) : isFailed ? (
-            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <AlertTriangle className="w-4 h-4 text-red-400" />
           ) : (
-            <XCircle className="w-5 h-5 text-slate-400" />
+            <XCircle className="w-4 h-4 text-slate-400" />
           )}
         </div>
-        <p className="text-sm text-white font-medium truncate flex-1 min-w-0">
+        <span className="text-sm text-white font-medium truncate flex-shrink-0 max-w-[120px]">
           {message.lead?.name || message.phone}
-        </p>
-        <Badge variant={statusConfig.variant} className="text-xs flex-shrink-0">
+        </span>
+        {message.message && (
+          <span className="text-xs text-slate-500 italic truncate flex-1 min-w-0">
+            · "{truncateMessage(message.message)}"
+          </span>
+        )}
+        {message.sent_at && (
+          <span className="text-xs text-slate-500 flex-shrink-0">
+            {format(new Date(message.sent_at), "HH:mm")}
+          </span>
+        )}
+        <Badge variant={statusConfig.variant} className="text-[10px] flex-shrink-0">
           {statusConfig.label}
         </Badge>
       </div>
-      {/* Middle: Error or time */}
-      {(isFailed && message.error_message) ? (
-        <p className="text-xs text-red-400 truncate mt-1 ml-7">
-          {message.error_message}
-        </p>
-      ) : message.sent_at ? (
-        <p className="text-xs text-slate-500 mt-1 ml-7">
-          Enviado às {format(new Date(message.sent_at), "HH:mm")}
-        </p>
-      ) : null}
-      {/* Bottom: Retry for failed */}
-      {isFailed && (
-        <div className="flex justify-end mt-2 pt-2 border-t border-[#2a2a2e]">
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-8 text-slate-400 hover:text-primary gap-1.5"
-            onClick={() => onRetry(message.id)}
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span className="text-xs">Tentar novamente</span>
-          </Button>
+
+      {/* Expanded content */}
+      {expanded && (
+        <div className="mt-2 pt-2 border-t border-[#2a2a2e]" onClick={(e) => e.stopPropagation()}>
+          {message.message && (
+            <p className="text-xs text-slate-300 whitespace-pre-wrap mb-2">{message.message}</p>
+          )}
+          {isFailed && message.error_message && (
+            <p className="text-xs text-red-400 mb-2">{message.error_message}</p>
+          )}
+          {isFailed && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-slate-400 hover:text-primary gap-1"
+                onClick={() => onRetry(message.id)}
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span className="text-xs">Tentar novamente</span>
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -188,7 +219,6 @@ export function QueueTab() {
       <QueueStats stats={stats} />
 
       {queue.length === 0 ? (
-        /* Empty State */
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="py-12 text-center">
             <div className="w-16 h-16 rounded-full bg-[#2a2a2e] flex items-center justify-center mx-auto mb-4">
@@ -202,33 +232,23 @@ export function QueueTab() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {/* Pending Messages */}
           {pendingMessages.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-slate-400">Pendentes ({pendingMessages.length})</h3>
-              <div className="space-y-2">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-slate-400 mb-1">Pendentes ({pendingMessages.length})</h3>
+              <div className="space-y-1">
                 {pendingMessages.map((message) => (
-                  <PendingMessageCard
-                    key={message.id}
-                    message={message}
-                    onCancel={cancelMessage}
-                  />
+                  <PendingMessageCard key={message.id} message={message} onCancel={cancelMessage} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Completed Messages */}
           {completedMessages.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="text-sm font-medium text-slate-400">Histórico ({completedMessages.length})</h3>
-              <div className="space-y-2">
+            <div className="space-y-1">
+              <h3 className="text-sm font-medium text-slate-400 mb-1">Histórico ({completedMessages.length})</h3>
+              <div className="space-y-1">
                 {completedMessages.slice(0, 20).map((message) => (
-                  <HistoryMessageCard
-                    key={message.id}
-                    message={message}
-                    onRetry={retryMessage}
-                  />
+                  <HistoryMessageCard key={message.id} message={message} onRetry={retryMessage} />
                 ))}
                 {completedMessages.length > 20 && (
                   <p className="text-xs text-slate-500 text-center py-2">
