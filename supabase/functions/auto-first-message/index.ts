@@ -174,7 +174,7 @@ Deno.serve(async (req) => {
     const landingPage = attribution?.landing_page || "";
     
     // Don't send if manually added or imported
-    if (landingPage === "admin_manual" || landingPage === "import") {
+    if (landingPage === "admin_manual" || landingPage === "import" || landingPage === "csv_import") {
       console.log(`[auto-first-message] Skipping - origin is ${landingPage}`);
       return new Response(
         JSON.stringify({ status: "skipped", reason: "manual_or_import" }),

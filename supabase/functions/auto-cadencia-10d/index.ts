@@ -61,7 +61,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 2. Check for active rule (project-specific first, then global)
+    // 2. Check if lead was manually added or imported - skip automation
+    const { data: attribution } = await supabase
+      .from("lead_attribution")
+      .select("landing_page")
+      .eq("lead_id", leadId)
+      .maybeSingle();
+
+    const landingPage = attribution?.landing_page || "";
+    if (landingPage === "admin_manual" || landingPage === "import" || landingPage === "csv_import") {
+      console.log("Skipping auto-cadencia - lead is manual/imported:", landingPage);
+      return new Response(JSON.stringify({ status: "skipped", reason: "manual_or_import" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 3. Check for active rule (project-specific first, then global)
     let rule = null;
     if (lead.project_id) {
       const { data } = await supabase
