@@ -172,7 +172,7 @@ export default {
         blur: "blur 0.8s ease-out forwards",
         "rotate-in": "rotateIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "expand-width": "expandWidth 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
-        "ring-pulse": "ring-pulse 2s ease-in-out infinite",
+        "ring-pulse": "ring-pulse 4s ease-in-out infinite",
       },
     },
   },
