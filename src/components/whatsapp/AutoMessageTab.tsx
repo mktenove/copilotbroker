@@ -1,28 +1,19 @@
-import { useState, useEffect } from "react";
-import { Bot, Plus, Info, XCircle, Loader2, Pencil, Trash2, ChevronDown, Zap } from "lucide-react";
+import { useState } from "react";
+import { Bot, Plus, Loader2, Pencil, Trash2, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAutoMessageRules } from "@/hooks/use-auto-message-rules";
 import { AutoMessageRuleEditor } from "./AutoMessageRuleEditor";
 import { AutoCadenciaSection } from "./AutoCadenciaSection";
 import type { BrokerAutoMessageRule } from "@/types/auto-message";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
 
 export function AutoMessageTab() {
   const { rules, isLoading, toggleRuleActive, deleteRule, createRule, updateRule, isSaving } = useAutoMessageRules();
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<BrokerAutoMessageRule | null>(null);
-  const isMobile = useIsMobile();
-  const [infoOpen, setInfoOpen] = useState(!isMobile);
-
-  useEffect(() => {
-    setInfoOpen(!isMobile);
-  }, [isMobile]);
 
   const handleCreateNew = () => { setEditingRule(null); setIsEditorOpen(true); };
   const handleEdit = (rule: BrokerAutoMessageRule) => { setEditingRule(rule); setIsEditorOpen(true); };
@@ -144,28 +135,6 @@ export function AutoMessageTab() {
                 ))}
               </div>
             )}
-
-            {/* Collapsible Info */}
-            <Collapsible open={infoOpen} onOpenChange={setInfoOpen}>
-              <CollapsibleTrigger className="flex items-center gap-2 text-sm text-slate-400 hover:text-slate-300 transition-colors w-full py-2">
-                <Info className="w-4 h-4 shrink-0" /><span>Saiba como funciona</span>
-                <ChevronDown className={cn("w-4 h-4 ml-auto transition-transform duration-200", infoOpen && "rotate-180")} />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-3 pt-2">
-                <Alert className="bg-blue-500/10 border-blue-500/30">
-                  <Info className="w-4 h-4 text-blue-400" />
-                  <AlertDescription className="text-blue-300 text-sm">
-                    Esta mensagem é enviada <strong>automaticamente</strong> quando um lead se cadastra via landing page do empreendimento.
-                  </AlertDescription>
-                </Alert>
-                <Alert className="bg-red-500/10 border-red-500/30">
-                  <XCircle className="w-4 h-4 text-red-400" />
-                  <AlertDescription className="text-red-300 text-sm">
-                    Leads adicionados manualmente ou importados <strong>NUNCA</strong> recebem mensagem automática.
-                  </AlertDescription>
-                </Alert>
-              </CollapsibleContent>
-            </Collapsible>
 
             {/* Editor Sheet */}
             <AutoMessageRuleEditor
