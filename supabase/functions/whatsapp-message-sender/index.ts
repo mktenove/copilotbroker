@@ -321,6 +321,9 @@ app.post("/process", async (c) => {
               console.log(`🚫 Preventive cancel (lead_replies): message ${queueMsg.id} for ${queueMsg.phone}`);
               results.push({ brokerId: instance.broker_id, sent: false, error: "reply_detected" });
               continue;
+            } else {
+              // ⚠️ ALERT: No reply record found — webhook may not be configured for this instance
+              console.warn(`⚠️ ALERTA: Enviando step ${stepNumber} (send_if_replied=false) para ${queueMsg.phone} na campanha ${queueMsg.campaign_id}, mas NÃO há registro de resposta na whatsapp_lead_replies. Se o lead respondeu e mesmo assim recebeu o follow-up, verifique se o Webhook URL está configurado na UAZAPI para a instância "${instance.instance_name}". URL esperada: ${SUPABASE_URL}/functions/v1/whatsapp-webhook`);
             }
           }
         }
