@@ -159,12 +159,12 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
         isMobile ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
         "bg-[#1e1e22] border border-[#2a2a2e]",
         "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
-        "transition-all duration-200 ease-out",
+        "transition-[border-color,transform,opacity] duration-200 ease-out",
         "group overflow-hidden",
         isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
         isStale && !hasCadenciaAtiva && "ring-2 ring-red-400/50",
-        isNew && "animate-ring-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)]",
-        hasCadenciaAtiva && !isNew && "animate-ring-pulse"
+        isNew && "animate-ring-pulse shadow-[0_0_20px_rgba(52,211,153,0.3)] will-change-[box-shadow]",
+        hasCadenciaAtiva && !isNew && "animate-ring-pulse will-change-[box-shadow]"
       )}
     >
       <div className="p-3">
