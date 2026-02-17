@@ -65,36 +65,65 @@ export function SecurityTab() {
 
   return (
     <div className="space-y-6">
-      {/* Kill Switch */}
-      <Card className={instance?.is_paused 
-        ? "bg-destructive/10 border-destructive/30" 
-        : "bg-[#1a1a1d] border-[#2a2a2e]"
-      }>
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <AlertOctagon className="w-5 h-5 text-destructive" />
-            Botão de Emergência
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-400 mb-4">
-            {instance?.is_paused 
-              ? "Todos os envios estão pausados. Clique para retomar."
-              : "Pause imediatamente todos os envios em caso de problemas."
-            }
-          </p>
-          <Button
-            onClick={handleKillSwitch}
-            variant={instance?.is_paused ? "default" : "destructive"}
-            className={instance?.is_paused 
-              ? "bg-green-600 hover:bg-green-700" 
-              : ""
-            }
-          >
-            {instance?.is_paused ? "▶ Retomar Envios" : "⛔ PARAR TODOS OS ENVIOS"}
-          </Button>
-        </CardContent>
-      </Card>
+      {/* Top Grid: Limits (3/4) + Kill Switch (1/4) */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        {/* Limits - 3/4 */}
+        <div className="lg:col-span-3">
+          <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Limites de Envio
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-400">Limite por hora</span>
+                    <span className="text-sm text-white font-mono">{hourlyLimit}</span>
+                  </div>
+                  <Slider value={[hourlyLimit]} onValueChange={([v]) => setHourlyLimit(v)} min={10} max={60} step={5} className="w-full" />
+                </div>
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-sm text-slate-400">Limite por dia</span>
+                    <span className="text-sm text-white font-mono">{dailyLimit}</span>
+                  </div>
+                  <Slider value={[dailyLimit]} onValueChange={([v]) => setDailyLimit(v)} min={30} max={300} step={10} className="w-full" />
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-slate-400">Horário de envio</span>
+                <Input type="time" value={workStart} onChange={(e) => setWorkStart(e.target.value)} className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32" />
+                <span className="text-slate-400 text-sm">até</span>
+                <Input type="time" value={workEnd} onChange={(e) => setWorkEnd(e.target.value)} className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32" />
+              </div>
+              <Button onClick={handleSaveSettings} className="w-full md:w-auto">Salvar Configurações</Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Kill Switch - 1/4 */}
+        <div className="lg:col-span-1">
+          <Card className={`h-full flex flex-col ${instance?.is_paused ? "bg-destructive/10 border-destructive/30" : "bg-[#1a1a1d] border-[#2a2a2e]"}`}>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-white flex items-center gap-2 text-base">
+                <AlertOctagon className="w-4 h-4 text-destructive" />
+                Emergência
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col flex-1 justify-between">
+              <p className="text-xs text-slate-400 mb-4">
+                {instance?.is_paused ? "Envios pausados. Clique para retomar." : "Pause todos os envios imediatamente."}
+              </p>
+              <Button onClick={handleKillSwitch} variant={instance?.is_paused ? "default" : "destructive"} className={`w-full ${instance?.is_paused ? "bg-green-600 hover:bg-green-700" : ""}`}>
+                {instance?.is_paused ? "▶ Retomar" : "⛔ PARAR TUDO"}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* Warmup Progress */}
       <Card className="bg-gradient-to-r from-yellow-500/5 to-yellow-400/5 border-yellow-500/20">
@@ -127,76 +156,6 @@ export function SecurityTab() {
 
       {/* Error Logs */}
       {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
-
-      {/* Limits Settings */}
-      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
-        <CardHeader>
-          <CardTitle className="text-white flex items-center gap-2">
-            <Clock className="w-5 h-5" />
-            Limites de Envio
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Hourly Limit */}
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-slate-400">Limite por hora</span>
-              <span className="text-sm text-white font-mono">{hourlyLimit}</span>
-            </div>
-            <Slider
-              value={[hourlyLimit]}
-              onValueChange={([v]) => setHourlyLimit(v)}
-              min={10}
-              max={60}
-              step={5}
-              className="w-full"
-            />
-          </div>
-
-          {/* Daily Limit */}
-          <div className="space-y-3">
-            <div className="flex justify-between">
-              <span className="text-sm text-slate-400">Limite por dia</span>
-              <span className="text-sm text-white font-mono">{dailyLimit}</span>
-            </div>
-            <Slider
-              value={[dailyLimit]}
-              onValueChange={([v]) => setDailyLimit(v)}
-              min={30}
-              max={300}
-              step={10}
-              className="w-full"
-            />
-          </div>
-
-          {/* Working Hours */}
-          <div className="space-y-3">
-            <span className="text-sm text-slate-400">Horário de envio</span>
-            <div className="flex items-center gap-3">
-              <Input
-                type="time"
-                value={workStart}
-                onChange={(e) => setWorkStart(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
-              />
-              <span className="text-slate-400 text-sm">até</span>
-              <Input
-                type="time"
-                value={workEnd}
-                onChange={(e) => setWorkEnd(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-32"
-              />
-            </div>
-          </div>
-
-          <Button 
-            onClick={handleSaveSettings}
-            className="w-full"
-          >
-            Salvar Configurações
-          </Button>
-        </CardContent>
-      </Card>
 
       {/* Active Rules */}
       <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
