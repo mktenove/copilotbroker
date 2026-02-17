@@ -136,7 +136,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Check if lead already has active cadence
+    // 5. Check if lead already has active cadence
     const { data: existing } = await supabase
       .from("whatsapp_campaigns")
       .select("id")
@@ -151,7 +151,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Check broker WhatsApp instance
+    // 6. Check broker WhatsApp instance
     const { data: instance } = await supabase
       .from("broker_whatsapp_instances")
       .select("id, instance_token, status")
@@ -165,7 +165,22 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 5. Get broker and project names for variable replacement
+    // 7. Fetch custom steps from auto_cadencia_steps (or fallback to DEFAULT_STEPS)
+    const { data: customSteps } = await supabase
+      .from("auto_cadencia_steps")
+      .select("*")
+      .eq("rule_id", rule.id)
+      .order("step_order", { ascending: true });
+
+    const stepsToUse = (customSteps && customSteps.length > 0)
+      ? customSteps.map((s: any) => ({
+          messageContent: s.message_content,
+          delayMinutes: s.delay_minutes,
+          sendIfReplied: s.send_if_replied,
+        }))
+      : DEFAULT_STEPS;
+
+    // 8. Get broker and project names for variable replacement
     const { data: broker } = await supabase
       .from("brokers")
       .select("name")
@@ -188,14 +203,14 @@ Deno.serve(async (req) => {
       empreendimento: projectName,
     };
 
-    // 6. Create campaign
+    // 9. Create campaign
     const { data: campaign, error: campErr } = await supabase
       .from("whatsapp_campaigns")
       .insert({
         broker_id: lead.broker_id,
         name: `Cadência 10D Auto - ${lead.name}`,
         status: "running",
-        total_leads: DEFAULT_STEPS.length,
+        total_leads: stepsToUse.length,
         lead_id: leadId,
         project_id: lead.project_id,
       })
@@ -204,8 +219,8 @@ Deno.serve(async (req) => {
 
     if (campErr) throw campErr;
 
-    // 7. Insert steps
-    const stepsToInsert = DEFAULT_STEPS.map((step, i) => ({
+    // 10. Insert steps
+    const stepsToInsert = stepsToUse.map((step, i) => ({
       campaign_id: campaign.id,
       step_order: i + 1,
       message_content: step.messageContent,
@@ -215,11 +230,11 @@ Deno.serve(async (req) => {
 
     await supabase.from("campaign_steps").insert(stepsToInsert);
 
-    // 8. Schedule messages in queue
+    // 11. Schedule messages in queue
     const phone = formatPhoneE164(lead.whatsapp);
     let scheduledTime = new Date(Date.now() + Math.floor(Math.random() * 30 + 15) * 1000);
 
-    const queueItems = DEFAULT_STEPS.map((step, i) => {
+    const queueItems = stepsToUse.map((step, i) => {
       if (i > 0) {
         scheduledTime = new Date(
           scheduledTime.getTime() + step.delayMinutes * 60 * 1000 + Math.floor(Math.random() * 60) * 1000
@@ -240,7 +255,7 @@ Deno.serve(async (req) => {
     const { error: qErr } = await supabase.from("whatsapp_message_queue").insert(queueItems);
     if (qErr) throw qErr;
 
-    // 9. Update lead status: move to Atendimento + prevent timeout
+    // 12. Update lead status: move to Atendimento + prevent timeout
     const now = new Date().toISOString();
     await supabase.from("leads").update({
       status: "info_sent",
@@ -249,8 +264,8 @@ Deno.serve(async (req) => {
       reserva_expira_em: null,
     }).eq("id", leadId);
 
-    // 10. Register in timeline
-    const stepsPreview = DEFAULT_STEPS.map((s, i) => {
+    // 13. Register in timeline
+    const stepsPreview = stepsToUse.map((s, i) => {
       const delay = i === 0 ? "Imediato" : s.delayMinutes < 60 ? `${s.delayMinutes} min` : s.delayMinutes < 1440 ? `${s.delayMinutes / 60}h` : `${Math.floor(s.delayMinutes / 1440)} dia(s)`;
       return `Etapa ${i + 1} (${delay}): ${s.messageContent}`;
     }).join("\n");
@@ -260,7 +275,7 @@ Deno.serve(async (req) => {
       interaction_type: "atendimento_iniciado",
       old_status: lead.status,
       new_status: "info_sent",
-      notes: `⚡ Cadência 10D ativada automaticamente (${DEFAULT_STEPS.length} etapas):\n\n${stepsPreview}`,
+      notes: `⚡ Cadência 10D ativada automaticamente (${stepsToUse.length} etapas):\n\n${stepsPreview}`,
     });
 
     console.log("Auto cadencia 10D activated for lead:", leadId, "broker:", lead.broker_id);
