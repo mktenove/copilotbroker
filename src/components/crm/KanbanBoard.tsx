@@ -481,6 +481,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 status={status}
                 leads={filteredLeads.filter(l => l.status === status)}
                 newLeadIds={newLeadIds}
+                cadenciaLeadIds={cadenciaLeadIds}
+                onCancelCadencia={handleCancelCadencia}
                 onCardClick={handleCardClick}
                 onUpdateOrigin={handleUpdateOrigin}
                 onDelete={isAdmin ? handleDeleteLead : undefined}

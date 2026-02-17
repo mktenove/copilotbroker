@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { CRMLead, LeadStatus } from "@/types/crm";
 import { toast } from "sonner";
+import { cancelCadenciaForLead } from "@/hooks/use-cadencia-ativa";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface UseKanbanLeadsOptions {
@@ -270,6 +271,8 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     reason: string,
     oldStatus: LeadStatus
   ) => {
+    // Cancel active cadence if any
+    await cancelCadenciaForLead(leadId);
     return updateLead(
       leadId,
       {
@@ -518,6 +521,8 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
 
   const confirmarVenda = useCallback(async (leadId: string, valorFinal: number, dataFechamento: Date) => {
     try {
+      // Cancel active cadence if any
+      await cancelCadenciaForLead(leadId);
       const now = new Date().toISOString();
       const { error } = await supabase
         .from("leads")
