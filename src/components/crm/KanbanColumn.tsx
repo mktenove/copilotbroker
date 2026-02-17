@@ -16,6 +16,8 @@ interface KanbanColumnProps {
   status: LeadStatus;
   leads: CRMLead[];
   newLeadIds?: Set<string>;
+  cadenciaLeadIds?: Set<string>;
+  onCancelCadencia?: (leadId: string) => void;
   onCardClick: (lead: CRMLead) => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
@@ -37,7 +39,7 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, newLeadIds, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCancelCadencia, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -88,6 +90,8 @@ export function KanbanColumn({ status, leads, newLeadIds, onCardClick, onUpdateO
               key={lead.id}
               lead={lead}
               isNew={newLeadIds?.has(lead.id)}
+              hasCadenciaAtiva={cadenciaLeadIds?.has(lead.id)}
+              onCancelCadencia={onCancelCadencia}
               onClick={() => onCardClick(lead)}
               onUpdateOrigin={onUpdateOrigin}
               onDelete={onDelete}

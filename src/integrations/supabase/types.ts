@@ -1212,6 +1212,7 @@ export type Database = {
           custom_message: string | null
           failed_count: number | null
           id: string
+          lead_id: string | null
           name: string
           project_id: string | null
           reply_count: number | null
@@ -1231,6 +1232,7 @@ export type Database = {
           custom_message?: string | null
           failed_count?: number | null
           id?: string
+          lead_id?: string | null
           name: string
           project_id?: string | null
           reply_count?: number | null
@@ -1250,6 +1252,7 @@ export type Database = {
           custom_message?: string | null
           failed_count?: number | null
           id?: string
+          lead_id?: string | null
           name?: string
           project_id?: string | null
           reply_count?: number | null
@@ -1268,6 +1271,13 @@ export type Database = {
             columns: ["broker_id"]
             isOneToOne: false
             referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_campaigns_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
           {

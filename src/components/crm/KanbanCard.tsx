@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, CheckCircle2, Lock, RotateCw, AlertTriangle, Play, Calendar, FileText, Trophy } from "lucide-react";
+import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, CheckCircle2, Lock, RotateCw, AlertTriangle, Play, Calendar, FileText, Trophy, Square } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
@@ -23,6 +23,8 @@ import {
 interface KanbanCardProps {
   lead: CRMLead;
   isNew?: boolean;
+  hasCadenciaAtiva?: boolean;
+  onCancelCadencia?: (leadId: string) => void;
   onClick: () => void;
   onUpdateOrigin?: (leadId: string, origin: string) => Promise<void>;
   onDelete?: (leadId: string) => Promise<void>;
@@ -70,7 +72,7 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   registered: null,
 };
 
-export function KanbanCard({ lead, isNew, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
+export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
   const isMobile = useIsMobile();
   const actionConfig = ACTION_CONFIG[lead.status];
 
@@ -216,6 +218,27 @@ export function KanbanCard({ lead, isNew, onClick, onUpdateOrigin, onDelete, onI
             </TooltipProvider>
             {isStale && (
               <span className="flex items-center justify-center w-5 h-5 text-[10px] font-bold bg-red-500 text-white rounded-full animate-pulse">!</span>
+            )}
+            {hasCadenciaAtiva && (
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="flex items-center gap-1">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onCancelCadencia?.(lead.id); }}
+                        className="p-0.5 rounded hover:bg-red-500/20 text-red-400 transition-colors"
+                        title="Parar cadência"
+                      >
+                        <Square className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="bg-[#1e1e22] border-[#2a2a2e] text-xs">
+                    <span className="text-emerald-300">Cadência 10D™ ativa</span>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             )}
           </div>
         )}

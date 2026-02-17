@@ -10,15 +10,17 @@ import { PropostasList } from "@/components/crm/PropostasList";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
 import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
+import { CadenciaSheet } from "@/components/crm/CadenciaSheet";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { usePropostas } from "@/hooks/use-propostas";
 import { useUserRole } from "@/hooks/use-user-role";
+import { useCadenciaAtiva } from "@/hooks/use-cadencia-ativa";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
   UserX, Play, FileText, Users, ChevronRight, AlertTriangle, Zap, Eye,
-  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw
+  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw, Square
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -50,6 +52,7 @@ export default function LeadPage() {
   const [perdaOpen, setPerdaOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [cadenciaOpen, setCadenciaOpen] = useState(false);
   const [whatsappMsgOpen, setWhatsappMsgOpen] = useState(false);
   const [whatsappMsg, setWhatsappMsg] = useState("");
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
@@ -64,6 +67,7 @@ export default function LeadPage() {
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead, reactivateLead } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
   const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
+  const cadencia = useCadenciaAtiva(leadId);
 
   // Fetch brokers & projects for editable selects
   const { data: allBrokers = [] } = useQuery({
@@ -366,6 +370,37 @@ export default function LeadPage() {
           </div>
         )}
 
+        {/* Cadência ativa indicator */}
+        {cadencia.isActive && (
+          <div className="flex items-center gap-3 mb-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+            <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <p className="text-xs text-emerald-300 flex-1">
+              Cadência ativa
+              {cadencia.nextMessageAt && (
+                <span className="text-slate-400">
+                  {" — próxima mensagem em "}
+                  {(() => {
+                    const diff = new Date(cadencia.nextMessageAt).getTime() - Date.now();
+                    if (diff < 0) return "breve";
+                    const hours = Math.floor(diff / (1000 * 60 * 60));
+                    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                    if (hours > 24) return `${Math.floor(hours / 24)}d`;
+                    if (hours > 0) return `${hours}h ${mins}min`;
+                    return `${mins}min`;
+                  })()}
+                </span>
+              )}
+            </p>
+            <button
+              onClick={() => cadencia.cancel()}
+              className="p-1.5 rounded-md bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-colors"
+              title="Parar cadência"
+            >
+              <Square className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
         {/* Action buttons */}
         {!isSold && !isLost && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6 sm:flex-wrap">
@@ -382,6 +417,11 @@ export default function LeadPage() {
             <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
               <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Follow-Up
             </Button>
+            {!cadencia.isActive && (
+              <Button variant="outline" size="sm" onClick={() => setCadenciaOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
+                <Zap className="w-3.5 h-3.5 mr-1.5" />Cadência 10D
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
               <UserX className="w-3.5 h-3.5 mr-1.5" />Perda
             </Button>
@@ -745,6 +785,17 @@ export default function LeadPage() {
       <FollowUpSheet
         open={followUpOpen}
         onOpenChange={setFollowUpOpen}
+        leadId={lead.id}
+        leadName={lead.name}
+        leadPhone={lead.whatsapp}
+        projectName={lead.project?.name}
+        brokerName={lead.broker?.name}
+        brokerId={lead.broker?.id || ""}
+        onCreated={refreshLead}
+      />
+      <CadenciaSheet
+        open={cadenciaOpen}
+        onOpenChange={setCadenciaOpen}
         leadId={lead.id}
         leadName={lead.name}
         leadPhone={lead.whatsapp}
