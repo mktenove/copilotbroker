@@ -11,19 +11,41 @@ const corsHeaders = {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-const OPTOUT_KEYWORDS = [
-  "pare", "parar", "sair", "remover", "cancelar",
-  "spam", "bloquear", "não quero", "nao quero",
-  "stop", "remove", "unsubscribe", "chega"
+// Frases completas para reduzir falsos positivos
+const OPTOUT_PHRASES = [
+  "pare de enviar", "parar de enviar", "pare de mandar",
+  "não quero receber", "nao quero receber",
+  "não quero mais", "nao quero mais",
+  "sair da lista", "me tire da lista", "me remova",
+  "remover da lista", "cancelar mensagens", "cancelar envio",
+  "não mande mais", "nao mande mais",
+  "bloquear mensagens", "isso é spam", "isso e spam",
+  "stop", "unsubscribe",
+  "chega de mensagem", "chega de msg",
+  "não me mande", "nao me mande",
+  "pare com isso", "para com isso",
+];
+
+// Palavras que sozinhas já indicam opt-out (apenas as mais inequívocas)
+const OPTOUT_EXACT_WORDS = [
+  "spam", "unsubscribe", "stop",
 ];
 
 const getSupabaseClient = () => createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 const detectOptout = (message: string): string | null => {
   const lower = message.toLowerCase().trim();
-  for (const kw of OPTOUT_KEYWORDS) {
-    if (lower.includes(kw)) return kw;
+  
+  // Primeiro: verificar frases completas
+  for (const phrase of OPTOUT_PHRASES) {
+    if (lower.includes(phrase)) return phrase;
   }
+  
+  // Segundo: verificar palavras exatas (mensagem inteira é só essa palavra)
+  for (const word of OPTOUT_EXACT_WORDS) {
+    if (lower === word) return word;
+  }
+  
   return null;
 };
 
