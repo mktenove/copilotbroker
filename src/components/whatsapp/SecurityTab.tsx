@@ -98,13 +98,12 @@ export function SecurityTab() {
         </Button>
       </div>
 
-      {/* Grid: Controls + Monitoring */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left: Controls */}
-        <div className="space-y-5">
-          <span className="text-sm font-medium text-slate-300">Limites de envio</span>
+      {/* Controls */}
+      <div className="space-y-5">
+        <span className="text-sm font-medium text-slate-300">Limites de envio</span>
 
-          <div className="space-y-3">
+        <div className="flex gap-6">
+          <div className="flex-1 space-y-3">
             <div className="flex justify-between">
               <span className="text-xs text-slate-500">Por hora</span>
               <span className="text-xs text-slate-300 font-mono">{hourlyLimit}</span>
@@ -118,9 +117,7 @@ export function SecurityTab() {
             />
           </div>
 
-          <div className="border-t border-[#2a2a2e]" />
-
-          <div className="space-y-3">
+          <div className="flex-1 space-y-3">
             <div className="flex justify-between">
               <span className="text-xs text-slate-500">Por dia</span>
               <span className="text-xs text-slate-300 font-mono">{dailyLimit}</span>
@@ -133,44 +130,42 @@ export function SecurityTab() {
               step={10}
             />
           </div>
+        </div>
 
-          <div className="border-t border-[#2a2a2e]" />
-
-          <div className="space-y-3">
-            <span className="text-xs text-slate-500">Horário de envio</span>
-            <div className="flex items-center gap-3">
-              <Input
-                type="time"
-                value={workStart}
-                onChange={(e) => setWorkStart(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
-              />
-              <span className="text-slate-600 text-xs">até</span>
-              <Input
-                type="time"
-                value={workEnd}
-                onChange={(e) => setWorkEnd(e.target.value)}
-                className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
-              />
-            </div>
+        <div className="border-t border-[#2a2a2e] pt-4 space-y-3">
+          <span className="text-xs text-slate-500">Horário de envio</span>
+          <div className="flex items-center gap-3">
+            <Input
+              type="time"
+              value={workStart}
+              onChange={(e) => setWorkStart(e.target.value)}
+              className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
+            />
+            <span className="text-slate-600 text-xs">até</span>
+            <Input
+              type="time"
+              value={workEnd}
+              onChange={(e) => setWorkEnd(e.target.value)}
+              className="bg-[#0d0d0f] border-[#2a2a2e] text-white w-28 text-xs h-8"
+            />
           </div>
+        </div>
 
+        <div className="flex justify-end">
           <Button
             onClick={handleSaveSettings}
             variant="ghost"
             size="sm"
-            className="border border-[#2a2a2e] text-slate-400 hover:text-slate-200 text-xs w-full"
+            className="border border-[#2a2a2e] text-slate-400 hover:text-slate-200 text-xs"
           >
             Salvar
           </Button>
         </div>
-
-        {/* Right: Monitoring */}
-        <div className="space-y-4">
-          {broker?.id && <DailyStatsChart brokerId={broker.id} />}
-          {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
-        </div>
       </div>
+
+      {/* Monitoring */}
+      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
+      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
 
       {/* Anti-spam rules as pills */}
       <div className="pt-2 border-t border-[#2a2a2e]">
