@@ -3,13 +3,12 @@ import { Input } from "@/components/ui/input";
 import { useWhatsAppInstance } from "@/hooks/use-whatsapp-instance";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Shield, AlertOctagon, ChevronDown } from "lucide-react";
+import { Shield, AlertOctagon } from "lucide-react";
 import { DailyStatsChart } from "./DailyStatsChart";
 import { OptoutsList } from "./OptoutsList";
 import { ErrorLogsCard } from "./ErrorLogsCard";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 export function SecurityTab() {
   const { instance, togglePause, updateSettings } = useWhatsAppInstance();
@@ -17,7 +16,6 @@ export function SecurityTab() {
   const [dailyLimit, setDailyLimit] = useState(instance?.daily_limit || 150);
   const [workStart, setWorkStart] = useState(instance?.working_hours_start || "09:00");
   const [workEnd, setWorkEnd] = useState(instance?.working_hours_end || "21:00");
-  const [optoutsOpen, setOptoutsOpen] = useState(false);
 
   const { data: broker } = useQuery({
     queryKey: ["current-broker-security"],
@@ -69,8 +67,8 @@ export function SecurityTab() {
   ];
 
   return (
-    <div className="space-y-6">
-      {/* Status Header */}
+    <div className="space-y-8">
+      {/* 1. Status Header */}
       <div className="flex items-center justify-between pb-4 border-b border-[#2a2a2e]">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
@@ -98,7 +96,7 @@ export function SecurityTab() {
         </Button>
       </div>
 
-      {/* Controls */}
+      {/* 2. Controles */}
       <div className="space-y-5">
         <span className="text-sm font-medium text-slate-300">Limites de envio</span>
 
@@ -163,11 +161,7 @@ export function SecurityTab() {
         </div>
       </div>
 
-      {/* Monitoring */}
-      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
-      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
-
-      {/* Anti-spam rules as pills */}
+      {/* 3. Regras anti-spam */}
       <div className="pt-2 border-t border-[#2a2a2e]">
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-3.5 h-3.5 text-slate-500" />
@@ -185,16 +179,14 @@ export function SecurityTab() {
         </div>
       </div>
 
-      {/* Opt-outs collapsible */}
-      <Collapsible open={optoutsOpen} onOpenChange={setOptoutsOpen}>
-        <CollapsibleTrigger className="flex items-center gap-2 text-xs text-slate-500 hover:text-slate-300 transition-colors w-full pt-2 border-t border-[#2a2a2e]">
-          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${optoutsOpen ? "rotate-180" : ""}`} />
-          Opt-outs
-        </CollapsibleTrigger>
-        <CollapsibleContent className="pt-3">
-          <OptoutsList />
-        </CollapsibleContent>
-      </Collapsible>
+      {/* 4. Estatísticas */}
+      {broker?.id && <DailyStatsChart brokerId={broker.id} />}
+
+      {/* 5. Erros recentes */}
+      {broker?.id && <ErrorLogsCard brokerId={broker.id} />}
+
+      {/* 6. Opt-outs (sempre visível) */}
+      <OptoutsList />
     </div>
   );
 }
