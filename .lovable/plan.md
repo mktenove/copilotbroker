@@ -1,44 +1,24 @@
 
-# Correção: Contador de respostas e Realtime na aba Fila
+# Correção: Iniciar Atendimento abrindo WhatsApp direto no celular
 
-## Problemas encontrados
+## Problema
 
-### 1. Respostas sempre mostra 0 (hardcoded)
-Na linha 64 do `use-whatsapp-queue.ts`, o contador de respostas esta fixo em zero:
-```
-replies: 0, // This would come from a separate table or campaign stats
-```
-A tabela `whatsapp_lead_replies` ja tem 6 registros, mas o hook nunca consulta essa tabela.
+O `window.open(url, '_blank')` no celular abre uma nova aba do navegador antes de redirecionar para o WhatsApp. O botão de WhatsApp do Kanban Card funciona porque usa uma tag `<a href>`, que o sistema operacional intercepta e abre direto no app.
 
-### 2. Sem Realtime nas tabelas de WhatsApp
-As tabelas `whatsapp_message_queue` e `whatsapp_lead_replies` nao estao na publicacao `supabase_realtime`. Atualmente so `leads`, `lead_interactions`, `notifications` e `propostas` tem Realtime ativo. Isso significa que mudancas feitas pelo webhook (novas respostas, cancelamentos de follow-up) so aparecem no proximo polling de 30 segundos.
+## Solução
 
-## Correcoes propostas
-
-### 1. Migration SQL: Habilitar Realtime
-Adicionar as tabelas `whatsapp_message_queue` e `whatsapp_lead_replies` a publicacao Realtime:
-```sql
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_message_queue;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.whatsapp_lead_replies;
-```
-
-### 2. Atualizar `use-whatsapp-queue.ts`
-- Buscar contagem real de respostas da tabela `whatsapp_lead_replies`, filtrando pelas campanhas do broker
-- Adicionar subscricao Realtime na `whatsapp_message_queue` para invalidar o cache do React Query automaticamente quando mensagens mudarem de status
-- Adicionar subscricao Realtime na `whatsapp_lead_replies` para atualizar o contador de respostas instantaneamente
-
-### 3. Logica de contagem de respostas
-Buscar as campanhas do broker e contar quantas respostas unicas existem na `whatsapp_lead_replies` para essas campanhas. Isso substitui o `replies: 0` hardcoded.
+Substituir `window.open(url, '_blank')` por `window.location.href = url` nos fluxos de Iniciar Atendimento. Isso faz o navegador navegar diretamente para o link `wa.me`, que o celular intercepta e abre o WhatsApp sem abrir uma aba intermediária.
 
 ## Arquivos afetados
 
-| Acao | Arquivo |
-|------|---------|
-| Migration SQL | Habilitar Realtime para `whatsapp_message_queue` e `whatsapp_lead_replies` |
-| Editar | `src/hooks/use-whatsapp-queue.ts` (query de replies + subscricoes Realtime) |
+| Arquivo | Linha | Mudança |
+|---------|-------|---------|
+| `src/components/crm/KanbanBoard.tsx` | 296 | `window.open(url, '_blank')` para `window.location.href = url` |
+| `src/pages/LeadPage.tsx` | 422 | `window.open(url, '_blank')` para `window.location.href = url` |
+| `src/components/crm/LeadDetailSheet.tsx` | 393 | `window.open(url, '_blank')` para `window.location.href = url` |
+
+Nota: Os outros links de WhatsApp (enviar mensagem rápida, botão de contato) continuam como estão, pois já funcionam corretamente com `<a href>` ou têm contexto diferente.
 
 ## Resultado esperado
 
-- O card "Respostas" mostrara o numero real de respostas recebidas
-- Qualquer mudanca na fila (envio, cancelamento, falha) aparecera instantaneamente sem esperar 30 segundos
-- Novas respostas detectadas pelo webhook incrementarao o contador em tempo real
+Ao clicar em "Iniciar e Enviar via WhatsApp", o WhatsApp abrirá diretamente no celular sem passar por uma aba intermediária do navegador.
