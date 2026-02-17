@@ -162,6 +162,13 @@ const FormSection = ({
       }).catch((err) => {
         console.warn("Auto first message trigger failed:", err);
       });
+
+      // Trigger auto cadencia 10D (non-blocking)
+      supabase.functions.invoke("auto-cadencia-10d", {
+        body: { leadId },
+      }).catch((err) => {
+        console.warn("Auto cadencia trigger failed:", err);
+      });
       
       // GA4 conversion event
       if (typeof window.gtag === 'function') {

@@ -13,3 +13,5 @@ export { CampaignCard } from "./CampaignCard";
 export { OptoutsList } from "./OptoutsList";
 export { DailyStatsChart } from "./DailyStatsChart";
 export { ErrorLogsCard } from "./ErrorLogsCard";
+export { AutoCadenciaSection } from "./AutoCadenciaSection";
+export { AutoCadenciaRuleEditor } from "./AutoCadenciaRuleEditor";

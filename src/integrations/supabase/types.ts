@@ -65,6 +65,48 @@ export type Database = {
           },
         ]
       }
+      broker_auto_cadencia_rules: {
+        Row: {
+          broker_id: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          project_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          broker_id: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          broker_id?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_auto_cadencia_rules_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "broker_auto_cadencia_rules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       broker_auto_message_rules: {
         Row: {
           broker_id: string
