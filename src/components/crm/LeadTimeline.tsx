@@ -213,7 +213,7 @@ export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attri
               </div>
 
               {detail && (
-                <p className="mt-1 ml-5.5 text-[11px] text-slate-500 truncate">{detail}</p>
+                <p className="mt-1 ml-5.5 text-[11px] text-slate-500 break-words">{detail}</p>
               )}
             </div>
           );
