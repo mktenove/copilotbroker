@@ -76,7 +76,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 3. Check for active rule (project-specific first, then global)
+    // 3. Check if 1ª Mensagem automation is active for this broker+project (mutual exclusivity)
+    let hasFirstMsgRule = false;
+    if (lead.project_id) {
+      const { data: fmRule } = await supabase
+        .from("broker_auto_message_rules")
+        .select("id")
+        .eq("broker_id", lead.broker_id)
+        .eq("is_active", true)
+        .or(`project_id.eq.${lead.project_id},project_id.is.null`)
+        .limit(1);
+      hasFirstMsgRule = !!(fmRule && fmRule.length > 0);
+    } else {
+      const { data: fmRule } = await supabase
+        .from("broker_auto_message_rules")
+        .select("id")
+        .eq("broker_id", lead.broker_id)
+        .eq("is_active", true)
+        .is("project_id", null)
+        .limit(1);
+      hasFirstMsgRule = !!(fmRule && fmRule.length > 0);
+    }
+
+    if (hasFirstMsgRule) {
+      console.log("Skipping auto-cadencia - 1ª Mensagem is active for this broker+project");
+      return new Response(JSON.stringify({ status: "skipped", reason: "first_message_active" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // 4. Check for active rule (project-specific first, then global)
     let rule = null;
     if (lead.project_id) {
       const { data } = await supabase

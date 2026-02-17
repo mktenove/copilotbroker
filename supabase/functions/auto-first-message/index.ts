@@ -182,7 +182,39 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 5. Find active auto-message rule for this broker + project
+    // 5. Check if Cadência 10D is active for this broker+project (mutual exclusivity)
+    if (lead.broker_id) {
+      let hasCadenciaRule = false;
+      if (lead.project_id) {
+        const { data: cadRule } = await supabase
+          .from("broker_auto_cadencia_rules")
+          .select("id")
+          .eq("broker_id", lead.broker_id)
+          .eq("is_active", true)
+          .or(`project_id.eq.${lead.project_id},project_id.is.null`)
+          .limit(1);
+        hasCadenciaRule = !!(cadRule && cadRule.length > 0);
+      } else {
+        const { data: cadRule } = await supabase
+          .from("broker_auto_cadencia_rules")
+          .select("id")
+          .eq("broker_id", lead.broker_id)
+          .eq("is_active", true)
+          .is("project_id", null)
+          .limit(1);
+        hasCadenciaRule = !!(cadRule && cadRule.length > 0);
+      }
+
+      if (hasCadenciaRule) {
+        console.log("[auto-first-message] Skipping - Cadência 10D is active for this broker+project");
+        return new Response(
+          JSON.stringify({ status: "skipped", reason: "cadencia_10d_active" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    // 6. Find active auto-message rule for this broker + project
     // First try project-specific rule, then fallback to "all projects" rule
     let rule: AutoMessageRule | null = null;
 
