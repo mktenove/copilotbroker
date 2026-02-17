@@ -153,6 +153,10 @@ export default {
           "0%, 100%": { boxShadow: "0 0 0 2px rgba(52, 211, 153, 0.6)" },
           "50%": { boxShadow: "0 0 0 2px rgba(52, 211, 153, 0.15)" },
         },
+        "dot-pulse": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.3" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -173,6 +177,7 @@ export default {
         "rotate-in": "rotateIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "expand-width": "expandWidth 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards",
         "ring-pulse": "ring-pulse 4s ease-in-out infinite",
+        "dot-pulse": "dot-pulse 4s ease-in-out infinite",
       },
     },
   },
