@@ -74,10 +74,10 @@ const ACTION_CONFIG: Record<string, { label: string; icon: React.ElementType; co
 
 // Stable animation style to prevent re-render resets
 const RING_PULSE_STYLE: React.CSSProperties = {
-  animation: "ring-pulse 4s ease-in-out infinite",
+  animation: "ring-pulse 3s ease-in-out infinite",
 };
 const RING_PULSE_GLOW_STYLE: React.CSSProperties = {
-  animation: "ring-pulse 4s ease-in-out infinite",
+  animation: "ring-pulse 3s ease-in-out infinite",
   boxShadow: "0 0 20px rgba(52,211,153,0.3)",
 };
 
