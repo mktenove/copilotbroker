@@ -1,38 +1,34 @@
 
-# Corrigir Botao Transferir na Pagina do Lead
+
+# Corrigir animacao de contorno verde (Cadencia Ativa) no KanbanCard
 
 ## Problema
 
-O botao "Transferir" na pagina do lead (`/corretor/lead/:id`) define o estado `transferOpen = true` ao ser clicado, porem o componente `TransferLeadDialog` nunca foi importado nem renderizado nesta pagina. Ou seja, nada acontece ao clicar.
+A animacao `ring-pulse` esta definida como keyframe no `tailwind.config.ts`, porem o card aplica via **estilo inline** (`style={{ animation: "ring-pulse 4s ease-in-out infinite" }}`). O Tailwind so gera o CSS de um keyframe quando a classe correspondente (`animate-ring-pulse`) e utilizada em algum lugar do codigo. Como nenhum elemento usa `className="animate-ring-pulse"`, o `@keyframes ring-pulse` nunca e emitido no CSS final, e a animacao nao funciona.
+
+O mesmo vale para `dot-pulse`.
 
 ## Solucao
 
-Adicionar o import e a renderizacao do `TransferLeadDialog` no arquivo `src/pages/LeadPage.tsx`.
+Mover as definicoes dos keyframes `ring-pulse` e `dot-pulse` para o arquivo `src/index.css` como CSS puro. Isso garante que os keyframes estejam sempre disponiveis, independente de o Tailwind gerar ou nao as classes utilitarias.
 
-## Alteracoes tecnicas
+## Alteracoes
 
-### Arquivo: `src/pages/LeadPage.tsx`
+### Arquivo: `src/index.css`
 
-1. **Adicionar import** do `TransferLeadDialog`:
-   ```
-   import { TransferLeadDialog } from "@/components/crm/TransferLeadDialog";
-   ```
+Adicionar os keyframes diretamente no CSS global:
 
-2. **Renderizar o componente** junto aos demais modais (provavelmente proximo das outras modais como `AgendamentoModal`, `PerdaModal`, etc., no final do JSX):
-   ```
-   <TransferLeadDialog
-     leadId={lead.id}
-     leadName={lead.name}
-     currentBrokerId={lead.broker?.id}
-     brokers={allBrokers}
-     isOpen={transferOpen}
-     onClose={() => setTransferOpen(false)}
-     onTransferred={refreshLead}
-   />
-   ```
+```css
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6); }
+  50% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.15); }
+}
 
-Todos os dados necessarios ja estao disponiveis no componente:
-- `lead.id`, `lead.name`, `lead.broker?.id` vem do state `lead`
-- `allBrokers` ja e buscado via React Query (linha 73-79)
-- `transferOpen` / `setTransferOpen` ja existem (linha 53)
-- `refreshLead` ja existe para atualizar os dados apos a transferencia
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+```
+
+Nenhuma outra alteracao e necessaria — os estilos inline no `KanbanCard.tsx` ja referenciam esses nomes de keyframe corretamente.
+
