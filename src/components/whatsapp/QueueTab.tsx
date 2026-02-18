@@ -10,7 +10,11 @@ import {
   RefreshCw,
   CheckCircle,
   AlertTriangle,
-  Timer
+  Timer,
+  Phone,
+  Hash,
+  RotateCw,
+  Calendar
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
 import { QueueStatus } from "@/types/whatsapp";
@@ -30,6 +34,29 @@ const STATUS_BADGE: Record<QueueStatus, { label: string; variant: "default" | "s
 function truncateMessage(msg?: string, len = 40) {
   if (!msg) return "";
   return msg.length > len ? msg.slice(0, len) + "…" : msg;
+}
+
+function formatPhone(phone?: string) {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 13) {
+    return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  if (digits.length === 11) {
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  return phone;
+}
+
+function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; value: string | number | null | undefined }) {
+  if (!value && value !== 0) return null;
+  return (
+    <div className="flex items-center gap-2 text-xs text-slate-400">
+      <Icon className="w-3 h-3 flex-shrink-0" />
+      <span className="text-slate-500">{label}:</span>
+      <span className="text-slate-300">{value}</span>
+    </div>
+  );
 }
 
 function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: number; replies: number } }) {
@@ -76,7 +103,7 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs text-slate-500 flex-shrink-0">
           <Clock className="w-3 h-3 inline mr-0.5" />
-          {format(new Date(message.scheduled_at), "HH:mm")}
+          {format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm")}
         </span>
         <span className="text-sm text-white font-medium truncate flex-shrink-0 max-w-[120px]">
           {message.lead?.name || message.phone}
@@ -101,11 +128,18 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
 
       {/* Expanded content */}
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-[#2a2a2e]" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-2 pt-2 border-t border-[#2a2a2e] space-y-2" onClick={(e) => e.stopPropagation()}>
           {message.message && (
-            <p className="text-xs text-slate-300 whitespace-pre-wrap mb-2">{message.message}</p>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{message.message}</p>
           )}
-          <span className="text-xs text-slate-500">{message.campaign?.name}</span>
+          <div className="space-y-1">
+            <DetailRow icon={Phone} label="Telefone" value={formatPhone(message.phone)} />
+            <DetailRow icon={Send} label="Campanha" value={message.campaign?.name} />
+            {message.step_number && (
+              <DetailRow icon={Hash} label="Etapa" value={`Etapa ${message.step_number}`} />
+            )}
+            <DetailRow icon={RotateCw} label="Tentativas" value={`${message.attempts || 0}/${message.max_attempts || 3}`} />
+          </div>
         </div>
       )}
     </div>
@@ -146,7 +180,7 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
         )}
         {message.sent_at && (
           <span className="text-xs text-slate-500 flex-shrink-0">
-            {format(new Date(message.sent_at), "HH:mm")}
+            {format(new Date(message.sent_at), "dd/MM/yyyy HH:mm")}
           </span>
         )}
         <Badge variant={statusConfig.variant} className="text-[10px] flex-shrink-0">
@@ -156,24 +190,40 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
 
       {/* Expanded content */}
       {expanded && (
-        <div className="mt-2 pt-2 border-t border-[#2a2a2e]" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-2 pt-2 border-t border-[#2a2a2e] space-y-2" onClick={(e) => e.stopPropagation()}>
           {message.message && (
-            <p className="text-xs text-slate-300 whitespace-pre-wrap mb-2">{message.message}</p>
+            <p className="text-xs text-slate-300 whitespace-pre-wrap">{message.message}</p>
           )}
-          {isFailed && message.error_message && (
-            <p className="text-xs text-red-400 mb-2">{message.error_message}</p>
-          )}
+          
+          <div className="space-y-1">
+            <DetailRow icon={Phone} label="Telefone" value={formatPhone(message.phone)} />
+            <DetailRow icon={Send} label="Campanha" value={message.campaign?.name} />
+            {message.step_number && (
+              <DetailRow icon={Hash} label="Etapa" value={`Etapa ${message.step_number}`} />
+            )}
+            <DetailRow icon={RotateCw} label="Tentativas" value={`${message.attempts || 0}/${message.max_attempts || 3}`} />
+            <DetailRow icon={Calendar} label="Agendado em" value={format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm")} />
+          </div>
+
           {isFailed && (
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-slate-400 hover:text-primary gap-1"
-                onClick={() => onRetry(message.id)}
-              >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span className="text-xs">Tentar novamente</span>
-              </Button>
+            <div className="space-y-1">
+              {message.error_code && (
+                <p className="text-xs text-red-400">Código: {message.error_code}</p>
+              )}
+              {message.error_message && (
+                <p className="text-xs text-red-400">{message.error_message}</p>
+              )}
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 text-slate-400 hover:text-primary gap-1"
+                  onClick={() => onRetry(message.id)}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="text-xs">Tentar novamente</span>
+                </Button>
+              </div>
             </div>
           )}
         </div>
