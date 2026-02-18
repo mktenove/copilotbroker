@@ -1,30 +1,73 @@
 
-# Corrigir botoes "Adicionar Lead" nas etapas do Kanban
 
-## Problema
+# Corrigir contagens e enriquecer historico da Fila de Envio
 
-Os botoes "+" no cabecalho de cada coluna e o link "+ Adicionar" (quando a coluna esta vazia) no `KanbanColumn` nao possuem nenhum `onClick` — sao apenas elementos visuais sem acao.
+## Problema 1: Divergencia nas contagens
 
-## Solucao
+### Diagnostico
 
-Propagar um callback `onAddLead` desde as paginas (`BrokerAdmin` e `Admin`) ate o `KanbanColumn`, passando pelo `KanbanBoard`.
+A aba **Campanhas** exibe `campaign.reply_count` direto da tabela `whatsapp_campaigns`, que e atualizado pelo webhook a cada resposta recebida. Ja a aba **Fila** conta respostas consultando a tabela `whatsapp_lead_replies` com `COUNT(*)`. Sao fontes de dados diferentes que podem divergir se o webhook falhar em atualizar uma delas.
 
-## Alteracoes
+Alem disso, os contadores de "Enviados" e "Falhas" na aba Fila sao calculados **apenas sobre as ultimas 100 mensagens** (`.limit(100)` na query), o que subestima os totais reais.
 
-### 1. `src/components/crm/KanbanColumn.tsx`
-- Adicionar prop `onAddLead?: () => void` na interface `KanbanColumnProps`.
-- Conectar o `onClick` do botao "+" (linha 55) e do link "+ Adicionar" (linha 110) ao callback `onAddLead`.
+### Solucao
 
-### 2. `src/components/crm/KanbanBoard.tsx`
-- Adicionar prop `onAddLead?: () => void` na interface `KanbanBoardProps`.
-- Repassar `onAddLead` para cada `KanbanColumn`.
+Unificar a fonte de verdade usando contagens diretas no banco via queries agregadas:
 
-### 3. `src/pages/BrokerAdmin.tsx`
-- Passar `onAddLead={() => setIsAddLeadOpen(true)}` no componente `KanbanBoard`.
+- **Respostas**: consultar `whatsapp_lead_replies` com `count: "exact"` (ja feito corretamente na Fila). O problema esta nas Campanhas, onde `reply_count` pode ficar dessincronizado. Nao alteraremos as campanhas, mas **na Fila** vamos buscar enviados/falhas tambem via query agregada em vez de contar sobre o `.limit(100)`.
+- **Enviados/Falhas na Fila**: usar queries separadas com `count: "exact"` e `head: true` para cada status, sem limite de rows.
 
-### 4. `src/pages/Admin.tsx`
-- Passar `onAddLead={() => setIsAddLeadOpen(true)}` no componente `KanbanBoard`.
+### Alteracoes
 
-## Resultado
+**`src/hooks/use-whatsapp-queue.ts`**:
+- Adicionar 3 queries agregadas separadas para contar `sent`, `failed` e `queued+scheduled` usando `.select("*", { count: "exact", head: true })` filtradas por `broker_id` e `status`.
+- Manter a query principal com `.limit(100)` apenas para exibicao da lista.
+- Os `stats` passarao a usar esses contadores agregados em vez de filtrar o array local.
 
-Clicar no "+" de qualquer coluna ou no "+ Adicionar" de uma coluna vazia abrira o modal de adicionar lead, o mesmo que ja funciona pelo botao principal do cabecalho.
+---
+
+## Problema 2: Historico da Fila com informacoes insuficientes
+
+### Diagnostico atual
+
+O card de historico (`HistoryMessageCard`) exibe:
+- Icone de status
+- Nome do lead (truncado a 120px)
+- Mensagem truncada a 40 caracteres
+- Horario (apenas `HH:mm`, sem data)
+- Badge de status
+- Erro (somente se falhou, ao expandir)
+
+### Melhorias propostas
+
+Ao expandir um item do historico, exibir:
+
+1. **Data e hora completas** do envio (ex: "15/02/2026 14:32") em vez de apenas a hora
+2. **Mensagem completa** sem truncamento (ja existe ao expandir, manter)
+3. **Telefone do destinatario** formatado
+4. **Nome da campanha** vinculada (se houver)
+5. **Etapa da sequencia** (step_number, ex: "Etapa 2 de 5")
+6. **Numero de tentativas** (attempts/max_attempts)
+7. **Data de agendamento original** (scheduled_at)
+8. **Codigo de erro** (error_code, alem do error_message ja exibido)
+
+### Alteracoes
+
+**`src/hooks/use-whatsapp-queue.ts`**:
+- Expandir o select da query principal para incluir `step_number`, `attempts`, `max_attempts`, `error_code`.
+- Esses campos ja existem na tabela `whatsapp_message_queue`, so nao estao sendo consultados explicitamente (o `*` ja os traz, mas precisamos garantir que o tipo os reflita).
+
+**`src/components/whatsapp/QueueTab.tsx`**:
+- No `HistoryMessageCard`: alterar `format(new Date(message.sent_at), "HH:mm")` para `format(new Date(message.sent_at), "dd/MM/yyyy HH:mm")`.
+- No `PendingMessageCard`: alterar tambem para incluir a data no `scheduled_at`.
+- Ao expandir, adicionar uma secao de detalhes com: telefone, campanha, etapa, tentativas, agendamento original, e codigo de erro.
+
+---
+
+## Resumo das alteracoes por arquivo
+
+| Arquivo | Alteracao |
+|---|---|
+| `src/hooks/use-whatsapp-queue.ts` | Adicionar queries agregadas para stats reais (sent/failed/queued count via head:true). Manter query principal para lista. |
+| `src/components/whatsapp/QueueTab.tsx` | Datas completas (dd/MM/yyyy HH:mm). Secao expandida enriquecida com telefone, campanha, etapa, tentativas, erro detalhado. |
+
