@@ -226,7 +226,14 @@ export function useIntelligenceData(filters: IntelligenceFilters) {
       return uniqueBrokers > 0 ? total / uniqueBrokers : 1;
     })();
 
-    return brokers.map((b: any) => {
+    const brokerIdsWithTeam = new Set(
+      roletasMembros
+        .filter((m: any) => m.ativo)
+        .map((m: any) => m.corretor_id)
+    );
+    const activeBrokersWithTeam = brokers.filter((b: any) => brokerIdsWithTeam.has(b.id));
+
+    return activeBrokersWithTeam.map((b: any) => {
       const bLeads = leads.filter((l: any) => l.broker_id === b.id);
       const total = bLeads.length;
       const times = bLeads.map((l: any) => diffMinutes(l.atribuido_em, l.atendimento_iniciado_em)).filter((t): t is number => t !== null && t >= 0);
