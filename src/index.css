@@ -296,6 +296,16 @@
   100% { background-position: 200% 0; }
 }
 
+@keyframes ring-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6); }
+  50% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.15); }
+}
+
+@keyframes dot-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.75); }
+}
+
 /* Custom scrollbar - Landing pages only (not in admin) */
 body:not(:has(.admin-scrollbar)) ::-webkit-scrollbar,
 body:not(:has(.admin-scrollbar))::-webkit-scrollbar {
