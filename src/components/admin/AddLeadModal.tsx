@@ -63,7 +63,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [brokerId, setBrokerId] = useState<string>(defaultBrokerId || "enove");
-  const [origin, setOrigin] = useState<string>("plantao");
+  const [origin, setOrigin] = useState<string>("");
   const [customOrigin, setCustomOrigin] = useState("");
   const [projectId, setProjectId] = useState<string>("");
 
@@ -109,7 +109,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setName("");
     setWhatsapp("");
     setBrokerId(defaultBrokerId || "enove");
-    setOrigin("plantao");
+    setOrigin("");
     setCustomOrigin("");
     setProjectId(projects.length === 1 ? projects[0].id : "");
   };
@@ -143,7 +143,8 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     try {
       // Generate client-side UUID to avoid RLS SELECT issues
       const leadId = crypto.randomUUID();
-      const finalOrigin = origin === "outro" ? customOrigin || "Manual" : 
+      const finalOrigin = !origin ? "Cadastrado manualmente" :
+        origin === "outro" ? customOrigin || "Manual" : 
         ORIGIN_OPTIONS.find(o => o.value === origin)?.label || origin;
 
       // Prepare lead data
