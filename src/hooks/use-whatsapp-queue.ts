@@ -33,7 +33,7 @@ export function useWhatsAppQueue() {
     },
   });
 
-  // Fetch queue with lead and campaign info
+  // Fetch queue for display (limited to 100)
   const { data: queue = [], isLoading, refetch } = useQuery({
     queryKey: ["whatsapp-queue", broker?.id],
     queryFn: async () => {
@@ -57,13 +57,63 @@ export function useWhatsAppQueue() {
     refetchInterval: 30000,
   });
 
+  // Aggregate count: queued + scheduled
+  const { data: queuedCount = 0 } = useQuery({
+    queryKey: ["whatsapp-queue-count-queued", broker?.id],
+    queryFn: async () => {
+      if (!broker?.id) return 0;
+      const { count, error } = await supabase
+        .from("whatsapp_message_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("broker_id", broker.id)
+        .in("status", ["queued", "scheduled"]);
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!broker?.id,
+    refetchInterval: 30000,
+  });
+
+  // Aggregate count: sent
+  const { data: sentCount = 0 } = useQuery({
+    queryKey: ["whatsapp-queue-count-sent", broker?.id],
+    queryFn: async () => {
+      if (!broker?.id) return 0;
+      const { count, error } = await supabase
+        .from("whatsapp_message_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("broker_id", broker.id)
+        .eq("status", "sent");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!broker?.id,
+    refetchInterval: 30000,
+  });
+
+  // Aggregate count: failed
+  const { data: failedCount = 0 } = useQuery({
+    queryKey: ["whatsapp-queue-count-failed", broker?.id],
+    queryFn: async () => {
+      if (!broker?.id) return 0;
+      const { count, error } = await supabase
+        .from("whatsapp_message_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("broker_id", broker.id)
+        .eq("status", "failed");
+      if (error) throw error;
+      return count || 0;
+    },
+    enabled: !!broker?.id,
+    refetchInterval: 30000,
+  });
+
   // Fetch replies count from whatsapp_lead_replies
   const { data: repliesCount = 0 } = useQuery({
     queryKey: ["whatsapp-replies-count", broker?.id],
     queryFn: async () => {
       if (!broker?.id) return 0;
 
-      // Get broker's campaign IDs
       const { data: campaigns } = await supabase
         .from("whatsapp_campaigns")
         .select("id")
@@ -101,6 +151,9 @@ export function useWhatsAppQueue() {
         },
         () => {
           queryClient.invalidateQueries({ queryKey: ["whatsapp-queue", broker.id] });
+          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-queued", broker.id] });
+          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-sent", broker.id] });
+          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-failed", broker.id] });
         }
       )
       .on(
@@ -121,11 +174,11 @@ export function useWhatsAppQueue() {
     };
   }, [broker?.id, queryClient]);
 
-  // Calculate stats
+  // Stats from aggregate queries
   const stats: QueueStats = {
-    queued: queue.filter(m => m.status === "queued" || m.status === "scheduled").length,
-    sent: queue.filter(m => m.status === "sent").length,
-    failed: queue.filter(m => m.status === "failed").length,
+    queued: queuedCount,
+    sent: sentCount,
+    failed: failedCount,
     replies: repliesCount,
   };
 
