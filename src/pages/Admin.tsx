@@ -402,7 +402,7 @@ const Admin = () => {
         brokers={brokers}
       >
       {activeTab === "crm" ? (
-        <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} onSearchChange={setCrmSearchTerm} />
+        <KanbanBoard isAdmin={true} brokers={brokers} searchTerm={crmSearchTerm} onSearchChange={setCrmSearchTerm} onAddLead={() => setIsAddLeadOpen(true)} />
       ) : activeTab === "leads" ? (
         <>
           {/* Stats */}

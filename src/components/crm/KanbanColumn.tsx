@@ -27,6 +27,7 @@ interface KanbanColumnProps {
   onOpenVenda?: (leadId: string) => void;
   onOpenPerda?: (leadId: string, currentStatus: LeadStatus) => void;
   onDispatchWhatsApp?: (status: LeadStatus) => void;
+  onAddLead?: () => void;
 }
 
 const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
@@ -39,7 +40,7 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCancelCadencia, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCancelCadencia, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp, onAddLead }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -52,7 +53,7 @@ export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCan
           {config.label} <span className="text-slate-500">({leads.length})</span>
         </h3>
         <div className="flex-1" />
-        <button className={cn("w-7 h-7 rounded-lg flex items-center justify-center", "text-slate-500 hover:text-primary hover:bg-primary/10", "transition-all duration-200")}>
+        <button onClick={onAddLead} className={cn("w-7 h-7 rounded-lg flex items-center justify-center", "text-slate-500 hover:text-primary hover:bg-primary/10", "transition-all duration-200")}>
           <Plus className="w-4 h-4" />
         </button>
         <DropdownMenu>
@@ -107,7 +108,7 @@ export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCan
         {leads.length === 0 && (
           <div className="flex flex-col items-center justify-center h-32 text-center">
             <div className="text-slate-600 text-sm">Nenhum lead</div>
-            <button className="mt-2 text-xs text-primary/70 hover:text-primary transition-colors">+ Adicionar</button>
+            <button onClick={onAddLead} className="mt-2 text-xs text-primary/70 hover:text-primary transition-colors">+ Adicionar</button>
           </div>
         )}
       </div>
