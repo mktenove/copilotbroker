@@ -1,34 +1,21 @@
+# Aumentar velocidade da animacao ring-pulse
 
+## Alteracao
 
-# Corrigir animacao de contorno verde (Cadencia Ativa) no KanbanCard
+No arquivo `src/index.css`, reduzir a duracao da animacao `ring-pulse` nao e possivel diretamente nos keyframes (a duracao e controlada no componente). Porem, o `KanbanCard.tsx` define a duracao inline como `4s`. 
 
-## Problema
+### Arquivo: `src/components/crm/KanbanCard.tsx`
 
-A animacao `ring-pulse` esta definida como keyframe no `tailwind.config.ts`, porem o card aplica via **estilo inline** (`style={{ animation: "ring-pulse 4s ease-in-out infinite" }}`). O Tailwind so gera o CSS de um keyframe quando a classe correspondente (`animate-ring-pulse`) e utilizada em algum lugar do codigo. Como nenhum elemento usa `className="animate-ring-pulse"`, o `@keyframes ring-pulse` nunca e emitido no CSS final, e a animacao nao funciona.
+Alterar as constantes `RING_PULSE_STYLE` e `RING_PULSE_GLOW_STYLE` de `4s` para `3s`:
 
-O mesmo vale para `dot-pulse`.
-
-## Solucao
-
-Mover as definicoes dos keyframes `ring-pulse` e `dot-pulse` para o arquivo `src/index.css` como CSS puro. Isso garante que os keyframes estejam sempre disponiveis, independente de o Tailwind gerar ou nao as classes utilitarias.
-
-## Alteracoes
-
-### Arquivo: `src/index.css`
-
-Adicionar os keyframes diretamente no CSS global:
-
-```css
-@keyframes ring-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.6); }
-  50% { box-shadow: 0 0 0 2px rgba(52, 211, 153, 0.15); }
-}
-
-@keyframes dot-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.4; transform: scale(0.75); }
-}
+```typescript
+const RING_PULSE_STYLE: React.CSSProperties = {
+  animation: "ring-pulse 3s ease-in-out infinite",
+};
+const RING_PULSE_GLOW_STYLE: React.CSSProperties = {
+  animation: "ring-pulse 3s ease-in-out infinite",
+  boxShadow: "0 0 20px rgba(52,211,153,0.3)",
+};
 ```
 
-Nenhuma outra alteracao e necessaria — os estilos inline no `KanbanCard.tsx` ja referenciam esses nomes de keyframe corretamente.
-
+Isso fara a piscada completar um ciclo em 3 segundos em vez de 4, tornando-a visivelmente mais rapida sem ficar agressiva.
