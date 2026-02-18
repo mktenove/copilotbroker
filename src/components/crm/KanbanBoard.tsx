@@ -56,12 +56,13 @@ interface KanbanBoardProps {
   brokers?: { id: string; name: string; slug: string }[];
   searchTerm?: string;
   onSearchChange?: (value: string) => void;
+  onAddLead?: () => void;
 }
 
 const STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
 
-export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange }: KanbanBoardProps) {
+export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange, onAddLead }: KanbanBoardProps) {
   const navigate = useNavigate();
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
@@ -492,6 +493,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 onOpenVenda={handleOpenVenda}
                 onOpenPerda={handleOpenPerda}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
+                onAddLead={onAddLead}
               />
             ))}
           </div>

@@ -175,7 +175,7 @@ const BrokerAdmin = () => {
         {viewMode === "kanban" ? (
           <div className="flex-1 min-h-[400px] space-y-4">
             {brokerId && <BrokerRoletas brokerId={brokerId} />}
-            <KanbanBoard brokerId={brokerId} isAdmin={false} />
+            <KanbanBoard brokerId={brokerId} isAdmin={false} onAddLead={() => setIsAddLeadOpen(true)} />
           </div>
         ) : (
           <>
