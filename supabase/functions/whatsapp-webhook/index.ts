@@ -241,6 +241,28 @@ app.post("/", async (c) => {
         // Cancel follow-ups where send_if_replied = false
         await cancelFollowUpsOnReply(supabase, phone, campaignIds);
 
+        // Check if campaigns should be marked as completed (no remaining messages)
+        for (const campaignId of campaignIds) {
+          const { count } = await supabase
+            .from("whatsapp_message_queue")
+            .select("*", { count: "exact", head: true })
+            .eq("campaign_id", campaignId)
+            .in("status", ["scheduled", "queued"]);
+
+          if (count === 0) {
+            await supabase
+              .from("whatsapp_campaigns")
+              .update({ 
+                status: "completed", 
+                completed_at: new Date().toISOString() 
+              })
+              .eq("id", campaignId)
+              .eq("status", "running");
+            
+            console.log(`✅ Campaign ${campaignId} completed (no remaining messages after reply)`);
+          }
+        }
+
         // Register reply permanently per-phone per-campaign
         for (const campaignId of campaignIds) {
           await supabase
