@@ -1,47 +1,28 @@
 
 
-# Adicionar Meta Pixel e CAPI ao Mauricio Cardoso
+# Remover abertura automatica do formulario de proposta apos comparecimento
 
-## Resumo
+## O que muda
 
-Instalar o Facebook Pixel (ID: 1447260256915517) nas paginas `/novohamburgo/mauriciocardoso` e `/novohamburgo/mauriciocardoso/obrigado`, seguindo o mesmo padrao ja usado no GoldenView: rastreamento hibrido com Pixel client-side + API de Conversoes server-side.
+No Kanban, ao confirmar o comparecimento do cliente, o sistema deixa de abrir automaticamente o modal de proposta. O corretor pode adicionar a proposta manualmente quando desejar, pela pagina do lead ou pelos botoes de acao do card.
 
-## Alteracoes
+## Alteracao
 
-### 1. Salvar o token da API de Conversoes
+### `src/components/crm/KanbanBoard.tsx`
 
-Adicionar um novo segredo `META_CONVERSIONS_API_TOKEN_MC` com o token fornecido. Esse segredo sera usado pela funcao de backend para enviar eventos server-side para o pixel do Mauricio Cardoso.
+Remover a linha 551 que abre o `PropostaModal` automaticamente apos o comparecimento:
 
-### 2. Atualizar a funcao de backend `meta-conversions-api`
+```diff
+ onCompareceu={async () => {
+   if (!comparecimentoModal.leadId) return;
+   const success = await registrarComparecimento(comparecimentoModal.leadId);
+   if (success) {
+     toast.success("Comparecimento registrado!");
+-    // Open proposta modal automatically
+-    setPropostaModal({ open: true, leadId: comparecimentoModal.leadId });
+   }
+ }}
+```
 
-Atualmente a funcao tem o Pixel ID do GoldenView fixo no codigo. Sera atualizada para aceitar um `pixel_id` opcional no corpo da requisicao, permitindo reusar a mesma funcao para ambos os projetos:
-
-- Se `pixel_id` for enviado e corresponder ao do Mauricio Cardoso, usa o token `META_CONVERSIONS_API_TOKEN_MC`
-- Caso contrario, usa o token original `META_CONVERSIONS_API_TOKEN` (GoldenView)
-- O fallback do `event_source_url` tambem sera ajustado
-
-### 3. Adicionar script do Pixel na landing page
-
-No componente `MauricioCardosoLandingPage.tsx`, adicionar via Helmet:
-- Script de inicializacao do Facebook Pixel (ID 1447260256915517)
-- Evento `PageView` automatico
-- Tag `noscript` com pixel de imagem
-
-O mesmo script ja carrega na rota `/obrigado` pois usa o mesmo componente.
-
-### 4. Disparar evento Lead no formulario
-
-No `MCFormSection.tsx`, apos o cadastro bem-sucedido:
-- Disparar `fbq('track', 'Lead')` client-side
-- Chamar `meta-conversions-api` server-side com `pixel_id`, dados do usuario, cookies `_fbp`/`_fbc` e `event_id` para deduplicacao
-
-## Arquivos alterados
-
-| Arquivo | Alteracao |
-|---|---|
-| Segredo `META_CONVERSIONS_API_TOKEN_MC` | Novo segredo com o token fornecido |
-| `supabase/functions/meta-conversions-api/index.ts` | Aceitar `pixel_id` opcional e selecionar token correspondente |
-| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Adicionar script do Pixel no Helmet |
-| `src/pages/mauriciocardoso/MauricioCardosoBrokerLandingPage.tsx` | Adicionar script do Pixel no Helmet |
-| `src/components/mauriciocardoso/MCFormSection.tsx` | Disparar evento Lead (client + server) apos submit |
+Nenhum outro arquivo precisa ser alterado.
 
