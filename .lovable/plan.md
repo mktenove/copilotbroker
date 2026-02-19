@@ -1,51 +1,69 @@
 
-# Corrigir botoes contextuais do Kanban na etapa Agendamento
 
-## Problemas
+# Barra de progresso interativa na pagina do Lead
 
-1. **Apos confirmar comparecimento**: O botao continua exibindo "Comparecimento" quando deveria mudar para "Fazer Proposta", pois o proximo passo logico e registrar uma proposta.
+## Conceito
 
-2. **Apos confirmar nao comparecimento**: O sistema abre automaticamente o modal de reagendamento. O comportamento correto e apenas trocar o botao para "Reagendar", deixando o usuario decidir quando reagendar.
+Transformar a barra de progresso do funil (atualmente apenas visual) em um elemento interativo onde o usuario pode clicar na **proxima etapa** para acionar a acao correspondente. Isso permite movimentar o lead diretamente pela barra, refletindo no kanban via realtime.
 
-## Causa raiz
+## Comportamento
 
-O `ACTION_CONFIG` no `KanbanCard.tsx` e um mapa estatico baseado apenas no `status` do lead. Ele nao considera o campo `comparecimento` (true/false/null) para decidir qual botao exibir na etapa `scheduling`.
+Cada segmento da barra tera comportamento diferente baseado na posicao relativa ao estagio atual:
 
-## Solucao
+| Segmento | Visual | Clique |
+|----------|--------|--------|
+| Etapas anteriores | Amarelo escuro, cursor default | Nada (tooltip "Etapa concluida") |
+| Etapa atual | Amarelo brilhante com glow | Nada (tooltip "Etapa atual") |
+| Proxima etapa | Borda pulsante, cursor pointer | Abre o modal/acao correspondente |
+| Etapas futuras | Cinza, cursor not-allowed | Nada (tooltip "Complete a etapa anterior") |
 
-### 1. `src/components/crm/KanbanCard.tsx`
+### Mapeamento de acoes por clique na proxima etapa
 
-Tornar o botao de acao dinamico para a etapa `scheduling`:
+- **Clicar em "Atendimento"** (estando em Pre Atend.) -> Abre modal de Iniciar Atendimento
+- **Clicar em "Agendamento"** (estando em Atendimento) -> Abre modal de Agendamento
+- **Clicar em "Proposta"** (estando em Agendamento) -> Abre modal de Comparecimento ou Proposta (conforme `lead.comparecimento`)
+- **Clicar em "Vendido"** (estando em Proposta) -> Abre modal de Venda (se tem proposta aprovada) ou tooltip informando que precisa de proposta aprovada
 
-- `comparecimento === null` (sem registro ainda): exibir "Comparecimento"
-- `comparecimento === true`: exibir "Fazer Proposta"
-- `comparecimento === false` (nao compareceu): exibir "Reagendar"
+## Detalhes tecnicos
 
-Isso sera feito substituindo o uso estatico de `ACTION_CONFIG[lead.status]` por uma logica que verifica `lead.comparecimento` quando o status e `scheduling`.
+### Arquivo: `src/pages/LeadPage.tsx`
 
-O `handleAction` tambem sera atualizado para chamar a funcao correta:
-- `comparecimento === true` -> `onOpenProposta(leadId)` (novo callback)
-- `comparecimento === false` -> `onOpenReagendamento(leadId)` (novo callback)
+1. **Tornar cada segmento clicavel** - Envolver cada `div` da barra em um `button` com `onClick` que verifica se e a proxima etapa e chama o handler correto
 
-Novos props necessarios no KanbanCard:
-- `onOpenProposta?: (leadId: string) => void`
-- `onOpenReagendamento?: (leadId: string) => void`
+2. **Adicionar indicacao visual da proxima etapa** - A proxima etapa tera uma animacao de borda pulsante (ring animado) e icone de seta para indicar que e clicavel
 
-### 2. `src/components/crm/KanbanColumn.tsx`
+3. **Logica de click handler** - Reutilizar os mesmos handlers ja existentes (`setIniciarAtendimentoOpen`, `setAgendamentoOpen`, `setComparecimentoOpen`, `setPropostaOpen`, `setVendaOpen`)
 
-Passar os novos props `onOpenProposta` e `onOpenReagendamento` para o `KanbanCard`.
+4. **Tooltips** - Usar o componente `Tooltip` ja disponivel para mostrar feedback ao passar o mouse sobre etapas nao clicaveis
 
-### 3. `src/components/crm/KanbanBoard.tsx`
+Exemplo da logica de clique:
 
-- **Remover** a abertura automatica do `AgendamentoModal` dentro do `onNaoCompareceu` do `ComparecimentoModal`.
-- Adicionar handler `handleOpenProposta` que abre o `PropostaModal`.
-- Adicionar handler `handleOpenReagendamento` que abre o `AgendamentoModal` com `isReagendamento: true`.
-- Passar ambos handlers para as colunas.
+```typescript
+const handleStageClick = (stageIndex: number) => {
+  // Apenas proxima etapa e clicavel
+  if (stageIndex !== currentStageIndex + 1) return;
+  
+  const nextStatus = FUNNEL_STAGES[stageIndex].status;
+  switch (nextStatus) {
+    case "info_sent": setIniciarAtendimentoOpen(true); break;
+    case "scheduling": setAgendamentoOpen(true); break;
+    case "docs_received":
+      if (lead.comparecimento === true) setPropostaOpen(true);
+      else setComparecimentoOpen(true);
+      break;
+    case "registered":
+      if (hasApprovedProposta) setVendaOpen(true);
+      else toast.info("Aprove uma proposta antes de confirmar a venda");
+      break;
+  }
+};
+```
 
-## Resumo das mudancas
+### Mudancas visuais na barra
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `KanbanCard.tsx` | Logica dinamica de botao para status `scheduling` + novos props |
-| `KanbanColumn.tsx` | Repassar novos props ao KanbanCard |
-| `KanbanBoard.tsx` | Novos handlers + remover auto-abertura do reagendamento |
+- Proxima etapa: `ring-1 ring-yellow-400/50 animate-pulse cursor-pointer`
+- Hover na proxima etapa: escala sutil + tooltip com o nome da acao
+- Label da proxima etapa: icone de `ChevronRight` antes do texto
+
+Nao sera necessaria nenhuma alteracao de banco de dados. As acoes reutilizam os modais e hooks ja existentes, que ja atualizam o kanban via realtime.
+
