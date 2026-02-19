@@ -3,18 +3,46 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Megaphone, Loader2 } from "lucide-react";
 import { useWhatsAppCampaigns } from "@/hooks/use-whatsapp-campaigns";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { NewCampaignSheet } from "./NewCampaignSheet";
 import { CampaignCard } from "./CampaignCard";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export function CampaignsTab() {
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const { role } = useUserRole();
+
+  // Fetch active brokers for admin filter
+  const { data: brokersList = [] } = useQuery({
+    queryKey: ["brokers-list-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brokers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: role === "admin",
+  });
+
   const { 
     campaigns, 
     isLoading, 
     pauseCampaign, 
     resumeCampaign, 
     cancelCampaign 
-  } = useWhatsAppCampaigns();
+  } = useWhatsAppCampaigns(role === "admin" ? (selectedBrokerId && selectedBrokerId !== "all" ? selectedBrokerId : undefined) : undefined);
 
   if (isLoading) {
     return (
@@ -27,7 +55,22 @@ export function CampaignsTab() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-white">Campanhas</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-white">Campanhas</h2>
+          {role === "admin" && (
+            <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId}>
+              <SelectTrigger className="w-[200px] bg-[#1a1a1d] border-[#2a2a2e] text-slate-300 h-9">
+                <SelectValue placeholder="Todos os corretores" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                <SelectItem value="all">Todos os corretores</SelectItem>
+                {brokersList.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Button 
             className="bg-primary hover:bg-primary/90 flex-1 sm:flex-none"

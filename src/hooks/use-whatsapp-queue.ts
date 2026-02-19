@@ -12,7 +12,7 @@ interface QueueStats {
   replies: number;
 }
 
-export function useWhatsAppQueue() {
+export function useWhatsAppQueue(brokerFilterId?: string) {
   const queryClient = useQueryClient();
   const [nextSendIn, setNextSendIn] = useState<number | null>(null);
 
@@ -33,91 +33,104 @@ export function useWhatsAppQueue() {
     },
   });
 
+  // Effective broker ID: use filter if provided, otherwise own broker id
+  const effectiveBrokerId = brokerFilterId || broker?.id || null;
+
   // Fetch queue for display (limited to 100)
   const { data: queue = [], isLoading, refetch } = useQuery({
-    queryKey: ["whatsapp-queue", broker?.id],
+    queryKey: ["whatsapp-queue", effectiveBrokerId],
     queryFn: async () => {
-      if (!broker?.id) return [];
-      
-      const { data, error } = await supabase
+      let query = supabase
         .from("whatsapp_message_queue")
         .select(`
           *,
           lead:leads(id, name),
           campaign:whatsapp_campaigns(id, name)
         `)
-        .eq("broker_id", broker.id)
         .order("scheduled_at", { ascending: true })
         .limit(100);
       
+      if (effectiveBrokerId) {
+        query = query.eq("broker_id", effectiveBrokerId);
+      }
+      
+      const { data, error } = await query;
       if (error) throw error;
       return data as WhatsAppMessageQueue[];
     },
-    enabled: !!broker?.id,
+    enabled: !!effectiveBrokerId || !brokerFilterId,
     refetchInterval: 30000,
   });
 
+  // Helper to build filtered query
+  const applyBrokerFilter = (query: any) => {
+    if (effectiveBrokerId) {
+      return query.eq("broker_id", effectiveBrokerId);
+    }
+    return query;
+  };
+
   // Aggregate count: queued + scheduled
   const { data: queuedCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-queued", broker?.id],
+    queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId],
     queryFn: async () => {
-      if (!broker?.id) return 0;
-      const { count, error } = await supabase
+      let query = supabase
         .from("whatsapp_message_queue")
         .select("*", { count: "exact", head: true })
-        .eq("broker_id", broker.id)
         .in("status", ["queued", "scheduled"]);
+      query = applyBrokerFilter(query);
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!broker?.id,
     refetchInterval: 30000,
   });
 
   // Aggregate count: sent
   const { data: sentCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-sent", broker?.id],
+    queryKey: ["whatsapp-queue-count-sent", effectiveBrokerId],
     queryFn: async () => {
-      if (!broker?.id) return 0;
-      const { count, error } = await supabase
+      let query = supabase
         .from("whatsapp_message_queue")
         .select("*", { count: "exact", head: true })
-        .eq("broker_id", broker.id)
         .eq("status", "sent");
+      query = applyBrokerFilter(query);
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!broker?.id,
     refetchInterval: 30000,
   });
 
   // Aggregate count: failed
   const { data: failedCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-failed", broker?.id],
+    queryKey: ["whatsapp-queue-count-failed", effectiveBrokerId],
     queryFn: async () => {
-      if (!broker?.id) return 0;
-      const { count, error } = await supabase
+      let query = supabase
         .from("whatsapp_message_queue")
         .select("*", { count: "exact", head: true })
-        .eq("broker_id", broker.id)
         .eq("status", "failed");
+      query = applyBrokerFilter(query);
+      const { count, error } = await query;
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!broker?.id,
     refetchInterval: 30000,
   });
 
   // Fetch replies count from whatsapp_lead_replies
   const { data: repliesCount = 0 } = useQuery({
-    queryKey: ["whatsapp-replies-count", broker?.id],
+    queryKey: ["whatsapp-replies-count", effectiveBrokerId],
     queryFn: async () => {
-      if (!broker?.id) return 0;
-
-      const { data: campaigns } = await supabase
+      let campaignQuery = supabase
         .from("whatsapp_campaigns")
-        .select("id")
-        .eq("broker_id", broker.id);
+        .select("id");
+      
+      if (effectiveBrokerId) {
+        campaignQuery = campaignQuery.eq("broker_id", effectiveBrokerId);
+      }
+
+      const { data: campaigns } = await campaignQuery;
 
       if (!campaigns || campaigns.length === 0) return 0;
 
@@ -131,48 +144,42 @@ export function useWhatsAppQueue() {
       if (error) throw error;
       return count || 0;
     },
-    enabled: !!broker?.id,
     refetchInterval: 30000,
   });
 
   // Realtime subscriptions
   useEffect(() => {
-    if (!broker?.id) return;
+    const channelConfig: any = {
+      event: "*",
+      schema: "public",
+      table: "whatsapp_message_queue",
+    };
+    
+    if (effectiveBrokerId) {
+      channelConfig.filter = `broker_id=eq.${effectiveBrokerId}`;
+    }
 
     const channel = supabase
-      .channel(`whatsapp-queue-realtime-${broker.id}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "whatsapp_message_queue",
-          filter: `broker_id=eq.${broker.id}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue", broker.id] });
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-queued", broker.id] });
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-sent", broker.id] });
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-failed", broker.id] });
-        }
-      )
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "whatsapp_lead_replies",
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["whatsapp-replies-count", broker.id] });
-        }
-      )
+      .channel(`whatsapp-queue-realtime-${effectiveBrokerId || "all"}`)
+      .on("postgres_changes", channelConfig, () => {
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue", effectiveBrokerId] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-sent", effectiveBrokerId] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-failed", effectiveBrokerId] });
+      })
+      .on("postgres_changes", {
+        event: "*",
+        schema: "public",
+        table: "whatsapp_lead_replies",
+      }, () => {
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-replies-count", effectiveBrokerId] });
+      })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [broker?.id, queryClient]);
+  }, [effectiveBrokerId, queryClient]);
 
   // Stats from aggregate queries
   const stats: QueueStats = {

@@ -27,7 +27,7 @@ interface CreateCampaignData {
   steps?: Array<{ messageContent: string; delayMinutes: number; templateId?: string; sendIfReplied?: boolean }>;
 }
 
-export function useWhatsAppCampaigns() {
+export function useWhatsAppCampaigns(adminBrokerFilterId?: string) {
   const queryClient = useQueryClient();
   const [isCreating, setIsCreating] = useState(false);
   const { role } = useUserRole();
@@ -51,7 +51,7 @@ export function useWhatsAppCampaigns() {
 
   // Fetch campaigns
   const { data: campaigns = [], isLoading: isLoadingCampaigns, refetch: refetchCampaigns } = useQuery({
-    queryKey: ["whatsapp-campaigns", broker?.id, role],
+    queryKey: ["whatsapp-campaigns", broker?.id, role, adminBrokerFilterId],
     queryFn: async () => {
       if (role !== "admin" && !broker?.id) return [];
       
@@ -65,7 +65,9 @@ export function useWhatsAppCampaigns() {
         `)
         .order("created_at", { ascending: false });
       
-      if (role !== "admin" && broker?.id) {
+      if (role === "admin" && adminBrokerFilterId) {
+        query = query.eq("broker_id", adminBrokerFilterId);
+      } else if (role !== "admin" && broker?.id) {
         query = query.eq("broker_id", broker.id);
       }
       
