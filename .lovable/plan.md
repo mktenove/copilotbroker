@@ -1,68 +1,49 @@
 
 
-# Corrigir cancelamento de follow-ups na Cadencia 10D
+# Fluxo de agradecimento pos-cadastro para Mauricio Cardoso
 
-## Problema identificado
+## O que muda
 
-A corretora Samyra relatou que leads que respondem durante uma Cadencia 10D continuam recebendo mensagens mesmo com a opcao "enviar somente se o lead nao responder" ativada.
+Apos o lead preencher o formulario em `/novohamburgo/mauriciocardoso`, a URL muda para `/novohamburgo/mauriciocardoso/obrigado`, mantendo a pagina inteira e a posicao do scroll. A unica diferenca visivel e que a area do formulario e substituida por uma mensagem de agradecimento no estilo da landing page.
 
-## Causa raiz: formato de telefone inconsistente
+## Alteracoes
 
-A Edge Function `auto-cadencia-10d` tem sua propria funcao `formatPhoneE164` que retorna telefones **sem o prefixo `+`** (ex: `5551996061120`), enquanto o webhook que processa respostas usa uma versao que retorna **com o prefixo `+`** (ex: `+5551996061120`).
+### 1. Rota `/novohamburgo/mauriciocardoso/obrigado` em `App.tsx`
 
-Quando o lead responde:
-1. O webhook recebe a resposta e formata o telefone como `+5551996061120`
-2. Busca mensagens na fila com `.eq("phone", "+5551996061120")`
-3. Nao encontra nada, pois a fila tem `5551996061120` (sem `+`)
-4. O cancelamento nunca acontece e a reply nao e registrada em `whatsapp_lead_replies`
-5. O message-sender tambem nao consegue validar replies pelo mesmo motivo
-
-Dados confirmam o problema: campanhas criadas pelo `auto-cadencia-10d` tem phones sem `+`, e nenhuma tem reply registrada em `whatsapp_lead_replies`.
-
-## Solucao
-
-### 1. Corrigir `auto-cadencia-10d/index.ts`
-
-Alterar a funcao `formatPhoneE164` para retornar com prefixo `+`, alinhando com todas as outras implementacoes:
+Adicionar uma nova rota que renderiza o mesmo componente `MauricioCardosoLandingPage`:
 
 ```
-// ANTES (bugado):
-function formatPhoneE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("55") && digits.length >= 12) return digits;
-  if (digits.length === 11 || digits.length === 10) return "55" + digits;
-  return digits;
-}
-
-// DEPOIS (corrigido):
-function formatPhoneE164(phone: string): string {
-  const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("55") && digits.length >= 12) return "+" + digits;
-  if (digits.length === 11 || digits.length === 10) return "+55" + digits;
-  return "+" + digits;
-}
+<Route path="/novohamburgo/mauriciocardoso/obrigado" element={<MauricioCardosoLandingPage />} />
 ```
 
-### 2. Corrigir dados existentes no banco
+### 2. `MauricioCardosoLandingPage.tsx`
 
-Atualizar os telefones sem `+` na tabela `whatsapp_message_queue` para normalizar o formato:
+Detectar se a URL atual termina em `/obrigado` (via `useLocation`) e passar uma prop `submitted` para `MCFormSection`.
 
-```sql
-UPDATE whatsapp_message_queue
-SET phone = '+' || phone
-WHERE phone NOT LIKE '+%'
-  AND phone ~ '^\d+$';
-```
+### 3. `MCFormSection.tsx`
 
-### 3. Normalizar o webhook para tolerancia de formato
+- Aceitar prop `submitted?: boolean`
+- Apos submit bem-sucedido, chamar `navigate("/novohamburgo/mauriciocardoso/obrigado")` em vez de apenas limpar o form
+- Quando `submitted === true`, renderizar bloco de agradecimento no lugar do formulario, mantendo o mesmo container visual (fundo verde escuro `mc-forest`)
+- Mensagem: "Parabens, agora voce faz parte da nossa lista VIP!" + subtexto "Em breve entraremos em contato pelo WhatsApp."
 
-Adicionar busca com ambos os formatos no webhook (`cancelFollowUpsOnReply`) para que, mesmo que existam dados antigos com formato inconsistente, o sistema encontre as mensagens. Buscar por `phone` com e sem `+`.
+### 4. `MauricioCardosoBrokerLandingPage.tsx`
 
-### Arquivos alterados
+Mesma logica: detectar `/obrigado` na URL e passar `submitted` para `MCFormSection`. A rota do broker nao precisa de rota separada pois o `:brokerSlug` ja captura "obrigado" -- sera necessario ajustar para que "obrigado" nao seja tratado como broker slug. Alternativa mais limpa: adicionar rota explicita `/novohamburgo/mauriciocardoso/:brokerSlug/obrigado` que renderiza `MauricioCardosoBrokerLandingPage`.
+
+## Detalhes tecnicos
 
 | Arquivo | Alteracao |
 |---|---|
-| `supabase/functions/auto-cadencia-10d/index.ts` | Corrigir `formatPhoneE164` para retornar com `+` |
-| `supabase/functions/whatsapp-webhook/index.ts` | Buscar mensagens com ambos os formatos de telefone |
-| Banco de dados (data fix) | Normalizar phones existentes sem `+` |
+| `src/App.tsx` | Adicionar rota `/novohamburgo/mauriciocardoso/obrigado` |
+| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Detectar rota `/obrigado` e passar `submitted` ao form |
+| `src/components/mauriciocardoso/MCFormSection.tsx` | Aceitar prop `submitted`, renderizar thank-you ou form, navegar para `/obrigado` no submit |
+| `src/components/mauriciocardoso/index.ts` | Nenhuma alteracao necessaria (MCFormSection ja e exportado) |
+
+## Visual do bloco de agradecimento
+
+Mantendo a identidade visual da pagina (fundo `mc-forest`, tipografia serif, cores cream/white), o bloco tera:
+- Titulo: "Parabens, agora voce faz parte da nossa lista VIP!"
+- Subtexto: "Em breve entraremos em contato pelo WhatsApp."
+- Mesmo padding e dimensoes do formulario original para manter a posicao do scroll
 
