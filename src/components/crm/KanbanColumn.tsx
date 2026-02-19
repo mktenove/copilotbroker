@@ -28,6 +28,8 @@ interface KanbanColumnProps {
   onOpenPerda?: (leadId: string, currentStatus: LeadStatus) => void;
   onDispatchWhatsApp?: (status: LeadStatus) => void;
   onAddLead?: () => void;
+  onOpenProposta?: (leadId: string) => void;
+  onOpenReagendamento?: (leadId: string) => void;
 }
 
 const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
@@ -40,7 +42,7 @@ const STATUS_SQUARE_COLORS: Record<LeadStatus, string> = {
   inactive: "bg-red-500"
 };
 
-export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCancelCadencia, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp, onAddLead }: KanbanColumnProps) {
+export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCancelCadencia, onCardClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onDispatchWhatsApp, onAddLead, onOpenProposta, onOpenReagendamento }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -101,6 +103,8 @@ export function KanbanColumn({ status, leads, newLeadIds, cadenciaLeadIds, onCan
               onOpenComparecimento={onOpenComparecimento}
               onOpenVenda={onOpenVenda}
               onOpenPerda={onOpenPerda}
+              onOpenProposta={onOpenProposta}
+              onOpenReagendamento={onOpenReagendamento}
             />
           ))}
         </SortableContext>
