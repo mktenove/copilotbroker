@@ -98,7 +98,7 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
       // Fire Meta Pixel Lead event (client-side)
       const eventId = crypto.randomUUID();
       if (typeof window !== "undefined" && window.fbq) {
-        window.fbq("track", "Lead", {}, { eventID: eventId });
+        (window.fbq as Function)("track", "Lead", {}, { eventID: eventId });
       }
 
       // Fire Meta CAPI Lead event (server-side, non-blocking)
