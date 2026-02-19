@@ -86,12 +86,16 @@ const cancelFollowUpsOnReply = async (
   campaignIds: string[]
 ) => {
   if (campaignIds.length === 0) return;
+  // Support both formats for tolerance
+  const phoneWithoutPlus = phone.startsWith("+") ? phone.substring(1) : phone;
+  const phoneWithPlus = phone.startsWith("+") ? phone : "+" + phone;
+  const phoneVariants = [phoneWithPlus, phoneWithoutPlus];
 
   for (const campaignId of campaignIds) {
     const { data: scheduledMsgs } = await supabase
       .from("whatsapp_message_queue")
       .select("id, step_number")
-      .eq("phone", phone)
+      .in("phone", phoneVariants)
       .eq("campaign_id", campaignId)
       .in("status", ["scheduled", "queued"])
       .gt("step_number", 1);
@@ -213,10 +217,14 @@ app.post("/", async (c) => {
       console.log(`📞 Incoming DM: chatid="${chatid}" | phone="${phone}" | text="${messageText.substring(0, 50)}"`);
 
       // ===== STEP 1: ALWAYS process follow-up cancellation (text OR media) =====
+      // Search with both formats (+5551... and 5551...) for tolerance
+      const phoneWithoutPlus = phone.startsWith("+") ? phone.substring(1) : phone;
+      const phoneWithPlus = phone.startsWith("+") ? phone : "+" + phone;
+
       const { data: recentMessages } = await supabase
         .from("whatsapp_message_queue")
         .select("campaign_id, broker_id")
-        .eq("phone", phone)
+        .in("phone", [phoneWithPlus, phoneWithoutPlus])
         .eq("status", "sent")
         .order("sent_at", { ascending: false })
         .limit(10);
@@ -307,7 +315,7 @@ app.post("/", async (c) => {
             error_message: `Opt-out: ${detectedKeyword}`,
             updated_at: new Date().toISOString()
           })
-          .eq("phone", phone)
+          .in("phone", [phoneWithPlus, phoneWithoutPlus])
           .in("status", ["queued", "scheduled"]);
 
         // Update daily stats optout_count

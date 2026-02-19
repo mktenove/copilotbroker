@@ -24,9 +24,9 @@ function replaceVars(text: string, vars: { nome: string; corretor_nome: string; 
 
 function formatPhoneE164(phone: string): string {
   const digits = phone.replace(/\D/g, "");
-  if (digits.startsWith("55") && digits.length >= 12) return digits;
-  if (digits.length === 11 || digits.length === 10) return "55" + digits;
-  return digits;
+  if (digits.startsWith("55") && digits.length >= 12) return "+" + digits;
+  if (digits.length === 11 || digits.length === 10) return "+55" + digits;
+  return "+" + digits;
 }
 
 /**
