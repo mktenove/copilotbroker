@@ -106,11 +106,20 @@ const WhatsAppInput = forwardRef<HTMLInputElement, WhatsAppInputProps>(
     }, [value]);
 
     const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const digits = e.target.value.replace(/\D/g, "");
-      const maxLocal = selectedCountry.maxDigits - selectedCountry.code.length;
+      let digits = e.target.value.replace(/\D/g, "");
+      const code = selectedCountry.code;
+      const maxLocal = selectedCountry.maxDigits - code.length;
+
+      // Autocomplete do navegador pode inserir o numero completo com codigo do pais.
+      // Se os digitos comecam com o codigo do pais E excedem o tamanho local maximo,
+      // removemos o prefixo duplicado.
+      if (digits.startsWith(code) && digits.length > maxLocal) {
+        digits = digits.slice(code.length);
+      }
+
       const trimmed = digits.slice(0, maxLocal);
       setLocalNumber(trimmed);
-      onChange(selectedCountry.code + trimmed);
+      onChange(code + trimmed);
     };
 
     const handleCountrySelect = (country: Country) => {
