@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useParams, Navigate } from "react-router-dom";
+import { useParams, useLocation, Navigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTracking } from "@/hooks/use-page-tracking";
@@ -20,6 +20,8 @@ import {
 
 const MauricioCardosoBrokerLandingPage = () => {
   const { brokerSlug } = useParams<{ brokerSlug: string }>();
+  const location = useLocation();
+  const submitted = location.pathname.endsWith("/obrigado");
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
   const [brokerId, setBrokerId] = useState<string | undefined>(undefined);
   const [brokerName, setBrokerName] = useState<string | undefined>(undefined);
@@ -110,7 +112,7 @@ const MauricioCardosoBrokerLandingPage = () => {
         <MCTargetSection />
         <MCInvestmentSection />
         <MCBenefitsSection />
-        <MCFormSection projectId={projectId} brokerId={brokerId} />
+        <MCFormSection projectId={projectId} brokerId={brokerId} submitted={submitted} />
         <MCFloatingCTA />
         <MCFooter />
       </div>

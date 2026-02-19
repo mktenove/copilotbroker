@@ -56,7 +56,9 @@ const App = () => (
             
             {/* Mauricio Cardoso - Wellness landing page for Novo Hamburgo */}
             <Route path="/novohamburgo/mauriciocardoso" element={<MauricioCardosoLandingPage />} />
+            <Route path="/novohamburgo/mauriciocardoso/obrigado" element={<MauricioCardosoLandingPage />} />
             <Route path="/novohamburgo/mauriciocardoso/termos" element={<TermosMauricioCardoso />} />
+            <Route path="/novohamburgo/mauriciocardoso/:brokerSlug/obrigado" element={<MauricioCardosoBrokerLandingPage />} />
             <Route path="/novohamburgo/mauriciocardoso/:brokerSlug" element={<MauricioCardosoBrokerLandingPage />} />
             
             {/* Legacy redirects for backward compatibility */}

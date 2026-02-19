@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { usePageTracking } from "@/hooks/use-page-tracking";
@@ -18,6 +19,8 @@ import {
 } from "@/components/mauriciocardoso";
 
 const MauricioCardosoLandingPage = () => {
+  const location = useLocation();
+  const submitted = location.pathname.endsWith("/obrigado");
   const [projectId, setProjectId] = useState<string | undefined>(undefined);
   
   usePageTracking(projectId);
@@ -210,7 +213,7 @@ const MauricioCardosoLandingPage = () => {
           <MCTargetSection />
           <MCInvestmentSection />
           <MCBenefitsSection />
-          <MCFormSection projectId={projectId} />
+          <MCFormSection projectId={projectId} submitted={submitted} />
         </main>
         <MCFloatingCTA />
         <MCFooter />
