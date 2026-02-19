@@ -21,9 +21,13 @@ import { useCadenciaAtiva } from "@/hooks/use-cadencia-ativa";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
-  UserX, Play, FileText, Users, ChevronRight, AlertTriangle, Zap, Eye,
+  UserX, Play, FileText, Users, ChevronRight, ChevronLeft, AlertTriangle, Zap, Eye,
   TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw, Square
 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -62,11 +66,16 @@ export default function LeadPage() {
   const [iniciarAtendimentoMsg, setIniciarAtendimentoMsg] = useState("");
   const [iniciarAtendimentoSending, setIniciarAtendimentoSending] = useState(false);
 
+  // Return stage states
+  const [returnDialogOpen, setReturnDialogOpen] = useState(false);
+  const [returnTargetStage, setReturnTargetStage] = useState<{ status: LeadStatus; label: string; percent: number } | null>(null);
+  const [returnProcessing, setReturnProcessing] = useState(false);
+
   // Inline editing state
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
 
-  const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead, reactivateLead } = useKanbanLeads({ isAdmin: true });
+  const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead, reactivateLead, updateLeadStatus } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
   const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
   const cadencia = useCadenciaAtiva(leadId);
@@ -302,6 +311,50 @@ export default function LeadPage() {
     }
   };
 
+  // Return stage cleanup fields
+  const getCleanupFields = (targetStatus: LeadStatus): Record<string, any> => {
+    switch (targetStatus) {
+      case "new":
+        return { atendimento_iniciado_em: null, comparecimento: null, data_agendamento: null, tipo_agendamento: null, valor_proposta: null, data_envio_proposta: null };
+      case "info_sent":
+        return { comparecimento: null, data_agendamento: null, tipo_agendamento: null, valor_proposta: null, data_envio_proposta: null };
+      case "scheduling":
+        return { comparecimento: null, valor_proposta: null, data_envio_proposta: null };
+      case "docs_received":
+        return { valor_final_venda: null, data_fechamento: null };
+      default:
+        return {};
+    }
+  };
+
+  const handleConfirmReturn = async () => {
+    if (!returnTargetStage || !lead || !leadId) return;
+    setReturnProcessing(true);
+    try {
+      const oldStatus = lead.status;
+      const newStatus = returnTargetStage.status;
+
+      // Clean up funnel fields
+      const cleanupFields = getCleanupFields(newStatus);
+      if (Object.keys(cleanupFields).length > 0) {
+        const { error } = await supabase.from("leads").update(cleanupFields).eq("id", leadId);
+        if (error) throw error;
+      }
+
+      // Update status (logs to timeline automatically)
+      const userId = (await supabase.auth.getUser()).data.user?.id;
+      await updateLeadStatus(leadId, oldStatus, newStatus, userId);
+      await refreshLead();
+      toast.success(`Lead retornado para ${returnTargetStage.label}`);
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao retornar etapa");
+    } finally {
+      setReturnProcessing(false);
+      setReturnDialogOpen(false);
+      setReturnTargetStage(null);
+    }
+  };
+
   const whatsappLink = `https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`;
 
   return (
@@ -346,13 +399,14 @@ export default function LeadPage() {
               {FUNNEL_STAGES.map((stage, i) => {
                 const isActive = i <= currentStageIndex;
                 const isCurrent = i === currentStageIndex;
+                const isPrevious = i < currentStageIndex && !isLost && !isSold;
                 const isNext = i === currentStageIndex + 1 && !isLost && !isSold;
                 const isFuture = i > currentStageIndex + 1;
 
                 const tooltipText = isCurrent
                   ? "Etapa atual"
-                  : isActive
-                    ? "Etapa concluída"
+                  : isPrevious
+                    ? `Clique para retornar a ${stage.label}`
                     : isNext
                       ? (() => {
                           switch (stage.status) {
@@ -368,6 +422,11 @@ export default function LeadPage() {
                       : "Complete a etapa anterior";
 
                 const handleStageClick = () => {
+                  if (isPrevious) {
+                    setReturnTargetStage(stage);
+                    setReturnDialogOpen(true);
+                    return;
+                  }
                   if (!isNext) return;
                   switch (stage.status) {
                     case "info_sent": setIniciarAtendimentoOpen(true); break;
@@ -391,9 +450,9 @@ export default function LeadPage() {
                         onClick={handleStageClick}
                         className={cn(
                           "flex-1 relative group focus:outline-none",
-                          isNext && "cursor-pointer",
+                          (isNext || isPrevious) && "cursor-pointer",
                           isFuture && "cursor-not-allowed",
-                          !isNext && !isFuture && "cursor-default"
+                          !isNext && !isFuture && !isPrevious && "cursor-default"
                         )}
                       >
                         <div className={cn(
@@ -401,15 +460,18 @@ export default function LeadPage() {
                           isActive
                             ? isCurrent
                               ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]"
-                              : "bg-yellow-500/60"
+                              : isPrevious
+                                ? "bg-yellow-500/60 group-hover:bg-yellow-500/80"
+                                : "bg-yellow-500/60"
                             : isNext
                               ? "bg-yellow-500/25 ring-1 ring-yellow-400/50 animate-pulse"
                               : "bg-[#1e1e22]"
                         )} />
                         <span className={cn(
                           "absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium whitespace-nowrap transition-colors flex items-center gap-0.5",
-                          isCurrent ? "text-yellow-400" : isActive ? "text-slate-500" : isNext ? "text-yellow-500/70" : "text-slate-600"
+                          isCurrent ? "text-yellow-400" : isPrevious ? "text-slate-500 group-hover:text-yellow-500/70" : isActive ? "text-slate-500" : isNext ? "text-yellow-500/70" : "text-slate-600"
                         )}>
+                          {isPrevious && <ChevronLeft className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />}
                           {isNext && <ChevronRight className="w-2.5 h-2.5" />}
                           {stage.label}
                         </span>
@@ -887,6 +949,34 @@ export default function LeadPage() {
         onClose={() => setTransferOpen(false)}
         onTransferred={refreshLead}
       />
+
+      {/* Return stage confirmation dialog */}
+      <AlertDialog open={returnDialogOpen} onOpenChange={setReturnDialogOpen}>
+        <AlertDialogContent className="bg-[#1e1e22] border-[#2a2a2e] text-white">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <RotateCw className="w-4 h-4 text-yellow-400" />
+              Retornar etapa
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              Deseja retornar o lead para a etapa <strong className="text-white">{returnTargetStage?.label}</strong>? 
+              O lead será movido de volta no funil e os dados das etapas posteriores serão limpos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-transparent border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e] hover:text-white" disabled={returnProcessing}>
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmReturn}
+              disabled={returnProcessing}
+              className="bg-yellow-500 text-black hover:bg-yellow-600"
+            >
+              {returnProcessing ? "Retornando..." : "Confirmar retorno"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
