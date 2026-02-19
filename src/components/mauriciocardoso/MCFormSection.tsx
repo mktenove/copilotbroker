@@ -95,6 +95,29 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
         console.warn("Auto cadencia trigger failed:", err);
       });
 
+      // Fire Meta Pixel Lead event (client-side)
+      const eventId = crypto.randomUUID();
+      if (typeof window !== "undefined" && window.fbq) {
+        window.fbq("track", "Lead", {}, { eventID: eventId });
+      }
+
+      // Fire Meta CAPI Lead event (server-side, non-blocking)
+      const getCookie = (name: string) => {
+        const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+        return match ? match[2] : undefined;
+      };
+      supabase.functions.invoke("meta-conversions-api", {
+        body: {
+          pixel_id: "1447260256915517",
+          event_name: "Lead",
+          event_id: eventId,
+          event_source_url: window.location.href,
+          user_data: { ph: whatsapp, fn: name.trim() },
+          fbp: getCookie("_fbp"),
+          fbc: getCookie("_fbc"),
+        },
+      }).catch((err) => console.warn("Meta CAPI failed:", err));
+
       // Navigate to /obrigado keeping the same base path
       const basePath = location.pathname.replace(/\/obrigado$/, "");
       navigate(`${basePath}/obrigado`, { replace: true });
