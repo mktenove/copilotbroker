@@ -185,7 +185,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       // Update local state optimistically
       setLeads(prev => prev.map(lead => 
         lead.id === leadId 
-          ? { ...lead, status: newStatus, updated_at: new Date().toISOString() }
+          ? { ...lead, status: newStatus, updated_at: new Date().toISOString(), last_interaction_at: new Date().toISOString() }
           : lead
       ));
 
@@ -251,9 +251,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
         if (updates.status === "inactive") {
           return prev.filter(lead => lead.id !== leadId);
         }
+        const hasInteraction = options?.logOriginChange || options?.logInactivation;
         return prev.map(lead => 
           lead.id === leadId 
-            ? { ...lead, ...updates, updated_at: new Date().toISOString() }
+            ? { ...lead, ...updates, updated_at: new Date().toISOString(), ...(hasInteraction ? { last_interaction_at: new Date().toISOString() } : {}) }
             : lead
         );
       });
@@ -322,7 +323,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now } : l
+        l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -355,7 +356,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now } : l
+        l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -396,7 +397,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       ]);
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now } : l
+        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -425,7 +426,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, comparecimento: true, updated_at: now } : l
+        l.id === leadId ? { ...l, comparecimento: true, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -458,7 +459,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now } : l
+        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -486,7 +487,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, comparecimento: false } : l
+        l.id === leadId ? { ...l, comparecimento: false, last_interaction_at: new Date().toISOString() } : l
       ));
       return true;
     } catch (error) {
@@ -516,7 +517,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now } : l
+        l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
@@ -551,7 +552,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       });
 
       setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now } : l
+        l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now, last_interaction_at: now } : l
       ));
       return true;
     } catch (error) {
