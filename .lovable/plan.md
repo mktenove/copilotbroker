@@ -1,36 +1,76 @@
 
-# Filtrar corretores sem equipe do sistema de Inteligencia
+
+# Criar paginas /prontos e /prontos/:brokerSlug para captacao de leads de imoveis prontos
 
 ## Contexto
 
-Atualmente, o Dashboard de Inteligencia Comercial considera **todos os corretores ativos** ao calcular metricas de performance, rankings e alertas. Corretores sem equipe vinculada (sem participacao em nenhuma roleta) usam o CRM esporadicamente e distorcem os dados.
+A Enove trabalha com lancamentos e pre-lancamentos, mas tambem precisa captar leads interessados em imoveis prontos (usados ou ja construidos). Essas paginas serao independentes dos empreendimentos existentes e terao identidade visual propria.
 
-## Solucao
+## Etapas
 
-Filtrar os corretores para considerar apenas aqueles que sao membros ativos de pelo menos uma roleta. Isso afeta o calculo de `brokerPerformance` e, consequentemente, todas as metricas derivadas (overview alerts, top performers, needs attention, perdas por corretor, etc.).
+### 1. Criar o projeto "prontos" no banco de dados
 
-## Alteracao
+Inserir um registro na tabela `projects` com slug `prontos` para que os leads possam ser vinculados a ele. Isso permite segmentar leads de imoveis prontos no CRM e na Inteligencia Comercial.
 
-### Arquivo: `src/components/admin/intelligence/hooks/useIntelligenceData.ts`
+### 2. Criar pagina `/prontos` (publica)
 
-No bloco `brokerPerformance` (useMemo, linha ~229), antes de iterar sobre `brokers`, criar um Set com os IDs dos corretores que tem pelo menos uma membresa ativa em `roletasMembros`, e filtrar a lista de brokers:
+Nova pagina `src/pages/Prontos.tsx` com:
+- Design premium escuro (mesmo padrao visual dos teasers existentes)
+- Messaging diferenciado: foco em "imoveis prontos para morar", sem mencao a lancamentos
+- Badge "Imoveis Prontos"
+- Titulo e subtitulo contextualizados
+- Formulario de captacao (nome + WhatsApp + termos)
+- Insercao do lead no banco com `source: "landing_page"` e `project_id` do projeto "prontos"
+- Triggers automaticos (auto-first-message, auto-cadencia)
+- Attribution tracking (UTM)
+- SEO basico com Helmet
 
-```typescript
-// Dentro do useMemo de brokerPerformance
-const brokerIdsWithTeam = new Set(
-  roletasMembros
-    .filter((m: any) => m.ativo)
-    .map((m: any) => m.corretor_id)
-);
-const activeBrokers = brokers.filter((b: any) => brokerIdsWithTeam.has(b.id));
+### 3. Criar pagina `/prontos/:brokerSlug` (link do corretor)
 
-return activeBrokers.map((b: any) => {
-  // ... resto do calculo existente
+Nova pagina `src/pages/ProntosBrokerPage.tsx` com:
+- Mesmo layout da pagina publica
+- Carrega o corretor pelo slug da URL
+- Se corretor nao encontrado, redireciona para `/prontos`
+- Meta tag `noindex, nofollow` (link personalizado nao deve ser indexado)
+- Lead inserido com `broker_id` e `source: "broker_landing"`
+
+### 4. Registrar rotas no App.tsx
+
+Adicionar as duas rotas **antes** das rotas dinamicas `/:citySlug/:projectSlug`:
+```
+/prontos
+/prontos/:brokerSlug
 ```
 
-Essa unica alteracao propaga automaticamente para:
-- Overview: alertas de "corretores sem vendas" so contam corretores com equipe
-- Top Performers e Needs Attention: so consideram corretores com equipe
-- Perdas por corretor: so aparecem corretores com equipe
+### 5. Pagina de termos
 
-Nenhum outro arquivo precisa ser alterado.
+Os leads de imoveis prontos usarao a pagina de termos generica existente (`/termos`).
+
+## Detalhes tecnicos
+
+### Arquivos novos
+| Arquivo | Descricao |
+|---|---|
+| `src/pages/Prontos.tsx` | Pagina publica com formulario |
+| `src/pages/ProntosBrokerPage.tsx` | Pagina com link do corretor |
+
+### Arquivos editados
+| Arquivo | Alteracao |
+|---|---|
+| `src/App.tsx` | Adicionar 2 rotas |
+
+### Banco de dados
+- INSERT de um registro na tabela `projects` com slug `prontos`, city `Vale dos Sinos`, city_slug `prontos`, status `selling`, is_active `true`
+
+### Fluxo do lead
+1. Visitante preenche nome + WhatsApp + aceita termos
+2. Lead inserido na tabela `leads` com `project_id` do projeto "prontos"
+3. Attribution salva em `lead_attribution`
+4. Dispara `auto-first-message` e `auto-cadencia-10d`
+5. Toast de sucesso e reset do formulario
+
+### Identidade visual
+- Fundo escuro com gradiente (padrao Enove)
+- Animacoes staggered de entrada (mesmo padrao dos teasers)
+- Badge dourado "Imoveis Prontos"
+- Copy focado em "seu imovel pronto para morar" / "sem espera, sem obra"
