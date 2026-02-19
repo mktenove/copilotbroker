@@ -494,6 +494,8 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 onOpenPerda={handleOpenPerda}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
                 onAddLead={onAddLead}
+                onOpenProposta={(leadId) => setPropostaModal({ open: true, leadId })}
+                onOpenReagendamento={(leadId) => setAgendamentoModal({ open: true, leadId, isReagendamento: true })}
               />
             ))}
           </div>
@@ -552,10 +554,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         onNaoCompareceu={() => {
           if (!comparecimentoModal.leadId) return;
           registrarNaoComparecimento(comparecimentoModal.leadId);
-          const lead = leads.find(l => l.id === comparecimentoModal.leadId);
-          if (lead) {
-            setAgendamentoModal({ open: true, leadId: comparecimentoModal.leadId, isReagendamento: true });
-          }
         }}
       />
 

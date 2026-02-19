@@ -33,6 +33,8 @@ interface KanbanCardProps {
   onOpenComparecimento?: (leadId: string) => void;
   onOpenVenda?: (leadId: string) => void;
   onOpenPerda?: (leadId: string, currentStatus: LeadStatus) => void;
+  onOpenProposta?: (leadId: string) => void;
+  onOpenReagendamento?: (leadId: string) => void;
 }
 
 // Vibrant dark theme colors for origin types
@@ -81,9 +83,21 @@ const RING_PULSE_GLOW_STYLE: React.CSSProperties = {
   boxShadow: "0 0 20px rgba(52,211,153,0.3)",
 };
 
-export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda }: KanbanCardProps) {
+export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onOpenProposta, onOpenReagendamento }: KanbanCardProps) {
   const isMobile = useIsMobile();
-  const actionConfig = ACTION_CONFIG[lead.status];
+
+  // Dynamic action config for scheduling status based on comparecimento
+  const actionConfig = useMemo(() => {
+    if (lead.status === "scheduling") {
+      if (lead.comparecimento === true) {
+        return { label: "Fazer Proposta", icon: FileText, color: "bg-violet-500/90 hover:bg-violet-500 text-white" };
+      }
+      if (lead.comparecimento === false) {
+        return { label: "Reagendar", icon: Calendar, color: "bg-orange-500/90 hover:bg-orange-500 text-white" };
+      }
+    }
+    return ACTION_CONFIG[lead.status];
+  }, [lead.status, lead.comparecimento]);
 
   const {
     attributes,
@@ -155,7 +169,13 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
         onOpenAgendamento?.(lead.id);
         break;
       case "scheduling":
-        onOpenComparecimento?.(lead.id);
+        if (lead.comparecimento === true) {
+          onOpenProposta?.(lead.id);
+        } else if (lead.comparecimento === false) {
+          onOpenReagendamento?.(lead.id);
+        } else {
+          onOpenComparecimento?.(lead.id);
+        }
         break;
       case "docs_received":
         onOpenVenda?.(lead.id);
