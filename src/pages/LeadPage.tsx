@@ -311,22 +311,6 @@ export default function LeadPage() {
     }
   };
 
-  // Return stage cleanup fields
-  const getCleanupFields = (targetStatus: LeadStatus): Record<string, any> => {
-    switch (targetStatus) {
-      case "new":
-        return { atendimento_iniciado_em: null, comparecimento: null, data_agendamento: null, tipo_agendamento: null, valor_proposta: null, data_envio_proposta: null };
-      case "info_sent":
-        return { comparecimento: null, data_agendamento: null, tipo_agendamento: null, valor_proposta: null, data_envio_proposta: null };
-      case "scheduling":
-        return { comparecimento: null, valor_proposta: null, data_envio_proposta: null };
-      case "docs_received":
-        return { valor_final_venda: null, data_fechamento: null };
-      default:
-        return {};
-    }
-  };
-
   const handleConfirmReturn = async () => {
     if (!returnTargetStage || !lead || !leadId) return;
     setReturnProcessing(true);
@@ -334,14 +318,7 @@ export default function LeadPage() {
       const oldStatus = lead.status;
       const newStatus = returnTargetStage.status;
 
-      // Clean up funnel fields
-      const cleanupFields = getCleanupFields(newStatus);
-      if (Object.keys(cleanupFields).length > 0) {
-        const { error } = await supabase.from("leads").update(cleanupFields).eq("id", leadId);
-        if (error) throw error;
-      }
-
-      // Update status (logs to timeline automatically)
+      // Update status only - preserve all lead data
       const userId = (await supabase.auth.getUser()).data.user?.id;
       await updateLeadStatus(leadId, oldStatus, newStatus, userId);
       await refreshLead();
