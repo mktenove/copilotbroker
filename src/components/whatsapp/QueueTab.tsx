@@ -17,8 +17,18 @@ import {
   Calendar
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
+import { useUserRole } from "@/hooks/use-user-role";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { QueueStatus } from "@/types/whatsapp";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 
 const STATUS_BADGE: Record<QueueStatus, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -233,7 +243,26 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
 }
 
 export function QueueTab() {
-  const { queue, stats, isLoading, formatNextSendIn, cancelMessage, retryMessage } = useWhatsAppQueue();
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const { role } = useUserRole();
+
+  // Fetch active brokers for admin filter
+  const { data: brokersList = [] } = useQuery({
+    queryKey: ["brokers-list-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("brokers")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return data;
+    },
+    enabled: role === "admin",
+  });
+
+  const effectiveFilterId = role === "admin" ? (selectedBrokerId === "all" ? undefined : selectedBrokerId || undefined) : undefined;
+  const { queue, stats, isLoading, formatNextSendIn, cancelMessage, retryMessage } = useWhatsAppQueue(effectiveFilterId);
 
   if (isLoading) {
     return (
@@ -254,7 +283,22 @@ export function QueueTab() {
     <div className="space-y-4 sm:space-y-6 pb-20 sm:pb-0">
       {/* Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-white">Fila de Envio</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-white">Fila de Envio</h2>
+          {role === "admin" && (
+            <Select value={selectedBrokerId} onValueChange={setSelectedBrokerId}>
+              <SelectTrigger className="w-[200px] bg-[#1a1a1d] border-[#2a2a2e] text-slate-300 h-9">
+                <SelectValue placeholder="Todos os corretores" />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1a1a1d] border-[#2a2a2e]">
+                <SelectItem value="all">Todos os corretores</SelectItem>
+                {brokersList.map((b) => (
+                  <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
         <div className="flex items-center gap-2 text-sm text-slate-400 bg-[#1a1a1d] border border-[#2a2a2e] rounded-full px-3 py-1.5 w-fit">
           <Timer className="w-4 h-4 animate-pulse text-primary" />
           <span>Próximo envio em:</span>
