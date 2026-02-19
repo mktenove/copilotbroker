@@ -28,6 +28,8 @@ import BrokerProjects from "./pages/BrokerProjects";
 import BrokerSignup from "./pages/BrokerSignup";
 import BrokerWhatsApp from "./pages/BrokerWhatsApp";
 import BrokerRoletasPage from "./pages/BrokerRoletasPage";
+import Prontos from "./pages/Prontos";
+import ProntosBrokerPage from "./pages/ProntosBrokerPage";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
 import NotFound from "./pages/NotFound";
@@ -64,6 +66,10 @@ const App = () => (
             {/* <Route path="/estanciavelha/privado" element={<EstanciaVelha />} /> */}
             <Route path="/estanciavelha" element={<EstanciaVelhaTeaser />} />
             <Route path="/estanciavelha/:brokerSlug" element={<EstanciaVelhaBrokerTeaser />} />
+            
+            {/* Imóveis Prontos - lead capture for ready-to-move-in properties */}
+            <Route path="/prontos" element={<Prontos />} />
+            <Route path="/prontos/:brokerSlug" element={<ProntosBrokerPage />} />
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
