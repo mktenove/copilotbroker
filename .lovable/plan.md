@@ -1,28 +1,17 @@
 
+# Mover lead Luciano para Agendamento
 
-# Remover abertura automatica do formulario de proposta apos comparecimento
+## Situacao atual
+- **Lead**: Luciano (ID: `efc96eb2-5d04-417c-b2b6-59ef636f17ae`)
+- **Corretora**: Priscila Dienstbach
+- **Status atual**: `docs_received` (Proposta)
+- **Status desejado**: `scheduling` (Agendamento)
 
-## O que muda
+## Acao
 
-No Kanban, ao confirmar o comparecimento do cliente, o sistema deixa de abrir automaticamente o modal de proposta. O corretor pode adicionar a proposta manualmente quando desejar, pela pagina do lead ou pelos botoes de acao do card.
+Executar um UPDATE direto na tabela `leads` para alterar o status de `docs_received` para `scheduling`, e registrar uma interacao na tabela `lead_interactions` documentando a mudanca manual feita pelo admin.
 
-## Alteracao
+### Detalhes tecnicos
 
-### `src/components/crm/KanbanBoard.tsx`
-
-Remover a linha 551 que abre o `PropostaModal` automaticamente apos o comparecimento:
-
-```diff
- onCompareceu={async () => {
-   if (!comparecimentoModal.leadId) return;
-   const success = await registrarComparecimento(comparecimentoModal.leadId);
-   if (success) {
-     toast.success("Comparecimento registrado!");
--    // Open proposta modal automatically
--    setPropostaModal({ open: true, leadId: comparecimentoModal.leadId });
-   }
- }}
-```
-
-Nenhum outro arquivo precisa ser alterado.
-
+1. Atualizar `leads.status` de `docs_received` para `scheduling` e limpar campos relacionados a proposta (`valor_proposta`, `data_envio_proposta`, `comparecimento`)
+2. Inserir um registro em `lead_interactions` com `interaction_type = 'status_change'`, `old_status = 'docs_received'`, `new_status = 'scheduling'` e nota explicativa
