@@ -1,49 +1,47 @@
 
 
-# Fluxo de agradecimento pos-cadastro para Mauricio Cardoso
+# Adicionar Meta Pixel e CAPI ao Mauricio Cardoso
 
-## O que muda
+## Resumo
 
-Apos o lead preencher o formulario em `/novohamburgo/mauriciocardoso`, a URL muda para `/novohamburgo/mauriciocardoso/obrigado`, mantendo a pagina inteira e a posicao do scroll. A unica diferenca visivel e que a area do formulario e substituida por uma mensagem de agradecimento no estilo da landing page.
+Instalar o Facebook Pixel (ID: 1447260256915517) nas paginas `/novohamburgo/mauriciocardoso` e `/novohamburgo/mauriciocardoso/obrigado`, seguindo o mesmo padrao ja usado no GoldenView: rastreamento hibrido com Pixel client-side + API de Conversoes server-side.
 
 ## Alteracoes
 
-### 1. Rota `/novohamburgo/mauriciocardoso/obrigado` em `App.tsx`
+### 1. Salvar o token da API de Conversoes
 
-Adicionar uma nova rota que renderiza o mesmo componente `MauricioCardosoLandingPage`:
+Adicionar um novo segredo `META_CONVERSIONS_API_TOKEN_MC` com o token fornecido. Esse segredo sera usado pela funcao de backend para enviar eventos server-side para o pixel do Mauricio Cardoso.
 
-```
-<Route path="/novohamburgo/mauriciocardoso/obrigado" element={<MauricioCardosoLandingPage />} />
-```
+### 2. Atualizar a funcao de backend `meta-conversions-api`
 
-### 2. `MauricioCardosoLandingPage.tsx`
+Atualmente a funcao tem o Pixel ID do GoldenView fixo no codigo. Sera atualizada para aceitar um `pixel_id` opcional no corpo da requisicao, permitindo reusar a mesma funcao para ambos os projetos:
 
-Detectar se a URL atual termina em `/obrigado` (via `useLocation`) e passar uma prop `submitted` para `MCFormSection`.
+- Se `pixel_id` for enviado e corresponder ao do Mauricio Cardoso, usa o token `META_CONVERSIONS_API_TOKEN_MC`
+- Caso contrario, usa o token original `META_CONVERSIONS_API_TOKEN` (GoldenView)
+- O fallback do `event_source_url` tambem sera ajustado
 
-### 3. `MCFormSection.tsx`
+### 3. Adicionar script do Pixel na landing page
 
-- Aceitar prop `submitted?: boolean`
-- Apos submit bem-sucedido, chamar `navigate("/novohamburgo/mauriciocardoso/obrigado")` em vez de apenas limpar o form
-- Quando `submitted === true`, renderizar bloco de agradecimento no lugar do formulario, mantendo o mesmo container visual (fundo verde escuro `mc-forest`)
-- Mensagem: "Parabens, agora voce faz parte da nossa lista VIP!" + subtexto "Em breve entraremos em contato pelo WhatsApp."
+No componente `MauricioCardosoLandingPage.tsx`, adicionar via Helmet:
+- Script de inicializacao do Facebook Pixel (ID 1447260256915517)
+- Evento `PageView` automatico
+- Tag `noscript` com pixel de imagem
 
-### 4. `MauricioCardosoBrokerLandingPage.tsx`
+O mesmo script ja carrega na rota `/obrigado` pois usa o mesmo componente.
 
-Mesma logica: detectar `/obrigado` na URL e passar `submitted` para `MCFormSection`. A rota do broker nao precisa de rota separada pois o `:brokerSlug` ja captura "obrigado" -- sera necessario ajustar para que "obrigado" nao seja tratado como broker slug. Alternativa mais limpa: adicionar rota explicita `/novohamburgo/mauriciocardoso/:brokerSlug/obrigado` que renderiza `MauricioCardosoBrokerLandingPage`.
+### 4. Disparar evento Lead no formulario
 
-## Detalhes tecnicos
+No `MCFormSection.tsx`, apos o cadastro bem-sucedido:
+- Disparar `fbq('track', 'Lead')` client-side
+- Chamar `meta-conversions-api` server-side com `pixel_id`, dados do usuario, cookies `_fbp`/`_fbc` e `event_id` para deduplicacao
+
+## Arquivos alterados
 
 | Arquivo | Alteracao |
 |---|---|
-| `src/App.tsx` | Adicionar rota `/novohamburgo/mauriciocardoso/obrigado` |
-| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Detectar rota `/obrigado` e passar `submitted` ao form |
-| `src/components/mauriciocardoso/MCFormSection.tsx` | Aceitar prop `submitted`, renderizar thank-you ou form, navegar para `/obrigado` no submit |
-| `src/components/mauriciocardoso/index.ts` | Nenhuma alteracao necessaria (MCFormSection ja e exportado) |
-
-## Visual do bloco de agradecimento
-
-Mantendo a identidade visual da pagina (fundo `mc-forest`, tipografia serif, cores cream/white), o bloco tera:
-- Titulo: "Parabens, agora voce faz parte da nossa lista VIP!"
-- Subtexto: "Em breve entraremos em contato pelo WhatsApp."
-- Mesmo padding e dimensoes do formulario original para manter a posicao do scroll
+| Segredo `META_CONVERSIONS_API_TOKEN_MC` | Novo segredo com o token fornecido |
+| `supabase/functions/meta-conversions-api/index.ts` | Aceitar `pixel_id` opcional e selecionar token correspondente |
+| `src/pages/mauriciocardoso/MauricioCardosoLandingPage.tsx` | Adicionar script do Pixel no Helmet |
+| `src/pages/mauriciocardoso/MauricioCardosoBrokerLandingPage.tsx` | Adicionar script do Pixel no Helmet |
+| `src/components/mauriciocardoso/MCFormSection.tsx` | Disparar evento Lead (client + server) apos submit |
 
