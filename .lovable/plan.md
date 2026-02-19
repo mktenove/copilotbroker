@@ -1,62 +1,61 @@
 
 
-# Aplicar fix de autocomplete em todos os formularios de landing page
+# Corrigir indicador de cadencia ativa apos resposta do lead
 
-## Problema
+## Problema Identificado
 
-O fix de autocomplete do navegador foi aplicado apenas no componente `WhatsAppInput`. Porem, dois formularios importantes usam um campo `<input>` simples com uma funcao `formatWhatsApp` local, e portanto continuam vulneraveis ao problema de perda de digitos:
+Quando o lead responde e o webhook cancela os envios futuros, o fluxo atual e:
 
-1. **`src/components/FormSection.tsx`** -- usado em Estancia Velha, Prontos e projetos dinamicos (todas as landing pages com broker e sem broker)
-2. **`src/components/goldenview/GVFormSection.tsx`** -- usado nas landing pages do GoldenView
+1. O webhook (`whatsapp-webhook`) cancela as mensagens individuais na `whatsapp_message_queue` onde `send_if_replied = false`
+2. O webhook incrementa o `reply_count` na campanha
+3. **Mas o webhook NUNCA atualiza o `status` da campanha** de `"running"` para `"completed"` ou `"cancelled"`
+
+O Kanban busca leads com cadencia ativa usando:
+```
+whatsapp_campaigns.status = "running" AND lead_id IS NOT NULL
+```
+
+E o hook `useCadenciaAtiva` (pagina do lead) faz a mesma consulta. Como a campanha permanece `"running"`, ambos continuam exibindo o indicador verde mesmo apos todas as mensagens terem sido canceladas.
 
 ## Solucao
 
-Migrar ambos os formularios para usar o componente `WhatsAppInput` no lugar do `<input>` manual. Isso garante que:
-- O fix de autocomplete funcione em todos os formularios
-- Leads internacionais possam se cadastrar com seletor de pais
-- A validacao fique centralizada e consistente
+Apos cancelar os follow-ups de uma campanha no webhook, verificar se restam mensagens pendentes (`scheduled`/`queued`) naquela campanha. Se nao restar nenhuma, atualizar o status da campanha para `"completed"`.
 
-## Alteracoes
+## Alteracao
 
-### 1. `src/components/FormSection.tsx`
+### `supabase/functions/whatsapp-webhook/index.ts`
 
-- Remover a funcao local `formatWhatsApp`
-- Importar `WhatsAppInput` e `isValidBrazilianWhatsApp` de `@/components/ui/whatsapp-input`
-- Substituir o `<input type="tel">` pelo componente `<WhatsAppInput>`
-- Atualizar a validacao de submit para usar `isValidWhatsApp` (aceitar internacionais) ou `isValidBrazilianWhatsApp`
-- Ajustar o estado `formData.whatsapp` para armazenar apenas digitos (sem formatacao), pois o `WhatsAppInput` ja gerencia a formatacao internamente
-
-### 2. `src/components/goldenview/GVFormSection.tsx`
-
-- Mesmas alteracoes do FormSection acima
-- Remover a funcao local `formatWhatsApp`
-- Importar e usar `WhatsAppInput`
-- Ajustar validacao e estado
-
-### Detalhes tecnicos
-
-O `WhatsAppInput` emite o valor como string de digitos puros com codigo do pais (ex: `5511999998888`), enquanto os formularios atuais armazenam com formatacao `(11) 99999-8888`. As mudancas necessarias:
+Adicionar logica apos o cancelamento de follow-ups (depois da linha 242) para cada campanha:
 
 ```typescript
-// Antes (FormSection.tsx)
-const formatWhatsApp = (value: string) => { ... };
-// <input onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })} />
+// After cancelling follow-ups, check if campaign has remaining scheduled messages
+for (const campaignId of campaignIds) {
+  const { count } = await supabase
+    .from("whatsapp_message_queue")
+    .select("*", { count: "exact", head: true })
+    .eq("campaign_id", campaignId)
+    .in("status", ["scheduled", "queued"]);
 
-// Depois
-import { WhatsAppInput, isValidWhatsApp } from "@/components/ui/whatsapp-input";
-// <WhatsAppInput value={formData.whatsapp} onChange={(val) => setFormData({ ...formData, whatsapp: val })} />
+  if (count === 0) {
+    await supabase
+      .from("whatsapp_campaigns")
+      .update({ 
+        status: "completed", 
+        completed_at: new Date().toISOString() 
+      })
+      .eq("id", campaignId)
+      .eq("status", "running");
+    
+    console.log(`Campaign ${campaignId} completed (no remaining messages)`);
+  }
+}
 ```
 
-A validacao de submit tambem sera atualizada:
+Isso garante que:
+- O Kanban para de exibir o contorno verde imediatamente (via realtime subscription que ja existe na tabela `whatsapp_campaigns`)
+- A pagina do lead (`useCadenciaAtiva`) tambem reflete o estado correto
+- Campanhas onde todas as etapas ja foram enviadas tambem sao corretamente finalizadas
+- Campanhas que ainda tem etapas com `send_if_replied = true` permanecem `"running"` corretamente
 
-```typescript
-// Antes
-if (formData.whatsapp.replace(/\D/g, "").length < 10) { ... }
+Nenhuma alteracao de banco de dados ou frontend e necessaria -- os componentes ja escutam mudancas na tabela `whatsapp_campaigns` via realtime e invalidam o cache automaticamente.
 
-// Depois
-if (!isValidWhatsApp(formData.whatsapp)) { ... }
-```
-
-Sera necessario ajustar o estilo do `WhatsAppInput` em cada formulario para manter a aparencia visual atual (classes de cor, borda, etc via prop `className`).
-
-Nenhuma alteracao de banco de dados necessaria -- o campo `whatsapp` na tabela `leads` ja armazena apenas digitos.
