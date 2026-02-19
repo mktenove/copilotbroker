@@ -1,61 +1,51 @@
 
+# Corrigir botoes contextuais do Kanban na etapa Agendamento
 
-# Corrigir indicador de cadencia ativa apos resposta do lead
+## Problemas
 
-## Problema Identificado
+1. **Apos confirmar comparecimento**: O botao continua exibindo "Comparecimento" quando deveria mudar para "Fazer Proposta", pois o proximo passo logico e registrar uma proposta.
 
-Quando o lead responde e o webhook cancela os envios futuros, o fluxo atual e:
+2. **Apos confirmar nao comparecimento**: O sistema abre automaticamente o modal de reagendamento. O comportamento correto e apenas trocar o botao para "Reagendar", deixando o usuario decidir quando reagendar.
 
-1. O webhook (`whatsapp-webhook`) cancela as mensagens individuais na `whatsapp_message_queue` onde `send_if_replied = false`
-2. O webhook incrementa o `reply_count` na campanha
-3. **Mas o webhook NUNCA atualiza o `status` da campanha** de `"running"` para `"completed"` ou `"cancelled"`
+## Causa raiz
 
-O Kanban busca leads com cadencia ativa usando:
-```
-whatsapp_campaigns.status = "running" AND lead_id IS NOT NULL
-```
-
-E o hook `useCadenciaAtiva` (pagina do lead) faz a mesma consulta. Como a campanha permanece `"running"`, ambos continuam exibindo o indicador verde mesmo apos todas as mensagens terem sido canceladas.
+O `ACTION_CONFIG` no `KanbanCard.tsx` e um mapa estatico baseado apenas no `status` do lead. Ele nao considera o campo `comparecimento` (true/false/null) para decidir qual botao exibir na etapa `scheduling`.
 
 ## Solucao
 
-Apos cancelar os follow-ups de uma campanha no webhook, verificar se restam mensagens pendentes (`scheduled`/`queued`) naquela campanha. Se nao restar nenhuma, atualizar o status da campanha para `"completed"`.
+### 1. `src/components/crm/KanbanCard.tsx`
 
-## Alteracao
+Tornar o botao de acao dinamico para a etapa `scheduling`:
 
-### `supabase/functions/whatsapp-webhook/index.ts`
+- `comparecimento === null` (sem registro ainda): exibir "Comparecimento"
+- `comparecimento === true`: exibir "Fazer Proposta"
+- `comparecimento === false` (nao compareceu): exibir "Reagendar"
 
-Adicionar logica apos o cancelamento de follow-ups (depois da linha 242) para cada campanha:
+Isso sera feito substituindo o uso estatico de `ACTION_CONFIG[lead.status]` por uma logica que verifica `lead.comparecimento` quando o status e `scheduling`.
 
-```typescript
-// After cancelling follow-ups, check if campaign has remaining scheduled messages
-for (const campaignId of campaignIds) {
-  const { count } = await supabase
-    .from("whatsapp_message_queue")
-    .select("*", { count: "exact", head: true })
-    .eq("campaign_id", campaignId)
-    .in("status", ["scheduled", "queued"]);
+O `handleAction` tambem sera atualizado para chamar a funcao correta:
+- `comparecimento === true` -> `onOpenProposta(leadId)` (novo callback)
+- `comparecimento === false` -> `onOpenReagendamento(leadId)` (novo callback)
 
-  if (count === 0) {
-    await supabase
-      .from("whatsapp_campaigns")
-      .update({ 
-        status: "completed", 
-        completed_at: new Date().toISOString() 
-      })
-      .eq("id", campaignId)
-      .eq("status", "running");
-    
-    console.log(`Campaign ${campaignId} completed (no remaining messages)`);
-  }
-}
-```
+Novos props necessarios no KanbanCard:
+- `onOpenProposta?: (leadId: string) => void`
+- `onOpenReagendamento?: (leadId: string) => void`
 
-Isso garante que:
-- O Kanban para de exibir o contorno verde imediatamente (via realtime subscription que ja existe na tabela `whatsapp_campaigns`)
-- A pagina do lead (`useCadenciaAtiva`) tambem reflete o estado correto
-- Campanhas onde todas as etapas ja foram enviadas tambem sao corretamente finalizadas
-- Campanhas que ainda tem etapas com `send_if_replied = true` permanecem `"running"` corretamente
+### 2. `src/components/crm/KanbanColumn.tsx`
 
-Nenhuma alteracao de banco de dados ou frontend e necessaria -- os componentes ja escutam mudancas na tabela `whatsapp_campaigns` via realtime e invalidam o cache automaticamente.
+Passar os novos props `onOpenProposta` e `onOpenReagendamento` para o `KanbanCard`.
 
+### 3. `src/components/crm/KanbanBoard.tsx`
+
+- **Remover** a abertura automatica do `AgendamentoModal` dentro do `onNaoCompareceu` do `ComparecimentoModal`.
+- Adicionar handler `handleOpenProposta` que abre o `PropostaModal`.
+- Adicionar handler `handleOpenReagendamento` que abre o `AgendamentoModal` com `isReagendamento: true`.
+- Passar ambos handlers para as colunas.
+
+## Resumo das mudancas
+
+| Arquivo | Alteracao |
+|---------|-----------|
+| `KanbanCard.tsx` | Logica dinamica de botao para status `scheduling` + novos props |
+| `KanbanColumn.tsx` | Repassar novos props ao KanbanCard |
+| `KanbanBoard.tsx` | Novos handlers + remover auto-abertura do reagendamento |
