@@ -1,62 +1,68 @@
 
 
-# Adicionar filtro por corretor nas abas Campanhas e Fila (Admin)
+# Corrigir cancelamento de follow-ups na Cadencia 10D
 
-## Contexto
+## Problema identificado
 
-Atualmente, tanto a aba "Campanhas" quanto a aba "Fila" filtram dados pelo corretor logado. Como o admin nao e um corretor, ele ve apenas campanhas/filas gerais. Precisamos de um seletor de corretor nessas abas para que o admin possa inspecionar os dados de cada corretor individualmente.
+A corretora Samyra relatou que leads que respondem durante uma Cadencia 10D continuam recebendo mensagens mesmo com a opcao "enviar somente se o lead nao responder" ativada.
 
-## Alteracoes
+## Causa raiz: formato de telefone inconsistente
 
-### 1. Hook `use-whatsapp-campaigns.ts`
+A Edge Function `auto-cadencia-10d` tem sua propria funcao `formatPhoneE164` que retorna telefones **sem o prefixo `+`** (ex: `5551996061120`), enquanto o webhook que processa respostas usa uma versao que retorna **com o prefixo `+`** (ex: `+5551996061120`).
 
-- Aceitar parametro opcional `brokerFilterId` no hook
-- Quando `role === "admin"` e `brokerFilterId` estiver preenchido, filtrar campanhas por esse `broker_id`
-- Quando `role === "admin"` e `brokerFilterId` estiver vazio, mostrar todas as campanhas (comportamento atual)
+Quando o lead responde:
+1. O webhook recebe a resposta e formata o telefone como `+5551996061120`
+2. Busca mensagens na fila com `.eq("phone", "+5551996061120")`
+3. Nao encontra nada, pois a fila tem `5551996061120` (sem `+`)
+4. O cancelamento nunca acontece e a reply nao e registrada em `whatsapp_lead_replies`
+5. O message-sender tambem nao consegue validar replies pelo mesmo motivo
 
-### 2. Hook `use-whatsapp-queue.ts`
+Dados confirmam o problema: campanhas criadas pelo `auto-cadencia-10d` tem phones sem `+`, e nenhuma tem reply registrada em `whatsapp_lead_replies`.
 
-- Aceitar parametro opcional `brokerFilterId`
-- Quando `role === "admin"` e `brokerFilterId` estiver preenchido, usar esse ID em vez do `broker?.id` para todas as queries (lista, contadores, respostas)
-- Quando `role === "admin"` e `brokerFilterId` estiver vazio, mostrar dados de **todos** os corretores (remover filtro `broker_id`)
-- Ajustar as queries agregadas e realtime para usar o ID efetivo
+## Solucao
 
-### 3. Componente `CampaignsTab.tsx`
+### 1. Corrigir `auto-cadencia-10d/index.ts`
 
-- Adicionar state `selectedBrokerId`
-- Buscar lista de corretores ativos (query simples em `brokers`)
-- Renderizar um `Select` com opcao "Todos os corretores" + lista de corretores, visivel apenas para admin
-- Passar `selectedBrokerId` para `useWhatsAppCampaigns`
-- Filtrar campanhas exibidas pelo corretor selecionado
+Alterar a funcao `formatPhoneE164` para retornar com prefixo `+`, alinhando com todas as outras implementacoes:
 
-### 4. Componente `QueueTab.tsx`
+```
+// ANTES (bugado):
+function formatPhoneE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) return digits;
+  if (digits.length === 11 || digits.length === 10) return "55" + digits;
+  return digits;
+}
 
-- Adicionar state `selectedBrokerId`
-- Buscar lista de corretores ativos
-- Renderizar um `Select` identico ao de Campanhas, visivel apenas para admin
-- Passar `selectedBrokerId` para `useWhatsAppQueue`
-- Stats e lista refletem o corretor selecionado
+// DEPOIS (corrigido):
+function formatPhoneE164(phone: string): string {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.startsWith("55") && digits.length >= 12) return "+" + digits;
+  if (digits.length === 11 || digits.length === 10) return "+55" + digits;
+  return "+" + digits;
+}
+```
 
-## Detalhes tecnicos
+### 2. Corrigir dados existentes no banco
 
-### Arquivos editados
+Atualizar os telefones sem `+` na tabela `whatsapp_message_queue` para normalizar o formato:
+
+```sql
+UPDATE whatsapp_message_queue
+SET phone = '+' || phone
+WHERE phone NOT LIKE '+%'
+  AND phone ~ '^\d+$';
+```
+
+### 3. Normalizar o webhook para tolerancia de formato
+
+Adicionar busca com ambos os formatos no webhook (`cancelFollowUpsOnReply`) para que, mesmo que existam dados antigos com formato inconsistente, o sistema encontre as mensagens. Buscar por `phone` com e sem `+`.
+
+### Arquivos alterados
 
 | Arquivo | Alteracao |
 |---|---|
-| `src/hooks/use-whatsapp-campaigns.ts` | Aceitar `brokerFilterId?: string`, filtrar query de campanhas quando admin seleciona corretor |
-| `src/hooks/use-whatsapp-queue.ts` | Aceitar `brokerFilterId?: string` e `role`, usar ID efetivo em todas as queries e realtime |
-| `src/components/whatsapp/CampaignsTab.tsx` | Adicionar Select de corretores (admin only), passar filtro para hook |
-| `src/components/whatsapp/QueueTab.tsx` | Adicionar Select de corretores (admin only), passar filtro para hook |
+| `supabase/functions/auto-cadencia-10d/index.ts` | Corrigir `formatPhoneE164` para retornar com `+` |
+| `supabase/functions/whatsapp-webhook/index.ts` | Buscar mensagens com ambos os formatos de telefone |
+| Banco de dados (data fix) | Normalizar phones existentes sem `+` |
 
-### Logica do filtro
-
-- **"Todos os corretores"** (valor vazio): nao aplica `.eq("broker_id", ...)` nas queries, retornando dados de todos
-- **Corretor especifico**: aplica `.eq("broker_id", selectedId)` em todas as queries
-- Para corretores nao-admin, nada muda: o filtro pelo proprio `broker_id` continua sendo aplicado automaticamente
-
-### UX do seletor
-
-- Posicionado ao lado do titulo da aba, no header
-- Estilo consistente com o design escuro existente (`bg-[#1a1a1d] border-[#2a2a2e]`)
-- Opcao padrao: "Todos os corretores"
-- Lista ordenada alfabeticamente pelo nome do corretor
