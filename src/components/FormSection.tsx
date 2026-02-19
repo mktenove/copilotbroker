@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WhatsAppInput, isValidWhatsApp } from "@/components/ui/whatsapp-input";
 import { trackLeadAttribution, getLeadOriginFromUTM, getLeadOriginDetailFromUTM } from "@/hooks/use-page-tracking";
 
 interface FormSectionProps {
@@ -96,8 +97,8 @@ const FormSection = ({
       return;
     }
 
-    // Validação básica do WhatsApp (mínimo 14 caracteres formatado)
-    if (formData.whatsapp.replace(/\D/g, "").length < 10) {
+    // Validação do WhatsApp
+    if (!isValidWhatsApp(formData.whatsapp)) {
       toast.error("Por favor, insira um número de WhatsApp válido.");
       return;
     }
@@ -226,17 +227,6 @@ const FormSection = ({
     }
   };
 
-  const formatWhatsApp = (value: string) => {
-    // Remove all non-numeric characters
-    const numbers = value.replace(/\D/g, "");
-    
-    // Format as (XX) XXXXX-XXXX
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
-
   return (
     <section 
       id="cadastro" 
@@ -285,17 +275,13 @@ const FormSection = ({
               <label htmlFor="whatsapp-landing" className="block text-sm font-medium text-foreground/80 mb-2">
                 WhatsApp
               </label>
-              <input
-                type="tel"
+              <WhatsAppInput
                 id="whatsapp-landing"
                 name="whatsapp"
                 autoComplete="tel"
-                inputMode="numeric"
                 value={formData.whatsapp}
-                onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
-                className="w-full px-4 py-3 sm:py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all text-base"
-                placeholder="(00) 00000-0000"
-                maxLength={16}
+                onChange={(val) => setFormData({ ...formData, whatsapp: val })}
+                className="py-3 sm:py-3.5 bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary text-base"
                 aria-required="true"
               />
             </div>

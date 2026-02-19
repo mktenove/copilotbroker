@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { WhatsAppInput, isValidWhatsApp } from "@/components/ui/whatsapp-input";
 import { trackLeadAttribution, getLeadOriginFromUTM, getLeadOriginDetailFromUTM } from "@/hooks/use-page-tracking";
 
 interface GVFormSectionProps {
@@ -98,14 +99,6 @@ const GVFormSection = ({
     setShowBrokerSelect(!showBrokerSelect);
   };
 
-  const formatWhatsApp = (value: string) => {
-    const numbers = value.replace(/\D/g, "");
-    if (numbers.length <= 2) return numbers;
-    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
-    if (numbers.length <= 11) return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`;
-    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -114,7 +107,7 @@ const GVFormSection = ({
       return;
     }
 
-    if (formData.whatsapp.replace(/\D/g, "").length < 10) {
+    if (!isValidWhatsApp(formData.whatsapp)) {
       toast.error("Por favor, insira um número de WhatsApp válido.");
       return;
     }
@@ -314,17 +307,13 @@ const GVFormSection = ({
                 <label htmlFor="gv-whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
                   WhatsApp
                 </label>
-                <input
-                  type="tel"
+                <WhatsAppInput
                   id="gv-whatsapp"
                   name="whatsapp"
                   autoComplete="tel"
-                  inputMode="numeric"
                   value={formData.whatsapp}
-                  onChange={(e) => setFormData({ ...formData, whatsapp: formatWhatsApp(e.target.value) })}
-                  className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
-                  placeholder="(00) 00000-0000"
-                  maxLength={16}
+                  onChange={(val) => setFormData({ ...formData, whatsapp: val })}
+                  className="py-3.5 bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary"
                 />
               </div>
 
