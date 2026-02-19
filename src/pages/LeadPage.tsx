@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { supabase } from "@/integrations/supabase/client";
 import { CRMLead, LeadStatus, STATUS_CONFIG, TIPO_AGENDAMENTO, getOriginDisplayLabel, LEAD_ORIGINS } from "@/types/crm";
 import { LeadTimeline } from "@/components/crm/LeadTimeline";
@@ -339,25 +340,89 @@ export default function LeadPage() {
             </div>
           </div>
 
-          {/* Funnel progress bar */}
-          <div className="flex items-center gap-1">
-            {FUNNEL_STAGES.map((stage, i) => {
-              const isActive = i <= currentStageIndex;
-              const isCurrent = i === currentStageIndex;
-              return (
-                <div key={stage.status} className="flex-1 relative group">
-                  <div className={cn(
-                    "h-1.5 rounded-full transition-all duration-500",
-                    isActive ? (isCurrent ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]" : "bg-yellow-500/60") : "bg-[#1e1e22]"
-                  )} />
-                  <span className={cn(
-                    "absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium whitespace-nowrap transition-colors",
-                    isCurrent ? "text-yellow-400" : isActive ? "text-slate-500" : "text-slate-600"
-                  )}>{stage.label}</span>
-                </div>
-              );
-            })}
-          </div>
+          {/* Funnel progress bar - interactive */}
+          <TooltipProvider delayDuration={200}>
+            <div className="flex items-center gap-1">
+              {FUNNEL_STAGES.map((stage, i) => {
+                const isActive = i <= currentStageIndex;
+                const isCurrent = i === currentStageIndex;
+                const isNext = i === currentStageIndex + 1 && !isLost && !isSold;
+                const isFuture = i > currentStageIndex + 1;
+
+                const tooltipText = isCurrent
+                  ? "Etapa atual"
+                  : isActive
+                    ? "Etapa concluída"
+                    : isNext
+                      ? (() => {
+                          switch (stage.status) {
+                            case "info_sent": return "Clique para Iniciar Atendimento";
+                            case "scheduling": return "Clique para Agendar";
+                            case "docs_received":
+                              return lead.comparecimento === true ? "Clique para Inserir Proposta" : "Clique para Registrar Comparecimento";
+                            case "registered":
+                              return hasApprovedProposta ? "Clique para Confirmar Venda" : "Aprove uma proposta antes";
+                            default: return "";
+                          }
+                        })()
+                      : "Complete a etapa anterior";
+
+                const handleStageClick = () => {
+                  if (!isNext) return;
+                  switch (stage.status) {
+                    case "info_sent": setIniciarAtendimentoOpen(true); break;
+                    case "scheduling": setAgendamentoOpen(true); break;
+                    case "docs_received":
+                      if (lead.comparecimento === true) setPropostaOpen(true);
+                      else setComparecimentoOpen(true);
+                      break;
+                    case "registered":
+                      if (hasApprovedProposta) setVendaOpen(true);
+                      else toast.info("Aprove uma proposta antes de confirmar a venda");
+                      break;
+                  }
+                };
+
+                return (
+                  <Tooltip key={stage.status}>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={handleStageClick}
+                        className={cn(
+                          "flex-1 relative group focus:outline-none",
+                          isNext && "cursor-pointer",
+                          isFuture && "cursor-not-allowed",
+                          !isNext && !isFuture && "cursor-default"
+                        )}
+                      >
+                        <div className={cn(
+                          "h-1.5 rounded-full transition-all duration-500",
+                          isActive
+                            ? isCurrent
+                              ? "bg-gradient-to-r from-yellow-400 to-yellow-500 shadow-[0_0_8px_rgba(250,204,21,0.4)]"
+                              : "bg-yellow-500/60"
+                            : isNext
+                              ? "bg-yellow-500/25 ring-1 ring-yellow-400/50 animate-pulse"
+                              : "bg-[#1e1e22]"
+                        )} />
+                        <span className={cn(
+                          "absolute -bottom-5 left-1/2 -translate-x-1/2 text-[9px] font-medium whitespace-nowrap transition-colors flex items-center gap-0.5",
+                          isCurrent ? "text-yellow-400" : isActive ? "text-slate-500" : isNext ? "text-yellow-500/70" : "text-slate-600"
+                        )}>
+                          {isNext && <ChevronRight className="w-2.5 h-2.5" />}
+                          {stage.label}
+                        </span>
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-xs">
+                      {tooltipText}
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </div>
+          </TooltipProvider>
 
         </div>
       </div>
