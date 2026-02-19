@@ -547,8 +547,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
           const success = await registrarComparecimento(comparecimentoModal.leadId);
           if (success) {
             toast.success("Comparecimento registrado!");
-            // Open proposta modal automatically
-            setPropostaModal({ open: true, leadId: comparecimentoModal.leadId });
           }
         }}
         onNaoCompareceu={() => {
