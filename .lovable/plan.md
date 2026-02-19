@@ -1,47 +1,47 @@
 
 
-# Corrigir aviso de 48h sem interacao (contorno vermelho)
+# Corrigir autocomplete do navegador no campo WhatsApp
 
 ## Problema
 
-O contorno vermelho de "48h sem interacao" usa o campo `last_interaction_at` do lead para calcular se esta "stale". No banco de dados, esse campo e atualizado corretamente por um **trigger** que dispara sempre que uma nova interacao e inserida na tabela `lead_interactions`.
-
-Porem, no frontend, as atualizacoes otimistas (quando o corretor faz qualquer acao no lead) atualizam apenas o campo `updated_at` no estado local, mas **nunca atualizam `last_interaction_at`**. Como o calculo do `isStale` depende exclusivamente de `last_interaction_at`, o contorno vermelho so desaparece quando o Kanban recarrega os dados do banco — o que acontece apenas em eventos especificos de realtime (mudanca de status, reatribuicao).
+Quando o navegador usa autocomplete para preencher o campo de telefone, ele insere o numero completo com codigo do pais (ex: `5511999998888`). Como o seletor de pais ja esta em +55, o componente trata esses digitos como numero local e aplica o limite de 11 digitos locais, resultando em `55119999988` — que inclui o "55" como parte do numero local e perde os 2 ultimos digitos.
 
 ## Solucao
 
-Atualizar o estado local do lead com `last_interaction_at = now()` em todas as funcoes que inserem interacoes no banco. Isso garante que o calculo `isStale` reflita imediatamente a acao do usuario, sem precisar esperar um refetch.
+Detectar automaticamente quando o valor digitado/colado/autocompletado no campo local comeca com o codigo do pais selecionado e tem comprimento compativel com um numero completo. Nesse caso, remover o prefixo duplicado antes de processar.
 
-## Alteracoes
+## Alteracao
 
-### `src/hooks/use-kanban-leads.ts`
+### `src/components/ui/whatsapp-input.tsx`
 
-Nas funcoes que inserem `lead_interactions` e fazem update otimista local, incluir `last_interaction_at` no objeto atualizado:
-
-1. **`updateLeadStatus`** (linha ~186): adicionar `last_interaction_at` ao `setLeads` otimista
-2. **`updateLead`** (linha ~254): adicionar `last_interaction_at` ao `setLeads` otimista quando ha log de interacao (origin_change, inactivation)
-3. **`iniciarAtendimento`** e demais metodos do funil (`registrarAgendamento`, `registrarComparecimento`, `confirmarVenda`, etc.): garantir que o update otimista inclua `last_interaction_at`
-
-### Detalhes tecnicos
-
-Em cada funcao que faz `setLeads(prev => prev.map(...))`, o spread do lead atualizado passara a incluir:
+Na funcao `handleLocalChange`, adicionar logica de deteccao antes do trim:
 
 ```typescript
-last_interaction_at: new Date().toISOString()
+const handleLocalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  let digits = e.target.value.replace(/\D/g, "");
+  const code = selectedCountry.code;
+  const maxLocal = selectedCountry.maxDigits - code.length;
+
+  // Autocomplete do navegador pode inserir o numero completo com codigo do pais.
+  // Se os digitos comecam com o codigo do pais E excedem o tamanho local maximo,
+  // removemos o prefixo duplicado.
+  if (digits.startsWith(code) && digits.length > maxLocal) {
+    digits = digits.slice(code.length);
+  }
+
+  const trimmed = digits.slice(0, maxLocal);
+  setLocalNumber(trimmed);
+  onChange(code + trimmed);
+};
 ```
 
-Exemplo para `updateLeadStatus`:
+**Exemplo pratico:**
+- Autocomplete insere: `5511999998888` (13 digitos)
+- `maxLocal = 11`, digitos comecam com "55" e tem 13 > 11
+- Remove prefixo: `11999998888` (11 digitos) - numero local correto
+- Valor final emitido: `5511999998888` - numero completo correto
 
-```diff
- setLeads(prev => prev.map(lead => 
-   lead.id === leadId 
--    ? { ...lead, status: newStatus, updated_at: new Date().toISOString() }
-+    ? { ...lead, status: newStatus, updated_at: new Date().toISOString(), last_interaction_at: new Date().toISOString() }
-     : lead
- ));
-```
+**Caso seguro:** Se o usuario digita manualmente `11999998888` (11 digitos, comeca com "11"), a condicao `digits.length > maxLocal` e falsa (11 nao e > 11), entao nenhuma remocao acontece.
 
-O mesmo padrao sera aplicado em todas as funcoes de transicao do funil que inserem interacoes.
-
-Nenhuma alteracao de banco de dados e necessaria — o trigger existente ja atualiza `last_interaction_at` corretamente no DB.
+Nenhuma outra alteracao necessaria — o fix e isolado na funcao de input do componente.
 
