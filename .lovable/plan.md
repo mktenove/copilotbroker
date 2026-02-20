@@ -1,72 +1,76 @@
 
+# Corrigir visibilidade de mensagens pausadas na Fila do WhatsApp
 
-# Reestruturar Mauricio Cardoso com identidade visual e fluxo comercial do GoldenView
+## Problema
+Quando uma campanha é pausada, os itens da fila recebem status `paused_by_system`. A aba "Fila" filtra pendentes como `queued|scheduled|sending` e historico como `sent|failed|cancelled`, ignorando completamente os itens `paused_by_system`. Isso faz com que centenas de disparos "desaparecam" da interface.
 
-## Resumo
+## Solucao
 
-Transformar a landing page do Mauricio Cardoso para usar a mesma identidade visual do GoldenView (tema escuro luxo com dourado, animacoes de scroll, classes utilitarias como `card-luxury`, `btn-primary`, `text-gold-gradient`, `floating-cta`) e a mesma ordem comercial de secoes, mantendo todo o conteudo textual e informacoes do MC.
+### 1. QueueTab.tsx - Incluir `paused_by_system` nos pendentes
 
-## Mudanca visual principal
+Alterar o filtro de `pendingMessages` para incluir `paused_by_system`:
 
-A pagina atualmente usa um tema claro botanico (fundo creme, verde floresta, tons terrosos). Sera convertida para o tema escuro do GoldenView:
-- Fundo escuro (`bg-background text-foreground` no dark mode)
-- Acentos dourados (`text-gold-gradient`, `text-primary`, `btn-primary`)
-- Cards com `card-luxury` (vidro fosco com borda dourada no hover)
-- CTA flutuante com `floating-cta` dourado
-- Todas as secoes com IntersectionObserver para animacoes de entrada
+```typescript
+const pendingMessages = queue.filter(
+  m => m.status === "queued" || m.status === "scheduled" || m.status === "sending" || m.status === "paused_by_system"
+);
+```
 
-## Ordem das secoes (igual GoldenView)
+### 2. use-whatsapp-queue.ts - Incluir `paused_by_system` na contagem "Na fila"
 
-1. **MCHeader** - Adaptar para tema escuro (fundo transparente → charcoal com blur)
-2. **MCHeroSection** - Manter imagem do predio, trocar overlay verde por overlay preto, usar `text-gold-gradient` no destaque, `btn-primary` dourado
-3. **MCPartnersSection** (renomear MCLocationSection) - Credenciais do endereco como cards animados estilo GVPartnersSection
-4. **MCFeaturesSection** (nova) - Unificar Conceito + Apartamentos + Wellness como diferenciais com icones, imagem da piscina, estilo GVFeaturesSection
-5. **MCTargetSection** - Transformar criterios em cards com icones estilo GVTargetAudienceSection
-6. **MCUrgencySection** (nova) - Alert de urgencia + prioridades estilo GVUrgencySection
-7. **MCBenefitsSection** - Cards com check icons estilo GVBenefitsSection
-8. **MCCallToActionSection** (nova) - CTA final com pills + quote + botao, estilo GVCallToActionSection, incluindo dados de investimento (20%, 71x, Dez/2031)
-9. **MCFormSection** - Converter para tema escuro com `card-luxury`, inputs com borda dourada
-10. **MCFooter** - Manter estrutura, adaptar para `bg-card border-t border-border`
-11. **MCFloatingCTA** - Usar classe `floating-cta` dourada + botao scroll-to-top
+Alterar a query de contagem de `queuedCount` para incluir `paused_by_system`:
+
+```typescript
+.in("status", ["queued", "scheduled", "paused_by_system"])
+```
+
+### 3. QueueTab.tsx - Adicionar card de "Pausados" nas metricas
+
+Adicionar um 5o card de estatisticas para mostrar quantos itens estao pausados, separado dos agendados. Isso requer:
+
+- Adicionar contagem separada de `paused_by_system` no hook `use-whatsapp-queue.ts`
+- Exibir no componente `QueueStats` com cor amarela/laranja
+
+### 4. use-whatsapp-queue.ts - Nova query agregada para pausados
+
+Adicionar uma query dedicada para contar itens `paused_by_system`:
+
+```typescript
+const { data: pausedCount = 0 } = useQuery({
+  queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId],
+  queryFn: async () => {
+    // conta itens paused_by_system
+  },
+  refetchInterval: 30000,
+});
+```
+
+E retornar no objeto `stats`:
+```typescript
+const stats = {
+  queued: queuedCount,
+  sent: sentCount,
+  failed: failedCount,
+  replies: repliesCount,
+  paused: pausedCount,
+};
+```
 
 ## Detalhes tecnicos
 
-### Remocao do tema light forcado
-- Na pagina `MauricioCardosoLandingPage.tsx`, remover `data-theme="light"` e classe `light`
-- Usar `className="min-h-screen bg-background text-foreground"` (igual GV)
-- Remover `bg-[hsl(var(--mc-*))]` de todos os componentes, usar tokens do tema escuro (`bg-background`, `bg-card`, `text-foreground`, `text-primary`, `text-muted-foreground`)
+### Arquivos a editar
 
-### Componentes a criar (3)
-- `MCFeaturesSection.tsx` - Diferenciais unificados (conceito + aptos + wellness) com IntersectionObserver
-- `MCUrgencySection.tsx` - Secao de urgencia com alert e grid de prioridades
-- `MCCallToActionSection.tsx` - CTA final com pills de features e dados de investimento
+1. **src/hooks/use-whatsapp-queue.ts**
+   - Adicionar query `whatsapp-queue-count-paused` para contar `paused_by_system`
+   - Atualizar `stats` para incluir campo `paused`
+   - Invalidar nova query no canal realtime
 
-### Componentes a editar (8)
-- `MCHeader.tsx` - Trocar paleta MC por tokens do tema (charcoal/backdrop-blur, text-foreground, btn-primary)
-- `MCHeroSection.tsx` - Overlay escuro, text-gold-gradient, btn-primary
-- `MCLocationSection.tsx` - Renomear para MCPartnersSection, adicionar IntersectionObserver, cards com card-luxury
-- `MCTargetSection.tsx` - Cards com icones e card-luxury, IntersectionObserver
-- `MCBenefitsSection.tsx` - Grid de cards com icones e IntersectionObserver
-- `MCFormSection.tsx` - card-luxury, inputs com estilo do GV, btn-primary
-- `MCFloatingCTA.tsx` - Usar floating-cta + scroll-to-top
-- `MCFooter.tsx` - bg-card, border-border, divider-gold
-
-### Componentes que serao removidos como separados
-- `MCConceptSection.tsx` (conteudo migra para MCFeaturesSection)
-- `MCApartmentsSection.tsx` (conteudo migra para MCFeaturesSection)
-- `MCWellnessSection.tsx` (conteudo migra para MCFeaturesSection)
-- `MCInvestmentSection.tsx` (conteudo migra para MCCallToActionSection)
-
-### Arquivos de pagina a editar
-- `MauricioCardosoLandingPage.tsx` - Nova ordem de secoes, remover tema light
-- `MauricioCardosoBrokerLandingPage.tsx` - Mesma nova ordem de secoes
-- `mauriciocardoso/index.ts` - Atualizar exports
+2. **src/components/whatsapp/QueueTab.tsx**
+   - Incluir `paused_by_system` no filtro de `pendingMessages`
+   - Adicionar card "Pausados" no `QueueStats` com cor amarela (`text-yellow-400`)
+   - Atualizar tipo de `stats` para incluir `paused`
 
 ### O que NAO muda
-- Todo o conteudo textual do Mauricio Cardoso
-- SEO (meta tags, schemas, canonical URLs, pixel, clarity)
-- Logica de formulario e submissao de leads
-- Fluxo /obrigado
-- Logica de broker na pagina broker
-- Imagem do predio (hero) e imagem da piscina (features)
-
+- Logica de pausar/retomar campanhas
+- Limite de 100 itens na query principal (ja existente)
+- Outras abas do WhatsApp
