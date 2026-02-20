@@ -68,7 +68,7 @@ const MCHeroSection = () => {
           <div className="w-16 h-px bg-primary/50 mx-auto mb-8" />
 
           <p className="text-sm sm:text-base text-white/70 mb-10 max-w-2xl mx-auto">
-            Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo,
+            Na Av. Maurício Cardoso, o endereço mais icônico de Novo Hamburgo,
             surge um empreendimento residencial que redefine o morar contemporâneo.
           </p>
 

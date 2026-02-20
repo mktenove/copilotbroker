@@ -85,10 +85,10 @@ const MauricioCardosoBrokerLandingPage = () => {
         <title>Mauricio Cardoso | {brokerName} - Alto Padrão em Novo Hamburgo</title>
         <meta
           name="description"
-          content={`Empreendimento residencial na Rua Maurício Cardoso, Novo Hamburgo. Atendimento exclusivo com ${brokerName}. Apartamentos de 95 a 125m².`}
+          content={`Empreendimento residencial na Av. Maurício Cardoso, Novo Hamburgo. Atendimento exclusivo com ${brokerName}. Apartamentos de 95 a 125m².`}
         />
         <meta property="og:title" content={`Mauricio Cardoso | ${brokerName}`} />
-        <meta property="og:description" content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
+        <meta property="og:description" content="Na Av. Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="pt_BR" />
         <meta name="robots" content="noindex, nofollow" />
