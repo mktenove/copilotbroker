@@ -270,6 +270,7 @@ export function QueueTab() {
     stats,
     isLoading,
     formatNextSendIn,
+    nextScheduledAt,
     cancelMessage,
     retryMessage,
     loadMorePending,
@@ -311,7 +312,10 @@ export function QueueTab() {
         <div className="flex items-center gap-2 text-sm text-slate-400 bg-[#1a1a1d] border border-[#2a2a2e] rounded-full px-3 py-1.5 w-fit">
           <Timer className="w-4 h-4 animate-pulse text-primary" />
           <span>Próximo envio em:</span>
-          <span className="font-mono text-primary font-medium">{formatNextSendIn()}</span>
+          <span className="font-mono text-primary font-medium">
+            {formatNextSendIn()}
+            {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
+          </span>
         </div>
       </div>
 
