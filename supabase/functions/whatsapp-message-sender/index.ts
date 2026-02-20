@@ -529,6 +529,41 @@ app.post("/process", async (c) => {
             });
         }
 
+        // Move lead to "Atendimento" if still in "new" status (step 1 of campaign)
+        if (queueMsg.lead_id && queueMsg.campaign_id && (!queueMsg.step_number || queueMsg.step_number === 1)) {
+          const { data: currentLead } = await supabase
+            .from("leads")
+            .select("status")
+            .eq("id", queueMsg.lead_id)
+            .single();
+
+          if (currentLead && (currentLead as { status: string }).status === "new") {
+            await supabase
+              .from("leads")
+              .update({
+                status: "info_sent",
+                status_distribuicao: "atendimento_iniciado",
+                atendimento_iniciado_em: new Date().toISOString(),
+                reserva_expira_em: null,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", queueMsg.lead_id);
+
+            await supabase
+              .from("lead_interactions")
+              .insert({
+                lead_id: queueMsg.lead_id,
+                broker_id: instance.broker_id,
+                interaction_type: "status_change",
+                old_status: "new",
+                new_status: "info_sent",
+                notes: "Lead movido para Atendimento automaticamente apos envio da 1a mensagem da campanha",
+              });
+
+            console.log(`Lead ${queueMsg.lead_id} moved to info_sent after campaign step 1`);
+          }
+        }
+
         // Update daily stats
         const today = new Date().toISOString().split("T")[0];
         const { data: existingStats } = await supabase
