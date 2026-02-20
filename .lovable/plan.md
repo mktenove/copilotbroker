@@ -1,10 +1,10 @@
 
 
-# Nova Etapa de Revisao + Cores Premium
+# Edição inline de telefones inválidos na Etapa 5
 
-## Visao Geral
+## Objetivo
 
-Adicionar uma **Etapa 6 — Revisao** entre Validacao e Importacao, onde o usuario ve todos os contatos validos com checkboxes para desmarcar os que nao quer importar. Tambem ajustar todas as cores do wizard para o padrao premium do layout (fundo escuro #0f0f12/#1e1e22, amarelo Enove #FFFF00).
+Permitir que o usuário corrija manualmente telefones inválidos diretamente na tabela da Etapa 5 (Validação), sem precisar voltar ao CSV. Ao corrigir o número, o sistema re-normaliza em tempo real e, se válido, move o contato para a lista de válidos.
 
 ## Arquivo editado
 
@@ -12,62 +12,111 @@ Adicionar uma **Etapa 6 — Revisao** entre Validacao e Importacao, onde o usuar
 
 ## Mudancas
 
-### 1. Nova etapa no wizard (7 etapas)
+### 1. Novo estado para edições manuais
+
+- `phoneEdits: Record<number, string>` — mapeia `rowIndex` para o valor digitado pelo usuário
+- Inicializado vazio, preenchido conforme o usuário edita
+
+### 2. Tabela de inválidos — coluna editável
+
+Na tabela de linhas inválidas (dentro do `Collapsible`), a coluna "Telefone" passa de texto estático para um campo `<input>`:
+
+- Input com estilo inline (fundo escuro, borda sutil, fonte mono)
+- Valor inicial: `phoneResult.original` do registro inválido
+- `onChange`: salva em `phoneEdits[rowIndex]`
+- Ao lado do input, um botão/ícone de "Revalidar" que executa `normalizePhone()` no valor editado
+
+### 3. Botão "Revalidar" por linha
+
+- Ícone de refresh/check ao lado do input
+- Ao clicar, chama `normalizePhone(phoneEdits[rowIndex], autoFix9thDigit, defaultDdd)`
+- Se o resultado for válido:
+  - Remove a linha de `invalidRows`
+  - Adiciona a `validRows` com o telefone normalizado
+  - Atualiza `processResult` no estado
+  - Mostra feedback visual (linha fica verde brevemente ou desaparece)
+- Se continuar inválido:
+  - Mostra o novo erro inline (tooltip ou texto vermelho)
+
+### 4. Botão "Revalidar todos" no header da seção
+
+- Um botão acima da tabela de inválidos: "Revalidar todos editados"
+- Percorre todos os `phoneEdits`, re-normaliza cada um
+- Move todos os que ficaram válidos para `validRows`
+- Atualiza contadores dos MetricCards em tempo real
+
+### 5. Atualização dos contadores
+
+Os MetricCards (Válidos, Inválidos, Corrigidos) refletem as mudanças em tempo real conforme o usuário corrige telefones.
+
+### 6. Fluxo do usuário
 
 ```text
-Antes: Upload → Pre-visualizacao → Mapeamento → Regras → Validacao → Importacao
-Depois: Upload → Pre-visualizacao → Mapeamento → Regras → Validacao → Revisao → Importacao
+1. Usuário vê "15 inválidos" → abre a lista
+2. Vê que "051 98051-5224" deu erro → edita para "51980515224"
+3. Clica no ícone de revalidar → número fica válido
+4. Contadores atualizam: 14 inválidos, +1 válido
+5. Segue para Revisão com mais contatos recuperados
 ```
 
-- `STEPS` passa de 6 para 7 itens
-- Etapa 6 = "Revisao" (nova)
-- Etapa 7 = "Importacao" (renumerada)
+## Detalhes técnicos
 
-### 2. Etapa "Revisao" — funcionalidade
+### Função de revalidação por linha
 
-- Exibir todos os contatos validos em uma lista com checkbox
-- Todos iniciam marcados (selecionados)
-- Header com "Selecionar todos / Desmarcar todos" e contador "X de Y selecionados"
-- Cada linha mostra: checkbox, nome, telefone normalizado, origem
-- Scroll vertical com altura maxima
-- Busca rapida para filtrar por nome/telefone
-- Botao "Importar X contatos" (apenas os marcados)
-- Se nenhum selecionado, botao desabilitado
+```typescript
+const revalidateRow = (invalidIndex: number) => {
+  const row = processResult.invalidRows[invalidIndex];
+  const editedPhone = phoneEdits[row.rowIndex] || row.phoneResult.original;
+  const result = normalizePhone(editedPhone, autoFix9thDigit, defaultDdd);
+  
+  if (result.isValid && row.name && row.name.length >= 2) {
+    // Mover de invalidRows para validRows
+    const updatedInvalid = processResult.invalidRows.filter((_, i) => i !== invalidIndex);
+    const newValid: RowValidation = {
+      ...row,
+      phone: result.normalized,
+      phoneResult: result,
+      isValid: true,
+      errors: [],
+    };
+    const updatedValid = [...processResult.validRows, newValid];
+    
+    setProcessResult({
+      ...processResult,
+      invalidRows: updatedInvalid,
+      validRows: updatedValid,
+      phonesFixed: result.wasFixed 
+        ? [...processResult.phonesFixed, newValid] 
+        : processResult.phonesFixed,
+    });
+    // Adicionar o novo índice aos selecionados na Revisão
+    setSelectedLeads(prev => new Set([...prev, updatedValid.length - 1]));
+  }
+};
+```
 
-### 3. Novo estado
+### UI do input inline
 
-- `selectedLeads: Set<number>` — indices dos contatos selecionados (inicializado com todos os validos)
-- `reviewSearch: string` — filtro de busca na tela de revisao
+```typescript
+<td className="p-2">
+  <div className="flex items-center gap-1">
+    <input
+      type="text"
+      value={phoneEdits[r.rowIndex] ?? r.phoneResult.original}
+      onChange={e => setPhoneEdits(prev => ({ ...prev, [r.rowIndex]: e.target.value }))}
+      className="font-mono text-sm bg-[#0f0f12] border border-[#2a2a2e] rounded px-2 py-1 
+                 text-white w-36 focus:border-[#FFFF00]/50 focus:outline-none"
+    />
+    <button onClick={() => revalidateRow(i)} 
+            className="text-[#FFFF00] hover:text-[#FFFF00]/80 p-1">
+      <Check className="w-3.5 h-3.5" />
+    </button>
+  </div>
+</td>
+```
 
-### 4. Ajuste no fluxo de importacao
+- Erro atualizado exibido na coluna "Erro" se a revalidação falhar
+- Linhas recuperadas com sucesso desaparecem da tabela de inválidos
 
-- Na etapa 7 (import), filtrar `processResult.validRows` apenas pelos indices presentes em `selectedLeads`
-- Atualizar contagem de metricas finais
-
-### 5. Cores premium (todo o modal)
-
-Substituir classes genericas por cores do padrao Enove:
-
-| Elemento | Antes | Depois |
-|---|---|---|
-| Dialog background | `bg-card` | `bg-[#141417]` |
-| Dialog border | `border-border` | `border-[#2a2a2e]` |
-| Stepper ativo/done | `bg-primary` | `bg-[#FFFF00] text-black` |
-| Stepper inativo | `bg-muted` | `bg-[#1e1e22] text-slate-500` |
-| Stepper linha done | `bg-primary` | `bg-[#FFFF00]` |
-| Botoes primarios | default | `bg-[#FFFF00] text-black hover:shadow-[0_0_20px_rgba(255,255,0,0.3)]` |
-| Cards de metrica | `bg-muted/30` | `bg-[#1e1e22] border-[#2a2a2e]` |
-| Dropzone | `border-primary` | `border-[#FFFF00]` |
-| Icones destaque | `text-primary` | `text-[#FFFF00]` |
-| Radio/Switch/Select bg | `bg-muted/30` | `bg-[#1e1e22]/50` |
-| Textos | `text-foreground` | `text-white` |
-| Textos secundarios | `text-muted-foreground` | `text-slate-400` |
-| Info box | `bg-muted/50` | `bg-[#1e1e22] border border-[#2a2a2e]` |
-
-### Detalhes tecnicos
-
-- Checkbox usa componente `@/components/ui/checkbox` ja existente
-- Busca filtra localmente a lista de `processResult.validRows` mas nao altera `selectedLeads`
-- "Selecionar todos" e "Desmarcar todos" operam sobre a lista filtrada (se ha busca ativa, so afeta os visiveis)
-- Performance: para listas grandes (>500 rows), a lista usa `max-h-[400px] overflow-y-auto` sem virtualizacao (contatos CSV raramente passam de 2000 linhas)
-
+### Arquivo unico editado
+- `src/components/admin/CsvImportModal.tsx`
