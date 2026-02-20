@@ -4,20 +4,20 @@ import { Users, TrendingUp, Briefcase } from "lucide-react";
 const profiles = [
   {
     icon: Users,
-    title: "Se você é família:",
-    benefit: "Está comprando endereço, segurança e um lugar para viver com calma, privacidade e qualidade de vida.",
+    title: "Para quem busca morar bem:",
+    benefit: "Endereço nobre, segurança, privacidade e qualidade de vida para toda a família.",
     color: "from-blue-500/20 to-blue-600/20"
   },
   {
     icon: TrendingUp,
-    title: "Se você é investidor:",
-    benefit: "Está comprando localização nobre, escassez e um projeto sólido — combinação clássica de valorização consistente.",
+    title: "Para quem investe com visão:",
+    benefit: "Localização premium, escassez de unidades e projeto sólido — a combinação clássica de valorização consistente.",
     color: "from-green-500/20 to-green-600/20"
   },
   {
     icon: Briefcase,
-    title: "Se você é profissional consolidado:",
-    benefit: "Está comprando status, exclusividade e um endereço que é referência em Novo Hamburgo.",
+    title: "Para quem conquistou seu lugar:",
+    benefit: "Status, exclusividade e um endereço que é referência em Novo Hamburgo.",
     color: "from-purple-500/20 to-purple-600/20"
   }
 ];
