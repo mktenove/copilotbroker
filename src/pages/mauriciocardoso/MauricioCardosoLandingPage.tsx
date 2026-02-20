@@ -50,12 +50,12 @@ const MauricioCardosoLandingPage = () => {
     "@type": "Residence",
     "@id": `${canonicalUrl}#residence`,
     "name": "Mauricio Cardoso Residencial",
-    "description": "Empreendimento residencial de alto padrão na Rua Maurício Cardoso, Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios, com 1.800m² de lazer e wellness.",
+    "description": "Empreendimento residencial de alto padrão na Av. Maurício Cardoso, Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios, com 1.800m² de lazer e wellness.",
     "url": canonicalUrl,
     "image": ogImageUrl,
     "address": {
       "@type": "PostalAddress",
-      "streetAddress": "Rua Maurício Cardoso",
+      "streetAddress": "Av. Maurício Cardoso",
       "addressLocality": "Novo Hamburgo",
       "addressRegion": "RS",
       "addressCountry": "BR",
@@ -102,7 +102,7 @@ const MauricioCardosoLandingPage = () => {
       {
         "@type": "Question",
         "name": "Onde fica localizado o Mauricio Cardoso?",
-        "acceptedAnswer": { "@type": "Answer", "text": "O empreendimento está localizado na Rua Maurício Cardoso, considerado o endereço mais icônico de Novo Hamburgo, RS." }
+        "acceptedAnswer": { "@type": "Answer", "text": "O empreendimento está localizado na Av. Maurício Cardoso, considerado o endereço mais icônico de Novo Hamburgo, RS." }
       },
       {
         "@type": "Question",
@@ -127,8 +127,8 @@ const MauricioCardosoLandingPage = () => {
       <Helmet>
         <title>Mauricio Cardoso | Apartamentos de Alto Padrão em Novo Hamburgo</title>
         <meta name="title" content="Mauricio Cardoso | Apartamentos de Alto Padrão em Novo Hamburgo" />
-        <meta name="description" content="Empreendimento residencial na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios. 1.800m² de lazer e wellness." />
-        <meta name="keywords" content="apartamentos Novo Hamburgo, Rua Maurício Cardoso, alto padrão Novo Hamburgo RS, apartamentos 3 dormitórios, wellness residencial, lançamento imobiliário 2026, apartamentos 95m², apartamentos 125m²" />
+        <meta name="description" content="Empreendimento residencial na Av. Maurício Cardoso, o endereço mais icônico de Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios. 1.800m² de lazer e wellness." />
+        <meta name="keywords" content="apartamentos Novo Hamburgo, Av. Maurício Cardoso, alto padrão Novo Hamburgo RS, apartamentos 3 dormitórios, wellness residencial, lançamento imobiliário 2026, apartamentos 95m², apartamentos 125m²" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 
@@ -136,7 +136,7 @@ const MauricioCardosoLandingPage = () => {
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content="Enove Imobiliária" />
         <meta property="og:title" content="Mauricio Cardoso | Alto Padrão em Novo Hamburgo" />
-        <meta property="og:description" content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
+        <meta property="og:description" content="Na Av. Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />
@@ -146,7 +146,7 @@ const MauricioCardosoLandingPage = () => {
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content={canonicalUrl} />
         <meta name="twitter:title" content="Mauricio Cardoso | Alto Padrão em Novo Hamburgo" />
-        <meta name="twitter:description" content="Apartamentos de 95 a 125m² na Rua Maurício Cardoso." />
+        <meta name="twitter:description" content="Apartamentos de 95 a 125m² na Av. Maurício Cardoso." />
         <meta name="twitter:image" content={ogImageUrl} />
 
         <script type="application/ld+json">{JSON.stringify(residenceSchema)}</script>

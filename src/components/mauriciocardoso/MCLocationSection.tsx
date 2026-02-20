@@ -56,7 +56,7 @@ const MCLocationSection = () => {
           </h2>
 
           <p className="text-base sm:text-lg text-muted-foreground mb-4 leading-relaxed">
-            A <strong className="text-foreground">Rua Maurício Cardoso</strong> não é apenas uma localização.
+            A <strong className="text-foreground">Av. Maurício Cardoso</strong> não é apenas uma localização.
           </p>
           <p className="text-base sm:text-lg text-muted-foreground mb-12 leading-relaxed">
             É um símbolo de prestígio, tradição e valorização constante. Um eixo nobre, central e desejado,

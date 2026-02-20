@@ -143,7 +143,7 @@ const TermosMauricioCardoso = () => {
                 <h2 className="text-lg sm:text-xl font-medium text-[hsl(var(--mc-charcoal))] mb-2 md:mb-3">1. Finalidade do formulário</h2>
                 <p className="mb-2 leading-relaxed">Este formulário tem como finalidade exclusiva o cadastro de interessados para:</p>
                 <ul className="list-disc list-inside space-y-1 ml-2 md:ml-4">
-                  <li>Receber informações preliminares e comerciais sobre o empreendimento Mauricio Cardoso, localizado na Rua Maurício Cardoso, em Novo Hamburgo/RS;</li>
+                  <li>Receber informações preliminares e comerciais sobre o empreendimento Mauricio Cardoso, localizado na Av. Maurício Cardoso, em Novo Hamburgo/RS;</li>
                   <li>Ser contatado pela Enove Imobiliária Ltda e seus corretores associados.</li>
                 </ul>
               </div>
