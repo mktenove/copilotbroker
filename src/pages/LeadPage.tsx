@@ -270,6 +270,9 @@ export default function LeadPage() {
         if (lead.comparecimento === true) {
           return { label: "Inserir Proposta", icon: DollarSign, color: "bg-purple-500 hover:bg-purple-600", action: "proposta" };
         }
+        if (lead.comparecimento === false) {
+          return { label: "Reagendar", icon: RotateCw, color: "bg-amber-500 hover:bg-amber-600 text-black", action: "reagendar" };
+        }
         return { label: "Registrar Comparecimento", icon: Eye, color: "bg-blue-500 hover:bg-blue-600", action: "comparecimento" };
       case "docs_received":
         if (hasApprovedProposta) {
@@ -308,6 +311,7 @@ export default function LeadPage() {
       case "comparecimento": setComparecimentoOpen(true); break;
       case "proposta": setPropostaOpen(true); break;
       case "venda": setVendaOpen(true); break;
+      case "reagendar": setAgendamentoReagendar(true); break;
     }
   };
 
@@ -390,7 +394,7 @@ export default function LeadPage() {
                             case "info_sent": return "Clique para Iniciar Atendimento";
                             case "scheduling": return "Clique para Agendar";
                             case "docs_received":
-                              return lead.comparecimento === true ? "Clique para Inserir Proposta" : "Clique para Registrar Comparecimento";
+                              return lead.comparecimento === true ? "Clique para Inserir Proposta" : lead.comparecimento === false ? "Clique para Reagendar" : "Clique para Registrar Comparecimento";
                             case "registered":
                               return hasApprovedProposta ? "Clique para Confirmar Venda" : "Aprove uma proposta antes";
                             default: return "";
@@ -410,6 +414,7 @@ export default function LeadPage() {
                     case "scheduling": setAgendamentoOpen(true); break;
                     case "docs_received":
                       if (lead.comparecimento === true) setPropostaOpen(true);
+                      else if (lead.comparecimento === false) setAgendamentoReagendar(true);
                       else setComparecimentoOpen(true);
                       break;
                     case "registered":
