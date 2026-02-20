@@ -28,6 +28,7 @@ import { PerdaModal } from "./PerdaModal";
 import { NewCampaignSheet } from "@/components/whatsapp/NewCampaignSheet";
 import { supabase } from "@/integrations/supabase/client";
 import { cancelCadenciaForLead } from "@/hooks/use-cadencia-ativa";
+import { usePropostas } from "@/hooks/use-propostas";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -79,12 +80,15 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   // Modal states
   const [agendamentoModal, setAgendamentoModal] = useState<{ open: boolean; leadId: string | null; isReagendamento?: boolean }>({ open: false, leadId: null });
   const [comparecimentoModal, setComparecimentoModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
-  const [propostaModal, setPropostaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
+  const [propostaModal, setPropostaModal] = useState<{ open: boolean; leadId: string | null; leadProjectId?: string | null; leadBrokerId?: string | null }>({ open: false, leadId: null });
   const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
   const [iniciarModal, setIniciarModal] = useState<{ open: boolean; leadId: string | null; message: string }>({ open: false, leadId: null, message: "" });
   const [newLeadIds, setNewLeadIds] = useState<Set<string>>(new Set());
   const newLeadTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  // usePropostas for the currently open proposta modal lead
+  const { criarProposta } = usePropostas(propostaModal.leadId || "");
 
   // Notification sound (short chime as base64 data URI)
   const playNotificationSound = useCallback(() => {
@@ -494,7 +498,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 onOpenPerda={handleOpenPerda}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
                 onAddLead={onAddLead}
-                onOpenProposta={(leadId) => setPropostaModal({ open: true, leadId })}
+                onOpenProposta={(leadId) => {
+                  const lead = leads.find(l => l.id === leadId);
+                  setPropostaModal({ open: true, leadId, leadProjectId: lead?.project_id, leadBrokerId: lead?.broker_id });
+                }}
                 onOpenReagendamento={(leadId) => setAgendamentoModal({ open: true, leadId, isReagendamento: true })}
               />
             ))}
@@ -560,10 +567,18 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
       <PropostaModal
         open={propostaModal.open}
         onOpenChange={(v) => setPropostaModal(prev => ({ ...prev, open: v }))}
+        leadProjectId={propostaModal.leadProjectId}
+        leadBrokerId={propostaModal.leadBrokerId}
+        projects={projects}
         onConfirm={async (data) => {
           if (!propostaModal.leadId) return false;
-          const success = await registrarProposta(propostaModal.leadId, data.valor_proposta);
-          if (success) toast.success("Proposta registrada!");
+          const success = await criarProposta({
+            ...data,
+            lead_id: propostaModal.leadId,
+          });
+          if (success) {
+            toast.success("Proposta registrada!");
+          }
           return !!success;
         }}
       />
