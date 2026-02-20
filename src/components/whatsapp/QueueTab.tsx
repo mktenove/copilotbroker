@@ -100,7 +100,7 @@ function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: 
       <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
         <CardContent className="py-3 sm:py-4 text-center">
           <p className="text-2xl font-bold text-blue-400">{stats.replies}</p>
-          <p className="text-xs text-slate-500">Respostas</p>
+          <p className="text-xs text-slate-500">Responderam</p>
         </CardContent>
       </Card>
     </div>

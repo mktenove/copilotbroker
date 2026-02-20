@@ -164,13 +164,14 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       if (!campaigns || campaigns.length === 0) return 0;
 
       const campaignIds = campaigns.map(c => c.id);
-      const { count, error } = await supabase
+      const { data: replies, error } = await supabase
         .from("whatsapp_lead_replies")
-        .select("*", { count: "exact", head: true })
+        .select("phone")
         .in("campaign_id", campaignIds);
 
       if (error) throw error;
-      return count || 0;
+      const uniquePhones = new Set(replies?.map(r => r.phone) || []);
+      return uniquePhones.size;
     },
     refetchInterval: 30000,
   });
