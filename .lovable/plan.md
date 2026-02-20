@@ -1,60 +1,88 @@
 
+# Corrigir exibicao de horarios na fila de WhatsApp
 
-# Melhorias na Fila de WhatsApp
-
-## Problema 1: "Proximo envio em" mostra "--:--"
-O hook busca a proxima mensagem com status `queued` ou `scheduled` que tenha `scheduled_at > now()`. Quando todas as mensagens estao com status `paused_by_system`, nenhuma e encontrada, e o timer mostra `--:--`. Alem disso, quando o proximo envio e encontrado, o componente mostra apenas um countdown (ex: `3:42`) sem indicar o horario absoluto.
-
-## Problema 2: Horario programado pouco visivel nos cards
-O `PendingMessageCard` ja mostra a data/hora do agendamento, mas so na linha compacta. Para mensagens pausadas, seria util ver rapidamente quando cada uma esta programada.
+## Problema
+O campo `scheduled_at` dos itens pausados contem o horario original de agendamento (que ja passou), nao o horario real de envio futuro. Quando a campanha for retomada, os itens serao reagendados com novos horarios. Mostrar "16:30" como se fosse o horario de envio e incorreto -- e apenas o horario em que foram criados + delay inicial.
 
 ## Solucao
 
-### 1. Corrigir "Proximo envio em" (`use-whatsapp-queue.ts`)
+### Arquivo: `src/components/whatsapp/QueueTab.tsx`
 
-Incluir `paused_by_system` na busca do proximo agendamento, pois quando a campanha for retomada, essas mensagens serao enviadas:
+**PendingMessageCard** - Diferenciar o que e exibido com base no status:
+
+- Para itens `queued` / `scheduled` / `sending`: mostrar "Envio: dd/MM HH:mm" com o `scheduled_at` real
+- Para itens `paused_by_system`: mostrar "Pausado - sera reagendado ao retomar" em vez do horario, pois o `scheduled_at` atual e obsoleto
+
+Codigo proposto no card compacto (linha 120-123):
+```tsx
+<span className="text-xs text-slate-500 flex-shrink-0">
+  {message.status === "paused_by_system" ? (
+    <>
+      <AlertTriangle className="w-3 h-3 inline mr-0.5 text-yellow-500" />
+      Pausado
+    </>
+  ) : (
+    <>
+      <Clock className="w-3 h-3 inline mr-0.5" />
+      Envio: {format(new Date(message.scheduled_at), "dd/MM HH:mm")}
+    </>
+  )}
+</span>
+```
+
+Na area expandida, para itens nao-pausados, adicionar uma `DetailRow` com o horario completo:
+```tsx
+{message.status !== "paused_by_system" && (
+  <DetailRow icon={Calendar} label="Envio programado" value={format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm:ss")} />
+)}
+{message.status === "paused_by_system" && (
+  <p className="text-xs text-yellow-500">Horario sera recalculado quando a campanha for retomada</p>
+)}
+```
+
+**HistoryMessageCard** - Ja mostra `sent_at` na linha compacta, que esta correto para historico. Adicionar `scheduled_at` na area expandida como referencia ("Agendado em").
+
+**Header "Proximo envio em"** - Filtrar apenas itens nao-pausados para o countdown, pois pausados nao serao enviados ate retomar:
+
+### Arquivo: `src/hooks/use-whatsapp-queue.ts`
+
+Reverter a inclusao de `paused_by_system` no calculo do `nextScheduled`, pois itens pausados NAO vao ser enviados no horario atual. O countdown deve refletir apenas itens ativos:
 
 ```typescript
 const nextScheduled = pendingQueue.find(
-  m => (m.status === "queued" || m.status === "scheduled" || m.status === "paused_by_system") && 
+  m => (m.status === "queued" || m.status === "scheduled") && 
        new Date(m.scheduled_at) > new Date()
 );
 ```
 
-### 2. Mostrar horario absoluto alem do countdown (`QueueTab.tsx`)
+Se nao houver nenhum item ativo (tudo pausado), mostrar "Campanha pausada" em vez de "--:--".
 
-No header, alem do countdown `3:42`, mostrar tambem o horario absoluto do proximo envio, ex: `Proximo envio em: 3:42 (14:35)`. Para isso, o hook precisa expor o `scheduled_at` do proximo item.
-
-Alterar o hook para retornar tambem `nextScheduledAt`:
+Adicionar retorno de flag `allPaused`:
 ```typescript
-const [nextScheduledAt, setNextScheduledAt] = useState<string | null>(null);
-// ...
-setNextScheduledAt(nextScheduled.scheduled_at);
+const allPaused = pendingQueue.length > 0 && pendingQueue.every(m => m.status === "paused_by_system");
 ```
 
-No componente, exibir:
+### Arquivo: `src/components/whatsapp/QueueTab.tsx` (header)
+
+Usar `allPaused` para exibir mensagem contextual:
 ```tsx
-<span className="font-mono text-primary font-medium">
-  {formatNextSendIn()}
-  {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
-</span>
+{allPaused ? (
+  <span className="text-yellow-400 font-medium">Campanha pausada</span>
+) : (
+  <span className="font-mono text-primary font-medium">
+    {formatNextSendIn()}
+    {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
+  </span>
+)}
 ```
 
-### 3. Adicionar horario programado visivel no card compacto dos pendentes
+## Resumo das alteracoes
 
-No `PendingMessageCard`, o horario ja aparece na primeira linha. Nenhuma mudanca necessaria nesse componente - ja esta correto.
+1. **`src/hooks/use-whatsapp-queue.ts`**
+   - Remover `paused_by_system` do calculo do countdown (itens pausados nao serao enviados)
+   - Adicionar flag `allPaused` no retorno
 
-### 4. Adicionar horario agendado visivel no `HistoryMessageCard` (linha compacta)
-
-Atualmente o historico mostra `sent_at` na linha compacta. Adicionar tambem o `scheduled_at` para referencia quando o card nao esta expandido.
-
-## Arquivos a editar
-
-1. **`src/hooks/use-whatsapp-queue.ts`** (linhas 222-243, 291-296, 301-314)
-   - Incluir `paused_by_system` no filtro do countdown
-   - Adicionar estado `nextScheduledAt` e retorna-lo
-   
-2. **`src/components/whatsapp/QueueTab.tsx`** (linhas 311-315)
-   - Exibir horario absoluto ao lado do countdown
-   - Usar `nextScheduledAt` do hook
-
+2. **`src/components/whatsapp/QueueTab.tsx`**
+   - PendingMessageCard: mostrar "Pausado" para itens pausados, "Envio: dd/MM HH:mm" para ativos
+   - Header: mostrar "Campanha pausada" quando todos itens estao pausados
+   - HistoryMessageCard: manter como esta (ja mostra `sent_at`)
