@@ -234,6 +234,15 @@ const GoldenViewLandingPage = () => {
           {`<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=880409748241568&ev=PageView&noscript=1" />`}
         </noscript>
 
+        {/* Google Ads (gtag.js) - GoldenView */}
+        <script async src="https://www.googletagmanager.com/gtag/js?id=AW-871669828" />
+        <script type="text/javascript">
+          {`window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'AW-871669828');`}
+        </script>
+
         {/* Microsoft Clarity - GoldenView */}
         <script type="text/javascript">
           {`(function(c,l,a,r,i,t,y){
