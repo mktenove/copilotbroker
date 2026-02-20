@@ -136,6 +136,7 @@ export function CsvImportModal({
   // Step 4 — Rules
   const [duplicateStrategy, setDuplicateStrategy] = useState<"ignore" | "create">("ignore");
   const [autoFix9thDigit, setAutoFix9thDigit] = useState(true);
+  const [defaultDdd, setDefaultDdd] = useState("");
   const [projectId, setProjectId] = useState("");
   const [origin, setOrigin] = useState("importacao_google_contacts");
   const [assignBroker, setAssignBroker] = useState(false);
@@ -195,6 +196,7 @@ export function CsvImportModal({
     setNameCol2("");
     setDuplicateStrategy("ignore");
     setAutoFix9thDigit(true);
+    setDefaultDdd("");
     setProjectId(projects.length === 1 ? projects[0]?.id || "" : "");
     setOrigin("importacao_google_contacts");
     setAssignBroker(!!defaultBrokerId);
@@ -293,6 +295,7 @@ export function CsvImportModal({
       const result = processImportData(rawRows, currentMapping, {
         autoFix9thDigit,
         defaultOrigin: originLabel,
+        defaultDdd,
       });
       setProcessResult(result);
     }
@@ -703,6 +706,21 @@ export function CsvImportModal({
                       <p className="text-xs text-muted-foreground mt-0.5">Insere o "9" quando número celular tiver 8 dígitos</p>
                     </div>
                     <Switch checked={autoFix9thDigit} onCheckedChange={setAutoFix9thDigit} />
+                  </div>
+
+                  {/* Default DDD */}
+                  <div className="space-y-2 bg-muted/30 p-3 rounded-lg">
+                    <Label className="text-foreground font-medium">DDD padrão para números sem DDD</Label>
+                    <p className="text-xs text-muted-foreground">Números com 8 ou 9 dígitos receberão este DDD automaticamente (ex: 51, 11, 21)</p>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={2}
+                      placeholder="Ex: 51"
+                      value={defaultDdd}
+                      onChange={e => setDefaultDdd(e.target.value.replace(/\D/g, "").slice(0, 2))}
+                      className="flex h-9 w-24 rounded-md border border-input bg-background px-3 py-1 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    />
                   </div>
 
                   {/* Project */}

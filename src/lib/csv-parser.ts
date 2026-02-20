@@ -149,9 +149,11 @@ export function autoDetectMapping(headers: string[]): FieldMapping {
 
 // ── Phone Normalization (UAZAPI) ───────────────────────────────────────
 
-export function normalizePhone(input: string, autoFix9thDigit: boolean = true): PhoneNormResult {
+export function normalizePhone(input: string, autoFix9thDigit: boolean = true, defaultDdd: string = ""): PhoneNormResult {
   const original = input;
   let digits = input.replace(/\D/g, "");
+  let wasFixed = false;
+  let fixDescription = "";
 
   // Empty
   if (!digits) {
@@ -163,36 +165,49 @@ export function normalizePhone(input: string, autoFix9thDigit: boolean = true): 
     digits = digits.substring(2);
   }
 
-  // Remove leading "+" artifacts (already stripped by \D removal)
+  // Remove leading single "0" (Brazilian dialing prefix 0XX)
+  if (digits.length >= 10 && digits.startsWith("0") && !digits.startsWith("00")) {
+    digits = digits.substring(1);
+    wasFixed = true;
+    fixDescription = `Zero inicial removido: ${original} → ${digits}`;
+  }
+
   // Add country code 55 if missing
   if ((digits.length === 10 || digits.length === 11) && !digits.startsWith("55")) {
     digits = "55" + digits;
+  }
+
+  // Handle 550XX (redundant zero after country code)
+  if ((digits.length === 13 || digits.length === 14) && digits.startsWith("550")) {
+    digits = "55" + digits.substring(3);
+    wasFixed = true;
+    fixDescription = `Zero após 55 removido: ${original} → ${digits}`;
   }
 
   // Already has 55 prefix
   if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
     // OK
   } else if (digits.length === 8 || digits.length === 9) {
-    // No DDD
-    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Sem DDD — precisa incluir DDD" };
+    // No DDD — use default if provided
+    if (defaultDdd && /^\d{2}$/.test(defaultDdd)) {
+      digits = "55" + defaultDdd + digits;
+      wasFixed = true;
+      fixDescription = `DDD ${defaultDdd} adicionado: ${original} → ${digits}`;
+    } else {
+      return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Sem DDD — informe o DDD padrão" };
+    }
   } else if (digits.length < 8) {
     return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Número muito curto" };
   } else if (digits.length > 13) {
     return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Número muito longo" };
   } else if (!digits.startsWith("55")) {
-    // Unknown format, try to work with it
     return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Formato não reconhecido" };
   }
 
-  // 9th digit rule: if 12 digits with 55 prefix (55 + DDD(2) + 8 digits = 12),
-  // and the local number starts with [6-9], it's likely a cell missing the 9
-  let wasFixed = false;
-  let fixDescription = "";
-
+  // 9th digit rule
   if (digits.length === 12 && digits.startsWith("55") && autoFix9thDigit) {
     const ddd = digits.substring(2, 4);
     const localNumber = digits.substring(4);
-    // Brazilian mobile numbers start with 9 after DDD; old format started with [6-9]
     if (/^[6-9]/.test(localNumber)) {
       digits = "55" + ddd + "9" + localNumber;
       wasFixed = true;
@@ -200,7 +215,7 @@ export function normalizePhone(input: string, autoFix9thDigit: boolean = true): 
     }
   }
 
-  // Final validation: must be 12 or 13 digits starting with 55
+  // Final validation
   if (digits.length < 12 || digits.length > 13 || !digits.startsWith("55")) {
     return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Formato final inválido" };
   }
@@ -221,7 +236,7 @@ export function extractName(row: Record<string, string>, nameColumns: string[]):
 export function processImportData(
   rows: Record<string, string>[],
   mapping: FieldMapping,
-  options: { autoFix9thDigit: boolean; defaultOrigin: string }
+  options: { autoFix9thDigit: boolean; defaultOrigin: string; defaultDdd?: string }
 ): ImportProcessResult {
   const validRows: RowValidation[] = [];
   const invalidRows: RowValidation[] = [];
@@ -235,7 +250,7 @@ export function processImportData(
     const name = extractName(row, mapping.nameColumns);
     const rawPhone = mapping.phoneColumn ? (row[mapping.phoneColumn] || "") : "";
     const origin = mapping.originColumn ? (row[mapping.originColumn] || "").trim() : "";
-    const phoneResult = normalizePhone(rawPhone, options.autoFix9thDigit);
+    const phoneResult = normalizePhone(rawPhone, options.autoFix9thDigit, options.defaultDdd || "");
 
     const errors: string[] = [];
     if (!name || name.length < 2) errors.push("Nome inválido ou vazio");
