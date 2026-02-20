@@ -18,6 +18,7 @@ const PAGE_SIZE = 50;
 export function useWhatsAppQueue(brokerFilterId?: string) {
   const queryClient = useQueryClient();
   const [nextSendIn, setNextSendIn] = useState<number | null>(null);
+  const [nextScheduledAt, setNextScheduledAt] = useState<string | null>(null);
   const [pendingPage, setPendingPage] = useState(0);
   const [historyPage, setHistoryPage] = useState(0);
 
@@ -221,14 +222,17 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
   // Calculate next send countdown from pending queue
   useEffect(() => {
     const nextScheduled = pendingQueue.find(
-      m => (m.status === "queued" || m.status === "scheduled") && 
+      m => (m.status === "queued" || m.status === "scheduled" || m.status === "paused_by_system") && 
            new Date(m.scheduled_at) > new Date()
     );
     
     if (!nextScheduled) {
       setNextSendIn(null);
+      setNextScheduledAt(null);
       return;
     }
+    
+    setNextScheduledAt(nextScheduled.scheduled_at);
     
     const updateCountdown = () => {
       const now = new Date().getTime();
@@ -304,6 +308,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     stats,
     isLoading: pendingLoading || historyLoading,
     nextSendIn,
+    nextScheduledAt,
     formatNextSendIn,
     cancelMessage: cancelMessageMutation.mutateAsync,
     retryMessage: retryMessageMutation.mutateAsync,
