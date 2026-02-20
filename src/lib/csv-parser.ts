@@ -1,71 +1,61 @@
 /**
- * CSV Parser utility for lead imports
- * Handles parsing, validation, and normalization of CSV data
+ * CSV Parser & Phone Normalizer for Lead Import
+ * Supports Google Contacts CSV, configurable delimiter, auto-mapping, UAZAPI phone normalization
  */
 
-export interface ParsedLead {
+// ── Types ──────────────────────────────────────────────────────────────
+
+export interface PhoneNormResult {
+  normalized: string;
+  original: string;
+  wasFixed: boolean;
+  fixDescription: string;
+  isValid: boolean;
+  error: string;
+}
+
+export interface RowValidation {
   name: string;
-  whatsapp: string;
-  origin?: string;
+  phone: string;
+  phoneResult: PhoneNormResult;
+  origin: string;
   isValid: boolean;
   errors: string[];
+  rowIndex: number;
 }
 
-export interface CsvParseResult {
-  leads: ParsedLead[];
-  validCount: number;
-  errorCount: number;
+export interface ImportProcessResult {
+  totalRows: number;
+  validRows: RowValidation[];
+  invalidRows: RowValidation[];
+  phonesFixed: RowValidation[];
   duplicatesInFile: number;
+  duplicateRows: RowValidation[];
 }
 
-// Header aliases for flexible column matching
-const HEADER_ALIASES: Record<string, string[]> = {
-  name: ["nome", "name", "nome completo", "full name", "cliente", "client"],
-  whatsapp: ["whatsapp", "telefone", "phone", "celular", "mobile", "tel", "fone", "numero", "number"],
-  origin: ["origem", "origin", "fonte", "source", "canal", "channel"],
-};
-
-/**
- * Parse CSV text into array of objects
- */
-export function parseCsvText(text: string): Record<string, string>[] {
-  const lines = text.trim().split(/\r?\n/);
-  if (lines.length < 2) return [];
-
-  // Parse headers
-  const headerLine = lines[0];
-  const headers = parseCSVLine(headerLine).map((h) => h.toLowerCase().trim());
-
-  // Parse data rows
-  const rows: Record<string, string>[] = [];
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-
-    const values = parseCSVLine(line);
-    const row: Record<string, string> = {};
-    
-    headers.forEach((header, index) => {
-      row[header] = values[index]?.trim() || "";
-    });
-    
-    rows.push(row);
-  }
-
-  return rows;
+export interface FieldMapping {
+  nameColumns: string[];       // 1 or 2 columns to concat as name
+  phoneColumn: string;         // single column for phone
+  originColumn: string | null; // optional
 }
 
-/**
- * Parse a single CSV line, handling quoted values
- */
-function parseCSVLine(line: string): string[] {
+// ── Delimiter Detection ────────────────────────────────────────────────
+
+export function detectDelimiter(firstLine: string): string {
+  const semicolons = (firstLine.match(/;/g) || []).length;
+  const commas = (firstLine.match(/,/g) || []).length;
+  return semicolons > commas ? ";" : ",";
+}
+
+// ── CSV Parser ─────────────────────────────────────────────────────────
+
+function parseCSVLine(line: string, delimiter: string): string[] {
   const result: string[] = [];
   let current = "";
   let inQuotes = false;
 
   for (let i = 0; i < line.length; i++) {
     const char = line[i];
-    
     if (char === '"') {
       if (inQuotes && line[i + 1] === '"') {
         current += '"';
@@ -73,176 +63,236 @@ function parseCSVLine(line: string): string[] {
       } else {
         inQuotes = !inQuotes;
       }
-    } else if ((char === "," || char === ";") && !inQuotes) {
-      result.push(current);
+    } else if (char === delimiter && !inQuotes) {
+      result.push(current.trim());
       current = "";
     } else {
       current += char;
     }
   }
-  
-  result.push(current);
+  result.push(current.trim());
   return result;
 }
 
-/**
- * Normalize headers to standard field names
- */
-export function normalizeHeaders(headers: string[]): Record<string, string> {
-  const mapping: Record<string, string> = {};
+export function parseCsvText(text: string, delimiter?: string): { headers: string[]; rows: Record<string, string>[] } {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 1) return { headers: [], rows: [] };
 
-  for (const header of headers) {
-    const lowerHeader = header.toLowerCase().trim();
-    
-    for (const [standardField, aliases] of Object.entries(HEADER_ALIASES)) {
-      if (aliases.includes(lowerHeader)) {
-        mapping[header] = standardField;
-        break;
-      }
+  const sep = delimiter || detectDelimiter(lines[0]);
+  const headers = parseCSVLine(lines[0], sep);
+
+  const rows: Record<string, string>[] = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const values = parseCSVLine(line, sep);
+    const row: Record<string, string> = {};
+    headers.forEach((h, idx) => {
+      row[h] = sanitizeString(values[idx] || "");
+    });
+    rows.push(row);
+  }
+
+  return { headers, rows };
+}
+
+// ── Sanitization ───────────────────────────────────────────────────────
+
+function sanitizeString(val: string): string {
+  // Remove control characters except newline/tab, then trim
+  return val.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "").trim();
+}
+
+// ── Auto-detect Mapping ────────────────────────────────────────────────
+
+const NAME_ALIASES = [
+  "first name", "last name", "name", "nome", "nome completo", "full name",
+  "given name", "family name", "additional name", "primeiro nome", "sobrenome",
+];
+const PHONE_ALIASES = [
+  "phone 1 - value", "phone 2 - value", "phone 3 - value",
+  "phone", "telefone", "whatsapp", "celular", "mobile", "tel", "fone",
+  "numero", "number", "phone number", "mobile phone",
+];
+const ORIGIN_ALIASES = [
+  "origem", "origin", "source", "canal", "channel", "group membership",
+];
+
+export function autoDetectMapping(headers: string[]): FieldMapping {
+  const lower = headers.map(h => h.toLowerCase().trim());
+
+  // Name: try to find first+last, fallback to single name column
+  const nameColumns: string[] = [];
+  const firstNameIdx = lower.findIndex(h => h === "first name" || h === "given name" || h === "primeiro nome");
+  const lastNameIdx = lower.findIndex(h => h === "last name" || h === "family name" || h === "sobrenome");
+
+  if (firstNameIdx !== -1) {
+    nameColumns.push(headers[firstNameIdx]);
+    if (lastNameIdx !== -1) nameColumns.push(headers[lastNameIdx]);
+  } else {
+    const nameIdx = lower.findIndex(h => NAME_ALIASES.includes(h));
+    if (nameIdx !== -1) nameColumns.push(headers[nameIdx]);
+  }
+
+  // Phone: find first matching
+  let phoneColumn = "";
+  const phoneIdx = lower.findIndex(h => PHONE_ALIASES.includes(h));
+  if (phoneIdx !== -1) phoneColumn = headers[phoneIdx];
+
+  // Origin
+  let originColumn: string | null = null;
+  const originIdx = lower.findIndex(h => ORIGIN_ALIASES.includes(h));
+  if (originIdx !== -1) originColumn = headers[originIdx];
+
+  return { nameColumns, phoneColumn, originColumn };
+}
+
+// ── Phone Normalization (UAZAPI) ───────────────────────────────────────
+
+export function normalizePhone(input: string, autoFix9thDigit: boolean = true): PhoneNormResult {
+  const original = input;
+  let digits = input.replace(/\D/g, "");
+
+  // Empty
+  if (!digits) {
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Telefone vazio" };
+  }
+
+  // Remove leading "00" (international dialing prefix)
+  if (digits.startsWith("00")) {
+    digits = digits.substring(2);
+  }
+
+  // Remove leading "+" artifacts (already stripped by \D removal)
+  // Add country code 55 if missing
+  if ((digits.length === 10 || digits.length === 11) && !digits.startsWith("55")) {
+    digits = "55" + digits;
+  }
+
+  // Already has 55 prefix
+  if ((digits.length === 12 || digits.length === 13) && digits.startsWith("55")) {
+    // OK
+  } else if (digits.length === 8 || digits.length === 9) {
+    // No DDD
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Sem DDD — precisa incluir DDD" };
+  } else if (digits.length < 8) {
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Número muito curto" };
+  } else if (digits.length > 13) {
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Número muito longo" };
+  } else if (!digits.startsWith("55")) {
+    // Unknown format, try to work with it
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Formato não reconhecido" };
+  }
+
+  // 9th digit rule: if 12 digits with 55 prefix (55 + DDD(2) + 8 digits = 12),
+  // and the local number starts with [6-9], it's likely a cell missing the 9
+  let wasFixed = false;
+  let fixDescription = "";
+
+  if (digits.length === 12 && digits.startsWith("55") && autoFix9thDigit) {
+    const ddd = digits.substring(2, 4);
+    const localNumber = digits.substring(4);
+    // Brazilian mobile numbers start with 9 after DDD; old format started with [6-9]
+    if (/^[6-9]/.test(localNumber)) {
+      digits = "55" + ddd + "9" + localNumber;
+      wasFixed = true;
+      fixDescription = `Inserido 9º dígito: 55${ddd}${localNumber} → ${digits}`;
     }
   }
 
-  return mapping;
-}
-
-/**
- * Clean and normalize WhatsApp number to format 55XXXXXXXXXXX
- */
-export function cleanWhatsAppNumber(value: string): string {
-  // Remove all non-digits
-  let cleaned = value.replace(/\D/g, "");
-  
-  // Handle common formats
-  if (cleaned.length === 10 || cleaned.length === 11) {
-    // Brazilian number without country code
-    cleaned = "55" + cleaned;
-  } else if (cleaned.length === 12 || cleaned.length === 13) {
-    // Already has country code
-    if (!cleaned.startsWith("55")) {
-      cleaned = "55" + cleaned;
-    }
+  // Final validation: must be 12 or 13 digits starting with 55
+  if (digits.length < 12 || digits.length > 13 || !digits.startsWith("55")) {
+    return { normalized: "", original, wasFixed: false, fixDescription: "", isValid: false, error: "Formato final inválido" };
   }
-  
-  return cleaned;
+
+  return { normalized: digits, original, wasFixed, fixDescription, isValid: true, error: "" };
 }
 
-/**
- * Validate a WhatsApp number
- */
-export function isValidWhatsApp(whatsapp: string): boolean {
-  const cleaned = cleanWhatsAppNumber(whatsapp);
-  // Brazilian mobile: 55 + DDD (2 digits) + 9 + 8 digits = 13 digits
-  // Or landline: 55 + DDD (2 digits) + 8 digits = 12 digits
-  return cleaned.length >= 12 && cleaned.length <= 13 && cleaned.startsWith("55");
+// ── Row Processing ─────────────────────────────────────────────────────
+
+export function extractName(row: Record<string, string>, nameColumns: string[]): string {
+  return nameColumns
+    .map(col => (row[col] || "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
 }
 
-/**
- * Validate a name
- */
-export function isValidName(name: string): boolean {
-  return name.trim().length >= 2;
-}
-
-/**
- * Parse and validate CSV data for lead import
- */
-export function parseLeadsCsv(csvText: string): CsvParseResult {
-  const rows = parseCsvText(csvText);
-  const headers = Object.keys(rows[0] || {});
-  const headerMapping = normalizeHeaders(headers);
-  
-  const leads: ParsedLead[] = [];
-  const seenWhatsApps = new Set<string>();
+export function processImportData(
+  rows: Record<string, string>[],
+  mapping: FieldMapping,
+  options: { autoFix9thDigit: boolean; defaultOrigin: string }
+): ImportProcessResult {
+  const validRows: RowValidation[] = [];
+  const invalidRows: RowValidation[] = [];
+  const phonesFixed: RowValidation[] = [];
+  const duplicateRows: RowValidation[] = [];
+  const seenPhones = new Set<string>();
   let duplicatesInFile = 0;
 
-  for (const row of rows) {
-    // Find values using normalized headers
-    let name = "";
-    let whatsapp = "";
-    let origin = "";
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const name = extractName(row, mapping.nameColumns);
+    const rawPhone = mapping.phoneColumn ? (row[mapping.phoneColumn] || "") : "";
+    const origin = mapping.originColumn ? (row[mapping.originColumn] || "").trim() : "";
+    const phoneResult = normalizePhone(rawPhone, options.autoFix9thDigit);
 
-    for (const [originalHeader, normalizedField] of Object.entries(headerMapping)) {
-      const value = row[originalHeader] || "";
-      
-      if (normalizedField === "name") {
-        name = value.trim();
-      } else if (normalizedField === "whatsapp") {
-        whatsapp = cleanWhatsAppNumber(value);
-      } else if (normalizedField === "origin") {
-        origin = value.trim();
+    const errors: string[] = [];
+    if (!name || name.length < 2) errors.push("Nome inválido ou vazio");
+    if (!phoneResult.isValid) errors.push(phoneResult.error || "Telefone inválido");
+
+    // Check file duplicates
+    let isDuplicate = false;
+    if (phoneResult.isValid && phoneResult.normalized) {
+      if (seenPhones.has(phoneResult.normalized)) {
+        isDuplicate = true;
+        duplicatesInFile++;
+      } else {
+        seenPhones.add(phoneResult.normalized);
       }
     }
 
-    // Also try direct field access for common variations
-    if (!name) {
-      name = (row["nome"] || row["name"] || row["Nome"] || row["Name"] || "").trim();
-    }
-    if (!whatsapp) {
-      const rawPhone = row["whatsapp"] || row["telefone"] || row["phone"] || 
-                      row["WhatsApp"] || row["Telefone"] || row["Phone"] || "";
-      whatsapp = cleanWhatsAppNumber(rawPhone);
-    }
-    if (!origin) {
-      origin = (row["origem"] || row["origin"] || row["Origem"] || row["Origin"] || "").trim();
-    }
-
-    const errors: string[] = [];
-
-    // Validate name
-    if (!isValidName(name)) {
-      errors.push("Nome inválido ou vazio");
-    }
-
-    // Validate WhatsApp
-    if (!whatsapp) {
-      errors.push("WhatsApp vazio");
-    } else if (!isValidWhatsApp(whatsapp)) {
-      errors.push("WhatsApp inválido");
-    }
-
-    // Check for duplicates in file
-    if (whatsapp && seenWhatsApps.has(whatsapp)) {
-      duplicatesInFile++;
-      errors.push("Duplicado no arquivo");
-    } else if (whatsapp) {
-      seenWhatsApps.add(whatsapp);
-    }
-
-    leads.push({
+    const validation: RowValidation = {
       name,
-      whatsapp,
-      origin: origin || undefined,
-      isValid: errors.length === 0,
+      phone: phoneResult.normalized,
+      phoneResult,
+      origin: origin || options.defaultOrigin,
+      isValid: errors.length === 0 && !isDuplicate,
       errors,
-    });
+      rowIndex: i + 1,
+    };
+
+    if (isDuplicate) {
+      validation.errors.push("Duplicado no arquivo");
+      validation.isValid = false;
+      duplicateRows.push(validation);
+    }
+
+    if (phoneResult.wasFixed) phonesFixed.push(validation);
+
+    if (errors.length > 0) {
+      invalidRows.push(validation);
+    } else if (!isDuplicate) {
+      validRows.push(validation);
+    }
   }
 
   return {
-    leads,
-    validCount: leads.filter((l) => l.isValid).length,
-    errorCount: leads.filter((l) => !l.isValid).length,
+    totalRows: rows.length,
+    validRows,
+    invalidRows,
+    phonesFixed,
     duplicatesInFile,
+    duplicateRows,
   };
 }
 
-/**
- * Generate a sample CSV template
- */
-export function generateCsvTemplate(): string {
-  return `nome,whatsapp,origem
-João Silva,51999887766,Indicação
-Maria Santos,51987654321,
-Pedro Costa,11998765432,Meta ADS`;
-}
+// ── CSV Template ───────────────────────────────────────────────────────
 
-/**
- * Download CSV template
- */
 export function downloadCsvTemplate(): void {
-  const content = generateCsvTemplate();
+  const content = `nome,whatsapp,origem\nJoão Silva,51999887766,Indicação\nMaria Santos,51987654321,\nPedro Costa,11998765432,Meta ADS`;
   const blob = new Blob([content], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
-  
   const link = document.createElement("a");
   link.setAttribute("href", url);
   link.setAttribute("download", "template-leads.csv");
