@@ -1,76 +1,123 @@
 
-# Corrigir visibilidade de mensagens pausadas na Fila do WhatsApp
+
+# Paginação na Fila de WhatsApp
 
 ## Problema
-Quando uma campanha é pausada, os itens da fila recebem status `paused_by_system`. A aba "Fila" filtra pendentes como `queued|scheduled|sending` e historico como `sent|failed|cancelled`, ignorando completamente os itens `paused_by_system`. Isso faz com que centenas de disparos "desaparecam" da interface.
+- A query principal tem `.limit(100)`, trazendo no maximo 100 dos 600+ itens
+- O historico mostra apenas 20 itens (`.slice(0, 20)`)
+- Os contadores agregados estao corretos, mas a lista nao mostra todos os registros
 
-## Solucao
+## Solucao: Paginacao com "Carregar Mais"
 
-### 1. QueueTab.tsx - Incluir `paused_by_system` nos pendentes
+### 1. Hook `use-whatsapp-queue.ts` - Paginacao
 
-Alterar o filtro de `pendingMessages` para incluir `paused_by_system`:
+Substituir a query unica por uma abordagem paginada:
 
-```typescript
-const pendingMessages = queue.filter(
-  m => m.status === "queued" || m.status === "scheduled" || m.status === "sending" || m.status === "paused_by_system"
-);
-```
+- Aumentar o limite inicial para 200
+- Adicionar estado de pagina e funcao `loadMore`
+- Separar queries para pendentes e historico, cada uma com seu proprio limite e offset
+- Usar `useInfiniteQuery` ou manter `useQuery` com offset manual
 
-### 2. use-whatsapp-queue.ts - Incluir `paused_by_system` na contagem "Na fila"
+### 2. QueueTab.tsx - Botao "Carregar Mais"
 
-Alterar a query de contagem de `queuedCount` para incluir `paused_by_system`:
-
-```typescript
-.in("status", ["queued", "scheduled", "paused_by_system"])
-```
-
-### 3. QueueTab.tsx - Adicionar card de "Pausados" nas metricas
-
-Adicionar um 5o card de estatisticas para mostrar quantos itens estao pausados, separado dos agendados. Isso requer:
-
-- Adicionar contagem separada de `paused_by_system` no hook `use-whatsapp-queue.ts`
-- Exibir no componente `QueueStats` com cor amarela/laranja
-
-### 4. use-whatsapp-queue.ts - Nova query agregada para pausados
-
-Adicionar uma query dedicada para contar itens `paused_by_system`:
-
-```typescript
-const { data: pausedCount = 0 } = useQuery({
-  queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId],
-  queryFn: async () => {
-    // conta itens paused_by_system
-  },
-  refetchInterval: 30000,
-});
-```
-
-E retornar no objeto `stats`:
-```typescript
-const stats = {
-  queued: queuedCount,
-  sent: sentCount,
-  failed: failedCount,
-  replies: repliesCount,
-  paused: pausedCount,
-};
-```
+- Remover o `.slice(0, 20)` do historico
+- Adicionar botao "Carregar mais" ao final de cada secao (pendentes e historico)
+- Mostrar indicador de quantos itens estao carregados vs total
 
 ## Detalhes tecnicos
 
-### Arquivos a editar
+### Arquivo: `src/hooks/use-whatsapp-queue.ts`
 
-1. **src/hooks/use-whatsapp-queue.ts**
-   - Adicionar query `whatsapp-queue-count-paused` para contar `paused_by_system`
-   - Atualizar `stats` para incluir campo `paused`
-   - Invalidar nova query no canal realtime
+**Query principal** - aumentar limite e adicionar paginacao:
 
-2. **src/components/whatsapp/QueueTab.tsx**
-   - Incluir `paused_by_system` no filtro de `pendingMessages`
-   - Adicionar card "Pausados" no `QueueStats` com cor amarela (`text-yellow-400`)
-   - Atualizar tipo de `stats` para incluir `paused`
+```typescript
+const [pendingPage, setPendingPage] = useState(0);
+const [historyPage, setHistoryPage] = useState(0);
+const PAGE_SIZE = 50;
+
+// Query para pendentes (queued, scheduled, sending, paused_by_system)
+const { data: pendingQueue = [] } = useQuery({
+  queryKey: ["whatsapp-queue-pending", effectiveBrokerId, pendingPage],
+  queryFn: async () => {
+    let query = supabase
+      .from("whatsapp_message_queue")
+      .select(`*, lead:leads(id, name), campaign:whatsapp_campaigns(id, name)`)
+      .in("status", ["queued", "scheduled", "sending", "paused_by_system"])
+      .order("scheduled_at", { ascending: true })
+      .range(0, (pendingPage + 1) * PAGE_SIZE - 1);
+    if (effectiveBrokerId) query = query.eq("broker_id", effectiveBrokerId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  },
+});
+
+// Query para historico (sent, failed, cancelled)
+const { data: historyQueue = [] } = useQuery({
+  queryKey: ["whatsapp-queue-history", effectiveBrokerId, historyPage],
+  queryFn: async () => {
+    let query = supabase
+      .from("whatsapp_message_queue")
+      .select(`*, lead:leads(id, name), campaign:whatsapp_campaigns(id, name)`)
+      .in("status", ["sent", "failed", "cancelled"])
+      .order("sent_at", { ascending: false })
+      .range(0, (historyPage + 1) * PAGE_SIZE - 1);
+    if (effectiveBrokerId) query = query.eq("broker_id", effectiveBrokerId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  },
+});
+```
+
+Retornar novas funcoes e dados:
+```typescript
+return {
+  pendingQueue,
+  historyQueue,
+  stats,
+  isLoading,
+  loadMorePending: () => setPendingPage(p => p + 1),
+  loadMoreHistory: () => setHistoryPage(p => p + 1),
+  hasMorePending: pendingQueue.length === (pendingPage + 1) * PAGE_SIZE,
+  hasMoreHistory: historyQueue.length === (historyPage + 1) * PAGE_SIZE,
+  // ... resto
+};
+```
+
+### Arquivo: `src/components/whatsapp/QueueTab.tsx`
+
+- Usar `pendingQueue` e `historyQueue` separados em vez de filtrar `queue`
+- Remover `.slice(0, 20)` do historico
+- Adicionar botao "Carregar mais" em cada secao:
+
+```tsx
+{hasMorePending && (
+  <Button variant="ghost" onClick={loadMorePending} className="w-full">
+    Carregar mais pendentes...
+  </Button>
+)}
+```
+
+- Atualizar contadores de secao para usar os totais das stats agregadas:
+  - "Pendentes (566)" usando `stats.queued`
+  - "Historico (67)" usando `stats.sent + stats.failed`
+
+### Subscricao Realtime
+
+Atualizar a invalidacao do realtime para incluir as novas query keys:
+```typescript
+queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-pending"] });
+queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-history"] });
+```
+
+### O que muda
+- Lista de pendentes mostra 50 por pagina com botao para carregar mais
+- Lista de historico mostra 50 por pagina com botao para carregar mais
+- Contadores de secao usam os totais reais do banco
+- Performance melhor ao separar pendentes de historico
 
 ### O que NAO muda
-- Logica de pausar/retomar campanhas
-- Limite de 100 itens na query principal (ja existente)
-- Outras abas do WhatsApp
+- Stats agregadas (Na fila, Pausados, Enviados, Falhas, Respostas)
+- Logica de cancelar/reagendar mensagens
+- Timer de proximo envio
