@@ -7,12 +7,11 @@ import {
   MCHeader,
   MCHeroSection,
   MCLocationSection,
-  MCConceptSection,
-  MCApartmentsSection,
-  MCWellnessSection,
+  MCFeaturesSection,
   MCTargetSection,
-  MCInvestmentSection,
+  MCUrgencySection,
   MCBenefitsSection,
+  MCCallToActionSection,
   MCFormSection,
   MCFloatingCTA,
   MCFooter,
@@ -86,7 +85,6 @@ const MauricioCardosoLandingPage = () => {
     "tourBookingPage": `${canonicalUrl}#cadastro`
   };
 
-  // FAQ Schema for Rich Snippets
   const faqSchema = {
     "@context": "https://schema.org",
     "@type": "FAQPage",
@@ -94,39 +92,26 @@ const MauricioCardosoLandingPage = () => {
       {
         "@type": "Question",
         "name": "Qual o tamanho dos apartamentos no Mauricio Cardoso?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "Os apartamentos variam de 95m² a 125m², com opções de 2 e 3 dormitórios, todos com acabamento de alto padrão."
-        }
+        "acceptedAnswer": { "@type": "Answer", "text": "Os apartamentos variam de 95m² a 125m², com opções de 2 e 3 dormitórios, todos com acabamento de alto padrão." }
       },
       {
         "@type": "Question",
         "name": "Quais são as opções de lazer do empreendimento?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "O empreendimento conta com 1.800m² de área de lazer e wellness, incluindo piscina aquecida, academia completa, spa, salão de festas, playground e muito mais."
-        }
+        "acceptedAnswer": { "@type": "Answer", "text": "O empreendimento conta com 1.800m² de área de lazer e wellness, incluindo piscina aquecida, academia completa, spa, salão de festas, playground e muito mais." }
       },
       {
         "@type": "Question",
         "name": "Onde fica localizado o Mauricio Cardoso?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "O empreendimento está localizado na Rua Maurício Cardoso, considerado o endereço mais icônico de Novo Hamburgo, RS."
-        }
+        "acceptedAnswer": { "@type": "Answer", "text": "O empreendimento está localizado na Rua Maurício Cardoso, considerado o endereço mais icônico de Novo Hamburgo, RS." }
       },
       {
         "@type": "Question",
         "name": "Quando será o lançamento do Mauricio Cardoso?",
-        "acceptedAnswer": {
-          "@type": "Answer",
-          "text": "O empreendimento está em fase de pré-lançamento em 2026. Cadastre-se para receber informações exclusivas e condições especiais."
-        }
+        "acceptedAnswer": { "@type": "Answer", "text": "O empreendimento está em fase de pré-lançamento em 2026. Cadastre-se para receber informações exclusivas e condições especiais." }
       }
     ]
   };
 
-  // Breadcrumb Schema
   const breadcrumbSchema = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
@@ -140,51 +125,34 @@ const MauricioCardosoLandingPage = () => {
   return (
     <>
       <Helmet>
-        {/* Primary Meta Tags */}
         <title>Mauricio Cardoso | Apartamentos de Alto Padrão em Novo Hamburgo</title>
         <meta name="title" content="Mauricio Cardoso | Apartamentos de Alto Padrão em Novo Hamburgo" />
-        <meta
-          name="description"
-          content="Empreendimento residencial na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios. 1.800m² de lazer e wellness."
-        />
+        <meta name="description" content="Empreendimento residencial na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo. Apartamentos de 95 a 125m², 2 e 3 dormitórios. 1.800m² de lazer e wellness." />
         <meta name="keywords" content="apartamentos Novo Hamburgo, Rua Maurício Cardoso, alto padrão Novo Hamburgo RS, apartamentos 3 dormitórios, wellness residencial, lançamento imobiliário 2026, apartamentos 95m², apartamentos 125m²" />
         <meta name="robots" content="index, follow, max-image-preview:large" />
         <link rel="canonical" href={canonicalUrl} />
 
-        {/* Open Graph */}
         <meta property="og:type" content="website" />
         <meta property="og:url" content={canonicalUrl} />
         <meta property="og:site_name" content="Enove Imobiliária" />
         <meta property="og:title" content="Mauricio Cardoso | Alto Padrão em Novo Hamburgo" />
-        <meta
-          property="og:description"
-          content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo."
-        />
+        <meta property="og:description" content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
         <meta property="og:locale" content="pt_BR" />
         <meta property="og:image" content={ogImageUrl} />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
         <meta property="og:image:alt" content="Mauricio Cardoso - Apartamentos de alto padrão em Novo Hamburgo" />
 
-        {/* Twitter */}
         <meta name="twitter:card" content="summary_large_image" />
         <meta name="twitter:url" content={canonicalUrl} />
         <meta name="twitter:title" content="Mauricio Cardoso | Alto Padrão em Novo Hamburgo" />
         <meta name="twitter:description" content="Apartamentos de 95 a 125m² na Rua Maurício Cardoso." />
         <meta name="twitter:image" content={ogImageUrl} />
-        
-        {/* JSON-LD Schemas */}
-        <script type="application/ld+json">
-          {JSON.stringify(residenceSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(faqSchema)}
-        </script>
-        <script type="application/ld+json">
-          {JSON.stringify(breadcrumbSchema)}
-        </script>
 
-        {/* Meta Pixel - Mauricio Cardoso */}
+        <script type="application/ld+json">{JSON.stringify(residenceSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(faqSchema)}</script>
+        <script type="application/ld+json">{JSON.stringify(breadcrumbSchema)}</script>
+
         <script>
           {`!function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -201,7 +169,6 @@ const MauricioCardosoLandingPage = () => {
           {`<img height="1" width="1" style="display:none" src="https://www.facebook.com/tr?id=1447260256915517&ev=PageView&noscript=1" />`}
         </noscript>
 
-        {/* Microsoft Clarity - Mauricio Cardoso */}
         <script type="text/javascript">
           {`(function(c,l,a,r,i,t,y){
             c[a]=c[a]||function(){(c[a].q=c[a].q||[]).push(arguments)};
@@ -211,25 +178,23 @@ const MauricioCardosoLandingPage = () => {
         </script>
       </Helmet>
 
-      {/* Skip to main content - Accessibility */}
-      <a 
-        href="#cadastro" 
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-[hsl(var(--mc-forest))] focus:text-white focus:rounded-lg"
+      <a
+        href="#cadastro"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg"
       >
         Pular para o cadastro
       </a>
 
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
+      <div className="min-h-screen bg-background text-foreground">
         <MCHeader />
         <main id="main-content" role="main">
           <MCHeroSection />
           <MCLocationSection />
-          <MCConceptSection />
-          <MCApartmentsSection />
-          <MCWellnessSection />
+          <MCFeaturesSection />
           <MCTargetSection />
-          <MCInvestmentSection />
+          <MCUrgencySection />
           <MCBenefitsSection />
+          <MCCallToActionSection />
           <MCFormSection projectId={projectId} submitted={submitted} />
         </main>
         <MCFloatingCTA />

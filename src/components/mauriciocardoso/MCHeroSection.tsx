@@ -1,74 +1,97 @@
+import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import predioImage from "@/assets/mauriciocardoso/predio.png";
 
 const MCHeroSection = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [imageLoaded, setImageLoaded] = useState(false);
+
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setImageLoaded(true);
+    img.src = predioImage;
+    setIsVisible(true);
+  }, []);
+
+  const scrollToContent = () => {
+    document.getElementById("localizacao")?.scrollIntoView({ behavior: "smooth" });
+  };
+
   const scrollToForm = () => {
-    const element = document.getElementById("cadastro");
-    if (element) {
-      element.scrollIntoView({ behavior: "smooth" });
-    }
+    document.getElementById("cadastro")?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <section 
+    <section
       className="relative min-h-screen flex items-center justify-center overflow-hidden"
       aria-labelledby="hero-heading"
     >
       {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-        style={{ backgroundImage: `url(${predioImage})` }}
+      <div
+        className={`absolute inset-0 transition-opacity duration-1000 ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+        style={{
+          backgroundImage: `url(${predioImage})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
         role="img"
         aria-label="Fachada do empreendimento Mauricio Cardoso em Novo Hamburgo"
       />
-      
-      {/* Overlay - More dramatic */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[hsl(var(--mc-forest))]/85 via-[hsl(var(--mc-forest))]/60 to-[hsl(var(--mc-charcoal))]/95" />
-      
+
+      {/* Dark Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/50 to-black/80" />
+
+      {/* Gold accent line */}
+      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-primary to-transparent opacity-50" />
+
       {/* Content */}
-      <div className="relative z-10 container mx-auto px-4 md:px-6 text-center pt-20 md:pt-24">
-        <div className="max-w-4xl mx-auto space-y-6 md:space-y-10 animate-fade-up">
-          {/* Main Headline - Mobile optimized */}
-          <h1 
-            id="hero-heading"
-            className="font-serif text-2xl sm:text-3xl md:text-5xl lg:text-6xl xl:text-7xl font-normal text-white leading-[1.2] md:leading-[1.15] tracking-[0.02em]"
-          >
-            Quando o endereço é definitivo,
-            <br />
-            <span className="text-white/90 italic">
-              o projeto precisa estar à altura.
+      <div className="relative z-10 container px-4 pt-24 pb-16 text-center">
+        <div className={`max-w-4xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 mb-6 border border-primary/40 rounded-full bg-primary/10 backdrop-blur-sm">
+            <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+            <span className="text-xs sm:text-sm font-medium tracking-widest uppercase text-primary">
+              Pré-Lançamento Exclusivo
             </span>
+          </div>
+
+          {/* Main Title */}
+          <h1
+            id="hero-heading"
+            className="font-serif text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-4 text-white leading-tight"
+          >
+            QUANDO O ENDEREÇO É DEFINITIVO,{" "}
+            <span className="text-gold-gradient">O PROJETO PRECISA ESTAR À ALTURA</span>
           </h1>
 
-          {/* Subtitle - Pure white for contrast */}
-          <p className="text-sm sm:text-base md:text-lg text-white max-w-2xl mx-auto leading-[1.7] md:leading-[1.8] tracking-wide px-2">
-            Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, 
+          {/* Subtitle */}
+          <p className="text-xl sm:text-2xl md:text-3xl font-serif italic text-primary mb-8">
+            E que vai acabar rápido.
+          </p>
+
+          <p className="text-sm sm:text-base text-white/70 mb-10 max-w-2xl mx-auto">
+            Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo,
             surge um empreendimento residencial que redefine o morar contemporâneo.
           </p>
 
-          {/* Tagline - Editorial spacing */}
-          <div className="pt-2 md:pt-4">
-            <p className="text-[10px] sm:text-xs md:text-sm uppercase tracking-[0.3em] md:tracking-[0.4em] text-white/70 font-medium px-4">
-              NÃO É APENAS UM NOVO PRÉDIO, É UM NOVO PATAMAR
-            </p>
-          </div>
-
-          {/* CTA Button - Mobile optimized */}
-          <div className="pt-4 md:pt-8">
-            <button
-              onClick={scrollToForm}
-              className="inline-flex items-center gap-2 md:gap-3 px-6 sm:px-8 md:px-10 py-4 md:py-5 bg-white text-[hsl(var(--mc-forest))] font-medium uppercase tracking-[0.15em] md:tracking-[0.2em] text-[11px] sm:text-xs rounded hover:bg-[hsl(var(--mc-sage-light))] hover:text-white transition-all duration-500 hover:scale-[1.02] min-h-[48px]"
-              aria-label="Quero acesso antecipado ao empreendimento"
-            >
-              Quero Acesso Antecipado
-            </button>
-          </div>
+          {/* CTA */}
+          <button
+            onClick={scrollToForm}
+            className="btn-primary text-sm sm:text-base px-8 py-4 sm:px-10 sm:py-5"
+            aria-label="Quero acesso antecipado ao empreendimento"
+          >
+            Quero Acesso Antecipado
+          </button>
         </div>
 
-        {/* Scroll Indicator - Hidden on small mobile */}
-        <div className="absolute bottom-8 md:bottom-12 left-1/2 -translate-x-1/2 flex-col items-center gap-3 animate-float hidden sm:flex" aria-hidden="true">
-          <span className="text-[10px] uppercase tracking-[0.3em] text-white/50">Scroll</span>
-          <div className="w-px h-10 md:h-12 bg-gradient-to-b from-white/50 to-transparent" />
-        </div>
+        {/* Scroll Indicator */}
+        <button
+          onClick={scrollToContent}
+          className="absolute bottom-8 left-1/2 -translate-x-1/2 text-white/50 hover:text-primary transition-colors animate-bounce"
+          aria-label="Rolar para baixo"
+        >
+          <ChevronDown className="w-8 h-8" />
+        </button>
       </div>
     </section>
   );

@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { Loader2, ArrowRight, CheckCircle2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -16,47 +16,43 @@ interface MCFormSectionProps {
 const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLElement>(null);
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { threshold: 0.15 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim()) {
-      toast({
-        title: "Nome obrigatório",
-        description: "Por favor, informe seu nome.",
-        variant: "destructive",
-      });
+      toast({ title: "Nome obrigatório", description: "Por favor, informe seu nome.", variant: "destructive" });
       return;
     }
-
     if (!isValidBrazilianWhatsApp(whatsapp)) {
-      toast({
-        title: "WhatsApp inválido",
-        description: "Por favor, informe um número válido com DDD.",
-        variant: "destructive",
-      });
+      toast({ title: "WhatsApp inválido", description: "Por favor, informe um número válido com DDD.", variant: "destructive" });
       return;
     }
-
     if (!acceptedTerms) {
-      toast({
-        title: "Termos não aceitos",
-        description: "Você precisa aceitar os termos para continuar.",
-        variant: "destructive",
-      });
+      toast({ title: "Termos não aceitos", description: "Você precisa aceitar os termos para continuar.", variant: "destructive" });
       return;
     }
 
     setIsSubmitting(true);
-
     try {
-      // Generate UUID client-side
       const leadId = crypto.randomUUID();
-      
       const { error } = await supabase.from("leads").insert({
         id: leadId,
         name: name.trim(),
@@ -67,10 +63,8 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
         lead_origin: getLeadOriginFromUTM(),
         lead_origin_detail: getLeadOriginDetailFromUTM(),
       });
-
       if (error) throw error;
 
-      // Save attribution - marca como landing_page para diferenciar de manual
       await supabase.from("lead_attribution").insert({
         lead_id: leadId,
         project_id: projectId || null,
@@ -80,30 +74,17 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
         utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
         utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
       });
-      
-      // Trigger auto first message (non-blocking)
-      supabase.functions.invoke("auto-first-message", {
-        body: { leadId },
-      }).catch((err) => {
-        console.warn("Auto first message trigger failed:", err);
-      });
 
-      // Trigger auto cadencia 10D (non-blocking)
-      supabase.functions.invoke("auto-cadencia-10d", {
-        body: { leadId },
-      }).catch((err) => {
-        console.warn("Auto cadencia trigger failed:", err);
-      });
+      supabase.functions.invoke("auto-first-message", { body: { leadId } }).catch(console.warn);
+      supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } }).catch(console.warn);
 
-      // Fire Meta Pixel Lead event (client-side)
       const eventId = crypto.randomUUID();
       if (typeof window !== "undefined" && window.fbq) {
         (window.fbq as Function)("track", "Lead", {}, { eventID: eventId });
       }
 
-      // Fire Meta CAPI Lead event (server-side, non-blocking)
-      const getCookie = (name: string) => {
-        const match = document.cookie.match(new RegExp("(^| )" + name + "=([^;]+)"));
+      const getCookie = (n: string) => {
+        const match = document.cookie.match(new RegExp("(^| )" + n + "=([^;]+)"));
         return match ? match[2] : undefined;
       };
       supabase.functions.invoke("meta-conversions-api", {
@@ -116,135 +97,131 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
           fbp: getCookie("_fbp"),
           fbc: getCookie("_fbc"),
         },
-      }).catch((err) => console.warn("Meta CAPI failed:", err));
+      }).catch(console.warn);
 
-      // Navigate to /obrigado keeping the same base path
       const basePath = location.pathname.replace(/\/obrigado$/, "");
       navigate(`${basePath}/obrigado`, { replace: true });
     } catch (error) {
       console.error("Error submitting lead:", error);
-      toast({
-        title: "Erro ao cadastrar",
-        description: "Por favor, tente novamente em alguns instantes.",
-        variant: "destructive",
-      });
+      toast({ title: "Erro ao cadastrar", description: "Por favor, tente novamente em alguns instantes.", variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <section id="cadastro" className="py-16 md:py-24 lg:py-40 bg-[hsl(var(--mc-cream))]">
-      <div className="container mx-auto px-4 md:px-6">
-        <div className="max-w-lg mx-auto">
-          {/* Section Header */}
-          <div className="text-center space-y-4 md:space-y-6 mb-8 md:mb-12 px-2">
-            <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl text-[hsl(var(--mc-charcoal))] leading-[1.2]">
-              Alguns projetos passam.
-              <br />
-              <span className="italic text-[hsl(var(--mc-forest))]">Outros permanecem.</span>
+    <section
+      id="cadastro"
+      ref={sectionRef}
+      className="py-20 md:py-32 bg-background relative overflow-hidden"
+    >
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-3xl" />
+
+      <div className="container px-4 relative z-10">
+        <div className={`max-w-xl mx-auto transition-all duration-1000 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+          <div className="text-center mb-10">
+            <h2 className="font-serif text-2xl sm:text-3xl md:text-4xl font-bold mb-4">
+              GARANTA SEU{" "}
+              <span className="text-gold-gradient">ACESSO AGORA</span>
             </h2>
-            
-            <p className="text-[hsl(var(--mc-earth))] text-xs sm:text-sm">
-              Se este endereço faz sentido para você, este é o momento de acompanhar de perto.
+            <p className="text-muted-foreground">
+              Cadastro gratuito. Acesso limitado. Prioridade real.
             </p>
           </div>
 
-          {/* Form Card - Dark premium */}
-          <div className="bg-[hsl(var(--mc-forest))] py-8 md:py-10 px-5 sm:px-6 md:px-10">
-            {submitted ? (
-              <div className="flex flex-col items-center text-center space-y-4 md:space-y-6 py-8 md:py-12">
-                <CheckCircle2 className="w-12 h-12 md:w-16 md:h-16 text-white/80" />
-                <h3 className="font-serif text-xl sm:text-2xl md:text-3xl text-white leading-[1.3]">
-                  Parabéns, agora você faz parte
-                  <br />
-                  <span className="italic text-[hsl(var(--mc-cream))]">da nossa lista VIP!</span>
-                </h3>
-                <p className="text-white/70 text-sm sm:text-base max-w-sm">
-                  Em breve entraremos em contato pelo WhatsApp.
-                </p>
+          {submitted ? (
+            <div className="card-luxury p-8 md:p-10 flex flex-col items-center justify-center text-center space-y-4 min-h-[200px]">
+              <CheckCircle2 className="w-12 h-12 md:w-16 md:h-16 text-primary" />
+              <h3 className="font-serif text-2xl md:text-3xl font-bold text-foreground">
+                Parabéns, agora você faz parte da nossa{" "}
+                <span className="text-gold-gradient">lista VIP!</span>
+              </h3>
+              <p className="text-muted-foreground">
+                Em breve entraremos em contato pelo WhatsApp.
+              </p>
+            </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="card-luxury p-8 md:p-10 space-y-6">
+              <div>
+                <label htmlFor="mc-name" className="block text-sm font-medium text-foreground/80 mb-2">
+                  Nome Completo
+                </label>
+                <input
+                  type="text"
+                  id="mc-name"
+                  name="name"
+                  autoComplete="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full px-4 py-3.5 bg-background border border-border rounded-lg text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary transition-all"
+                  placeholder="Digite seu nome completo"
+                  disabled={isSubmitting}
+                />
               </div>
-            ) : (
-              <>
-                <form onSubmit={handleSubmit} className="space-y-5 md:space-y-6">
-                  {/* Name Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="text-[10px] sm:text-xs uppercase tracking-[0.15em] text-white/70">
-                      Seu nome
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="Como podemos te chamar?"
-                      className="w-full px-0 py-3 bg-transparent border-0 border-b border-white/30 text-white placeholder:text-white/50 focus:outline-none focus:border-white transition-colors text-sm sm:text-base"
-                      disabled={isSubmitting}
-                    />
-                  </div>
 
-                  {/* WhatsApp Input */}
-                  <div className="space-y-2">
-                    <label htmlFor="whatsapp" className="text-[10px] sm:text-xs uppercase tracking-[0.15em] text-white/70">
-                      Seu WhatsApp
-                    </label>
-                    <WhatsAppInput
-                      value={whatsapp}
-                      onChange={setWhatsapp}
-                      disabled={isSubmitting}
-                      className="w-full px-0 py-3 bg-transparent border-0 border-b border-white/30 text-white placeholder:text-white/50 focus:outline-none focus:border-white transition-colors text-sm sm:text-base"
-                    />
-                  </div>
+              <div>
+                <label htmlFor="mc-whatsapp" className="block text-sm font-medium text-foreground/80 mb-2">
+                  WhatsApp
+                </label>
+                <WhatsAppInput
+                  id="mc-whatsapp"
+                  name="whatsapp"
+                  autoComplete="tel"
+                  value={whatsapp}
+                  onChange={setWhatsapp}
+                  className="py-3.5 bg-background border-border text-foreground placeholder:text-muted-foreground focus:ring-2 focus:ring-primary/50 focus:border-primary"
+                  disabled={isSubmitting}
+                />
+              </div>
 
-                  {/* Terms Checkbox */}
-                  <div className="flex items-start gap-3 pt-2">
-                    <Checkbox
-                      id="terms"
-                      checked={acceptedTerms}
-                      onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
-                      disabled={isSubmitting}
-                      className="mt-0.5 border-white/50 data-[state=checked]:bg-white data-[state=checked]:border-white data-[state=checked]:text-[hsl(var(--mc-forest))]"
-                    />
-                    <label htmlFor="terms" className="text-[10px] sm:text-xs text-white/70 leading-relaxed">
-                      Li e aceito os{" "}
-                      <button
-                        type="button"
-                        onClick={() => navigate("/novohamburgo/mauriciocardoso/termos")}
-                        className="text-white underline hover:no-underline"
-                      >
-                        Termos de Uso e Política de Privacidade
-                      </button>
-                    </label>
-                  </div>
-
-                  {/* Submit Button */}
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 md:gap-3 px-6 md:px-8 py-4 bg-white text-[hsl(var(--mc-forest))] font-medium uppercase tracking-[0.1em] md:tracking-[0.15em] text-[11px] sm:text-xs hover:bg-[hsl(var(--mc-cream))] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed mt-6 md:mt-8 min-h-[48px]"
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  id="mc-terms"
+                  checked={acceptedTerms}
+                  onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+                  className="mt-0.5"
+                  disabled={isSubmitting}
+                />
+                <label htmlFor="mc-terms" className="text-sm text-foreground/80 leading-relaxed cursor-pointer">
+                  Li e aceito os{" "}
+                  <Link
+                    to="/novohamburgo/mauriciocardoso/termos#termos-de-uso"
+                    target="_blank"
+                    className="text-primary hover:text-primary/80 underline underline-offset-2"
                   >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        Quero Acesso Antecipado
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </form>
+                    Termos de Uso
+                  </Link>{" "}
+                  e a{" "}
+                  <Link
+                    to="/novohamburgo/mauriciocardoso/termos#politica-de-privacidade"
+                    target="_blank"
+                    className="text-primary hover:text-primary/80 underline underline-offset-2"
+                  >
+                    Política de Privacidade
+                  </Link>
+                </label>
+              </div>
 
-                {/* LGPD Text */}
-                <p className="mt-6 md:mt-8 text-[9px] sm:text-[10px] text-center text-white/50 leading-relaxed">
-                  Ao se cadastrar, você autoriza o recebimento de comunicações sobre 
-                  este empreendimento. Seus dados serão tratados com total confidencialidade.
-                </p>
-              </>
-            )}
-          </div>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed min-h-[52px]"
+              >
+                {isSubmitting ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Enviando...
+                  </span>
+                ) : (
+                  "Quero Acesso Antecipado"
+                )}
+              </button>
+
+              <p className="text-center text-sm text-muted-foreground">
+                Cadastro gratuito e sem compromisso
+              </p>
+            </form>
+          )}
         </div>
       </div>
     </section>
