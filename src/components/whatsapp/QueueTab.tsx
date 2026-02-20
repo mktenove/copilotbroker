@@ -14,7 +14,8 @@ import {
   Phone,
   Hash,
   RotateCw,
-  Calendar
+  Calendar,
+  ChevronDown
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -115,7 +116,6 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
       className="px-3 py-2 rounded-lg bg-[#1a1a1d] border border-[#2a2a2e] cursor-pointer select-none"
       onClick={() => setExpanded(!expanded)}
     >
-      {/* Collapsed row */}
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs text-slate-500 flex-shrink-0">
           <Clock className="w-3 h-3 inline mr-0.5" />
@@ -142,7 +142,6 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
         </Button>
       </div>
 
-      {/* Expanded content */}
       {expanded && (
         <div className="mt-2 pt-2 border-t border-[#2a2a2e] space-y-2" onClick={(e) => e.stopPropagation()}>
           {message.message && (
@@ -175,7 +174,6 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
       )}
       onClick={() => setExpanded(!expanded)}
     >
-      {/* Collapsed row */}
       <div className="flex items-center gap-2 min-w-0">
         <div className="flex-shrink-0">
           {message.status === "sent" ? (
@@ -204,7 +202,6 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
         </Badge>
       </div>
 
-      {/* Expanded content */}
       {expanded && (
         <div className="mt-2 pt-2 border-t border-[#2a2a2e] space-y-2" onClick={(e) => e.stopPropagation()}>
           {message.message && (
@@ -252,7 +249,6 @@ export function QueueTab() {
   const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
   const { role } = useUserRole();
 
-  // Fetch active brokers for admin filter
   const { data: brokersList = [] } = useQuery({
     queryKey: ["brokers-list-active"],
     queryFn: async () => {
@@ -268,7 +264,19 @@ export function QueueTab() {
   });
 
   const effectiveFilterId = role === "admin" ? (selectedBrokerId === "all" ? undefined : selectedBrokerId || undefined) : undefined;
-  const { queue, stats, isLoading, formatNextSendIn, cancelMessage, retryMessage } = useWhatsAppQueue(effectiveFilterId);
+  const {
+    pendingQueue,
+    historyQueue,
+    stats,
+    isLoading,
+    formatNextSendIn,
+    cancelMessage,
+    retryMessage,
+    loadMorePending,
+    loadMoreHistory,
+    hasMorePending,
+    hasMoreHistory,
+  } = useWhatsAppQueue(effectiveFilterId);
 
   if (isLoading) {
     return (
@@ -278,12 +286,7 @@ export function QueueTab() {
     );
   }
 
-  const pendingMessages = queue.filter(
-    m => m.status === "queued" || m.status === "scheduled" || m.status === "sending" || m.status === "paused_by_system"
-  );
-  const completedMessages = queue.filter(
-    m => m.status === "sent" || m.status === "failed" || m.status === "cancelled"
-  );
+  const isEmpty = pendingQueue.length === 0 && historyQueue.length === 0;
 
   return (
     <div className="space-y-4 sm:space-y-6 pb-20 sm:pb-0">
@@ -315,7 +318,7 @@ export function QueueTab() {
       {/* Stats */}
       <QueueStats stats={stats} />
 
-      {queue.length === 0 ? (
+      {isEmpty ? (
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
           <CardContent className="py-12 text-center">
             <div className="w-16 h-16 rounded-full bg-[#2a2a2e] flex items-center justify-center mx-auto mb-4">
@@ -329,30 +332,49 @@ export function QueueTab() {
         </Card>
       ) : (
         <div className="space-y-4">
-          {pendingMessages.length > 0 && (
+          {pendingQueue.length > 0 && (
             <div className="space-y-1">
-              <h3 className="text-sm font-medium text-slate-400 mb-1">Pendentes ({pendingMessages.length})</h3>
+              <h3 className="text-sm font-medium text-slate-400 mb-1">
+                Pendentes ({stats.queued})
+              </h3>
               <div className="space-y-1">
-                {pendingMessages.map((message) => (
+                {pendingQueue.map((message) => (
                   <PendingMessageCard key={message.id} message={message} onCancel={cancelMessage} />
                 ))}
               </div>
+              {hasMorePending && (
+                <Button
+                  variant="ghost"
+                  onClick={loadMorePending}
+                  className="w-full text-slate-400 hover:text-white gap-2 mt-2"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Carregar mais pendentes...
+                </Button>
+              )}
             </div>
           )}
 
-          {completedMessages.length > 0 && (
+          {historyQueue.length > 0 && (
             <div className="space-y-1">
-              <h3 className="text-sm font-medium text-slate-400 mb-1">Histórico ({completedMessages.length})</h3>
+              <h3 className="text-sm font-medium text-slate-400 mb-1">
+                Histórico ({stats.sent + stats.failed})
+              </h3>
               <div className="space-y-1">
-                {completedMessages.slice(0, 20).map((message) => (
+                {historyQueue.map((message) => (
                   <HistoryMessageCard key={message.id} message={message} onRetry={retryMessage} />
                 ))}
-                {completedMessages.length > 20 && (
-                  <p className="text-xs text-slate-500 text-center py-2">
-                    Mostrando 20 de {completedMessages.length} mensagens
-                  </p>
-                )}
               </div>
+              {hasMoreHistory && (
+                <Button
+                  variant="ghost"
+                  onClick={loadMoreHistory}
+                  className="w-full text-slate-400 hover:text-white gap-2 mt-2"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                  Carregar mais histórico...
+                </Button>
+              )}
             </div>
           )}
         </div>
