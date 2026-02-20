@@ -64,10 +64,8 @@ const MCHeroSection = () => {
             <span className="text-gold-gradient">O PROJETO PRECISA ESTAR À ALTURA</span>
           </h1>
 
-          {/* Subtitle */}
-          <p className="text-xl sm:text-2xl md:text-3xl font-serif italic text-primary mb-8">
-            E que vai acabar rápido.
-          </p>
+          {/* Divider */}
+          <div className="w-16 h-px bg-primary/50 mx-auto mb-8" />
 
           <p className="text-sm sm:text-base text-white/70 mb-10 max-w-2xl mx-auto">
             Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo,
