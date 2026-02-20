@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Phone, Users, RefreshCw, MapPin, Trash2, UserX, RotateCw } from "lucide-react";
+import { Phone, Users, RefreshCw, MapPin, Trash2, UserX, RotateCw, ChevronLeft, ChevronRight } from "lucide-react";
 import { getOriginDisplayLabel, getOriginType, ORIGIN_TYPE_COLORS, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
 import LeadCard from "./LeadCard";
@@ -41,10 +41,17 @@ interface LeadsTableProps {
   onDelete?: (leadId: string) => Promise<void>;
   onInactivate?: (leadId: string, reason: string) => Promise<void>;
   onReactivate?: (leadId: string) => Promise<void>;
+  // Pagination props
+  currentPage?: number;
+  totalPages?: number;
+  totalCount?: number;
+  onPageChange?: (page: number) => void;
 }
 
-const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onLeadClick, onDelete, onInactivate, onReactivate }: LeadsTableProps) => {
+const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatus = true, onLeadClick, onDelete, onInactivate, onReactivate, currentPage, totalPages, totalCount, onPageChange }: LeadsTableProps) => {
   const [inactivatingLead, setInactivatingLead] = useState<Lead | null>(null);
+  const hasPagination = currentPage !== undefined && totalPages !== undefined && onPageChange !== undefined;
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -119,6 +126,22 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
       await onInactivate(inactivatingLead.id, reason);
     }
     setInactivatingLead(null);
+  };
+
+  // Generate visible page numbers
+  const getVisiblePages = () => {
+    if (!hasPagination || totalPages <= 1) return [];
+    const pages: number[] = [];
+    const maxVisible = 5;
+    let start = Math.max(0, currentPage - Math.floor(maxVisible / 2));
+    let end = Math.min(totalPages - 1, start + maxVisible - 1);
+    if (end - start < maxVisible - 1) {
+      start = Math.max(0, end - maxVisible + 1);
+    }
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    return pages;
   };
 
   return (
@@ -211,7 +234,6 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                         WhatsApp
                       </a>
                       
-                      {/* Botão Inativar */}
                       {onInactivate && !isInactive && (
                         <button
                           onClick={() => setInactivatingLead(lead)}
@@ -222,7 +244,6 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                         </button>
                       )}
                       
-                      {/* Botão Reativar */}
                       {onReactivate && isInactive && (
                         <button
                           onClick={() => onReactivate(lead.id)}
@@ -233,7 +254,6 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
                         </button>
                       )}
                       
-                      {/* Botão Excluir */}
                       {onDelete && (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
@@ -271,6 +291,47 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
           </tbody>
         </table>
       </div>
+
+      {/* Pagination Controls */}
+      {hasPagination && totalPages > 1 && (
+        <div className="flex items-center justify-between px-4 sm:px-6 py-4 border-t border-[#2a2a2e] bg-[#0f0f12]">
+          <p className="text-sm text-slate-400">
+            {totalCount !== undefined && (
+              <>Mostrando {currentPage * 50 + 1}–{Math.min((currentPage + 1) * 50, totalCount)} de <strong className="text-white">{totalCount}</strong> leads</>
+            )}
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onPageChange(currentPage - 1)}
+              disabled={currentPage === 0}
+              className="p-2 rounded-lg text-slate-400 hover:bg-[#1e1e22] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+            {getVisiblePages().map((page) => (
+              <button
+                key={page}
+                onClick={() => onPageChange(page)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-sm font-medium transition-colors",
+                  page === currentPage
+                    ? "bg-[#FFFF00] text-black"
+                    : "text-slate-400 hover:bg-[#1e1e22] hover:text-white"
+                )}
+              >
+                {page + 1}
+              </button>
+            ))}
+            <button
+              onClick={() => onPageChange(currentPage + 1)}
+              disabled={currentPage >= totalPages - 1}
+              className="p-2 rounded-lg text-slate-400 hover:bg-[#1e1e22] hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Inactivation Picker */}
       {inactivatingLead && (

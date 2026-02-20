@@ -1,50 +1,19 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 import { 
-  BarChart3, 
-  TrendingUp, 
-  Users, 
-  MousePointerClick,
-  RefreshCw,
-  Eye,
-  Calendar,
-  Target,
-  Award,
-  Megaphone,
-  Building2,
-  ArrowDownRight,
-  Clock,
-  UserX
+  BarChart3, TrendingUp, Users, MousePointerClick, RefreshCw, Eye, Calendar,
+  Target, Award, Megaphone, Building2, ArrowDownRight, Clock, UserX
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay, differenceInHours } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  LineChart,
-  Line,
-  FunnelChart,
-  Funnel,
-  LabelList,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend, LineChart, Line, FunnelChart, Funnel, LabelList,
 } from "recharts";
 import { getOriginDisplayLabel, getOriginType, OriginType, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { cn } from "@/lib/utils";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 interface PageView {
   id: string;
@@ -131,64 +100,40 @@ interface FunnelData {
   fill: string;
 }
 
-// Cores por tipo de origem
 const ORIGIN_COLORS: Record<OriginType, string> = {
-  paid: "#9333ea",
-  organic: "#22c55e", 
-  referral: "#3b82f6",
-  manual: "#f59e0b",
-  unknown: "#64748b"
+  paid: "#9333ea", organic: "#22c55e", referral: "#3b82f6", manual: "#f59e0b", unknown: "#64748b"
 };
 
 const FUNNEL_COLORS: Record<LeadStatus, string> = {
-  new: "#3b82f6",
-  info_sent: "#8b5cf6",
-  awaiting_docs: "#f59e0b",
-  scheduling: "#f97316",
-  docs_received: "#22c55e",
-  registered: "#10b981",
-  inactive: "#ef4444"
+  new: "#3b82f6", info_sent: "#8b5cf6", awaiting_docs: "#f59e0b", scheduling: "#f97316",
+  docs_received: "#22c55e", registered: "#10b981", inactive: "#ef4444"
 };
 
 const AnalyticsDashboard = () => {
-  const [pageViews, setPageViews] = useState<PageView[]>([]);
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [interactions, setInteractions] = useState<Interaction[]>([]);
-  const [brokers, setBrokers] = useState<Broker[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [dateRange, setDateRange] = useState(30);
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [drillDownOrigin, setDrillDownOrigin] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  const startDate = startOfDay(subDays(new Date(), dateRange)).toISOString();
+  const endDate = endOfDay(new Date()).toISOString();
 
-  useEffect(() => {
-    fetchData();
-  }, [dateRange, selectedProject]);
+  // React Query: Projects
+  const { data: projects = [] } = useQuery<Project[]>({
+    queryKey: ["analytics-projects"],
+    queryFn: async () => {
+      const { data } = await supabase.from("projects").select("id, name, slug").eq("is_active", true).order("name");
+      return (data || []) as Project[];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
 
-  const fetchProjects = async () => {
-    const { data } = await supabase
-      .from("projects")
-      .select("id, name, slug")
-      .eq("is_active", true)
-      .order("name");
-    
-    if (data) setProjects(data);
-  };
-
-  const fetchData = async () => {
-    setIsLoading(true);
-    const startDate = startOfDay(subDays(new Date(), dateRange)).toISOString();
-    const endDate = endOfDay(new Date()).toISOString();
-
-    try {
-      // Build queries with optional project filter
+  // React Query: All analytics data
+  const { data: analyticsData, isLoading } = useQuery({
+    queryKey: ["analytics-data", dateRange, selectedProject],
+    queryFn: async () => {
       let viewsQuery = supabase
         .from("page_views")
-        .select("*")
+        .select("id, page_path, utm_source, utm_medium, utm_campaign, referrer, session_id, created_at, project_id")
         .gte("created_at", startDate)
         .lte("created_at", endDate)
         .order("created_at", { ascending: false });
@@ -219,151 +164,100 @@ const AnalyticsDashboard = () => {
         supabase.from("brokers").select("id, name").eq("is_active", true)
       ]);
 
-      if (viewsResult.data) setPageViews(viewsResult.data as PageView[]);
-      if (leadsResult.data) setLeads(leadsResult.data as Lead[]);
-      if (interactionsResult.data) setInteractions(interactionsResult.data as Interaction[]);
-      if (brokersResult.data) setBrokers(brokersResult.data);
-    } catch (error) {
-      console.error("Error fetching analytics:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+      return {
+        pageViews: (viewsResult.data || []) as PageView[],
+        leads: (leadsResult.data || []) as Lead[],
+        interactions: (interactionsResult.data || []) as Interaction[],
+        brokers: (brokersResult.data || []) as Broker[],
+      };
+    },
+    staleTime: 30 * 1000,
+  });
 
-  // Calculate unique sessions
+  const pageViews = analyticsData?.pageViews || [];
+  const leads = analyticsData?.leads || [];
+  const interactions = analyticsData?.interactions || [];
+  const brokers = analyticsData?.brokers || [];
+
   const uniqueSessions = new Set(pageViews.map((pv) => pv.session_id)).size;
 
-  // Calculate daily stats
   const dailyStats: DailyStats[] = useMemo(() => {
     const stats: DailyStats[] = [];
     for (let i = dateRange - 1; i >= 0; i--) {
       const date = subDays(new Date(), i);
       const dateStr = format(date, "yyyy-MM-dd");
       const displayDate = format(date, "dd/MM", { locale: ptBR });
-      
-      const dayViews = pageViews.filter(
-        (pv) => format(new Date(pv.created_at), "yyyy-MM-dd") === dateStr
-      ).length;
-      
-      const dayLeads = leads.filter(
-        (l) => format(new Date(l.created_at), "yyyy-MM-dd") === dateStr
-      ).length;
-
-      stats.push({
-        date: displayDate,
-        views: dayViews,
-        leads: dayLeads,
-      });
+      const dayViews = pageViews.filter((pv) => format(new Date(pv.created_at), "yyyy-MM-dd") === dateStr).length;
+      const dayLeads = leads.filter((l) => format(new Date(l.created_at), "yyyy-MM-dd") === dateStr).length;
+      stats.push({ date: displayDate, views: dayViews, leads: dayLeads });
     }
     return stats;
   }, [pageViews, leads, dateRange]);
 
-  // Funnel data
   const funnelData: FunnelData[] = useMemo(() => {
     const statusOrder: LeadStatus[] = ['new', 'info_sent', 'docs_received', 'registered'];
     return statusOrder.map(status => ({
-      status,
-      name: STATUS_CONFIG[status]?.label || status,
-      value: leads.filter(l => l.status === status).length,
-      fill: FUNNEL_COLORS[status]
+      status, name: STATUS_CONFIG[status]?.label || status,
+      value: leads.filter(l => l.status === status).length, fill: FUNNEL_COLORS[status]
     }));
   }, [leads]);
 
-  // Inactivation rate
   const inactivatedLeads = leads.filter(l => l.status === 'inactive').length;
   const inactivationRate = leads.length > 0 ? (inactivatedLeads / leads.length) * 100 : 0;
 
-  // Calculate broker performance
   const brokerPerformance: BrokerPerformance[] = useMemo(() => {
     return brokers.map(broker => {
       const brokerLeads = leads.filter(l => l.broker_id === broker.id);
       const registered = brokerLeads.filter(l => l.status === 'registered').length;
-      
-      // Calculate average first response time (from new to info_sent)
       const leadIds = new Set(brokerLeads.map(l => l.id));
-      const brokerInteractions = interactions.filter(i => 
-        leadIds.has(i.lead_id) && 
-        i.old_status === 'new' && 
-        i.new_status === 'info_sent'
-      );
-      
+      const brokerInteractions = interactions.filter(i => leadIds.has(i.lead_id) && i.old_status === 'new' && i.new_status === 'info_sent');
       let avgResponseHours = 0;
       if (brokerInteractions.length > 0) {
         const responseTimes = brokerInteractions.map(i => {
           const lead = brokerLeads.find(l => l.id === i.lead_id);
-          if (lead) {
-            return differenceInHours(new Date(i.created_at), new Date(lead.created_at));
-          }
-          return 0;
+          return lead ? differenceInHours(new Date(i.created_at), new Date(lead.created_at)) : 0;
         });
         avgResponseHours = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
       }
-
-      return {
-        id: broker.id,
-        name: broker.name,
-        totalLeads: brokerLeads.length,
-        registered,
-        conversionRate: brokerLeads.length > 0 ? (registered / brokerLeads.length) * 100 : 0,
-        avgResponseHours
-      };
+      return { id: broker.id, name: broker.name, totalLeads: brokerLeads.length, registered, conversionRate: brokerLeads.length > 0 ? (registered / brokerLeads.length) * 100 : 0, avgResponseHours };
     }).filter(b => b.totalLeads > 0).sort((a, b) => b.conversionRate - a.conversionRate);
   }, [brokers, leads, interactions]);
 
-  // Calculate lead origin stats with detail drill-down
   const originStats: OriginStats[] = useMemo(() => {
     const originMap = new Map<string, { count: number; details: Map<string, number> }>();
     leads.forEach((lead) => {
       const origin = lead.lead_origin || "unknown";
-      if (!originMap.has(origin)) {
-        originMap.set(origin, { count: 0, details: new Map() });
-      }
+      if (!originMap.has(origin)) originMap.set(origin, { count: 0, details: new Map() });
       const entry = originMap.get(origin)!;
       entry.count += 1;
-      
-      // Track detail
       const detail = lead.lead_origin_detail || "(sem detalhe)";
       entry.details.set(detail, (entry.details.get(detail) || 0) + 1);
     });
-
     return Array.from(originMap.entries())
       .map(([name, data]) => ({
-        name,
-        displayName: getOriginDisplayLabel(name === "unknown" ? null : name),
-        leads: data.count,
-        type: getOriginType(name === "unknown" ? null : name),
-        details: Array.from(data.details.entries())
-          .map(([n, c]) => ({ name: n, count: c }))
-          .sort((a, b) => b.count - a.count),
+        name, displayName: getOriginDisplayLabel(name === "unknown" ? null : name),
+        leads: data.count, type: getOriginType(name === "unknown" ? null : name),
+        details: Array.from(data.details.entries()).map(([n, c]) => ({ name: n, count: c })).sort((a, b) => b.count - a.count),
       }))
-      .sort((a, b) => b.leads - a.leads)
-      .slice(0, 8);
+      .sort((a, b) => b.leads - a.leads).slice(0, 8);
   }, [leads]);
 
-  // Get drill-down data for selected origin
   const drillDownData = useMemo(() => {
     if (!drillDownOrigin) return null;
     return originStats.find(o => o.name === drillDownOrigin) || null;
   }, [drillDownOrigin, originStats]);
 
-  // Calculate source stats
   const sourceStats: SourceStats[] = useMemo(() => {
     const sourceMap = new Map<string, number>();
     leads.forEach((lead) => {
       const source = lead.source === "enove" ? "Enove" : lead.source;
       sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
     });
-
     return Array.from(sourceMap.entries())
-      .map(([name, count]) => ({
-        name,
-        leads: count,
-        percentage: leads.length > 0 ? (count / leads.length) * 100 : 0,
-      }))
+      .map(([name, count]) => ({ name, leads: count, percentage: leads.length > 0 ? (count / leads.length) * 100 : 0 }))
       .sort((a, b) => b.leads - a.leads);
   }, [leads]);
 
-  // Enove vs Corretores split
   const enoveLeads = sourceStats.find(s => s.name === "Enove")?.leads || 0;
   const brokerLeads = leads.length - enoveLeads - inactivatedLeads;
   const distributionData = [
@@ -371,30 +265,26 @@ const AnalyticsDashboard = () => {
     { name: "Corretores", value: brokerLeads },
   ].filter(d => d.value > 0);
 
-  // Calculate page stats
   const pageStats: PageStats[] = useMemo(() => {
     const pageMap = new Map<string, number>();
     pageViews.forEach((pv) => {
       const current = pageMap.get(pv.page_path) || 0;
       pageMap.set(pv.page_path, current + 1);
     });
-
     const totalViews = pageViews.length;
     return Array.from(pageMap.entries())
-      .map(([path, views]) => ({
-        path: formatPagePath(path),
-        views,
-        percentage: totalViews > 0 ? (views / totalViews) * 100 : 0,
-      }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
+      .map(([path, views]) => ({ path: formatPagePath(path), views, percentage: totalViews > 0 ? (views / totalViews) * 100 : 0 }))
+      .sort((a, b) => b.views - a.views).slice(0, 5);
   }, [pageViews]);
 
-  // KPI calculations
   const totalViews = pageViews.length;
   const conversionRate = totalViews > 0 ? (leads.length / totalViews) * 100 : 0;
   const bestChannel = originStats.length > 0 ? originStats[0] : null;
   const topBroker = brokerPerformance.length > 0 ? brokerPerformance[0] : null;
+
+  const handleRefresh = () => {
+    // React Query will handle refetching
+  };
 
   return (
     <div className="space-y-6">
@@ -404,7 +294,6 @@ const AnalyticsDashboard = () => {
           Dashboard de Analytics
         </h2>
         <div className="flex flex-wrap items-center gap-3">
-          {/* Project Filter */}
           <Select value={selectedProject} onValueChange={setSelectedProject}>
             <SelectTrigger className="w-[160px] bg-[#1e1e22] border-[#2a2a2e] text-white">
               <Building2 className="w-4 h-4 mr-2" />
@@ -413,9 +302,7 @@ const AnalyticsDashboard = () => {
             <SelectContent>
               <SelectItem value="all">Todos os projetos</SelectItem>
               {projects.map(project => (
-                <SelectItem key={project.id} value={project.id}>
-                  {project.name}
-                </SelectItem>
+                <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -432,7 +319,7 @@ const AnalyticsDashboard = () => {
             <option value={90}>Últimos 90 dias</option>
           </select>
           <button
-            onClick={fetchData}
+            onClick={handleRefresh}
             disabled={isLoading}
             className="flex items-center gap-2 px-3 py-2 bg-[#1e1e22] text-[#FFFF00] border border-[#2a2a2e] rounded-lg hover:bg-[#2a2a2e] transition-colors disabled:opacity-50"
           >
@@ -442,7 +329,7 @@ const AnalyticsDashboard = () => {
         </div>
       </div>
 
-      {/* Stats Cards - 6 columns */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         <StatCard icon={Eye} label="Visualizações" value={totalViews} isLoading={isLoading} />
         <StatCard icon={Users} label="Sessões" value={uniqueSessions} isLoading={isLoading} />
@@ -452,7 +339,7 @@ const AnalyticsDashboard = () => {
         <StatCard icon={Award} label="Top Corretor" value={topBroker?.name || "-"} isLoading={isLoading} highlight />
       </div>
 
-      {/* Daily Chart - Full width */}
+      {/* Daily Chart */}
       <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
         <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
           <Calendar className="w-4 h-4 text-[#FFFF00]" />
@@ -465,25 +352,9 @@ const AnalyticsDashboard = () => {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={dailyStats}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis 
-                  dataKey="date" 
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                  tickLine={{ stroke: "hsl(var(--border))" }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis 
-                  tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                  tickLine={{ stroke: "hsl(var(--border))" }}
-                />
-                <Tooltip 
-                  contentStyle={{ 
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    fontSize: "12px"
-                  }}
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                />
+                <XAxis dataKey="date" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={{ stroke: "hsl(var(--border))" }} interval="preserveStartEnd" />
+                <YAxis tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} tickLine={{ stroke: "hsl(var(--border))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} labelStyle={{ color: "hsl(var(--foreground))" }} />
                 <Line type="monotone" dataKey="views" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ fill: "hsl(var(--primary))", strokeWidth: 0, r: 3 }} activeDot={{ r: 5, fill: "hsl(var(--primary))" }} name="Visitas" />
                 <Line type="monotone" dataKey="leads" stroke="#22c55e" strokeWidth={2} dot={{ fill: "#22c55e", strokeWidth: 0, r: 3 }} activeDot={{ r: 5, fill: "#22c55e" }} name="Leads" />
               </LineChart>
@@ -500,37 +371,29 @@ const AnalyticsDashboard = () => {
             <ArrowDownRight className="w-4 h-4 text-[#FFFF00]" />
             Funil de Conversão
           </h3>
-          <div className="h-[280px]">
-            {isLoading ? (
-              <LoadingChart />
-            ) : funnelData.some(d => d.value > 0) ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={funnelData} layout="vertical" margin={{ left: 10, right: 40 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "hsl(var(--foreground))" }} width={90} tickLine={false} />
-                  <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px", fontSize: "12px" }} />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={28}>
-                    {funnelData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                    <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: "hsl(var(--foreground))" }} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
-            )}
+          <div className="space-y-3">
+            {funnelData.map((stage) => (
+              <div key={stage.status}>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-300">{stage.name}</span>
+                  <span className="text-white font-medium">{stage.value}</span>
+                </div>
+                <div className="h-2 bg-[#2a2a2e] rounded-full overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${leads.length > 0 ? (stage.value / leads.length) * 100 : 0}%`, backgroundColor: stage.fill }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
           {/* Inactivation rate */}
-          <div className="mt-4 pt-4 border-t border-[#2a2a2e] flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="mt-4 pt-4 border-t border-[#2a2a2e]">
+            <div className="flex items-center gap-2 text-sm">
               <UserX className="w-4 h-4 text-red-400" />
-              <span className="text-sm text-slate-400">Taxa de Inativação</span>
+              <span className="text-slate-400">Inativados:</span>
+              <span className="text-red-400 font-medium">{inactivatedLeads} ({inactivationRate.toFixed(1)}%)</span>
             </div>
-            <span className={cn("text-sm font-bold", inactivationRate > 30 ? "text-red-400" : "text-slate-400")}>
-              {inactivationRate.toFixed(1)}% ({inactivatedLeads} leads)
-            </span>
           </div>
         </div>
 
@@ -538,238 +401,148 @@ const AnalyticsDashboard = () => {
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
             <Award className="w-4 h-4 text-[#FFFF00]" />
-            Performance dos Corretores
+            Performance por Corretor
           </h3>
-          {isLoading ? (
-            <LoadingList />
-          ) : brokerPerformance.length > 0 ? (
-            <div className="space-y-3 max-h-[320px] overflow-y-auto pr-2">
-              {brokerPerformance.slice(0, 8).map((broker, index) => (
-                <div key={broker.id} className="p-3 bg-[#0f0f12] rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
-                        index === 0 ? "bg-[#FFFF00]/20 text-[#FFFF00]" : "bg-[#2a2a2e] text-slate-500"
-                      )}>
-                        {index + 1}
-                      </span>
-                      <span className="text-sm font-medium text-white truncate max-w-[120px]">{broker.name}</span>
-                    </div>
-                    <span className="text-sm font-bold text-[#FFFF00]">{broker.conversionRate.toFixed(0)}%</span>
+          <div className="space-y-3 max-h-[300px] overflow-y-auto">
+            {brokerPerformance.length === 0 ? (
+              <p className="text-slate-500 text-sm">Sem dados no período</p>
+            ) : (
+              brokerPerformance.map((broker, i) => (
+                <div key={broker.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-[#2a2a2e] transition-colors">
+                  <span className="text-xs font-medium text-slate-500 w-5">{i + 1}º</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{broker.name}</p>
+                    <p className="text-xs text-slate-400">{broker.totalLeads} leads · {broker.registered} cadastros</p>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-xs">
-                    <div>
-                      <span className="text-slate-500">Leads</span>
-                      <p className="font-medium text-white">{broker.totalLeads}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500">Registros</span>
-                      <p className="font-medium text-green-500">{broker.registered}</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 flex items-center gap-1"><Clock className="w-3 h-3" />Resp.</span>
-                      <p className="font-medium text-white">{broker.avgResponseHours > 0 ? `${broker.avgResponseHours.toFixed(0)}h` : "-"}</p>
-                    </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-[#FFFF00]">{broker.conversionRate.toFixed(1)}%</p>
+                    <p className="text-xs text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {broker.avgResponseHours.toFixed(0)}h
+                    </p>
                   </div>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
-          )}
+              ))
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Middle Row: Cadastrado Por + Origem Marketing */}
+      {/* Origins */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-        {/* Cadastrado Por - Horizontal Bar Chart */}
+        {/* Origin Chart */}
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
           <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
-            <Users className="w-4 h-4 text-[#FFFF00]" />
-            Cadastrado Por
+            <Megaphone className="w-4 h-4 text-[#FFFF00]" />
+            Leads por Origem
           </h3>
-          <div className="h-[280px]">
-            {isLoading ? (
-              <LoadingChart />
-            ) : sourceStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sourceStats.slice(0, 6)} layout="vertical" margin={{ left: 10, right: 30 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: "#fff" }} tickLine={false} width={80} />
-                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number, name: string, props: any) => [`${value} leads (${props.payload.percentage.toFixed(0)}%)`, "Leads"]} />
-                  <Bar dataKey="leads" fill="#FFFF00" radius={[0, 4, 4, 0]} barSize={24} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
-            )}
-          </div>
+          {originStats.length === 0 ? (
+            <p className="text-slate-500 text-sm">Sem dados</p>
+          ) : (
+            <div className="space-y-2">
+              {originStats.map((origin) => (
+                <button
+                  key={origin.name}
+                  onClick={() => setDrillDownOrigin(drillDownOrigin === origin.name ? null : origin.name)}
+                  className={cn("w-full text-left p-2 rounded-lg transition-colors", drillDownOrigin === origin.name ? "bg-[#2a2a2e]" : "hover:bg-[#2a2a2e]/50")}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: ORIGIN_COLORS[origin.type] }} />
+                      <span className="text-sm text-slate-200">{origin.displayName}</span>
+                    </div>
+                    <span className="text-sm font-medium text-white">{origin.leads}</span>
+                  </div>
+                  <div className="mt-1 h-1.5 bg-[#2a2a2e] rounded-full overflow-hidden">
+                    <div className="h-full rounded-full" style={{ width: `${leads.length > 0 ? (origin.leads / leads.length) * 100 : 0}%`, backgroundColor: ORIGIN_COLORS[origin.type] }} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* Origem Marketing */}
+        {/* Drill-down or Distribution */}
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm sm:text-base font-medium text-white flex items-center gap-2">
-              <Megaphone className="w-4 h-4 text-[#FFFF00]" />
-              {drillDownOrigin ? `Campanhas: ${getOriginDisplayLabel(drillDownOrigin)}` : "Origem de Marketing"}
-            </h3>
-            {drillDownOrigin && (
-              <button
-                onClick={() => setDrillDownOrigin(null)}
-                className="text-xs text-slate-400 hover:text-white transition-colors px-2 py-1 rounded bg-[#2a2a2e]"
-              >
-                ← Voltar
-              </button>
-            )}
-          </div>
-          <div className="h-[280px]">
-            {isLoading ? (
-              <LoadingChart />
-            ) : drillDownData ? (
-              /* Drill-down: show campaign details */
-              <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2">
-                {drillDownData.details.map((detail, idx) => (
-                  <div key={idx} className="flex items-center justify-between py-2 px-3 bg-[#0f0f12] rounded-lg">
-                    <span className="text-xs text-slate-300 truncate flex-1 mr-3" title={detail.name}>
-                      {detail.name}
-                    </span>
-                    <span className="text-sm font-bold text-white shrink-0">{detail.count}</span>
+          {drillDownData ? (
+            <>
+              <h3 className="text-sm sm:text-base font-medium text-white mb-4">
+                Detalhe: {drillDownData.displayName}
+              </h3>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                {drillDownData.details.map((d) => (
+                  <div key={d.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2a2a2e]">
+                    <span className="text-sm text-slate-300 truncate max-w-[200px]">{d.name}</span>
+                    <span className="text-sm font-medium text-white">{d.count}</span>
                   </div>
                 ))}
-                {drillDownData.details.length === 0 && (
-                  <div className="h-full flex items-center justify-center text-slate-500 text-sm">Sem detalhes de campanha</div>
-                )}
               </div>
-            ) : originStats.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={originStats.slice(0, 6).map(o => ({ ...o, shortName: o.displayName.length > 15 ? o.displayName.substring(0, 12) + "..." : o.displayName }))} 
-                  margin={{ bottom: 60 }}
-                  onClick={(data) => {
-                    if (data?.activePayload?.[0]?.payload?.name) {
-                      setDrillDownOrigin(data.activePayload[0].payload.name);
-                    }
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2e" vertical={false} />
-                  <XAxis dataKey="shortName" tick={{ fontSize: 9, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} interval={0} angle={-35} textAnchor="end" height={60} />
-                  <YAxis tick={{ fontSize: 10, fill: "#64748b" }} tickLine={{ stroke: "#2a2a2e" }} />
-                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads (clique para detalhes)`, "Leads"]} labelFormatter={(label, payload) => payload?.[0]?.payload?.displayName || label} />
-                  <Bar dataKey="leads" radius={[4, 4, 0, 0]} barSize={32}>
-                    {originStats.slice(0, 6).map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={ORIGIN_COLORS[entry.type]} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
-            )}
-          </div>
-          {!drillDownOrigin && (
-            <div className="flex flex-wrap gap-3 mt-3 justify-center">
-              <LegendItem color={ORIGIN_COLORS.paid} label="Pago" />
-              <LegendItem color={ORIGIN_COLORS.organic} label="Orgânico" />
-              <LegendItem color={ORIGIN_COLORS.referral} label="Referral" />
-              <LegendItem color={ORIGIN_COLORS.manual} label="Manual" />
-              <LegendItem color={ORIGIN_COLORS.unknown} label="Outros" />
-            </div>
-          )}
-          {!drillDownOrigin && originStats.length > 0 && (
-            <p className="text-[10px] text-slate-600 text-center mt-2">Clique em uma barra para ver campanhas</p>
+            </>
+          ) : (
+            <>
+              <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-[#FFFF00]" />
+                Distribuição Enove vs Corretores
+              </h3>
+              {distributionData.length === 0 ? (
+                <p className="text-slate-500 text-sm">Sem dados</p>
+              ) : (
+                <div className="h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={distributionData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                        {distributionData.map((_, index) => (
+                          <Cell key={`cell-${index}`} fill={index === 0 ? "hsl(var(--primary))" : "#22c55e" } />
+                        ))}
+                      </Pie>
+                      <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Bottom Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-        {/* Distribution Pie */}
-        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
-            <BarChart3 className="w-4 h-4 text-[#FFFF00]" />
-            Distribuição de Cadastros
-          </h3>
-          <div className="h-[200px]">
-            {isLoading ? (
-              <LoadingChart />
-            ) : distributionData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie data={distributionData} cx="50%" cy="50%" innerRadius={45} outerRadius={75} paddingAngle={3} dataKey="value" nameKey="name">
-                    <Cell fill="#FFFF00" />
-                    <Cell fill="#22c55e" />
-                  </Pie>
-                  <Tooltip contentStyle={{ backgroundColor: "#1e1e22", border: "1px solid #2a2a2e", borderRadius: "8px", fontSize: "12px" }} formatter={(value: number) => [`${value} leads`, "Leads"]} />
-                  <Legend verticalAlign="bottom" iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
-                </PieChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full flex items-center justify-center text-slate-500 text-sm">Nenhum dado disponível</div>
-            )}
-          </div>
-          <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-[#2a2a2e]">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-[#FFFF00]">{enoveLeads}</p>
-              <p className="text-xs text-slate-500">Enove</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-green-500">{brokerLeads}</p>
-              <p className="text-xs text-slate-500">Corretores</p>
-            </div>
-          </div>
-        </div>
-
+      {/* Pages + Sources */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* Top Pages */}
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-white mb-4">Páginas Mais Acessadas</h3>
-          {isLoading ? (
-            <LoadingList />
-          ) : pageStats.length > 0 ? (
-            <div className="space-y-3">
-              {pageStats.map((page, index) => (
-                <div key={page.path} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0", index === 0 ? "bg-[#FFFF00]/20 text-[#FFFF00]" : "bg-[#2a2a2e] text-slate-500")}>{index + 1}</span>
-                    <span className="text-sm text-white truncate">{page.path}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-sm font-medium text-white">{page.views}</span>
-                    <span className="text-xs text-slate-500">({page.percentage.toFixed(0)}%)</span>
-                  </div>
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <Eye className="w-4 h-4 text-[#FFFF00]" />
+            Páginas Mais Visitadas
+          </h3>
+          <div className="space-y-2">
+            {pageStats.map((page) => (
+              <div key={page.path} className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2a2a2e]">
+                <span className="text-sm text-slate-300 truncate max-w-[200px]">{page.path}</span>
+                <div className="text-right">
+                  <span className="text-sm font-medium text-white">{page.views}</span>
+                  <span className="text-xs text-slate-500 ml-2">({page.percentage.toFixed(1)}%)</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-slate-500 text-sm">Nenhum dado disponível</div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        {/* Origin Table */}
+        {/* Source Stats */}
         <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-4 sm:p-6">
-          <h3 className="text-sm sm:text-base font-medium text-white mb-4">Leads por Origem</h3>
-          {isLoading ? (
-            <LoadingList />
-          ) : originStats.length > 0 ? (
-            <div className="space-y-2">
-              {originStats.slice(0, 6).map((origin) => (
-                <div key={origin.name} className="flex items-center justify-between py-1.5">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: ORIGIN_COLORS[origin.type] }} />
-                    <span className="text-sm text-white truncate">{origin.displayName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className={cn("px-2 py-0.5 rounded text-xs font-medium", getOriginBadgeClass(origin.type))}>{getOriginTypeLabel(origin.type)}</span>
-                    <span className="text-sm font-bold text-white w-8 text-right">{origin.leads}</span>
-                  </div>
+          <h3 className="text-sm sm:text-base font-medium text-white mb-4 flex items-center gap-2">
+            <Target className="w-4 h-4 text-[#FFFF00]" />
+            Fontes de Leads
+          </h3>
+          <div className="space-y-2">
+            {sourceStats.map((source) => (
+              <div key={source.name} className="flex items-center justify-between p-2 rounded-lg hover:bg-[#2a2a2e]">
+                <span className="text-sm text-slate-300">{source.name}</span>
+                <div className="text-right">
+                  <span className="text-sm font-medium text-white">{source.leads}</span>
+                  <span className="text-xs text-slate-500 ml-2">({source.percentage.toFixed(1)}%)</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-slate-500 text-sm">Nenhum dado disponível</div>
-          )}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -777,68 +550,34 @@ const AnalyticsDashboard = () => {
 };
 
 // Helper components
-const StatCard = ({ icon: Icon, label, value, isLoading, highlight = false }: { icon: React.ElementType; label: string; value: string | number; isLoading: boolean; highlight?: boolean }) => (
-  <div className={cn("bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-3 sm:p-4", highlight && "ring-1 ring-[#FFFF00]/20")}>
-    <div className="flex items-center gap-2 sm:gap-3">
-      <div className={cn("w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0", highlight ? "bg-[#FFFF00]/20" : "bg-[#FFFF00]/10")}>
-        <Icon className="w-4 h-4 sm:w-5 sm:h-5 text-[#FFFF00]" />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="text-xs text-slate-500 truncate">{label}</p>
-        {isLoading ? (
-          <div className="h-5 sm:h-6 w-12 bg-[#2a2a2e] animate-pulse rounded mt-0.5" />
-        ) : (
-          <p className={cn("text-base sm:text-lg font-bold text-white truncate", highlight && "text-[#FFFF00]")}>{value}</p>
-        )}
-      </div>
+const StatCard = ({ icon: Icon, label, value, isLoading, highlight }: any) => (
+  <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-xl p-3 sm:p-4">
+    <div className="flex items-center gap-2 mb-1">
+      <Icon className="w-4 h-4 text-[#FFFF00]" />
+      <span className="text-xs text-slate-400">{label}</span>
     </div>
-  </div>
-);
-
-const LegendItem = ({ color, label }: { color: string; label: string }) => (
-  <div className="flex items-center gap-1.5">
-    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: color }} />
-    <span className="text-xs text-slate-500">{label}</span>
+    {isLoading ? (
+      <div className="h-6 w-16 bg-[#2a2a2e] rounded animate-pulse" />
+    ) : (
+      <p className={cn("text-base sm:text-lg font-bold truncate", highlight ? "text-[#FFFF00]" : "text-white")}>
+        {value}
+      </p>
+    )}
   </div>
 );
 
 const LoadingChart = () => (
-  <div className="h-full w-full flex items-center justify-center">
+  <div className="flex items-center justify-center h-full">
     <RefreshCw className="w-6 h-6 animate-spin text-[#FFFF00]" />
   </div>
 );
 
-const LoadingList = () => (
-  <div className="space-y-3">
-    {[1, 2, 3, 4, 5].map((i) => (
-      <div key={i} className="h-6 bg-[#2a2a2e] animate-pulse rounded" />
-    ))}
-  </div>
-);
-
 const formatPagePath = (path: string): string => {
-  if (path === "/" || path === "") return "Página Inicial";
-  if (path === "/estanciavelha") return "Landing Estância Velha";
-  if (path === "/portao/goldenview") return "GoldenView";
-  if (path.includes("/goldenview/")) return `GoldenView: ${path.split("/").pop()}`;
-  if (path.startsWith("/c/")) return `Corretor: ${path.replace("/c/", "")}`;
-  return path;
-};
-
-const getOriginTypeLabel = (type: OriginType): string => {
-  const labels: Record<OriginType, string> = { paid: "Pago", organic: "Org.", referral: "Ref.", manual: "Man.", unknown: "-" };
-  return labels[type];
-};
-
-const getOriginBadgeClass = (type: OriginType): string => {
-  const classes: Record<OriginType, string> = {
-    paid: "bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300",
-    organic: "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300",
-    referral: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
-    manual: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
-    unknown: "bg-slate-100 dark:bg-slate-900/30 text-slate-700 dark:text-slate-300"
-  };
-  return classes[type];
+  if (path === "/" || path === "") return "Home";
+  const cleanPath = path.replace(/^\//, "").replace(/\/$/, "");
+  const segments = cleanPath.split("/");
+  const last = segments[segments.length - 1];
+  return last.charAt(0).toUpperCase() + last.slice(1).replace(/-/g, " ");
 };
 
 export default AnalyticsDashboard;
