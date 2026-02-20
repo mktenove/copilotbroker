@@ -1,51 +1,72 @@
 
 
-# Correcao: Proposta via Kanban nao salva e nao puxa empreendimento
+# Reestruturar Mauricio Cardoso com identidade visual e fluxo comercial do GoldenView
 
-## Problema identificado
+## Resumo
 
-Dois bugs ao criar proposta pelo botao do Kanban:
+Transformar a landing page do Mauricio Cardoso para usar a mesma identidade visual do GoldenView (tema escuro luxo com dourado, animacoes de scroll, classes utilitarias como `card-luxury`, `btn-primary`, `text-gold-gradient`, `floating-cta`) e a mesma ordem comercial de secoes, mantendo todo o conteudo textual e informacoes do MC.
 
-1. **Empreendimento nao pre-preenche**: O `PropostaModal` no KanbanBoard e aberto sem as props `leadProjectId`, `leadBrokerId` e `projects`, entao o campo de empreendimento fica vazio.
+## Mudanca visual principal
 
-2. **Proposta nao aparece na pagina do Lead**: O `onConfirm` do KanbanBoard chama `registrarProposta()` do hook `use-kanban-leads`, que apenas atualiza campos no lead (`valor_proposta`, `status`) mas **nunca insere um registro na tabela `propostas`**. Por isso, na pagina do Lead (que usa `usePropostas` para buscar da tabela `propostas`), nada aparece.
+A pagina atualmente usa um tema claro botanico (fundo creme, verde floresta, tons terrosos). Sera convertida para o tema escuro do GoldenView:
+- Fundo escuro (`bg-background text-foreground` no dark mode)
+- Acentos dourados (`text-gold-gradient`, `text-primary`, `btn-primary`)
+- Cards com `card-luxury` (vidro fosco com borda dourada no hover)
+- CTA flutuante com `floating-cta` dourado
+- Todas as secoes com IntersectionObserver para animacoes de entrada
 
-## Solucao
+## Ordem das secoes (igual GoldenView)
 
-### Arquivo: `src/components/crm/KanbanBoard.tsx`
-
-**1. Passar dados do lead para o PropostaModal**
-
-Alterar o estado `propostaModal` para incluir `leadProjectId`, `leadBrokerId` e passar a lista de `projects` ao componente:
-
-```text
-propostaModal: { open, leadId, leadProjectId, leadBrokerId }
-```
-
-Ao abrir o modal (via `onOpenProposta`), buscar o lead nos dados locais para extrair `project_id` e `broker_id`.
-
-**2. Usar `criarProposta` do hook `usePropostas` em vez de `registrarProposta`**
-
-Importar e usar `usePropostas` no KanbanBoard para que o `onConfirm` do modal chame `criarProposta()`, que:
-- Insere o registro na tabela `propostas` com todas as parcelas
-- Atualiza o status do lead para `docs_received`
-- Registra a interacao no timeline
-
-Como `usePropostas` precisa de um `leadId` fixo, sera instanciado com o `leadId` do modal aberto.
-
-### Arquivo: `src/hooks/use-kanban-leads.ts`
-
-Nenhuma alteracao necessaria neste hook. A funcao `registrarProposta` existente continua disponivel para outros usos legados, mas o fluxo do modal passara a usar `criarProposta`.
-
-## Resultado esperado
-
-- Ao abrir proposta pelo Kanban, o empreendimento do lead ja vem selecionado
-- Ao salvar, a proposta e gravada na tabela `propostas` com parcelas
-- A proposta aparece imediatamente na pagina do Lead
-- O lead muda para a coluna "Proposta" no Kanban
+1. **MCHeader** - Adaptar para tema escuro (fundo transparente → charcoal com blur)
+2. **MCHeroSection** - Manter imagem do predio, trocar overlay verde por overlay preto, usar `text-gold-gradient` no destaque, `btn-primary` dourado
+3. **MCPartnersSection** (renomear MCLocationSection) - Credenciais do endereco como cards animados estilo GVPartnersSection
+4. **MCFeaturesSection** (nova) - Unificar Conceito + Apartamentos + Wellness como diferenciais com icones, imagem da piscina, estilo GVFeaturesSection
+5. **MCTargetSection** - Transformar criterios em cards com icones estilo GVTargetAudienceSection
+6. **MCUrgencySection** (nova) - Alert de urgencia + prioridades estilo GVUrgencySection
+7. **MCBenefitsSection** - Cards com check icons estilo GVBenefitsSection
+8. **MCCallToActionSection** (nova) - CTA final com pills + quote + botao, estilo GVCallToActionSection, incluindo dados de investimento (20%, 71x, Dez/2031)
+9. **MCFormSection** - Converter para tema escuro com `card-luxury`, inputs com borda dourada
+10. **MCFooter** - Manter estrutura, adaptar para `bg-card border-t border-border`
+11. **MCFloatingCTA** - Usar classe `floating-cta` dourada + botao scroll-to-top
 
 ## Detalhes tecnicos
 
-- O `usePropostas` sera chamado condicionalmente com `propostaModal.leadId || ""` para evitar queries desnecessarias quando o modal esta fechado
-- Apos o `criarProposta` retornar `true`, o estado local dos leads no Kanban sera atualizado via `setLocalLeads` para refletir o novo status `docs_received`
-- A lista de `projects` ja esta disponivel no estado do KanbanBoard e sera passada diretamente ao modal
+### Remocao do tema light forcado
+- Na pagina `MauricioCardosoLandingPage.tsx`, remover `data-theme="light"` e classe `light`
+- Usar `className="min-h-screen bg-background text-foreground"` (igual GV)
+- Remover `bg-[hsl(var(--mc-*))]` de todos os componentes, usar tokens do tema escuro (`bg-background`, `bg-card`, `text-foreground`, `text-primary`, `text-muted-foreground`)
+
+### Componentes a criar (3)
+- `MCFeaturesSection.tsx` - Diferenciais unificados (conceito + aptos + wellness) com IntersectionObserver
+- `MCUrgencySection.tsx` - Secao de urgencia com alert e grid de prioridades
+- `MCCallToActionSection.tsx` - CTA final com pills de features e dados de investimento
+
+### Componentes a editar (8)
+- `MCHeader.tsx` - Trocar paleta MC por tokens do tema (charcoal/backdrop-blur, text-foreground, btn-primary)
+- `MCHeroSection.tsx` - Overlay escuro, text-gold-gradient, btn-primary
+- `MCLocationSection.tsx` - Renomear para MCPartnersSection, adicionar IntersectionObserver, cards com card-luxury
+- `MCTargetSection.tsx` - Cards com icones e card-luxury, IntersectionObserver
+- `MCBenefitsSection.tsx` - Grid de cards com icones e IntersectionObserver
+- `MCFormSection.tsx` - card-luxury, inputs com estilo do GV, btn-primary
+- `MCFloatingCTA.tsx` - Usar floating-cta + scroll-to-top
+- `MCFooter.tsx` - bg-card, border-border, divider-gold
+
+### Componentes que serao removidos como separados
+- `MCConceptSection.tsx` (conteudo migra para MCFeaturesSection)
+- `MCApartmentsSection.tsx` (conteudo migra para MCFeaturesSection)
+- `MCWellnessSection.tsx` (conteudo migra para MCFeaturesSection)
+- `MCInvestmentSection.tsx` (conteudo migra para MCCallToActionSection)
+
+### Arquivos de pagina a editar
+- `MauricioCardosoLandingPage.tsx` - Nova ordem de secoes, remover tema light
+- `MauricioCardosoBrokerLandingPage.tsx` - Mesma nova ordem de secoes
+- `mauriciocardoso/index.ts` - Atualizar exports
+
+### O que NAO muda
+- Todo o conteudo textual do Mauricio Cardoso
+- SEO (meta tags, schemas, canonical URLs, pixel, clarity)
+- Logica de formulario e submissao de leads
+- Fluxo /obrigado
+- Logica de broker na pagina broker
+- Imagem do predio (hero) e imagem da piscina (features)
+
