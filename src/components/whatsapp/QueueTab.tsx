@@ -69,13 +69,19 @@ function DetailRow({ icon: Icon, label, value }: { icon: any; label: string; val
   );
 }
 
-function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: number; replies: number } }) {
+function QueueStats({ stats }: { stats: { queued: number; sent: number; failed: number; replies: number; paused: number } }) {
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-4">
       <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
         <CardContent className="py-3 sm:py-4 text-center">
           <p className="text-2xl font-bold text-white">{stats.queued}</p>
           <p className="text-xs text-slate-500">Na fila</p>
+        </CardContent>
+      </Card>
+      <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+        <CardContent className="py-3 sm:py-4 text-center">
+          <p className="text-2xl font-bold text-yellow-400">{stats.paused}</p>
+          <p className="text-xs text-slate-500">Pausados</p>
         </CardContent>
       </Card>
       <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
@@ -273,7 +279,7 @@ export function QueueTab() {
   }
 
   const pendingMessages = queue.filter(
-    m => m.status === "queued" || m.status === "scheduled" || m.status === "sending"
+    m => m.status === "queued" || m.status === "scheduled" || m.status === "sending" || m.status === "paused_by_system"
   );
   const completedMessages = queue.filter(
     m => m.status === "sent" || m.status === "failed" || m.status === "cancelled"

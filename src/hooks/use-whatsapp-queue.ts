@@ -10,6 +10,7 @@ interface QueueStats {
   sent: number;
   failed: number;
   replies: number;
+  paused: number;
 }
 
 export function useWhatsAppQueue(brokerFilterId?: string) {
@@ -70,14 +71,30 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     return query;
   };
 
-  // Aggregate count: queued + scheduled
+  // Aggregate count: queued + scheduled + paused_by_system
   const { data: queuedCount = 0 } = useQuery({
     queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId],
     queryFn: async () => {
       let query = supabase
         .from("whatsapp_message_queue")
         .select("*", { count: "exact", head: true })
-        .in("status", ["queued", "scheduled"]);
+        .in("status", ["queued", "scheduled", "paused_by_system"]);
+      query = applyBrokerFilter(query);
+      const { count, error } = await query;
+      if (error) throw error;
+      return count || 0;
+    },
+    refetchInterval: 30000,
+  });
+
+  // Aggregate count: paused_by_system
+  const { data: pausedCount = 0 } = useQuery({
+    queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId],
+    queryFn: async () => {
+      let query = supabase
+        .from("whatsapp_message_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "paused_by_system");
       query = applyBrokerFilter(query);
       const { count, error } = await query;
       if (error) throw error;
@@ -166,6 +183,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
         queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId] });
         queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-sent", effectiveBrokerId] });
         queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-failed", effectiveBrokerId] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId] });
       })
       .on("postgres_changes", {
         event: "*",
@@ -187,6 +205,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     sent: sentCount,
     failed: failedCount,
     replies: repliesCount,
+    paused: pausedCount,
   };
 
   // Calculate next send countdown
