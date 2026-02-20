@@ -54,6 +54,7 @@ import {
   autoDetectMapping,
   processImportData,
   downloadCsvTemplate,
+  normalizePhone,
   FieldMapping,
   RowValidation,
   ImportProcessResult,
@@ -149,6 +150,7 @@ export function CsvImportModal({
   const [processResult, setProcessResult] = useState<ImportProcessResult | null>(null);
   const [showInvalid, setShowInvalid] = useState(false);
   const [showFixed, setShowFixed] = useState(false);
+  const [phoneEdits, setPhoneEdits] = useState<Record<number, string>>({});
 
   // Step 6 — Review
   const [selectedLeads, setSelectedLeads] = useState<Set<number>>(new Set());
@@ -209,6 +211,7 @@ export function CsvImportModal({
     setAssignBroker(!!defaultBrokerId);
     setBrokerId(defaultBrokerId || "");
     setProcessResult(null);
+    setPhoneEdits({});
     setShowInvalid(false);
     setShowFixed(false);
     setSelectedLeads(new Set());
@@ -335,6 +338,105 @@ export function CsvImportModal({
   };
 
   const allVisibleSelected = filteredReviewRows.length > 0 && filteredReviewRows.every(r => selectedLeads.has(r.idx));
+
+  // ── Step 5: Revalidation helpers ─────────────────────────────────────
+
+  const revalidateRow = (invalidIndex: number) => {
+    if (!processResult) return;
+    const row = processResult.invalidRows[invalidIndex];
+    const editedPhone = phoneEdits[row.rowIndex] || row.phoneResult.original;
+    const result = normalizePhone(editedPhone, autoFix9thDigit, defaultDdd);
+
+    if (result.isValid && row.name && row.name.length >= 2) {
+      const updatedInvalid = processResult.invalidRows.filter((_, i) => i !== invalidIndex);
+      const newValid: RowValidation = {
+        ...row,
+        phone: result.normalized,
+        phoneResult: result,
+        isValid: true,
+        errors: [],
+      };
+      const updatedValid = [...processResult.validRows, newValid];
+
+      setProcessResult({
+        ...processResult,
+        invalidRows: updatedInvalid,
+        validRows: updatedValid,
+        phonesFixed: result.wasFixed
+          ? [...processResult.phonesFixed, newValid]
+          : processResult.phonesFixed,
+      });
+      setSelectedLeads(prev => new Set([...prev, updatedValid.length - 1]));
+      // Clean up edit
+      setPhoneEdits(prev => {
+        const next = { ...prev };
+        delete next[row.rowIndex];
+        return next;
+      });
+      toast.success(`${row.name} recuperado!`);
+    } else {
+      // Update error inline — force re-render by updating processResult
+      const updatedInvalid = [...processResult.invalidRows];
+      updatedInvalid[invalidIndex] = {
+        ...row,
+        phoneResult: result,
+        errors: result.isValid
+          ? (row.name && row.name.length >= 2 ? [] : ["Nome inválido ou vazio"])
+          : [result.error || "Telefone inválido"],
+      };
+      setProcessResult({ ...processResult, invalidRows: updatedInvalid });
+    }
+  };
+
+  const revalidateAllEdited = () => {
+    if (!processResult) return;
+    const editedIndices = processResult.invalidRows
+      .map((r, i) => (phoneEdits[r.rowIndex] ? i : -1))
+      .filter(i => i !== -1)
+      .reverse(); // reverse to process from end to avoid index shift
+
+    let recovered = 0;
+    let currentResult = { ...processResult };
+
+    for (const idx of editedIndices) {
+      const row = currentResult.invalidRows[idx];
+      const editedPhone = phoneEdits[row.rowIndex] || row.phoneResult.original;
+      const result = normalizePhone(editedPhone, autoFix9thDigit, defaultDdd);
+
+      if (result.isValid && row.name && row.name.length >= 2) {
+        const newValid: RowValidation = {
+          ...row,
+          phone: result.normalized,
+          phoneResult: result,
+          isValid: true,
+          errors: [],
+        };
+        currentResult = {
+          ...currentResult,
+          invalidRows: currentResult.invalidRows.filter((_, i) => i !== idx),
+          validRows: [...currentResult.validRows, newValid],
+          phonesFixed: result.wasFixed
+            ? [...currentResult.phonesFixed, newValid]
+            : currentResult.phonesFixed,
+        };
+        recovered++;
+      }
+    }
+
+    if (recovered > 0) {
+      setProcessResult(currentResult);
+      setSelectedLeads(prev => {
+        const next = new Set(prev);
+        const baseIdx = processResult.validRows.length;
+        for (let i = 0; i < recovered; i++) next.add(baseIdx + i);
+        return next;
+      });
+      setPhoneEdits({});
+      toast.success(`${recovered} contato(s) recuperado(s)!`);
+    } else {
+      toast.error("Nenhum número ficou válido após revalidação");
+    }
+  };
 
   // ── Step 7: Import ──────────────────────────────────────────────────
 
@@ -844,7 +946,20 @@ export function CsvImportModal({
                         Ver {processResult.invalidRows.length} linhas inválidas
                       </CollapsibleTrigger>
                       <CollapsibleContent>
-                        <div className="border border-[#2a2a2e] rounded-lg overflow-auto max-h-[200px] mt-2">
+                        {/* Revalidar todos button */}
+                        {Object.keys(phoneEdits).length > 0 && (
+                          <div className="flex justify-end mt-2 mb-1">
+                            <button
+                              type="button"
+                              onClick={revalidateAllEdited}
+                              className="text-xs text-[#FFFF00] hover:underline flex items-center gap-1"
+                            >
+                              <Wrench className="w-3 h-3" />
+                              Revalidar todos editados ({Object.keys(phoneEdits).length})
+                            </button>
+                          </div>
+                        )}
+                        <div className="border border-[#2a2a2e] rounded-lg overflow-auto max-h-[250px] mt-2">
                           <table className="w-full text-xs">
                             <thead className="bg-[#1e1e22] sticky top-0">
                               <tr>
@@ -856,11 +971,28 @@ export function CsvImportModal({
                             </thead>
                             <tbody>
                               {processResult.invalidRows.map((r, i) => (
-                                <tr key={i} className="border-t border-[#2a2a2e]/50">
+                                <tr key={`${r.rowIndex}-${i}`} className="border-t border-[#2a2a2e]/50">
                                   <td className="p-2 text-slate-500">{r.rowIndex}</td>
                                   <td className="p-2 text-white truncate max-w-[120px]">{r.name || "(vazio)"}</td>
-                                  <td className="p-2 font-mono text-white">{r.phoneResult.original || "-"}</td>
-                                  <td className="p-2 text-red-500">{r.errors.join("; ")}</td>
+                                  <td className="p-2">
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="text"
+                                        value={phoneEdits[r.rowIndex] ?? r.phoneResult.original}
+                                        onChange={e => setPhoneEdits(prev => ({ ...prev, [r.rowIndex]: e.target.value }))}
+                                        className="font-mono text-sm bg-[#0f0f12] border border-[#2a2a2e] rounded px-2 py-1 text-white w-36 focus:border-[#FFFF00]/50 focus:outline-none"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => revalidateRow(i)}
+                                        className="text-[#FFFF00] hover:text-[#FFFF00]/80 p-1"
+                                        title="Revalidar número"
+                                      >
+                                        <Check className="w-3.5 h-3.5" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                  <td className="p-2 text-red-500 max-w-[140px] truncate">{r.errors.join("; ")}</td>
                                 </tr>
                               ))}
                             </tbody>
