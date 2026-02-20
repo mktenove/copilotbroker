@@ -222,7 +222,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
   // Calculate next send countdown from pending queue
   useEffect(() => {
     const nextScheduled = pendingQueue.find(
-      m => (m.status === "queued" || m.status === "scheduled" || m.status === "paused_by_system") && 
+      m => (m.status === "queued" || m.status === "scheduled") && 
            new Date(m.scheduled_at) > new Date()
     );
     
@@ -301,6 +301,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
 
   const hasMorePending = pendingQueue.length === (pendingPage + 1) * PAGE_SIZE;
   const hasMoreHistory = historyQueue.length === (historyPage + 1) * PAGE_SIZE;
+  const allPaused = pendingQueue.length > 0 && pendingQueue.every(m => m.status === "paused_by_system");
 
   return {
     pendingQueue,
@@ -316,5 +317,6 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     loadMoreHistory: () => setHistoryPage(p => p + 1),
     hasMorePending,
     hasMoreHistory,
+    allPaused,
   };
 }
