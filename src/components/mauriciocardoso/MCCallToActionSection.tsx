@@ -110,7 +110,7 @@ const MCCallToActionSection = () => {
           <div className={`transition-all duration-1000 delay-500 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-5'}`}>
             <div className="divider-gold mx-auto mb-8" />
             <p className="text-lg text-muted-foreground mb-4">
-              O Mauricio Cardoso vai acontecer com ou sem você.
+              Este empreendimento vai acontecer com ou sem você.
             </p>
             <p className="text-muted-foreground mb-8">A diferença é:</p>
             <p className="font-serif text-xl md:text-2xl font-semibold text-foreground mb-8">
