@@ -118,8 +118,17 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
     >
       <div className="flex items-center gap-2 min-w-0">
         <span className="text-xs text-slate-500 flex-shrink-0">
-          <Clock className="w-3 h-3 inline mr-0.5" />
-          {format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm")}
+          {message.status === "paused_by_system" ? (
+            <>
+              <AlertTriangle className="w-3 h-3 inline mr-0.5 text-yellow-500" />
+              Pausado
+            </>
+          ) : (
+            <>
+              <Clock className="w-3 h-3 inline mr-0.5" />
+              Envio: {format(new Date(message.scheduled_at), "dd/MM HH:mm")}
+            </>
+          )}
         </span>
         <span className="text-sm text-white font-medium truncate flex-shrink-0 max-w-[120px]">
           {message.lead?.name || message.phone}
@@ -154,6 +163,12 @@ function PendingMessageCard({ message, onCancel }: { message: any; onCancel: (id
               <DetailRow icon={Hash} label="Etapa" value={`Etapa ${message.step_number}`} />
             )}
             <DetailRow icon={RotateCw} label="Tentativas" value={`${message.attempts || 0}/${message.max_attempts || 3}`} />
+            {message.status !== "paused_by_system" && (
+              <DetailRow icon={Calendar} label="Envio programado" value={format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm:ss")} />
+            )}
+            {message.status === "paused_by_system" && (
+              <p className="text-xs text-yellow-500">Horário será recalculado quando a campanha for retomada</p>
+            )}
           </div>
         </div>
       )}
@@ -271,6 +286,7 @@ export function QueueTab() {
     isLoading,
     formatNextSendIn,
     nextScheduledAt,
+    allPaused,
     cancelMessage,
     retryMessage,
     loadMorePending,
@@ -312,10 +328,14 @@ export function QueueTab() {
         <div className="flex items-center gap-2 text-sm text-slate-400 bg-[#1a1a1d] border border-[#2a2a2e] rounded-full px-3 py-1.5 w-fit">
           <Timer className="w-4 h-4 animate-pulse text-primary" />
           <span>Próximo envio em:</span>
-          <span className="font-mono text-primary font-medium">
-            {formatNextSendIn()}
-            {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
-          </span>
+          {allPaused ? (
+            <span className="text-yellow-400 font-medium">Campanha pausada</span>
+          ) : (
+            <span className="font-mono text-primary font-medium">
+              {formatNextSendIn()}
+              {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
+            </span>
+          )}
         </div>
       </div>
 
