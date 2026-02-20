@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CRMLead, LeadStatus } from "@/types/crm";
 import { toast } from "sonner";
@@ -13,17 +14,24 @@ interface UseKanbanLeadsOptions {
 }
 
 export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead }: UseKanbanLeadsOptions) {
-  const [leads, setLeads] = useState<CRMLead[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const fetchLeads = useCallback(async () => {
-    setIsLoading(true);
-    try {
+  const queryKey = ["kanban-leads", brokerId, isAdmin, projectId];
+
+  const { data: leads = [], isLoading } = useQuery<CRMLead[]>({
+    queryKey,
+    queryFn: async () => {
       let query = supabase
         .from("leads")
         .select(`
-          *,
+          id, name, whatsapp, email, cpf, created_at, updated_at, source, status,
+          lead_origin, lead_origin_detail, broker_id, project_id, roleta_id,
+          corretor_atribuido_id, atribuido_em, atendimento_iniciado_em,
+          reserva_expira_em, status_distribuicao, data_agendamento, tipo_agendamento,
+          comparecimento, valor_proposta, data_envio_proposta, valor_final_venda,
+          data_fechamento, data_perda, etapa_perda, last_interaction_at, notes,
+          inactivation_reason, inactivated_at, motivo_atribuicao, auto_first_message_sent,
           broker:brokers!leads_broker_id_fkey(id, name, slug),
           project:projects(id, name, slug, city_slug),
           attribution:lead_attribution(landing_page)
@@ -43,7 +51,6 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
 
       if (error) throw error;
       
-      // Transform attribution from array to single object (take first if exists)
       const transformedData = (data || []).map((lead: any) => ({
         ...lead,
         attribution: Array.isArray(lead.attribution) && lead.attribution.length > 0 
@@ -51,22 +58,26 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
           : lead.attribution
       }));
       
-      setLeads(transformedData as unknown as CRMLead[]);
-    } catch (error) {
-      console.error("Erro ao buscar leads:", error);
-      toast.error("Erro ao carregar leads.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [brokerId, isAdmin, projectId]);
+      return transformedData as unknown as CRMLead[];
+    },
+    staleTime: 30 * 1000, // 30s
+    refetchOnWindowFocus: true,
+  });
 
+  // Local state for optimistic updates
+  const [localLeads, setLocalLeads] = useState<CRMLead[]>([]);
+  
+  // Sync query data to local state
   useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+    setLocalLeads(leads);
+  }, [leads]);
 
-  // Realtime subscription for lead updates (reassignment, status changes)
+  const fetchLeads = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey });
+  }, [queryClient, queryKey]);
+
+  // Realtime subscription for lead updates
   useEffect(() => {
-    // Clean up previous channel
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
     }
@@ -75,80 +86,51 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       .channel('kanban-leads-realtime')
       .on(
         'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'leads',
-        },
+        { event: 'UPDATE', schema: 'public', table: 'leads' },
         (payload) => {
           const updatedLead = payload.new as any;
           const oldLead = payload.old as any;
 
-          // Lead became inactive → remove from kanban
           if (updatedLead.status === 'inactive') {
-            setLeads(prev => prev.filter(l => l.id !== updatedLead.id));
+            setLocalLeads(prev => prev.filter(l => l.id !== updatedLead.id));
             return;
           }
 
-          // For brokers: check if broker_id changed (reassignment)
           if (!isAdmin && brokerId) {
             const wasMyLead = oldLead.broker_id === brokerId;
             const isMyLead = updatedLead.broker_id === brokerId;
 
             if (wasMyLead && !isMyLead) {
-              // Lead was reassigned away from this broker → remove
-              setLeads(prev => prev.filter(l => l.id !== updatedLead.id));
+              setLocalLeads(prev => prev.filter(l => l.id !== updatedLead.id));
               return;
             }
-
             if (!wasMyLead && isMyLead) {
-              // Lead was reassigned TO this broker → refetch to get full join data
               fetchLeads();
               return;
             }
-
-            if (!isMyLead) {
-              // Not my lead, ignore
-              return;
-            }
+            if (!isMyLead) return;
           }
 
-          // Update the lead in local state (keep existing join data)
-          setLeads(prev => prev.map(l => 
-            l.id === updatedLead.id 
-              ? { ...l, ...updatedLead }
-              : l
+          setLocalLeads(prev => prev.map(l => 
+            l.id === updatedLead.id ? { ...l, ...updatedLead } : l
           ));
         }
       )
       .on(
         'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'leads',
-        },
+        { event: 'INSERT', schema: 'public', table: 'leads' },
         (payload) => {
           const newLead = payload.new as any;
-          
-          // For brokers, only add if it's their lead
           if (!isAdmin && brokerId && newLead.broker_id !== brokerId) return;
           if (newLead.status === 'inactive') return;
-
-          // Notify parent about new lead
           onNewLead?.(newLead.id, newLead.name || 'Novo lead');
-
-          // Refetch to get full join data (broker, project, attribution)
           fetchLeads();
         }
       )
       .subscribe();
 
     channelRef.current = channel;
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [brokerId, isAdmin, fetchLeads, onNewLead]);
 
   const updateLeadStatus = useCallback(async (
@@ -158,37 +140,22 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     userId?: string
   ) => {
     try {
-      // Update lead status
       const { error: updateError } = await supabase
         .from("leads")
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", leadId);
-
       if (updateError) throw updateError;
 
-      // Record the interaction
       const { error: interactionError } = await supabase
         .from("lead_interactions")
-        .insert({
-          lead_id: leadId,
-          interaction_type: "status_change",
-          old_status: oldStatus,
-          new_status: newStatus,
-          created_by: userId
-        });
-
+        .insert({ lead_id: leadId, interaction_type: "status_change", old_status: oldStatus, new_status: newStatus, created_by: userId });
       if (interactionError) throw interactionError;
 
-      // Update local state optimistically
-      setLeads(prev => prev.map(lead => 
+      setLocalLeads(prev => prev.map(lead => 
         lead.id === leadId 
           ? { ...lead, status: newStatus, updated_at: new Date().toISOString(), last_interaction_at: new Date().toISOString() }
           : lead
       ));
-
       return true;
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
@@ -211,43 +178,29 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     try {
       const { error } = await supabase
         .from("leads")
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
+        .update({ ...updates, updated_at: new Date().toISOString() })
         .eq("id", leadId);
-
       if (error) throw error;
 
-      // Log origin change if applicable
       if (options?.logOriginChange && updates.lead_origin !== undefined) {
-        const oldOrigin = options.oldOrigin || null;
-        const newOrigin = updates.lead_origin || null;
-        
-        await supabase
-          .from("lead_interactions")
-          .insert({
-            lead_id: leadId,
-            interaction_type: "origin_change",
-            notes: `Origem alterada de "${oldOrigin || 'Não definida'}" para "${newOrigin || 'Não definida'}"`,
-          });
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          interaction_type: "origin_change",
+          notes: `Origem alterada de "${options.oldOrigin || 'Não definida'}" para "${updates.lead_origin || 'Não definida'}"`,
+        });
       }
 
-      // Log inactivation if applicable
       if (options?.logInactivation && updates.status === "inactive") {
-        await supabase
-          .from("lead_interactions")
-          .insert({
-            lead_id: leadId,
-            interaction_type: "inactivation",
-            old_status: options.oldStatus,
-            new_status: "inactive",
-            notes: `Lead inativado. Motivo: ${options.inactivationReason || 'Não especificado'}`,
-          });
+        await supabase.from("lead_interactions").insert({
+          lead_id: leadId,
+          interaction_type: "inactivation",
+          old_status: options.oldStatus,
+          new_status: "inactive",
+          notes: `Lead inativado. Motivo: ${options.inactivationReason || 'Não especificado'}`,
+        });
       }
 
-      setLeads(prev => {
-        // If lead was inactivated, remove from local state
+      setLocalLeads(prev => {
         if (updates.status === "inactive") {
           return prev.filter(lead => lead.id !== leadId);
         }
@@ -258,7 +211,6 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
             : lead
         );
       });
-
       return true;
     } catch (error) {
       console.error("Erro ao atualizar lead:", error);
@@ -267,334 +219,125 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     }
   }, []);
 
-  const inactivateLead = useCallback(async (
-    leadId: string,
-    reason: string,
-    oldStatus: LeadStatus
-  ) => {
-    // Cancel active cadence if any
+  const inactivateLead = useCallback(async (leadId: string, reason: string, oldStatus: LeadStatus) => {
     await cancelCadenciaForLead(leadId);
     return updateLead(
       leadId,
-      {
-        status: "inactive" as LeadStatus,
-        inactivation_reason: reason,
-        inactivated_at: new Date().toISOString(),
-        data_perda: new Date().toISOString(),
-        etapa_perda: oldStatus,
-      } as any,
-      {
-        logInactivation: true,
-        oldStatus,
-        inactivationReason: reason
-      }
+      { status: "inactive" as LeadStatus, inactivation_reason: reason, inactivated_at: new Date().toISOString(), data_perda: new Date().toISOString(), etapa_perda: oldStatus } as any,
+      { logInactivation: true, oldStatus, inactivationReason: reason }
     );
   }, [updateLead]);
-
-  // === FUNNEL TRANSITION METHODS ===
 
   const iniciarAtendimento = useCallback(async (leadId: string) => {
     try {
       const user = (await supabase.auth.getUser()).data.user;
       const { data: brokerData } = await supabase
         .from("brokers").select("id, name").eq("user_id", user?.id ?? "").single();
-
       const now = new Date().toISOString();
       const { error } = await supabase
         .from("leads")
-        .update({
-          status: "info_sent" as any,
-          atendimento_iniciado_em: now,
-          status_distribuicao: 'atendimento_iniciado' as any,
-          reserva_expira_em: null,
-          updated_at: now,
-        })
+        .update({ status: "info_sent" as any, atendimento_iniciado_em: now, status_distribuicao: 'atendimento_iniciado' as any, reserva_expira_em: null, updated_at: now })
         .eq("id", leadId);
       if (error) throw error;
-
       await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "atendimento_iniciado" as any,
-        old_status: "new",
-        new_status: "info_sent",
-        broker_id: brokerData?.id,
-        notes: `Atendimento iniciado por ${brokerData?.name || "corretor"}`,
-        created_by: user?.id,
+        lead_id: leadId, interaction_type: "atendimento_iniciado" as any, old_status: "new", new_status: "info_sent",
+        broker_id: brokerData?.id, notes: `Atendimento iniciado por ${brokerData?.name || "corretor"}`, created_by: user?.id,
       });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now, last_interaction_at: now } : l
-      ));
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao iniciar atendimento:", error);
-      toast.error("Erro ao iniciar atendimento.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao iniciar atendimento:", error); toast.error("Erro ao iniciar atendimento."); return false; }
   }, []);
 
   const registrarAgendamento = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          status: "scheduling" as any,
-          data_agendamento: dataAgendamento.toISOString(),
-          tipo_agendamento: tipoAgendamento,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ status: "scheduling" as any, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "agendamento_registrado" as any,
-        old_status: "info_sent",
-        new_status: "scheduling",
-        notes: `Agendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}`,
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now, last_interaction_at: now } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "agendamento_registrado" as any, old_status: "info_sent", new_status: "scheduling", notes: `Agendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}` });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao registrar agendamento:", error);
-      toast.error("Erro ao registrar agendamento.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao registrar agendamento:", error); toast.error("Erro ao registrar agendamento."); return false; }
   }, []);
 
   const registrarComparecimentoEProposta = useCallback(async (leadId: string, valorProposta: number) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          status: "docs_received" as any,
-          comparecimento: true,
-          valor_proposta: valorProposta,
-          data_envio_proposta: now,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ status: "docs_received" as any, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
       await supabase.from("lead_interactions").insert([
-        {
-          lead_id: leadId,
-          interaction_type: "comparecimento_registrado" as any,
-          notes: "✅ Cliente compareceu",
-        },
-        {
-          lead_id: leadId,
-          interaction_type: "proposta_enviada" as any,
-          old_status: "scheduling",
-          new_status: "docs_received",
-          notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-        }
+        { lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "✅ Cliente compareceu" },
+        { lead_id: leadId, interaction_type: "proposta_enviada" as any, old_status: "scheduling", new_status: "docs_received", notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` }
       ]);
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l
-      ));
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao registrar comparecimento:", error);
-      toast.error("Erro ao registrar comparecimento.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao registrar comparecimento:", error); toast.error("Erro ao registrar comparecimento."); return false; }
   }, []);
 
   const registrarComparecimento = useCallback(async (leadId: string) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          comparecimento: true,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ comparecimento: true, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "comparecimento_registrado" as any,
-        notes: "✅ Cliente compareceu",
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, comparecimento: true, updated_at: now, last_interaction_at: now } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "✅ Cliente compareceu" });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, comparecimento: true, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao registrar comparecimento:", error);
-      toast.error("Erro ao registrar comparecimento.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao registrar comparecimento:", error); toast.error("Erro ao registrar comparecimento."); return false; }
   }, []);
 
   const registrarProposta = useCallback(async (leadId: string, valorProposta: number) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          status: "docs_received" as any,
-          valor_proposta: valorProposta,
-          data_envio_proposta: now,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ status: "docs_received" as any, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "proposta_enviada" as any,
-        old_status: "scheduling",
-        new_status: "docs_received",
-        notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "proposta_enviada" as any, old_status: "scheduling", new_status: "docs_received", notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao registrar proposta:", error);
-      toast.error("Erro ao registrar proposta.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao registrar proposta:", error); toast.error("Erro ao registrar proposta."); return false; }
   }, []);
 
   const registrarNaoComparecimento = useCallback(async (leadId: string) => {
     try {
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          comparecimento: false,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ comparecimento: false, updated_at: new Date().toISOString() }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "comparecimento_registrado" as any,
-        notes: "❌ Cliente não compareceu",
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, comparecimento: false, last_interaction_at: new Date().toISOString() } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "❌ Cliente não compareceu" });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, comparecimento: false, last_interaction_at: new Date().toISOString() } : l));
       return true;
-    } catch (error) {
-      console.error("Erro:", error);
-      return false;
-    }
+    } catch (error) { console.error("Erro:", error); return false; }
   }, []);
 
   const reagendarLead = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          data_agendamento: dataAgendamento.toISOString(),
-          tipo_agendamento: tipoAgendamento,
-          comparecimento: null,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "reagendamento" as any,
-        notes: `Reagendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}`,
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now, last_interaction_at: now } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "reagendamento" as any, notes: `Reagendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}` });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro:", error);
-      return false;
-    }
+    } catch (error) { console.error("Erro:", error); return false; }
   }, []);
 
   const confirmarVenda = useCallback(async (leadId: string, valorFinal: number, dataFechamento: Date) => {
     try {
-      // Cancel active cadence if any
       await cancelCadenciaForLead(leadId);
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          status: "registered" as any,
-          valor_final_venda: valorFinal,
-          data_fechamento: dataFechamento.toISOString(),
-          registered_at: now,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ status: "registered" as any, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), registered_at: now, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "venda_confirmada" as any,
-        old_status: "docs_received",
-        new_status: "registered",
-        notes: `Venda confirmada: R$ ${valorFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`,
-      });
-
-      setLeads(prev => prev.map(l =>
-        l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now, last_interaction_at: now } : l
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "venda_confirmada" as any, old_status: "docs_received", new_status: "registered", notes: `Venda confirmada: R$ ${valorFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` });
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now, last_interaction_at: now } : l));
       return true;
-    } catch (error) {
-      console.error("Erro ao confirmar venda:", error);
-      toast.error("Erro ao confirmar venda.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao confirmar venda:", error); toast.error("Erro ao confirmar venda."); return false; }
   }, []);
 
   const reactivateLead = useCallback(async (leadId: string) => {
     try {
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({
-          status: "new" as any,
-          inactivation_reason: null,
-          inactivated_at: null,
-          data_perda: null,
-          etapa_perda: null,
-          updated_at: now,
-        })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ status: "new" as any, inactivation_reason: null, inactivated_at: null, data_perda: null, etapa_perda: null, updated_at: now }).eq("id", leadId);
       if (error) throw error;
-
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId,
-        interaction_type: "reactivation" as any,
-        old_status: "inactive",
-        new_status: "new",
-        notes: "Lead reativado",
-      });
-
-      // Add back to local state
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "reactivation" as any, old_status: "inactive", new_status: "new", notes: "Lead reativado" });
       fetchLeads();
       toast.success("Lead reativado com sucesso!");
       return true;
-    } catch (error) {
-      console.error("Erro ao reativar lead:", error);
-      toast.error("Erro ao reativar lead.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao reativar lead:", error); toast.error("Erro ao reativar lead."); return false; }
   }, [fetchLeads]);
 
   const deleteLead = useCallback(async (leadId: string) => {
@@ -602,26 +345,20 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       await supabase.from("lead_documents").delete().eq("lead_id", leadId);
       await supabase.from("lead_interactions").delete().eq("lead_id", leadId);
       await supabase.from("lead_attribution").delete().eq("lead_id", leadId);
-      
       const { error } = await supabase.from("leads").delete().eq("id", leadId);
       if (error) throw error;
-      
-      setLeads(prev => prev.filter(lead => lead.id !== leadId));
+      setLocalLeads(prev => prev.filter(lead => lead.id !== leadId));
       toast.success("Lead excluído com sucesso!");
       return true;
-    } catch (error) {
-      console.error("Erro ao excluir lead:", error);
-      toast.error("Erro ao excluir lead.");
-      return false;
-    }
+    } catch (error) { console.error("Erro ao excluir lead:", error); toast.error("Erro ao excluir lead."); return false; }
   }, []);
 
   const getLeadsByStatus = useCallback((status: LeadStatus) => {
-    return leads.filter(lead => lead.status === status);
-  }, [leads]);
+    return localLeads.filter(lead => lead.status === status);
+  }, [localLeads]);
 
   return {
-    leads,
+    leads: localLeads,
     isLoading,
     fetchLeads,
     updateLeadStatus,
@@ -630,7 +367,6 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     reactivateLead,
     deleteLead,
     getLeadsByStatus,
-    // Funnel transition methods
     iniciarAtendimento,
     registrarAgendamento,
     registrarComparecimentoEProposta,
