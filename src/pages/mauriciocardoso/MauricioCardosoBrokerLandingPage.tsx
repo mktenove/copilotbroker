@@ -7,12 +7,11 @@ import {
   MCHeader,
   MCHeroSection,
   MCLocationSection,
-  MCConceptSection,
-  MCApartmentsSection,
-  MCWellnessSection,
+  MCFeaturesSection,
   MCTargetSection,
-  MCInvestmentSection,
+  MCUrgencySection,
   MCBenefitsSection,
+  MCCallToActionSection,
   MCFormSection,
   MCFloatingCTA,
   MCFooter,
@@ -38,7 +37,6 @@ const MauricioCardosoBrokerLandingPage = () => {
         return;
       }
 
-      // Fetch project
       const { data: project } = await supabase
         .from("projects")
         .select("id")
@@ -46,11 +44,8 @@ const MauricioCardosoBrokerLandingPage = () => {
         .eq("city_slug", "novohamburgo")
         .single();
 
-      if (project) {
-        setProjectId(project.id);
-      }
+      if (project) setProjectId(project.id);
 
-      // Fetch broker
       const { data: broker } = await supabase
         .from("brokers")
         .select("id, name")
@@ -74,8 +69,8 @@ const MauricioCardosoBrokerLandingPage = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light flex items-center justify-center" data-theme="light">
-        <div className="w-10 h-10 border-4 border-[hsl(var(--mc-sage))] border-t-transparent rounded-full animate-spin" />
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -93,15 +88,11 @@ const MauricioCardosoBrokerLandingPage = () => {
           content={`Empreendimento residencial na Rua Maurício Cardoso, Novo Hamburgo. Atendimento exclusivo com ${brokerName}. Apartamentos de 95 a 125m².`}
         />
         <meta property="og:title" content={`Mauricio Cardoso | ${brokerName}`} />
-        <meta
-          property="og:description"
-          content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo."
-        />
+        <meta property="og:description" content="Na Rua Maurício Cardoso, o endereço mais icônico de Novo Hamburgo, surge um empreendimento que redefine o morar contemporâneo." />
         <meta property="og:type" content="website" />
         <meta property="og:locale" content="pt_BR" />
         <meta name="robots" content="noindex, nofollow" />
 
-        {/* Meta Pixel - Mauricio Cardoso */}
         <script>
           {`!function(f,b,e,v,n,t,s)
           {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
@@ -119,16 +110,15 @@ const MauricioCardosoBrokerLandingPage = () => {
         </noscript>
       </Helmet>
 
-      <div className="min-h-screen bg-[hsl(var(--mc-cream))] light" data-theme="light">
+      <div className="min-h-screen bg-background text-foreground">
         <MCHeader brokerName={brokerName} />
         <MCHeroSection />
         <MCLocationSection />
-        <MCConceptSection />
-        <MCApartmentsSection />
-        <MCWellnessSection />
+        <MCFeaturesSection />
         <MCTargetSection />
-        <MCInvestmentSection />
+        <MCUrgencySection />
         <MCBenefitsSection />
+        <MCCallToActionSection />
         <MCFormSection projectId={projectId} brokerId={brokerId} submitted={submitted} />
         <MCFloatingCTA />
         <MCFooter />
