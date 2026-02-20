@@ -1,88 +1,54 @@
 
-# Corrigir exibicao de horarios na fila de WhatsApp
+# Corrigir contador de respostas (mostrando "0")
 
 ## Problema
-O campo `scheduled_at` dos itens pausados contem o horario original de agendamento (que ja passou), nao o horario real de envio futuro. Quando a campanha for retomada, os itens serao reagendados com novos horarios. Mostrar "16:30" como se fosse o horario de envio e incorreto -- e apenas o horario em que foram criados + delay inicial.
+Dois problemas no contador de respostas:
+
+1. **RLS bloqueando acesso**: A tabela `whatsapp_lead_replies` tem RLS ativado mas **nenhuma policy configurada**, o que significa que nenhum usuario consegue ler os dados. Resultado: sempre retorna 0.
+
+2. **Contagem duplicada**: A query atual conta todas as linhas da tabela (`count: "exact"`), mas o usuario quer contar **leads unicos que responderam** (por telefone), nao o total de respostas. No banco existem 93 registros mas apenas 74 telefones unicos.
 
 ## Solucao
 
-### Arquivo: `src/components/whatsapp/QueueTab.tsx`
+### 1. Criar RLS policy na tabela `whatsapp_lead_replies`
 
-**PendingMessageCard** - Diferenciar o que e exibido com base no status:
+Adicionar policy para que corretores e admins possam ler os dados:
 
-- Para itens `queued` / `scheduled` / `sending`: mostrar "Envio: dd/MM HH:mm" com o `scheduled_at` real
-- Para itens `paused_by_system`: mostrar "Pausado - sera reagendado ao retomar" em vez do horario, pois o `scheduled_at` atual e obsoleto
-
-Codigo proposto no card compacto (linha 120-123):
-```tsx
-<span className="text-xs text-slate-500 flex-shrink-0">
-  {message.status === "paused_by_system" ? (
-    <>
-      <AlertTriangle className="w-3 h-3 inline mr-0.5 text-yellow-500" />
-      Pausado
-    </>
-  ) : (
-    <>
-      <Clock className="w-3 h-3 inline mr-0.5" />
-      Envio: {format(new Date(message.scheduled_at), "dd/MM HH:mm")}
-    </>
-  )}
-</span>
+```sql
+CREATE POLICY "Corretores e admins podem ver respostas"
+  ON whatsapp_lead_replies FOR SELECT
+  USING (
+    campaign_id IN (
+      SELECT id FROM whatsapp_campaigns
+      WHERE broker_id = (SELECT id FROM brokers WHERE user_id = auth.uid())
+    )
+    OR has_role(auth.uid(), 'admin'::app_role)
+  );
 ```
 
-Na area expandida, para itens nao-pausados, adicionar uma `DetailRow` com o horario completo:
-```tsx
-{message.status !== "paused_by_system" && (
-  <DetailRow icon={Calendar} label="Envio programado" value={format(new Date(message.scheduled_at), "dd/MM/yyyy HH:mm:ss")} />
-)}
-{message.status === "paused_by_system" && (
-  <p className="text-xs text-yellow-500">Horario sera recalculado quando a campanha for retomada</p>
-)}
-```
+### 2. Alterar query para contar leads unicos (`use-whatsapp-queue.ts`)
 
-**HistoryMessageCard** - Ja mostra `sent_at` na linha compacta, que esta correto para historico. Adicionar `scheduled_at` na area expandida como referencia ("Agendado em").
-
-**Header "Proximo envio em"** - Filtrar apenas itens nao-pausados para o countdown, pois pausados nao serao enviados ate retomar:
-
-### Arquivo: `src/hooks/use-whatsapp-queue.ts`
-
-Reverter a inclusao de `paused_by_system` no calculo do `nextScheduled`, pois itens pausados NAO vao ser enviados no horario atual. O countdown deve refletir apenas itens ativos:
+Substituir a contagem simples por uma que agrupa por telefone (leads unicos):
 
 ```typescript
-const nextScheduled = pendingQueue.find(
-  m => (m.status === "queued" || m.status === "scheduled") && 
-       new Date(m.scheduled_at) > new Date()
-);
+// Em vez de count total de linhas, buscar phones distintos
+const { data: replies, error } = await supabase
+  .from("whatsapp_lead_replies")
+  .select("phone")
+  .in("campaign_id", campaignIds);
+
+if (error) throw error;
+// Contar telefones unicos
+const uniquePhones = new Set(replies?.map(r => r.phone) || []);
+return uniquePhones.size;
 ```
 
-Se nao houver nenhum item ativo (tudo pausado), mostrar "Campanha pausada" em vez de "--:--".
+### 3. Atualizar label do card (QueueTab.tsx)
 
-Adicionar retorno de flag `allPaused`:
-```typescript
-const allPaused = pendingQueue.length > 0 && pendingQueue.every(m => m.status === "paused_by_system");
-```
+Alterar o texto de "Respostas" para "Leads responderam" para deixar claro que sao leads unicos.
 
-### Arquivo: `src/components/whatsapp/QueueTab.tsx` (header)
+## Arquivos a editar
 
-Usar `allPaused` para exibir mensagem contextual:
-```tsx
-{allPaused ? (
-  <span className="text-yellow-400 font-medium">Campanha pausada</span>
-) : (
-  <span className="font-mono text-primary font-medium">
-    {formatNextSendIn()}
-    {nextScheduledAt && ` (${format(new Date(nextScheduledAt), "HH:mm")})`}
-  </span>
-)}
-```
-
-## Resumo das alteracoes
-
-1. **`src/hooks/use-whatsapp-queue.ts`**
-   - Remover `paused_by_system` do calculo do countdown (itens pausados nao serao enviados)
-   - Adicionar flag `allPaused` no retorno
-
-2. **`src/components/whatsapp/QueueTab.tsx`**
-   - PendingMessageCard: mostrar "Pausado" para itens pausados, "Envio: dd/MM HH:mm" para ativos
-   - Header: mostrar "Campanha pausada" quando todos itens estao pausados
-   - HistoryMessageCard: manter como esta (ja mostra `sent_at`)
+1. **Migracao SQL** - Criar RLS policy para `whatsapp_lead_replies`
+2. **`src/hooks/use-whatsapp-queue.ts`** (linhas 152-176) - Alterar query de contagem para telefones unicos
+3. **`src/components/whatsapp/QueueTab.tsx`** (linha 103) - Alterar label de "Respostas" para "Responderam"
