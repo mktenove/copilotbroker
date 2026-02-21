@@ -179,9 +179,22 @@ export function useWhatsAppCampaigns(adminBrokerFilterId?: string) {
       if (validLeads.length === 0) {
         throw new Error("Nenhum lead válido após filtrar opt-outs e telefones inválidos");
       }
+
+      // Deduplicate by phone - keep first lead per phone number
+      const seenPhones = new Set<string>();
+      const uniqueLeads = validLeads.filter(lead => {
+        const phone = formatPhoneE164(lead.whatsapp);
+        if (seenPhones.has(phone)) return false;
+        seenPhones.add(phone);
+        return true;
+      });
+
+      if (uniqueLeads.length < validLeads.length) {
+        console.log(`Dedup: ${validLeads.length - uniqueLeads.length} leads duplicados removidos por telefone`);
+      }
       
       // Create campaign
-      const totalMessages = validLeads.length * steps.length;
+      const totalMessages = uniqueLeads.length * steps.length;
       const { data: campaign, error: campaignError } = await supabase
         .from("whatsapp_campaigns")
         .insert({
@@ -230,7 +243,7 @@ export function useWhatsAppCampaigns(adminBrokerFilterId?: string) {
         step_number: number;
       }> = [];
       
-      for (const lead of validLeads) {
+      for (const lead of uniqueLeads) {
         let previousScheduledTime = new Date();
         // Add initial random interval for step 1
         previousScheduledTime = new Date(previousScheduledTime.getTime() + getRandomInterval());

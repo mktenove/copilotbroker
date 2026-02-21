@@ -468,6 +468,34 @@ app.post("/process", async (c) => {
         }
       }
 
+      // DEDUP for campaign messages: same phone + campaign + step already sent
+      if (queueMsg.campaign_id && stepNumber) {
+        const { data: alreadySent } = await supabase
+          .from("whatsapp_message_queue")
+          .select("id")
+          .eq("phone", queueMsg.phone)
+          .eq("campaign_id", queueMsg.campaign_id)
+          .eq("step_number", stepNumber)
+          .eq("status", "sent")
+          .neq("id", queueMsg.id)
+          .maybeSingle();
+
+        if (alreadySent) {
+          await supabase
+            .from("whatsapp_message_queue")
+            .update({
+              status: "cancelled",
+              error_message: "Deduplicação: mesmo telefone já recebeu este step",
+              updated_at: new Date().toISOString()
+            })
+            .eq("id", queueMsg.id);
+
+          console.log(`Dedup campaign: phone ${queueMsg.phone} already received step ${stepNumber}`);
+          results.push({ brokerId: instance.broker_id, sent: false, error: "deduplicated_campaign" });
+          continue;
+        }
+      }
+
       // Mark as sending
       await supabase
         .from("whatsapp_message_queue")
