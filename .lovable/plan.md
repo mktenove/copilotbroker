@@ -1,106 +1,97 @@
 
 
-# Mover 50 leads da campanha para "Atendimento"
+# Corrigir mensagens duplicadas em campanhas WhatsApp
 
-## Contexto
-A campanha "Acao Agenda Pessoal" do Edinardo enviou o step 1 para diversos leads, mas como a correcao no edge function foi feita depois, esses 50 leads ainda estao com status `new` (Pre Atendimento) em vez de `info_sent` (Atendimento).
+## Problema identificado
+
+Leads duplicados com o mesmo telefone no banco de dados estao causando envio duplo de mensagens. Quando uma campanha e criada, o sistema seleciona leads por status/projeto e agenda mensagens para **cada lead individualmente**. Se existem dois leads com o mesmo WhatsApp (ex: "Cris Bezzi" aparece 2x com `5551991237442`), o cliente recebe a mesma mensagem duas vezes.
+
+Dados reais encontrados:
+- Campanha do Edinardo: 2 telefones duplicados (Cris Bezzi e Jardelino Lassakosky), cada um recebendo todas as etapas em dobro
+- Campanha do Gabriel (Marcio): 1 telefone duplicado (`+5511947337765`)
+
+## Causa raiz
+
+Nao ha deduplicacao por telefone em nenhum dos dois pontos criticos:
+1. **Na criacao da campanha** (`use-whatsapp-campaigns.ts`): todos os leads sao enfileirados sem verificar telefones repetidos
+2. **No envio** (`whatsapp-message-sender`): a deduplicacao existente (linhas 440-468) so funciona para mensagens **sem** `step_number` — campanhas com steps sao ignoradas propositalmente
 
 ## Solucao
 
-Criar uma edge function temporaria (`fix-campaign-leads`) que:
+Aplicar deduplicacao por telefone em **dois niveis** para garantia total:
 
-1. Busca os leads que receberam step 1 da campanha `40f66fd1-ebae-4758-b2e9-7cb9b896d2b0` e ainda estao com status `new`
-2. Atualiza cada um para `info_sent` com `status_distribuicao = atendimento_iniciado`
-3. Registra uma interacao na timeline de cada lead
+### 1. Na criacao da campanha (prevencao)
 
-### Arquivo: `supabase/functions/fix-campaign-leads/index.ts`
+**Arquivo:** `src/hooks/use-whatsapp-campaigns.ts`
+
+Apos filtrar opt-outs e telefones invalidos (`validLeads`), deduplicar por telefone normalizado, mantendo apenas o primeiro lead de cada numero:
 
 ```typescript
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
-
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-  );
-
-  const campaignId = "40f66fd1-ebae-4758-b2e9-7cb9b896d2b0";
-  const brokerId = "b3a4d137-028f-4816-b7d4-d2d65b1904f8";
-
-  const { data: queueItems } = await supabase
-    .from("whatsapp_message_queue")
-    .select("lead_id")
-    .eq("campaign_id", campaignId)
-    .eq("step_number", 1)
-    .eq("status", "sent");
-
-  const leadIds = [...new Set(queueItems?.map(q => q.lead_id).filter(Boolean))];
-
-  const { data: newLeads } = await supabase
-    .from("leads")
-    .select("id, name")
-    .in("id", leadIds)
-    .eq("status", "new");
-
-  if (!newLeads || newLeads.length === 0) {
-    return new Response(JSON.stringify({ message: "Nenhum lead para atualizar" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
-
-  const now = new Date().toISOString();
-  let updated = 0;
-
-  for (const lead of newLeads) {
-    const { error } = await supabase
-      .from("leads")
-      .update({
-        status: "info_sent",
-        status_distribuicao: "atendimento_iniciado",
-        atendimento_iniciado_em: now,
-        reserva_expira_em: null,
-        updated_at: now,
-      })
-      .eq("id", lead.id);
-
-    if (!error) {
-      await supabase.from("lead_interactions").insert({
-        lead_id: lead.id,
-        broker_id: brokerId,
-        interaction_type: "status_change",
-        old_status: "new",
-        new_status: "info_sent",
-        notes: "Lead movido para Atendimento automaticamente (correcao campanha)",
-      });
-      updated++;
-    }
-  }
-
-  return new Response(
-    JSON.stringify({ updated, total: newLeads.length, leads: newLeads.map(l => l.name) }),
-    { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-  );
+// Deduplicate by phone - keep first lead per phone number
+const seenPhones = new Set<string>();
+const uniqueLeads = validLeads.filter(lead => {
+  const phone = formatPhoneE164(lead.whatsapp);
+  if (seenPhones.has(phone)) return false;
+  seenPhones.add(phone);
+  return true;
 });
 ```
 
-## Passos
+Usar `uniqueLeads` no lugar de `validLeads` para calcular `totalMessages` e gerar os `queueItems`.
 
-1. Criar a edge function `fix-campaign-leads`
-2. Fazer deploy
-3. Chamar a funcao via POST para executar a correcao
-4. Verificar o resultado (50 leads movidos)
-5. Deletar a edge function apos uso (funcao temporaria)
+### 2. No envio (seguranca adicional)
+
+**Arquivo:** `supabase/functions/whatsapp-message-sender/index.ts`
+
+Adicionar verificacao de deduplicacao para mensagens de campanha (com `step_number`). Antes de enviar, checar se ja existe uma mensagem `sent` para o mesmo telefone + campanha + step:
+
+```typescript
+// DEDUP for campaign messages: same phone + campaign + step already sent
+if (queueMsg.campaign_id && stepNumber) {
+  const { data: alreadySent } = await supabase
+    .from("whatsapp_message_queue")
+    .select("id")
+    .eq("phone", queueMsg.phone)
+    .eq("campaign_id", queueMsg.campaign_id)
+    .eq("step_number", stepNumber)
+    .eq("status", "sent")
+    .neq("id", queueMsg.id)
+    .maybeSingle();
+
+  if (alreadySent) {
+    await supabase
+      .from("whatsapp_message_queue")
+      .update({
+        status: "cancelled",
+        error_message: "Deduplicacao: mesmo telefone ja recebeu este step",
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", queueMsg.id);
+
+    console.log(`Dedup campaign: phone ${queueMsg.phone} already received step ${stepNumber}`);
+    continue;
+  }
+}
+```
+
+Inserir este bloco logo apos o check de deduplicacao existente (apos linha ~468), antes do "Mark as sending".
+
+### 3. Na cadencia automatica (prevencao)
+
+**Arquivo:** `supabase/functions/auto-cadencia-10d/index.ts`
+
+Adicionar verificacao se ja existe campanha ativa para o mesmo telefone antes de criar nova cadencia.
+
+## Resumo de arquivos
+
+| Arquivo | Alteracao |
+|---|---|
+| `src/hooks/use-whatsapp-campaigns.ts` | Deduplicar leads por telefone antes de enfileirar |
+| `supabase/functions/whatsapp-message-sender/index.ts` | Dedup por phone+campaign+step antes de enviar |
 
 ## Resultado esperado
 
-- 50 leads moverao de "Pre Atendimento" para "Atendimento" no Kanban
-- Cada lead tera uma entrada na timeline registrando a mudanca
-- A correcao anterior no `whatsapp-message-sender` garante que campanhas futuras ja movam automaticamente
+- Clientes com leads duplicados nao receberao mais mensagens repetidas
+- A deduplicacao na criacao previne o problema na origem
+- A deduplicacao no envio garante seguranca mesmo para campanhas ja criadas com duplicatas
 
