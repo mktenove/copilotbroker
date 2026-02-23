@@ -24,6 +24,13 @@ const MauricioCardosoLandingPage = () => {
   
   usePageTracking(projectId);
 
+  // Fire additional PageView when landing on /obrigado (SPA navigation doesn't re-trigger the pixel)
+  useEffect(() => {
+    if (submitted && typeof window !== "undefined" && window.fbq) {
+      (window.fbq as Function)("track", "PageView");
+    }
+  }, [submitted]);
+
   useEffect(() => {
     const fetchProject = async () => {
       const { data } = await supabase
