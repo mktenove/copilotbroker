@@ -105,7 +105,7 @@ export default function LeadPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from("leads")
-        .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign)`)
+        .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
         .eq("id", leadId)
         .single();
       if (error) {
@@ -127,7 +127,7 @@ export default function LeadPage() {
     if (!leadId) return;
     const { data } = await supabase
       .from("leads")
-      .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign)`)
+      .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
       .eq("id", leadId)
       .single();
     if (data) {

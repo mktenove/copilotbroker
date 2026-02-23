@@ -11,7 +11,7 @@ interface LeadTimelineProps {
   interactions: LeadInteraction[];
   leadOrigin?: string | null;
   leadOriginDetail?: string | null;
-  attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; landing_page?: string } | null;
+  attribution?: { utm_source?: string; utm_medium?: string; utm_campaign?: string; utm_content?: string; utm_term?: string; landing_page?: string } | null;
   createdAt?: string;
   brokerName?: string | null;
 }
@@ -245,15 +245,18 @@ export function LeadTimeline({ interactions, leadOrigin, leadOriginDetail, attri
           const dotColor = isPaid ? "bg-purple-500" : isManual ? "bg-yellow-500" : isOrganic ? "bg-green-500" : "bg-slate-500";
           const iconColor = isPaid ? "text-purple-400" : isManual ? "text-yellow-400" : isOrganic ? "text-green-400" : "text-slate-400";
 
-          // Build detail line
-          let detail = "";
+          // Build detail line from UTM params
+          const detailParts: string[] = [];
           if (leadOriginDetail) {
-            detail = leadOriginDetail;
-          } else if (attribution?.utm_medium && attribution?.utm_campaign) {
-            detail = `${attribution.utm_medium} | ${attribution.utm_campaign}`;
-          } else if (attribution?.utm_campaign) {
-            detail = attribution.utm_campaign;
+            detailParts.push(leadOriginDetail);
+          } else {
+            if (attribution?.utm_medium) detailParts.push(attribution.utm_medium);
+            if (attribution?.utm_campaign) detailParts.push(attribution.utm_campaign);
           }
+          if (attribution?.utm_content) detailParts.push(attribution.utm_content);
+          if (attribution?.utm_term) detailParts.push(`📍 ${attribution.utm_term}`);
+
+          let detail = detailParts.join(" · ");
 
           if (isManual && brokerName) {
             detail = detail ? `${detail} · por ${brokerName}` : `por ${brokerName}`;

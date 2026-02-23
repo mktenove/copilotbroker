@@ -6,8 +6,8 @@ interface UTMParams {
   utm_source: string | null;
   utm_medium: string | null;
   utm_campaign: string | null;
-  utm_term: string | null;
   utm_content: string | null;
+  utm_term: string | null;
 }
 
 interface ClickParams {
@@ -37,8 +37,8 @@ export const getUTMParams = (): UTMParams => {
     utm_source: params.get("utm_source"),
     utm_medium: params.get("utm_medium"),
     utm_campaign: params.get("utm_campaign"),
-    utm_term: params.get("utm_term"),
     utm_content: params.get("utm_content"),
+    utm_term: params.get("utm_term"),
   };
 };
 
@@ -294,11 +294,12 @@ const mapSourceToOriginKey = (source: string, medium?: string | null): string =>
   return source;
 };
 
-// Build detail string from UTM medium + campaign
+// Build detail string from UTM medium + campaign + content
 const buildOriginDetail = (utmParams: UTMParams): string | null => {
   const parts: string[] = [];
   if (utmParams.utm_medium) parts.push(utmParams.utm_medium);
   if (utmParams.utm_campaign) parts.push(utmParams.utm_campaign);
+  if (utmParams.utm_content) parts.push(utmParams.utm_content);
   return parts.length > 0 ? parts.join(' - ') : null;
 };
 
@@ -365,6 +366,8 @@ const trackPageView = async (pagePath: string, projectId?: string) => {
       utm_source: utmParams.utm_source,
       utm_medium: utmParams.utm_medium,
       utm_campaign: utmParams.utm_campaign,
+      utm_content: utmParams.utm_content,
+      utm_term: utmParams.utm_term,
       referrer: referrer,
       session_id: sessionId,
     });
@@ -404,6 +407,8 @@ export const trackLeadAttribution = async (
       utm_source: utmParams.utm_source,
       utm_medium: utmParams.utm_medium,
       utm_campaign: utmParams.utm_campaign,
+      utm_content: utmParams.utm_content,
+      utm_term: utmParams.utm_term,
       landing_page: landingPage,
       referrer: referrer,
     });
