@@ -21,10 +21,17 @@ import { STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel, LeadStatus } from "
 import { replaceTemplateVariables } from "@/types/whatsapp";
 import type { CRMLead } from "@/types/crm";
 
+interface DuplicateData {
+  name: string;
+  steps: Array<{ messageContent: string; delayMinutes: number; sendIfReplied?: boolean }>;
+  targetStatus?: string[];
+}
+
 interface NewCampaignSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   preselectedStatus?: LeadStatus;
+  duplicateData?: DuplicateData;
 }
 
 const ACTIVE_STATUSES: LeadStatus[] = ["new", "info_sent", "scheduling", "docs_received"];
@@ -52,7 +59,7 @@ function formatDelay(minutes: number): string {
   return `${minutes / 1440} dia(s)`;
 }
 
-export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewCampaignSheetProps) {
+export function NewCampaignSheet({ open, onOpenChange, preselectedStatus, duplicateData }: NewCampaignSheetProps) {
   const { broker, isCreating, createCampaign, fetchLeadsByStatus } = useWhatsAppCampaigns();
   const { projects } = useProjects();
   const { data: customOrigins = [] } = useCustomOrigins();
@@ -103,8 +110,19 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
   // Reset form when opening
   useEffect(() => {
     if (open) {
-      setName("");
-      setSelectedStatuses(preselectedStatus ? [preselectedStatus] : []);
+      if (duplicateData) {
+        setName(duplicateData.name);
+        setSteps(duplicateData.steps.length > 0 ? duplicateData.steps : [{ messageContent: "", delayMinutes: 0 }]);
+        setSelectedStatuses(
+          duplicateData.targetStatus 
+            ? (duplicateData.targetStatus.filter(s => ACTIVE_STATUSES.includes(s as LeadStatus)) as LeadStatus[])
+            : preselectedStatus ? [preselectedStatus] : []
+        );
+      } else {
+        setName("");
+        setSelectedStatuses(preselectedStatus ? [preselectedStatus] : []);
+        setSteps([{ messageContent: "", delayMinutes: 0 }]);
+      }
       setProjectId("");
       setSelectedOrigins([]);
       setBrokerFilterId("");
@@ -112,9 +130,8 @@ export function NewCampaignSheet({ open, onOpenChange, preselectedStatus }: NewC
       setFetchedLeads([]);
       setExcludedLeadIds(new Set());
       setFiltersOpen(true);
-      setSteps([{ messageContent: "", delayMinutes: 0 }]);
     }
-  }, [open, preselectedStatus]);
+  }, [open, preselectedStatus, duplicateData]);
 
   // Fetch leads when filters change
   useEffect(() => {
