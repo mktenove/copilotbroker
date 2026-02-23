@@ -99,7 +99,7 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
         },
       }).catch(console.warn);
 
-      const basePath = location.pathname.replace(/\/obrigado$/, "");
+      const basePath = location.pathname.replace(/\/obrigado$/, "").replace(/\/+$/, "");
       navigate(`${basePath}/obrigado`, { replace: true });
     } catch (error) {
       console.error("Error submitting lead:", error);
