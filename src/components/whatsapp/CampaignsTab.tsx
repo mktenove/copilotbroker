@@ -8,6 +8,8 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { NewCampaignSheet } from "./NewCampaignSheet";
 import { CampaignCard } from "./CampaignCard";
+import { CampaignDetailSheet, type CampaignStepRow } from "./CampaignDetailSheet";
+import { WhatsAppCampaign } from "@/types/whatsapp";
 import {
   Select,
   SelectContent,
@@ -19,6 +21,12 @@ import {
 export function CampaignsTab() {
   const [isNewCampaignOpen, setIsNewCampaignOpen] = useState(false);
   const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
+  const [detailCampaign, setDetailCampaign] = useState<WhatsAppCampaign | null>(null);
+  const [duplicateData, setDuplicateData] = useState<{
+    name: string;
+    steps: Array<{ messageContent: string; delayMinutes: number; sendIfReplied?: boolean }>;
+    targetStatus?: string[];
+  } | undefined>(undefined);
   const { role } = useUserRole();
 
   // Fetch active brokers for admin filter
@@ -43,6 +51,29 @@ export function CampaignsTab() {
     resumeCampaign, 
     cancelCampaign 
   } = useWhatsAppCampaigns(role === "admin" ? (selectedBrokerId && selectedBrokerId !== "all" ? selectedBrokerId : undefined) : undefined);
+
+  const handleDuplicate = (campaign: WhatsAppCampaign, steps: CampaignStepRow[]) => {
+    setDetailCampaign(null);
+    setDuplicateData({
+      name: `Cópia de ${campaign.name}`,
+      steps: steps.length > 0 
+        ? steps.map(s => ({ messageContent: s.message_content, delayMinutes: s.delay_minutes, sendIfReplied: s.send_if_replied }))
+        : campaign.custom_message 
+          ? [{ messageContent: campaign.custom_message, delayMinutes: 0 }]
+          : [{ messageContent: "", delayMinutes: 0 }],
+      targetStatus: campaign.target_status || undefined,
+    });
+    setIsNewCampaignOpen(true);
+  };
+
+  const handleDuplicateFromCard = async (campaign: WhatsAppCampaign) => {
+    const { data: steps } = await supabase
+      .from("campaign_steps")
+      .select("*")
+      .eq("campaign_id", campaign.id)
+      .order("step_order");
+    handleDuplicate(campaign, (steps as CampaignStepRow[]) || []);
+  };
 
   if (isLoading) {
     return (
@@ -160,14 +191,27 @@ export function CampaignsTab() {
               onPause={pauseCampaign}
               onResume={resumeCampaign}
               onCancel={cancelCampaign}
+              onViewDetail={(c) => setDetailCampaign(c)}
+              onDuplicate={(c) => handleDuplicateFromCard(c)}
             />
           ))}
         </div>
       )}
 
+      <CampaignDetailSheet
+        open={!!detailCampaign}
+        onOpenChange={(open) => { if (!open) setDetailCampaign(null); }}
+        campaign={detailCampaign}
+        onDuplicate={handleDuplicate}
+      />
+
       <NewCampaignSheet
         open={isNewCampaignOpen}
-        onOpenChange={setIsNewCampaignOpen}
+        onOpenChange={(open) => {
+          setIsNewCampaignOpen(open);
+          if (!open) setDuplicateData(undefined);
+        }}
+        duplicateData={duplicateData}
       />
     </div>
   );

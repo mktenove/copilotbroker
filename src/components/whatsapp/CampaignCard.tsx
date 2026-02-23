@@ -5,11 +5,11 @@ import {
   Play, 
   Pause, 
   XCircle, 
-  BarChart3, 
   CheckCircle,
   Clock,
   AlertTriangle,
-  ListOrdered
+  Eye,
+  Copy
 } from "lucide-react";
 import { WhatsAppCampaign, CampaignStatus } from "@/types/whatsapp";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,8 @@ interface CampaignCardProps {
   onPause: (id: string) => void;
   onResume: (id: string) => void;
   onCancel: (id: string) => void;
+  onViewDetail: (campaign: WhatsAppCampaign) => void;
+  onDuplicate: (campaign: WhatsAppCampaign) => void;
 }
 
 const STATUS_CONFIG: Record<CampaignStatus, { 
@@ -36,7 +38,7 @@ const STATUS_CONFIG: Record<CampaignStatus, {
   cancelled: { label: "Cancelada", color: "text-red-400", icon: XCircle },
 };
 
-export function CampaignCard({ campaign, onPause, onResume, onCancel }: CampaignCardProps) {
+export function CampaignCard({ campaign, onPause, onResume, onCancel, onViewDetail, onDuplicate }: CampaignCardProps) {
   const rawStatus = campaign.status as CampaignStatus;
   
   // Derive visual status: if running but all sent, show as completed
@@ -81,6 +83,24 @@ export function CampaignCard({ campaign, onPause, onResume, onCancel }: Campaign
           
           {/* Actions */}
           <div className="flex gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-slate-400 hover:bg-[#2a2a2e] hover:text-white"
+              onClick={() => onViewDetail(campaign)}
+              title="Ver detalhes"
+            >
+              <Eye className="w-4 h-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-8 w-8 text-slate-400 hover:bg-[#2a2a2e] hover:text-white"
+              onClick={() => onDuplicate(campaign)}
+              title="Duplicar campanha"
+            >
+              <Copy className="w-4 h-4" />
+            </Button>
             {canPause && (
               <Button
                 size="icon"
