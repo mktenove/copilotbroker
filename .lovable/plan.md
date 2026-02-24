@@ -6,7 +6,8 @@
 
 **Fase 1 ✅** - Banco de dados, edge functions, UI básica, hooks  
 **Batch 1 ✅** - increment_copilot_count, inbox-send-message (UAZAPI real), handoff completo  
-**Batch 2 ✅** - KPIs estratégicos, filtros avançados, ordenação inteligente, ações rápidas, Admin Inbox
+**Batch 2 ✅** - KPIs estratégicos, filtros avançados, ordenação inteligente, ações rápidas, Admin Inbox  
+**Batch 3 ✅** - Badges visuais de risco (animação pulse), tempo parado na lista, detecção proativa
 
 ### O que está pronto
 
@@ -16,8 +17,4 @@
 - Inbox Admin: /admin/inbox com filtro por corretor, visão de gestão
 - Sidebar admin e mobile: botão Inbox adicionado
 - Handoff IA↔Humano: cancela fila pendente + log em lead_interactions
-
-### Próximos Passos (Batch 3 - Inteligência)
-
-8. Preview de sugestões da IA direto na lista (sem abrir conversa)
-9. Detecção proativa de risco + badges visuais na lista
+- Badges visuais: Quente (🔥), Risco (⚠️ animado), IA ativa, Score %, Tempo parado (>24h)

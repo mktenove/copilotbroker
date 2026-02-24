@@ -254,6 +254,9 @@ export function ConversationList({
               const isAtRisk = (conv.temperature || 5) <= 3 && leadStatus !== "sold" && leadStatus !== "inactive";
               const hasCopilot = conv.ai_mode === "ai_active";
               const score = conv.opportunity_score || 0;
+              const idleHours = conv.last_message_at
+                ? (Date.now() - new Date(conv.last_message_at).getTime()) / (1000 * 60 * 60)
+                : 0;
 
               return (
                 <div key={conv.id} className="group relative">
@@ -314,7 +317,7 @@ export function ConversationList({
                           </span>
                         )}
                         {isAtRisk && (
-                          <span className="flex items-center gap-0.5 text-[10px] text-red-400">
+                          <span className="flex items-center gap-0.5 text-[10px] text-red-400 animate-pulse">
                             <AlertTriangle className="w-3 h-3" /> Risco
                           </span>
                         )}
@@ -326,6 +329,11 @@ export function ConversationList({
                         {score > 0 && (
                           <span className="flex items-center gap-0.5 text-[10px] text-[#FFFF00]/70">
                             <Target className="w-3 h-3" /> {score}%
+                          </span>
+                        )}
+                        {idleHours > 24 && (
+                          <span className="flex items-center gap-0.5 text-[10px] text-amber-400/70">
+                            <Clock className="w-3 h-3" /> {idleHours > 48 ? `${Math.floor(idleHours / 24)}d` : `${Math.round(idleHours)}h`} parado
                           </span>
                         )}
                       </div>
