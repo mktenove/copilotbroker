@@ -28,6 +28,8 @@ import BrokerProjects from "./pages/BrokerProjects";
 import BrokerSignup from "./pages/BrokerSignup";
 import BrokerWhatsApp from "./pages/BrokerWhatsApp";
 import BrokerRoletasPage from "./pages/BrokerRoletasPage";
+import BrokerInbox from "./pages/BrokerInbox";
+import BrokerCopilotConfig from "./pages/BrokerCopilotConfig";
 import Prontos from "./pages/Prontos";
 import ProntosBrokerPage from "./pages/ProntosBrokerPage";
 import Termos from "./pages/Termos";
@@ -82,6 +84,8 @@ const App = () => (
             <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
             <Route path="/corretor/admin" element={<BrokerAdmin />} />
             <Route path="/corretor/roletas" element={<BrokerRoletasPage />} />
+            <Route path="/corretor/inbox" element={<BrokerInbox />} />
+            <Route path="/corretor/copiloto" element={<BrokerCopilotConfig />} />
             <Route path="/corretor/lead/:leadId" element={<LeadPage />} />
             <Route path="/termos" element={<Termos />} />
             
