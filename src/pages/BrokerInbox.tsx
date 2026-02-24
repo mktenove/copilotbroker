@@ -117,6 +117,8 @@ export default function BrokerInbox() {
               onStatusFilterChange={setStatusFilter}
               isLoading={isLoading}
               totalUnread={totalUnread}
+              onMarkAsRead={(id) => markAsRead(id)}
+              onArchive={(id) => archiveConversation(id)}
             />
           </div>
         )}

@@ -9,6 +9,7 @@ import {
   Plus,
   MessageSquare,
   Shuffle,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -33,6 +34,7 @@ interface AdminSidebarProps {
 const NAV_ITEMS = [
   { id: "crm", label: "CRM", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
+  { id: "inbox", label: "Inbox", icon: Inbox },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
@@ -102,6 +104,8 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     onClick={() => {
                       if (item.id === "whatsapp") {
                         navigate("/admin/whatsapp");
+                      } else if (item.id === "inbox") {
+                        navigate("/admin/inbox");
                       } else {
                         onTabChange(item.id);
                       }
