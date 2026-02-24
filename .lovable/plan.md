@@ -1,41 +1,53 @@
 
-# Correção: URL duplicada "prontos/prontos" para corretores
+# Correção: Opt-outs Falsos Positivos
 
-## Problema
+## Problema Identificado
 
-O projeto "Imóveis Prontos" tem `city_slug = "prontos"` e `slug = "prontos"` no banco de dados. A lógica de geração de URL no hook `use-broker-projects.ts` monta o link como `/{city_slug}/{slug}/{brokerSlug}`, resultando em `/prontos/prontos/nomedocorretor`.
+O webhook de WhatsApp registra opt-outs para **qualquer mensagem recebida** que contenha uma keyword de opt-out, mesmo que o remetente **nunca tenha recebido nenhuma campanha**. Isso causa falsos positivos quando:
+- Pessoas mandam mensagens casuais contendo frases como "nao quero mais" (ex: "nao quero mais aquele apartamento do 3 andar")
+- Contatos desconhecidos enviam mensagens para o WhatsApp do corretor
+- Mensagens de teste sao interpretadas como opt-out
 
-Porém, a rota real definida no `App.tsx` é `/prontos/:brokerSlug` (sem prefixo de cidade). O link gerado leva a uma página errada porque bate na rota genérica `/:citySlug/:projectSlug/:brokerSlug`.
+### Evidencias
 
-## Solução
+- **DDD 16 e 63**: Zero leads no sistema com esses DDDs. Sao mensagens de pessoas que mandaram DM para os corretores.
+- **Seu telefone** (+55 51 99701-0323): Registrado como "stop", mas voce nunca enviou essa palavra.
 
-Adicionar tratamento especial para o projeto "Prontos" na geração de URLs, similar ao que já existe para "estanciavelha". Isso afeta **3 pontos** no arquivo `src/hooks/use-broker-projects.ts`:
+## Solucao
 
-1. **Linha 72-74** (geração de URL no fetch): adicionar condição para `slug === "prontos"` retornando `/prontos/{broker.slug}`
-2. **Linha 209-211** (atualização de URL ao mudar slug): mesma condição
-3. **Linha 243-244** (função `getProjectUrl`): mesma condição
+Mover a deteccao de opt-out para **dentro** do bloco que verifica se existem mensagens de campanha enviadas para aquele telefone. Ou seja, so registrar opt-out quando:
 
-## Detalhes Técnicos
+1. O telefone ja recebeu pelo menos uma mensagem de campanha (existe em `whatsapp_message_queue` com status `sent`)
+2. A mensagem recebida contem uma keyword de opt-out
 
-Arquivo: `src/hooks/use-broker-projects.ts`
+Isso elimina 100% dos falsos positivos de pessoas que nunca foram alvo de campanhas.
 
-Lógica atual (3 locais):
+## Arquivo a Modificar
+
+**`supabase/functions/whatsapp-webhook/index.ts`**
+
+### Mudanca
+
+Reorganizar o fluxo do handler de mensagens:
+
+Fluxo atual:
 ```text
-if (project.slug === "estanciavelha") {
-  return `/estanciavelha/${broker.slug}`;
-}
-return `/${project.city_slug}/${project.slug}/${broker.slug}`;
+1. Verificar mensagens recentes (recentMessages) -> cancelar follow-ups
+2. Verificar opt-out em TODAS as mensagens (independente de campanha)
 ```
 
-Lógica corrigida:
+Fluxo corrigido:
 ```text
-if (project.slug === "estanciavelha") {
-  return `/estanciavelha/${broker.slug}`;
-}
-if (project.slug === "prontos") {
-  return `/prontos/${broker.slug}`;
-}
-return `/${project.city_slug}/${project.slug}/${broker.slug}`;
+1. Verificar mensagens recentes (recentMessages) -> cancelar follow-ups
+2. Verificar opt-out APENAS se recentMessages existir (telefone recebeu campanha)
+3. Se nao tem recentMessages, ignorar keywords de opt-out (e uma conversa normal)
 ```
 
-Nenhuma alteração de banco de dados ou migração é necessária.
+Concretamente, mover o bloco de deteccao de opt-out (linhas 318-370) para dentro do bloco `if (recentMessages && recentMessages.length > 0)`, apos o processamento de replies.
+
+## Limpeza de Dados
+
+Remover os 3 opt-outs falsos positivos do banco:
+- +5516981448965 (sem leads DDD 16)
+- +5563999159000 (sem leads DDD 63) 
+- +5551997010323 (telefone de teste do admin)
