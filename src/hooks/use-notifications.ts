@@ -5,7 +5,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 export interface Notification {
   id: string;
   user_id: string;
-  type: "new_lead" | "stale_lead" | "status_change";
+  type: "new_lead" | "stale_lead" | "status_change" | "roleta_lead";
   title: string;
   message: string;
   lead_id: string | null;
