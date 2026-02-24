@@ -1,29 +1,9 @@
-export type LeadStatus = 'new' | 'info_sent' | 'awaiting_docs' | 'scheduling' | 'docs_received' | 'registered' | 'inactive';
+import type { Database } from "@/integrations/supabase/types";
 
-export type DistributionStatus = 'atribuicao_inicial' | 'reassinado_timeout' | 'fallback_lider' | 'atendimento_iniciado';
-
-export type InteractionType = 
-  | 'status_change'
-  | 'note_added'
-  | 'document_request'
-  | 'document_received'
-  | 'info_sent'
-  | 'contact_attempt'
-  | 'registration'
-  | 'origin_change'
-  | 'inactivation'
-  | 'notification'
-  | 'roleta_atribuicao'
-  | 'roleta_timeout'
-  | 'roleta_fallback'
-  | 'roleta_transferencia'
-  | 'atendimento_iniciado'
-  | 'agendamento_registrado'
-  | 'comparecimento_registrado'
-  | 'proposta_enviada'
-  | 'venda_confirmada'
-  | 'reagendamento'
-  | 'whatsapp_manual';
+// Derived from database enums — single source of truth
+export type LeadStatus = Database["public"]["Enums"]["lead_status"];
+export type DistributionStatus = Database["public"]["Enums"]["distribution_status"];
+export type InteractionType = Database["public"]["Enums"]["interaction_type"];
 
 export const TIPO_AGENDAMENTO = [
   { key: 'visita', label: 'Visita' },

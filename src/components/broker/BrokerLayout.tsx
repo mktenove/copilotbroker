@@ -12,10 +12,11 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { useBrokerSessionTracker } from "@/hooks/use-broker-session-tracker";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Bell, UserPlus, Clock, ArrowRightCircle, Check, Trash2, Loader2, CheckCheck, Shuffle } from "lucide-react";
+import { Bell, Check, Trash2, Loader2, CheckCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
+import { NOTIFICATION_ICONS, NOTIFICATION_COLORS } from "@/lib/notification-config";
 
 interface BrokerLayoutProps {
   children: ReactNode;
@@ -32,19 +33,6 @@ interface BrokerLayoutProps {
   isLeader?: boolean;
 }
 
-const NOTIFICATION_ICONS = {
-  new_lead: UserPlus,
-  stale_lead: Clock,
-  status_change: ArrowRightCircle,
-  roleta_lead: Shuffle,
-};
-
-const NOTIFICATION_COLORS = {
-  new_lead: "text-emerald-400",
-  stale_lead: "text-yellow-400",
-  status_change: "text-blue-400",
-  roleta_lead: "text-purple-400",
-};
 
 export function BrokerLayout({
   children,
