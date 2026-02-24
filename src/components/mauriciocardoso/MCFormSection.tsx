@@ -76,7 +76,7 @@ const MCFormSection = ({ projectId, brokerId, submitted }: MCFormSectionProps) =
       });
 
       supabase.functions.invoke("auto-first-message", { body: { leadId } }).catch(console.warn);
-      supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } }).catch(console.warn);
+      // Auto cadencia 10D is triggered by roleta-distribuir (backend only) — removed from frontend to prevent duplicates
 
       const eventId = crypto.randomUUID();
       if (typeof window !== "undefined" && window.fbq) {
