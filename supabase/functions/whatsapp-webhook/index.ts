@@ -315,58 +315,62 @@ app.post("/", async (c) => {
         return c.json({ success: true, event: "messages", processed: "media_reply" }, 200, corsHeaders);
       }
 
-      // ===== STEP 3: Text-based checks (opt-out) =====
-      const detectedKeyword = detectOptout(messageText);
+      // ===== STEP 3: Text-based checks (opt-out) - ONLY if phone received campaigns =====
+      if (recentMessages && recentMessages.length > 0) {
+        const detectedKeyword = detectOptout(messageText);
 
-      if (detectedKeyword) {
-        console.log(`🛑 Opt-out detected from ${phone}: "${detectedKeyword}"`);
+        if (detectedKeyword) {
+          console.log(`🛑 Opt-out detected from ${phone}: "${detectedKeyword}"`);
 
-        await supabase
-          .from("whatsapp_optouts")
-          .upsert({
-            phone,
-            reason: `Auto-detected keyword: "${detectedKeyword}"`,
-            detected_keyword: detectedKeyword,
-            created_at: new Date().toISOString()
-          }, { onConflict: "phone" });
+          await supabase
+            .from("whatsapp_optouts")
+            .upsert({
+              phone,
+              reason: `Auto-detected keyword: "${detectedKeyword}"`,
+              detected_keyword: detectedKeyword,
+              created_at: new Date().toISOString()
+            }, { onConflict: "phone" });
 
-        await supabase
-          .from("whatsapp_message_queue")
-          .update({
-            status: "cancelled",
-            error_message: `Opt-out: ${detectedKeyword}`,
-            updated_at: new Date().toISOString()
-          })
-          .in("phone", [phoneWithPlus, phoneWithoutPlus])
-          .in("status", ["queued", "scheduled"]);
+          await supabase
+            .from("whatsapp_message_queue")
+            .update({
+              status: "cancelled",
+              error_message: `Opt-out: ${detectedKeyword}`,
+              updated_at: new Date().toISOString()
+            })
+            .in("phone", [phoneWithPlus, phoneWithoutPlus])
+            .in("status", ["queued", "scheduled"]);
 
-        // Update daily stats optout_count
-        if (instanceName) {
-          const { data: inst } = await supabase
-            .from("broker_whatsapp_instances")
-            .select("broker_id")
-            .eq("instance_name", instanceName)
-            .maybeSingle();
-
-          if (inst) {
-            const today = new Date().toISOString().split("T")[0];
-            const { data: stats } = await supabase
-              .from("whatsapp_daily_stats")
-              .select("*")
-              .eq("broker_id", (inst as { broker_id: string }).broker_id)
-              .eq("date", today)
+          // Update daily stats optout_count
+          if (instanceName) {
+            const { data: inst } = await supabase
+              .from("broker_whatsapp_instances")
+              .select("broker_id")
+              .eq("instance_name", instanceName)
               .maybeSingle();
 
-            if (stats) {
-              await supabase
+            if (inst) {
+              const today = new Date().toISOString().split("T")[0];
+              const { data: stats } = await supabase
                 .from("whatsapp_daily_stats")
-                .update({ optout_count: ((stats as { optout_count: number }).optout_count || 0) + 1 })
-                .eq("id", (stats as { id: string }).id);
+                .select("*")
+                .eq("broker_id", (inst as { broker_id: string }).broker_id)
+                .eq("date", today)
+                .maybeSingle();
+
+              if (stats) {
+                await supabase
+                  .from("whatsapp_daily_stats")
+                  .update({ optout_count: ((stats as { optout_count: number }).optout_count || 0) + 1 })
+                  .eq("id", (stats as { id: string }).id);
+              }
             }
           }
+        } else {
+          console.log(`💬 Text reply from ${phone}: "${messageText.substring(0, 50)}..."`);
         }
       } else {
-        console.log(`💬 Text reply from ${phone}: "${messageText.substring(0, 50)}..."`);
+        console.log(`💬 Regular DM from ${phone} (no campaign history, skipping opt-out check)`);
       }
 
       return c.json({ success: true, event: "messages" }, 200, corsHeaders);
