@@ -268,7 +268,16 @@ Deno.serve(async (req) => {
       .select()
       .single();
 
-    if (campErr) throw campErr;
+    if (campErr) {
+      // Handle unique constraint violation (concurrent creation)
+      if (campErr.code === "23505") {
+        console.log("Concurrent cadencia creation detected, skipping:", leadId);
+        return new Response(JSON.stringify({ status: "skipped", reason: "concurrent_creation" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw campErr;
+    }
 
     // 10. Insert steps
     const stepsToInsert = stepsToUse.map((step, i) => ({
