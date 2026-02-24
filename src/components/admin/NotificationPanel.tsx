@@ -17,7 +17,8 @@ import {
   Check, 
   CheckCheck,
   Trash2,
-  Loader2
+  Loader2,
+  Shuffle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications, Notification } from "@/hooks/use-notifications";
@@ -37,12 +38,14 @@ const NOTIFICATION_ICONS = {
   new_lead: UserPlus,
   stale_lead: Clock,
   status_change: ArrowRightCircle,
+  roleta_lead: Shuffle,
 };
 
 const NOTIFICATION_COLORS = {
   new_lead: "text-emerald-400",
   stale_lead: "text-yellow-400",
   status_change: "text-blue-400",
+  roleta_lead: "text-purple-400",
 };
 
 export function NotificationPanel({
