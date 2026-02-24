@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -22,15 +22,9 @@ import { NOTIFICATION_ICONS, NOTIFICATION_COLORS } from "@/lib/notification-conf
 
 interface NotificationPanelProps {
   triggerClassName?: string;
-  /**
-   * popover: comportamento atual (ícone do sino abre um Popover)
-   * inline: renderiza a lista diretamente (sem precisar clicar no sino)
-   */
   variant?: "popover" | "inline";
-  /** Oculta o cabeçalho interno quando usado dentro de outro header (ex: Sheet mobile) */
   showHeader?: boolean;
 }
-
 
 export function NotificationPanel({
   triggerClassName,
@@ -39,6 +33,7 @@ export function NotificationPanel({
 }: NotificationPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const {
     notifications,
     unreadCount,
@@ -48,17 +43,22 @@ export function NotificationPanel({
     deleteNotification,
   } = useNotifications();
 
+  // Determine if user is in broker context based on current route
+  const isBrokerContext = location.pathname.startsWith("/corretor");
+
   const handleNotificationClick = async (notification: Notification) => {
-    // Mark as read
     if (!notification.is_read) {
       await markAsRead(notification.id);
     }
 
-    // Navigate to lead if available
     if (notification.lead_id) {
       setIsOpen(false);
-      // The CRM tab will show the lead
-      navigate("/admin");
+      // Navigate to correct context based on current route
+      if (isBrokerContext) {
+        navigate("/corretor");
+      } else {
+        navigate("/admin");
+      }
     }
   };
 
@@ -113,7 +113,6 @@ export function NotificationPanel({
                 )}
                 onClick={() => handleNotificationClick(notification)}
               >
-                {/* Unread indicator */}
                 {!notification.is_read && (
                   <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
                 )}
@@ -133,7 +132,6 @@ export function NotificationPanel({
                     </p>
                   </div>
 
-                  {/* Actions (visible on hover) */}
                   <div className="flex items-start gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     {!notification.is_read && (
                       <button
@@ -167,7 +165,6 @@ export function NotificationPanel({
     );
   };
 
-  // Inline mode: used on mobile Sheet to show notifications immediately.
   if (variant === "inline") {
     return (
       <div className="w-full p-0 bg-[#1e1e22] border border-[#2a2a2e] rounded-lg overflow-hidden">
@@ -177,15 +174,8 @@ export function NotificationPanel({
     );
   }
 
-  const handleOpenChange = (open: boolean) => {
-    setIsOpen(open);
-    if (open && unreadCount > 0) {
-      markAllAsRead();
-    }
-  };
-
   return (
-    <Popover open={isOpen} onOpenChange={handleOpenChange}>
+    <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
         <button
           className={cn(
@@ -193,13 +183,12 @@ export function NotificationPanel({
             triggerClassName
           )}
           onPointerDown={(e) => {
-            // Helps avoid occasional mobile event conflicts when nested in other overlays.
             e.stopPropagation();
           }}
         >
           <Bell className="w-5 h-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center">
+            <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}

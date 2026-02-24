@@ -8,15 +8,8 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useNotifications } from "@/hooks/use-notifications";
 import { useBrokerSessionTracker } from "@/hooks/use-broker-session-tracker";
-import { formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { Bell, Check, Trash2, Loader2, CheckCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Button } from "@/components/ui/button";
-import { NOTIFICATION_ICONS, NOTIFICATION_COLORS } from "@/lib/notification-config";
+import { NotificationPanel } from "@/components/admin/NotificationPanel";
 
 interface BrokerLayoutProps {
   children: ReactNode;
@@ -52,15 +45,6 @@ export function BrokerLayout({
   // Rastrear sessão de login
   useBrokerSessionTracker();
 
-  const {
-    notifications,
-    unreadCount,
-    isLoading,
-    markAsRead,
-    markAllAsRead,
-    deleteNotification,
-  } = useNotifications();
-
   return (
     <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
       {/* Sidebar - fixed left, hidden on mobile */}
@@ -84,100 +68,15 @@ export function BrokerLayout({
         isLeader={isLeader}
       />
 
-      {/* Mobile Notifications Sheet */}
+      {/* Mobile Notifications Sheet - uses NotificationPanel inline */}
       <Sheet open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
         <SheetContent side="bottom" className="bg-[#1e1e22] border-[#2a2a2e] h-[80vh] rounded-t-2xl">
           <SheetHeader className="border-b border-[#2a2a2e] pb-3">
-            <div className="flex items-center justify-between">
-              <SheetTitle className="text-slate-200">Notificações</SheetTitle>
-              {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={markAllAsRead}
-                  className="text-xs text-slate-400 hover:text-slate-200 h-7 px-2"
-                >
-                  <CheckCheck className="w-3.5 h-3.5 mr-1" />
-                  Marcar todas
-                </Button>
-              )}
-            </div>
+            <SheetTitle className="text-slate-200">Notificações</SheetTitle>
           </SheetHeader>
-
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-slate-400" />
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-slate-500">
-              <Bell className="w-8 h-8 mb-2 opacity-50" />
-              <p className="text-sm">Nenhuma notificação</p>
-            </div>
-          ) : (
-            <ScrollArea className="h-[calc(80vh-80px)] mt-4">
-              <div className="divide-y divide-[#2a2a2e]">
-                {notifications.map((notification) => {
-                  const Icon = NOTIFICATION_ICONS[notification.type as keyof typeof NOTIFICATION_ICONS] || Bell;
-                  const iconColor = NOTIFICATION_COLORS[notification.type as keyof typeof NOTIFICATION_COLORS] || "text-slate-400";
-
-                  return (
-                    <div
-                      key={notification.id}
-                      className={cn(
-                        "relative px-4 py-3 transition-colors",
-                        !notification.is_read && "bg-[#252528]/50"
-                      )}
-                    >
-                      {/* Unread indicator */}
-                      {!notification.is_read && (
-                        <div className="absolute left-1.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-primary" />
-                      )}
-
-                      <div className="flex gap-3">
-                        <div className={cn("mt-0.5", iconColor)}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-slate-200 truncate">
-                            {notification.title}
-                          </p>
-                          <p className="text-xs text-slate-400 line-clamp-2 mt-0.5">
-                            {notification.message}
-                          </p>
-                          <p className="text-[10px] text-slate-500 mt-1">
-                            {formatDistanceToNow(new Date(notification.created_at), {
-                              addSuffix: true,
-                              locale: ptBR,
-                            })}
-                          </p>
-                        </div>
-
-                        {/* Actions */}
-                        <div className="flex items-start gap-1">
-                          {!notification.is_read && (
-                            <button
-                              onClick={() => markAsRead(notification.id)}
-                              className="p-2 rounded hover:bg-[#2a2a2e] text-slate-500 hover:text-slate-300"
-                              title="Marcar como lida"
-                            >
-                              <Check className="w-4 h-4" />
-                            </button>
-                          )}
-                          <button
-                            onClick={() => deleteNotification(notification.id)}
-                            className="p-2 rounded hover:bg-red-500/20 text-slate-500 hover:text-red-400"
-                            title="Excluir"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          )}
+          <div className="mt-4">
+            <NotificationPanel variant="inline" showHeader={false} />
+          </div>
         </SheetContent>
       </Sheet>
 

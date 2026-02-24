@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 
@@ -26,19 +26,22 @@ interface UseNotificationsReturn {
 export function useNotifications(): UseNotificationsReturn {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const currentUserIdRef = useRef<string | null>(null);
 
-  const fetchNotifications = useCallback(async () => {
+  const fetchNotifications = useCallback(async (userId?: string) => {
+    const uid = userId || currentUserIdRef.current;
+    if (!uid) {
+      setNotifications([]);
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        setNotifications([]);
-        return;
-      }
-
       const { data, error } = await (supabase
         .from("notifications" as any)
         .select("*")
-        .eq("user_id", session.user.id)
+        .eq("user_id", uid)
         .order("created_at", { ascending: false })
         .limit(50) as any);
 
@@ -55,75 +58,108 @@ export function useNotifications(): UseNotificationsReturn {
     }
   }, []);
 
-  // Initial fetch
+  const setupRealtime = useCallback((userId: string) => {
+    // Clean up previous channel
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channel = supabase
+      .channel(`notifications-${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const newNotification = payload.new as Notification;
+          setNotifications((prev) => [newNotification, ...prev]);
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const updatedNotification = payload.new as Notification;
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.id === updatedNotification.id ? updatedNotification : n
+            )
+          );
+        }
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const deletedId = payload.old.id;
+          setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+  }, []);
+
+  // Listen for auth state changes - THIS is the key fix
   useEffect(() => {
-    fetchNotifications();
-  }, [fetchNotifications]);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        const userId = session?.user?.id || null;
+        const previousUserId = currentUserIdRef.current;
 
-  // Realtime subscription
-  useEffect(() => {
-    let channel: RealtimeChannel | null = null;
-
-    const setupRealtime = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
-
-      channel = supabase
-        .channel("notifications-changes")
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${session.user.id}`,
-          },
-          (payload) => {
-            const newNotification = payload.new as Notification;
-            setNotifications((prev) => [newNotification, ...prev]);
+        if (userId && userId !== previousUserId) {
+          // New session or different user
+          currentUserIdRef.current = userId;
+          setIsLoading(true);
+          fetchNotifications(userId);
+          setupRealtime(userId);
+        } else if (!userId && previousUserId) {
+          // Logged out
+          currentUserIdRef.current = null;
+          setNotifications([]);
+          setIsLoading(false);
+          if (channelRef.current) {
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
           }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "UPDATE",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${session.user.id}`,
-          },
-          (payload) => {
-            const updatedNotification = payload.new as Notification;
-            setNotifications((prev) =>
-              prev.map((n) =>
-                n.id === updatedNotification.id ? updatedNotification : n
-              )
-            );
-          }
-        )
-        .on(
-          "postgres_changes",
-          {
-            event: "DELETE",
-            schema: "public",
-            table: "notifications",
-            filter: `user_id=eq.${session.user.id}`,
-          },
-          (payload) => {
-            const deletedId = payload.old.id;
-            setNotifications((prev) => prev.filter((n) => n.id !== deletedId));
-          }
-        )
-        .subscribe();
-    };
+        }
+      }
+    );
 
-    setupRealtime();
+    // Also do an initial fetch with current session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user?.id) {
+        currentUserIdRef.current = session.user.id;
+        fetchNotifications(session.user.id);
+        setupRealtime(session.user.id);
+      } else {
+        setIsLoading(false);
+      }
+    });
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
+      subscription.unsubscribe();
+      if (channelRef.current) {
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
-  }, []);
+  }, [fetchNotifications, setupRealtime]);
 
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
@@ -134,7 +170,6 @@ export function useNotifications(): UseNotificationsReturn {
 
       if (error) throw error;
 
-      // Optimistic update
       setNotifications((prev) =>
         prev.map((n) =>
           n.id === notificationId ? { ...n, is_read: true } : n
@@ -146,19 +181,18 @@ export function useNotifications(): UseNotificationsReturn {
   }, []);
 
   const markAllAsRead = useCallback(async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+    const uid = currentUserIdRef.current;
+    if (!uid) return;
 
+    try {
       const { error } = await (supabase
         .from("notifications" as any)
         .update({ is_read: true })
-        .eq("user_id", session.user.id)
+        .eq("user_id", uid)
         .eq("is_read", false) as any);
 
       if (error) throw error;
 
-      // Optimistic update
       setNotifications((prev) =>
         prev.map((n) => ({ ...n, is_read: true }))
       );
@@ -176,7 +210,6 @@ export function useNotifications(): UseNotificationsReturn {
 
       if (error) throw error;
 
-      // Optimistic update
       setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     } catch (error) {
       console.error("Erro ao deletar notificação:", error);
@@ -192,6 +225,6 @@ export function useNotifications(): UseNotificationsReturn {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    refresh: fetchNotifications,
+    refresh: () => fetchNotifications(),
   };
 }
