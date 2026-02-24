@@ -1831,6 +1831,10 @@ export type Database = {
         Returns: boolean
       }
       has_role_or_leader: { Args: { _user_id: string }; Returns: boolean }
+      increment_copilot_count: {
+        Args: { _conversation_id: string }
+        Returns: undefined
+      }
       transfer_lead: {
         Args: { _lead_id: string; _new_broker_id: string }
         Returns: undefined

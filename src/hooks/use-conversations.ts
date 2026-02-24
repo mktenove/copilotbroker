@@ -125,12 +125,63 @@ export function useConversations(options: UseConversationsOptions = {}) {
     toast.success("Conversa arquivada");
   }, []);
 
+  /**
+   * Update AI mode with full handoff logic:
+   * - When switching to 'copilot': cancel pending queue messages + log handoff
+   * - When switching to 'ai_active': log reactivation
+   */
   const updateAiMode = useCallback(async (conversationId: string, mode: string) => {
+    // 1. Update ai_mode on conversation
     await supabase
       .from("conversations")
       .update({ ai_mode: mode } as any)
       .eq("id", conversationId);
-    toast.success(mode === "ai_active" ? "Piloto Automático ativado" : "Modo Copiloto ativado");
+
+    // 2. Get conversation details for handoff logic
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("lead_id, broker_id")
+      .eq("id", conversationId)
+      .single();
+
+    if (conv?.lead_id) {
+      if (mode === "copilot") {
+        // Cancel pending queue messages for this lead
+        await supabase
+          .from("whatsapp_message_queue")
+          .update({
+            status: "cancelled",
+            error_message: "Handoff manual: corretor assumiu atendimento",
+            updated_at: new Date().toISOString(),
+          } as any)
+          .eq("lead_id", conv.lead_id)
+          .in("status", ["queued", "scheduled"]);
+
+        // Log handoff interaction
+        await supabase.from("lead_interactions").insert({
+          lead_id: conv.lead_id,
+          interaction_type: "note_added" as any,
+          notes: "🔄 Handoff: Corretor assumiu atendimento (modo Copiloto ativado)",
+          broker_id: conv.broker_id,
+          channel: "system",
+        } as any);
+
+        toast.success("Modo Copiloto ativado — mensagens automáticas canceladas");
+      } else {
+        // Log AI reactivation
+        await supabase.from("lead_interactions").insert({
+          lead_id: conv.lead_id,
+          interaction_type: "note_added" as any,
+          notes: "🤖 Piloto Automático reativado",
+          broker_id: conv.broker_id,
+          channel: "system",
+        } as any);
+
+        toast.success("Piloto Automático ativado");
+      }
+    } else {
+      toast.success(mode === "ai_active" ? "Piloto Automático ativado" : "Modo Copiloto ativado");
+    }
   }, []);
 
   return {
@@ -194,27 +245,47 @@ export function useConversationMessages(conversationId: string | null) {
     return () => { supabase.removeChannel(channel); };
   }, [conversationId]);
 
+  /**
+   * Send message via edge function (real UAZAPI delivery)
+   */
   const sendMessage = useCallback(async (content: string, sentBy = "human") => {
     if (!conversationId) return null;
-    const { data, error } = await supabase
-      .from("conversation_messages")
-      .insert({
-        conversation_id: conversationId,
-        direction: "outbound",
-        content,
-        sent_by: sentBy,
-        message_type: "text",
-        status: "sent",
-      } as any)
-      .select()
-      .single();
 
-    if (error) {
+    try {
+      const { data, error } = await supabase.functions.invoke("inbox-send-message", {
+        body: { conversation_id: conversationId, content },
+      });
+
+      if (error) {
+        // Fallback: save locally if edge function fails
+        console.error("Edge function error, falling back to local insert:", error);
+        const { data: fallbackData, error: fbError } = await supabase
+          .from("conversation_messages")
+          .insert({
+            conversation_id: conversationId,
+            direction: "outbound",
+            content,
+            sent_by: sentBy,
+            message_type: "text",
+            status: "pending",
+          } as any)
+          .select()
+          .single();
+
+        if (fbError) {
+          toast.error("Erro ao enviar mensagem");
+          return null;
+        }
+        toast.warning("Mensagem salva localmente (envio WhatsApp pendente)");
+        return fallbackData;
+      }
+
+      return data;
+    } catch (err) {
+      console.error("Erro ao enviar mensagem:", err);
       toast.error("Erro ao enviar mensagem");
-      console.error(error);
       return null;
     }
-    return data;
   }, [conversationId]);
 
   return { messages, isLoading, fetchMessages, sendMessage };

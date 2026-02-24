@@ -35,3 +35,6 @@ verify_jwt = false
 
 [functions.copilot-ai]
 verify_jwt = false
+
+[functions.inbox-send-message]
+verify_jwt = false
