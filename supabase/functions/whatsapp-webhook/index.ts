@@ -352,6 +352,66 @@ async function processOptout(
   }
 }
 
+// ========================= CONVERSATION ARCHIVING =========================
+
+async function archiveMessageToConversation(
+  supabase: SupabaseClient,
+  phone: string,
+  messageText: string,
+  direction: "inbound" | "outbound",
+  instanceName?: string,
+  senderName?: string,
+  sentBy: string = "human",
+  uazapiMessageId?: string
+): Promise<void> {
+  if (!instanceName) return;
+
+  try {
+    // Find broker by instance
+    const { data: inst } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("broker_id")
+      .eq("instance_name", instanceName)
+      .maybeSingle();
+
+    if (!inst) return;
+    const brokerId = (inst as { broker_id: string }).broker_id;
+    const phoneNormalized = phone.replace(/\D/g, "");
+
+    // Upsert conversation
+    const { data: conv, error: convError } = await supabase
+      .from("conversations")
+      .upsert({
+        broker_id: brokerId,
+        phone: phone,
+        phone_normalized: phoneNormalized,
+      }, { onConflict: "broker_id,phone_normalized", ignoreDuplicates: false })
+      .select("id")
+      .single();
+
+    if (convError || !conv) {
+      console.log("Could not upsert conversation:", convError?.message);
+      return;
+    }
+
+    // Insert message
+    await supabase.from("conversation_messages").insert({
+      conversation_id: (conv as { id: string }).id,
+      direction,
+      content: messageText || "[Mídia]",
+      message_type: messageText ? "text" : "media",
+      sender_name: senderName,
+      sent_by: sentBy,
+      status: "delivered",
+      uazapi_message_id: uazapiMessageId,
+    });
+
+    console.log(`📨 Archived ${direction} message to conversation ${(conv as { id: string }).id}`);
+  } catch (err) {
+    console.error("Error archiving message:", err);
+  }
+}
+
 // ========================= EVENT HANDLERS =========================
 
 async function handleIncomingMessage(
@@ -368,12 +428,7 @@ async function handleIncomingMessage(
     });
   }
 
-  // Skip outgoing and group messages
-  if (msg.fromMe) {
-    return new Response(JSON.stringify({ success: true, event: "messages", skipped: "fromMe" }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // Skip group messages
   if (msg.isGroup) {
     return new Response(JSON.stringify({ success: true, event: "messages", skipped: "group" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -395,7 +450,21 @@ async function handleIncomingMessage(
   }
 
   const messageText = msg.text || "";
-  console.log(`📞 Incoming DM: chatid="${chatid}" | phone="${phone}" | text="${messageText.substring(0, 50)}"`);
+  const direction = msg.fromMe ? "outbound" : "inbound";
+  console.log(`📞 ${direction} DM: chatid="${chatid}" | phone="${phone}" | text="${messageText.substring(0, 50)}"`);
+
+  // Archive ALL messages (both inbound and outbound) to conversations
+  await archiveMessageToConversation(
+    supabase, phone, messageText, direction as "inbound" | "outbound",
+    instanceName, msg.pushName, msg.fromMe ? "human" : "lead", msg.id
+  );
+
+  // Skip further processing for outbound messages
+  if (msg.fromMe) {
+    return new Response(JSON.stringify({ success: true, event: "messages", archived: "outbound" }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
 
   // Find recent campaign messages for this phone
   const phoneVariants = getPhoneVariants(phone);

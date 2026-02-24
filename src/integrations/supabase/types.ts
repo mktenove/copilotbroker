@@ -448,6 +448,220 @@ export type Database = {
           },
         ]
       }
+      conversation_messages: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          message_type: string
+          metadata: Json | null
+          sender_name: string | null
+          sent_by: string | null
+          status: string
+          uazapi_message_id: string | null
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string
+          direction?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_name?: string | null
+          sent_by?: string | null
+          status?: string
+          uazapi_message_id?: string | null
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          message_type?: string
+          metadata?: Json | null
+          sender_name?: string | null
+          sent_by?: string | null
+          status?: string
+          uazapi_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          ai_mode: string
+          broker_id: string
+          copilot_suggestions_count: number
+          created_at: string
+          id: string
+          is_archived: boolean
+          last_message_at: string | null
+          last_message_direction: string | null
+          last_message_preview: string | null
+          lead_id: string | null
+          opportunity_score: number | null
+          phone: string
+          phone_normalized: string
+          status: string
+          temperature: number | null
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          ai_mode?: string
+          broker_id: string
+          copilot_suggestions_count?: number
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          last_message_direction?: string | null
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opportunity_score?: number | null
+          phone: string
+          phone_normalized: string
+          status?: string
+          temperature?: number | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_mode?: string
+          broker_id?: string
+          copilot_suggestions_count?: number
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          last_message_at?: string | null
+          last_message_direction?: string | null
+          last_message_preview?: string | null
+          lead_id?: string | null
+          opportunity_score?: number | null
+          phone?: string
+          phone_normalized?: string
+          status?: string
+          temperature?: number | null
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: false
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      copilot_configs: {
+        Row: {
+          allow_emojis: boolean
+          auto_close_inactive: boolean
+          brand_positioning: string | null
+          broker_id: string
+          commercial_focus: string
+          commercial_priority: string
+          created_at: string
+          followup_auto: boolean
+          followup_tone: string
+          id: string
+          incentive_call: boolean
+          incentive_visit: boolean
+          is_active: boolean
+          language_style: string
+          max_autonomy: string
+          name: string
+          objectivity_level: number
+          personality: string
+          persuasion_level: number
+          property_type: string
+          region: string | null
+          target_audience: string | null
+          updated_at: string
+          use_mental_triggers: boolean
+        }
+        Insert: {
+          allow_emojis?: boolean
+          auto_close_inactive?: boolean
+          brand_positioning?: string | null
+          broker_id: string
+          commercial_focus?: string
+          commercial_priority?: string
+          created_at?: string
+          followup_auto?: boolean
+          followup_tone?: string
+          id?: string
+          incentive_call?: boolean
+          incentive_visit?: boolean
+          is_active?: boolean
+          language_style?: string
+          max_autonomy?: string
+          name?: string
+          objectivity_level?: number
+          personality?: string
+          persuasion_level?: number
+          property_type?: string
+          region?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          use_mental_triggers?: boolean
+        }
+        Update: {
+          allow_emojis?: boolean
+          auto_close_inactive?: boolean
+          brand_positioning?: string | null
+          broker_id?: string
+          commercial_focus?: string
+          commercial_priority?: string
+          created_at?: string
+          followup_auto?: boolean
+          followup_tone?: string
+          id?: string
+          incentive_call?: boolean
+          incentive_visit?: boolean
+          is_active?: boolean
+          language_style?: string
+          max_autonomy?: string
+          name?: string
+          objectivity_level?: number
+          personality?: string
+          persuasion_level?: number
+          property_type?: string
+          region?: string | null
+          target_audience?: string | null
+          updated_at?: string
+          use_mental_triggers?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "copilot_configs_broker_id_fkey"
+            columns: ["broker_id"]
+            isOneToOne: true
+            referencedRelation: "brokers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       global_whatsapp_config: {
         Row: {
           created_at: string

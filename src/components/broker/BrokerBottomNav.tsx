@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { LayoutDashboard, Plus, Bell, MessageSquare, MoreHorizontal, List, Building2, LogOut, RotateCw } from "lucide-react";
+import { LayoutDashboard, Plus, Bell, MessageSquare, MoreHorizontal, List, Building2, LogOut, RotateCw, Inbox, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ export function BrokerBottomNav({
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
   const isWhatsAppActive = location.pathname === "/corretor/whatsapp";
+  const isInboxActive = location.pathname === "/corretor/inbox";
 
   const navItems: Array<{
     id: string;
@@ -42,7 +43,7 @@ export function BrokerBottomNav({
     isFab?: boolean;
     badge?: number;
   }> = [
-    { id: "notifications", icon: Bell, badge: unreadCount },
+    { id: "inbox", icon: Inbox },
     { id: "kanban", icon: LayoutDashboard },
     { id: "add", icon: Plus, isFab: true },
     { id: "whatsapp", icon: MessageSquare },
@@ -60,8 +61,8 @@ export function BrokerBottomNav({
       onViewChange("kanban");
     } else if (id === "add") {
       onAddLead?.();
-    } else if (id === "notifications") {
-      onNotificationsClick?.();
+    } else if (id === "inbox") {
+      navigate("/corretor/inbox");
     } else if (id === "whatsapp") {
       navigate("/corretor/whatsapp");
     } else if (id === "more") {
@@ -77,17 +78,24 @@ export function BrokerBottomNav({
       navigate("/corretor/empreendimentos");
     } else if (action === "roletas") {
       navigate("/corretor/roletas");
+    } else if (action === "copilot") {
+      navigate("/corretor/copiloto");
+    } else if (action === "notifications") {
+      onNotificationsClick?.();
     } else if (action === "logout") {
       handleLogout();
     }
   };
 
   const getItemColor = (id: string) => {
-    if (id === "kanban" && viewMode === "kanban" && !isWhatsAppActive) {
+    if (id === "kanban" && viewMode === "kanban" && !isWhatsAppActive && !isInboxActive) {
       return "text-[#FFFF00]";
     }
     if (id === "whatsapp" && isWhatsAppActive) {
       return "text-emerald-400";
+    }
+    if (id === "inbox" && isInboxActive) {
+      return "text-[#FFFF00]";
     }
     return "text-slate-500 active:text-slate-300";
   };
@@ -100,6 +108,8 @@ export function BrokerBottomNav({
 
   const moreMenuItems = [
     { id: "list", label: "Modo Lista", icon: List, description: "Alternar para visualização em lista" },
+    { id: "copilot", label: "Copiloto IA", icon: Bot, description: "Configurar seu assistente de vendas" },
+    { id: "notifications", label: "Notificações", icon: Bell, description: "Ver notificações", badge: unreadCount },
     ...(isLeader ? [{ id: "roletas", label: "Roletas", icon: RotateCw, description: "Gerenciar roletas da equipe" }] : []),
     { id: "projects", label: "Empreendimentos", icon: Building2, description: "Ver seus empreendimentos" },
     { id: "logout", label: "Sair", icon: LogOut, description: "Encerrar sessão", destructive: true },

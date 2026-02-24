@@ -1,4 +1,4 @@
-import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare, RotateCw } from "lucide-react";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare, RotateCw, Inbox, Bot } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
@@ -32,6 +32,8 @@ export function BrokerSidebar({
   const location = useLocation();
   const isWhatsAppPage = location.pathname === "/corretor/whatsapp";
   const isRoletasPage = location.pathname === "/corretor/roletas";
+  const isInboxPage = location.pathname === "/corretor/inbox";
+  const isCopilotPage = location.pathname === "/corretor/copiloto";
   
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-16 hidden lg:flex flex-col bg-[#141417] border-r border-[#2a2a2e]">
@@ -79,6 +81,36 @@ export function BrokerSidebar({
             </button>
           );
         })}
+
+        {/* Inbox */}
+        <button
+          onClick={() => navigate("/corretor/inbox")}
+          className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative mt-2",
+            isInboxPage ? "bg-[#2a2a2e] text-[#FFFF00]" : "text-slate-400 hover:text-white"
+          )}
+          title="Inbox"
+        >
+          <Inbox className="w-5 h-5" />
+          <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Inbox
+          </span>
+        </button>
+
+        {/* Copiloto */}
+        <button
+          onClick={() => navigate("/corretor/copiloto")}
+          className={cn(
+            "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative",
+            isCopilotPage ? "bg-[#2a2a2e] text-blue-400" : "text-slate-400 hover:text-white"
+          )}
+          title="Copiloto IA"
+        >
+          <Bot className="w-5 h-5" />
+          <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+            Copiloto IA
+          </span>
+        </button>
 
         {/* WhatsApp */}
         <button
