@@ -1,53 +1,54 @@
 
-# Correção: Opt-outs Falsos Positivos
 
-## Problema Identificado
+# Correcao: Notificacoes ausentes para leads distribuidos por Roleta
 
-O webhook de WhatsApp registra opt-outs para **qualquer mensagem recebida** que contenha uma keyword de opt-out, mesmo que o remetente **nunca tenha recebido nenhuma campanha**. Isso causa falsos positivos quando:
-- Pessoas mandam mensagens casuais contendo frases como "nao quero mais" (ex: "nao quero mais aquele apartamento do 3 andar")
-- Contatos desconhecidos enviam mensagens para o WhatsApp do corretor
-- Mensagens de teste sao interpretadas como opt-out
+## Diagnostico
 
-### Evidencias
+### Causa Raiz
+Existe um **CHECK constraint** na tabela `notifications` que so permite 3 tipos: `new_lead`, `stale_lead`, `status_change`. A funcao `roleta-distribuir` tenta inserir notificacoes com tipo `"roleta_lead"`, que **viola o constraint e falha silenciosamente** -- o corretor nunca recebe a notificacao.
 
-- **DDD 16 e 63**: Zero leads no sistema com esses DDDs. Sao mensagens de pessoas que mandaram DM para os corretores.
-- **Seu telefone** (+55 51 99701-0323): Registrado como "stop", mas voce nunca enviou essa palavra.
+### Fluxo do problema
+```text
+Lead cadastrado (sem corretor) 
+  -> trigger notify_new_lead: broker_id = NULL, notifica so admins
+  -> trigger trigger_lead_roleta_distribuir: chama edge function
+  -> roleta-distribuir: atribui corretor via UPDATE
+  -> tenta INSERT notification com type="roleta_lead" 
+  -> CHECK constraint bloqueia -> FALHA SILENCIOSA
+  -> corretor NUNCA recebe notificacao
+```
+
+### Impacto medido no banco de dados
+| Empreendimento | Leads via Roleta | Notificacoes Recebidas | Faltando |
+|---|---|---|---|
+| O Novo Condominio | 135 | 136 | 0 (OK - leads entram com broker_id) |
+| GoldenView | 125 | 19 | **106** |
+| Mauricio Cardoso | 42 | 4 | **38** |
+| Imoveis Prontos | 1 | 1 | 0 |
+
+A Fabiane **tem** 2 notificacoes no banco (ela recebeu leads pela pagina de corretor, que insere com broker_id). O problema sao os leads via roleta que nunca geraram notificacao.
 
 ## Solucao
 
-Mover a deteccao de opt-out para **dentro** do bloco que verifica se existem mensagens de campanha enviadas para aquele telefone. Ou seja, so registrar opt-out quando:
+### 1. Migracao de banco de dados
+- Alterar o CHECK constraint para incluir `"roleta_lead"` como tipo valido
+- Isso permite que a funcao `roleta-distribuir` insira notificacoes corretamente
 
-1. O telefone ja recebeu pelo menos uma mensagem de campanha (existe em `whatsapp_message_queue` com status `sent`)
-2. A mensagem recebida contem uma keyword de opt-out
+### 2. Atualizar o frontend
+Atualizar o mapa de icones/cores de notificacoes nos 3 componentes que renderizam notificacoes:
 
-Isso elimina 100% dos falsos positivos de pessoas que nunca foram alvo de campanhas.
+- `src/hooks/use-notifications.ts` - adicionar `"roleta_lead"` ao tipo
+- `src/components/admin/NotificationPanel.tsx` - adicionar icone/cor para `roleta_lead`
+- `src/components/broker/BrokerLayout.tsx` - adicionar icone/cor para `roleta_lead`
+- `src/components/admin/MobileBottomNav.tsx` - nao precisa (nao renderiza notificacoes inline)
 
-## Arquivo a Modificar
+### 3. Gerar notificacoes retroativas
+Executar SQL para criar as notificacoes que faltam para os leads ja distribuidos por roleta que nunca tiveram notificacao gerada. Isso garante que os corretores vejam o historico completo.
 
-**`supabase/functions/whatsapp-webhook/index.ts`**
+## Arquivos a modificar
 
-### Mudanca
+- **Migracao SQL**: Alterar CHECK constraint em `notifications`
+- `src/hooks/use-notifications.ts`: Adicionar `"roleta_lead"` ao type union
+- `src/components/admin/NotificationPanel.tsx`: Adicionar icone (Shuffle) e cor para `roleta_lead`
+- `src/components/broker/BrokerLayout.tsx`: Adicionar icone e cor para `roleta_lead`
 
-Reorganizar o fluxo do handler de mensagens:
-
-Fluxo atual:
-```text
-1. Verificar mensagens recentes (recentMessages) -> cancelar follow-ups
-2. Verificar opt-out em TODAS as mensagens (independente de campanha)
-```
-
-Fluxo corrigido:
-```text
-1. Verificar mensagens recentes (recentMessages) -> cancelar follow-ups
-2. Verificar opt-out APENAS se recentMessages existir (telefone recebeu campanha)
-3. Se nao tem recentMessages, ignorar keywords de opt-out (e uma conversa normal)
-```
-
-Concretamente, mover o bloco de deteccao de opt-out (linhas 318-370) para dentro do bloco `if (recentMessages && recentMessages.length > 0)`, apos o processamento de replies.
-
-## Limpeza de Dados
-
-Remover os 3 opt-outs falsos positivos do banco:
-- +5516981448965 (sem leads DDD 16)
-- +5563999159000 (sem leads DDD 63) 
-- +5551997010323 (telefone de teste do admin)
