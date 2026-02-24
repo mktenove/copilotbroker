@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   LayoutDashboard, Users, Brain, Plus, Bell, LogOut, 
-  MoreHorizontal, Building2, MessageSquare, Shuffle, Settings 
+  MoreHorizontal, Building2, MessageSquare, Shuffle, Settings, Inbox
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -24,6 +24,7 @@ interface MobileBottomNavProps {
 }
 
 const DRAWER_ITEMS = [
+  { id: "inbox", label: "Inbox", icon: Inbox },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
@@ -73,6 +74,8 @@ export function MobileBottomNav({
     setIsMoreOpen(false);
     if (id === "whatsapp") {
       navigate("/admin/whatsapp");
+    } else if (id === "inbox") {
+      navigate("/admin/inbox");
     } else if (id === "settings") {
       setIsSettingsOpen(true);
     } else {

@@ -2,29 +2,22 @@
 
 ## Plano de Continuidade: Inbox Inteligente + Copiloto IA
 
-### Status Atual (o que ja esta pronto)
+### Status Atual
 
-A Fase 1 foi concluida com sucesso:
-- **Banco de dados**: Tabelas `conversations`, `conversation_messages` e `copilot_configs` criadas com RLS, triggers (auto-link lead por telefone, update preview/unread), indices e realtime habilitado
-- **Edge Function `copilot-ai`**: Funcional com streaming, suporta `suggest_response`, `analyze_risk` e `suggest_next_step`
-- **Webhook**: Arquiva mensagens inbound/outbound automaticamente nas conversas
-- **UI basica**: `BrokerInbox` (lista + thread + painel contexto), `BrokerCopilotConfig`, rotas `/corretor/inbox` e `/corretor/copiloto` no sidebar
-- **Hooks**: `useConversations`, `useConversationMessages`, `useCopilotConfig`, `useCopilotSuggestion`
+**Fase 1 ✅** - Banco de dados, edge functions, UI básica, hooks  
+**Batch 1 ✅** - increment_copilot_count, inbox-send-message (UAZAPI real), handoff completo  
+**Batch 2 ✅** - KPIs estratégicos, filtros avançados, ordenação inteligente, ações rápidas, Admin Inbox
 
-### Batch 1 - Concluido ✅
+### O que está pronto
 
-1. ✅ **Migracao SQL**: `increment_copilot_count` criada + RLS admin/lider para conversations e messages
-2. ✅ **Edge function `inbox-send-message`**: Envio real via UAZAPI com fallback de endpoints e auth headers
-3. ✅ **Handoff completo**: Ao assumir atendimento, cancela fila pendente + registra log de handoff em lead_interactions
+- Tabelas: conversations, conversation_messages, copilot_configs (RLS completo)
+- Edge Functions: copilot-ai, inbox-send-message, whatsapp-webhook (arquiva mensagens)
+- Inbox Corretor: /corretor/inbox com KPIs, filtros, ordenação, ações rápidas, thread, copiloto
+- Inbox Admin: /admin/inbox com filtro por corretor, visão de gestão
+- Sidebar admin e mobile: botão Inbox adicionado
+- Handoff IA↔Humano: cancela fila pendente + log em lead_interactions
 
-### Proximos Passos (Batch 2 - UI Avancada)
+### Próximos Passos (Batch 3 - Inteligência)
 
-4. Indicadores estrategicos (KPIs) no topo da Inbox
-5. Filtros avancados + modos de ordenacao
-6. Acoes rapidas na lista de conversas
-7. Pagina Admin Inbox + rota + sidebar
-
-### Batch 3 - Inteligencia
-
-8. Preview de sugestoes da IA direto na lista (sem abrir conversa)
-9. Deteccao proativa de risco + badges visuais na lista
+8. Preview de sugestões da IA direto na lista (sem abrir conversa)
+9. Detecção proativa de risco + badges visuais na lista
