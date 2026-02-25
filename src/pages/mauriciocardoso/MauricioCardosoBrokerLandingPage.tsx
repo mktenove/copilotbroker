@@ -110,7 +110,7 @@ const MauricioCardosoBrokerLandingPage = () => {
         </noscript>
       </Helmet>
 
-      <div className="min-h-screen bg-background text-foreground">
+      <div className="min-h-screen bg-background text-foreground pb-14 sm:pb-0">
         <MCHeader brokerName={brokerName} />
         <MCHeroSection />
         <MCLocationSection />

@@ -137,7 +137,7 @@ const GoldenViewBrokerLandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-14 sm:pb-0">
       <Helmet>
         <title>GoldenView | {broker.name} - Condomínio em Portão</title>
         <meta name="title" content={`GoldenView | ${broker.name} - Condomínio em Portão`} />

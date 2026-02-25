@@ -46,7 +46,16 @@ const GVFloatingCTA = () => {
       {/* Floating CTA Button */}
       <button
         onClick={scrollToForm}
-        className={`floating-cta transition-all duration-500 min-h-[48px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+        className={`fixed bottom-4 sm:bottom-6 left-4 sm:left-1/2 sm:-translate-x-1/2 z-50
+          px-4 py-2.5 sm:px-6 sm:py-4 
+          bg-primary text-primary-foreground
+          font-semibold uppercase tracking-wider text-[11px] sm:text-sm
+          rounded-full shadow-[0_10px_40px_hsl(var(--gold)/0.4)]
+          transition-all duration-500
+          hover:shadow-[0_15px_50px_hsl(var(--gold)/0.6)] hover:scale-105
+          min-h-[40px] sm:min-h-[48px] max-w-[calc(100%-5rem)] sm:max-w-none
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2
+          pb-safe ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-10 pointer-events-none"
         }`}
         aria-label="Ir para o cadastro"

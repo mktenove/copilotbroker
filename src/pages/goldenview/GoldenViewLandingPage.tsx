@@ -178,7 +178,7 @@ const GoldenViewLandingPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground pb-14 sm:pb-0">
       <Helmet>
         <title>GoldenView | Condomínio de Alto Padrão em Portão - RS</title>
         <meta name="title" content="GoldenView | Condomínio de Alto Padrão em Portão" />
