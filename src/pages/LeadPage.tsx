@@ -384,7 +384,7 @@ export default function LeadPage() {
             <div className="flex items-center gap-2 shrink-0">
               {linkedConversation && (
                 <button
-                  onClick={() => navigate(role === "admin" ? "/admin/inbox" : "/corretor/inbox")}
+                  onClick={() => navigate(`${role === "admin" ? "/admin/inbox" : "/corretor/inbox"}?conversationId=${linkedConversation.id}`)}
                   className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />Chat
