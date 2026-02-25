@@ -44,8 +44,7 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
       <QueryClientProvider client={queryClient}>
         <TooltipProvider>
-          <Toaster />
-          <Sonner />
+          {/* Toasters removed per user request */}
           <BrowserRouter>
             <AppHead />
             <Routes>
