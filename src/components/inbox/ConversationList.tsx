@@ -56,7 +56,7 @@ const SORT_OPTIONS: { id: SortMode; label: string; icon: typeof ArrowUpDown }[] 
   { id: "idle", label: "Mais tempo parado", icon: Clock },
 ];
 
-function InboxKPIs({ conversations }: { conversations: Conversation[] }) {
+function InboxKPIs({ conversations, activeKpi, onKpiClick }: { conversations: Conversation[]; activeKpi: string | null; onKpiClick: (kpi: string) => void }) {
   const stats = useMemo(() => {
     const active = conversations.length;
     const unread = conversations.filter(c => c.unread_count > 0).length;
@@ -66,38 +66,38 @@ function InboxKPIs({ conversations }: { conversations: Conversation[] }) {
     }).length;
     const hot = conversations.filter(c => c.temperature >= 8).length;
 
-    // Average idle time (hours since last message)
-    const now = Date.now();
-    const idleTimes = conversations
-      .filter(c => c.last_message_at)
-      .map(c => (now - new Date(c.last_message_at!).getTime()) / (1000 * 60 * 60));
-    const avgIdle = idleTimes.length > 0 ? idleTimes.reduce((a, b) => a + b, 0) / idleTimes.length : 0;
-
-    return { active, unread, atRisk, hot, avgIdle };
+    return { active, unread, atRisk, hot };
   }, [conversations]);
 
   const kpis = [
-    { label: "Ativas", value: stats.active, color: "text-slate-300" },
-    { label: "Não lidas", value: stats.unread, color: "text-red-400", highlight: stats.unread > 0 },
-    { label: "Quentes", value: stats.hot, color: "text-orange-400", icon: Flame },
-    { label: "Em risco", value: stats.atRisk, color: "text-red-400", icon: AlertTriangle },
+    { id: "active", label: "Ativas", value: stats.active, color: "text-slate-300" },
+    { id: "unread", label: "Não lidas", value: stats.unread, color: "text-red-400", highlight: stats.unread > 0 },
+    { id: "hot", label: "Quentes", value: stats.hot, color: "text-orange-400", icon: Flame },
+    { id: "risk", label: "Em risco", value: stats.atRisk, color: "text-red-400", icon: AlertTriangle },
   ];
 
   return (
     <div className="grid grid-cols-4 gap-1 px-3 py-2">
       {kpis.map((kpi) => {
         const Icon = kpi.icon;
+        const isActive = activeKpi === kpi.id;
         return (
-          <div key={kpi.label} className={cn(
-            "flex flex-col items-center py-1.5 rounded-lg",
-            kpi.highlight ? "bg-red-500/10" : "bg-[#1e1e22]"
-          )}>
+          <button
+            key={kpi.id}
+            onClick={() => onKpiClick(kpi.id)}
+            className={cn(
+              "flex flex-col items-center py-1.5 rounded-lg transition-all",
+              isActive
+                ? "bg-[#FFFF00]/15 ring-1 ring-[#FFFF00]/30"
+                : kpi.highlight ? "bg-red-500/10 hover:bg-red-500/15" : "bg-[#1e1e22] hover:bg-[#252528]"
+            )}
+          >
             <div className="flex items-center gap-0.5">
               {Icon && <Icon className={cn("w-3 h-3", kpi.color)} />}
               <span className={cn("text-base font-bold", kpi.color)}>{kpi.value}</span>
             </div>
             <span className="text-[9px] text-slate-500">{kpi.label}</span>
-          </div>
+          </button>
         );
       })}
     </div>
@@ -119,9 +119,32 @@ export function ConversationList({
   isAdminView,
 }: ConversationListProps) {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
+  const [activeKpi, setActiveKpi] = useState<string | null>(null);
+
+  const handleKpiClick = (kpi: string) => {
+    setActiveKpi(prev => prev === kpi ? null : kpi);
+  };
+
+  const kpiFilteredConversations = useMemo(() => {
+    if (!activeKpi) return conversations;
+    switch (activeKpi) {
+      case "unread":
+        return conversations.filter(c => c.unread_count > 0);
+      case "hot":
+        return conversations.filter(c => (c.temperature || 0) >= 8);
+      case "risk":
+        return conversations.filter(c => {
+          const lead = c.lead as any;
+          return (c.temperature || 5) <= 3 && lead?.status !== "sold" && lead?.status !== "inactive";
+        });
+      case "active":
+      default:
+        return conversations;
+    }
+  }, [conversations, activeKpi]);
 
   const sortedConversations = useMemo(() => {
-    const sorted = [...conversations];
+    const sorted = [...kpiFilteredConversations];
     switch (sortMode) {
       case "unread":
         sorted.sort((a, b) => (b.unread_count || 0) - (a.unread_count || 0));
@@ -140,15 +163,15 @@ export function ConversationList({
         sorted.sort((a, b) => {
           const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
           const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
-          return aTime - bTime; // oldest first
+          return aTime - bTime;
         });
         break;
       }
-      default: // recent
+      default:
         break;
     }
     return sorted;
-  }, [conversations, sortMode]);
+  }, [kpiFilteredConversations, sortMode]);
 
   return (
     <div className="flex flex-col h-full bg-[#141417]">
@@ -231,7 +254,7 @@ export function ConversationList({
       </div>
 
       {/* KPIs */}
-      <InboxKPIs conversations={conversations} />
+      <InboxKPIs conversations={conversations} activeKpi={activeKpi} onKpiClick={handleKpiClick} />
 
       {/* Conversation list */}
       <ScrollArea className="flex-1">
