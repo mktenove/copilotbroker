@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { Timer, MessageSquare, Pause } from "lucide-react";
+import { Timer, MessageSquare, ShieldCheck, ShieldAlert } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 
 interface PendingMessage {
@@ -8,6 +8,8 @@ interface PendingMessage {
   scheduled_at: string;
   step_number: number | null;
   status: string;
+  campaign_id: string | null;
+  sendIfReplied: boolean;
 }
 
 interface CadenceCountdownProps {
@@ -23,7 +25,7 @@ export function CadenceCountdown({ leadId, brokerId }: CadenceCountdownProps) {
     if (!leadId) return;
     const { data } = await supabase
       .from("whatsapp_message_queue")
-      .select("id, message, scheduled_at, step_number, status")
+      .select("id, message, scheduled_at, step_number, status, campaign_id")
       .eq("lead_id", leadId)
       .eq("broker_id", brokerId)
       .in("status", ["queued", "scheduled"])
@@ -31,7 +33,24 @@ export function CadenceCountdown({ leadId, brokerId }: CadenceCountdownProps) {
       .limit(1)
       .maybeSingle();
 
-    setPending(data as PendingMessage | null);
+    if (!data) {
+      setPending(null);
+      return;
+    }
+
+    // Lookup send_if_replied from campaign_steps
+    let sendIfReplied = false;
+    if (data.campaign_id && data.step_number) {
+      const { data: step } = await supabase
+        .from("campaign_steps")
+        .select("send_if_replied")
+        .eq("campaign_id", data.campaign_id)
+        .eq("step_order", data.step_number)
+        .maybeSingle();
+      if (step) sendIfReplied = step.send_if_replied;
+    }
+
+    setPending({ ...(data as any), sendIfReplied });
   }, [leadId, brokerId]);
 
   useEffect(() => {
@@ -102,6 +121,19 @@ export function CadenceCountdown({ leadId, brokerId }: CadenceCountdownProps) {
         <p className="text-[11px] text-slate-400 leading-relaxed line-clamp-3">
           {preview}
         </p>
+      </div>
+      <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-emerald-500/10">
+        {pending.sendIfReplied ? (
+          <>
+            <ShieldAlert className="w-3 h-3 text-amber-400 flex-shrink-0" />
+            <span className="text-[10px] text-amber-400">Será enviada mesmo que o lead responda</span>
+          </>
+        ) : (
+          <>
+            <ShieldCheck className="w-3 h-3 text-emerald-400/70 flex-shrink-0" />
+            <span className="text-[10px] text-emerald-400/70">Só será enviada se o lead não responder</span>
+          </>
+        )}
       </div>
     </div>
   );
