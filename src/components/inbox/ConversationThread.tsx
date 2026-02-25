@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Bot, User, Archive, ArchiveRestore, MoreVertical, Sparkles, Zap, LayoutGrid, UserRoundSearch } from "lucide-react";
+import { CadenceCountdown } from "./CadenceCountdown";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -193,6 +194,11 @@ export function ConversationThread({
             Retomar IA
           </Button>
         </div>
+      )}
+
+      {/* Cadence Countdown */}
+      {conversation.lead_id && (
+        <CadenceCountdown leadId={conversation.lead_id} brokerId={conversation.broker_id} />
       )}
 
       {/* Messages */}
