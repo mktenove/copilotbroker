@@ -325,7 +325,19 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
     if (!primaryAction) return;
     switch (primaryAction.action) {
       case "iniciar": {
-        setIniciarAtendimentoOpen(true);
+        // Go directly to WhatsApp
+        const result = await iniciarAtendimento(lead.id);
+        if (result.success) {
+          addInteraction("whatsapp_manual" as any, {
+            notes: "Atendimento iniciado — redirecionado para WhatsApp",
+            channel: "whatsapp",
+            createdBy: result.userId,
+          });
+          const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+          toast.success("Atendimento iniciado!");
+          refreshLead();
+          window.open(`https://wa.me/55${cleanPhone}`, "_blank");
+        }
         break;
       }
       case "agendar": setAgendamentoOpen(true); break;
@@ -389,22 +401,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {linkedConversation && !isEmbedded && (
-                <button
-                  onClick={() => navigate(`${role === "admin" ? "/admin/inbox" : "/corretor/inbox"}?conversationId=${linkedConversation.id}`)}
-                  className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />Chat
-                </button>
-              )}
-              {isEmbedded && onBack && (
-                <button
-                  onClick={onBack}
-                  className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
-                >
-                  <MessageCircle className="w-3.5 h-3.5" />Voltar ao Chat
-                </button>
-              )}
+              {/* Chat buttons - temporarily disabled */}
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all">
                 <MessageCircle className="w-3.5 h-3.5" />WhatsApp<ExternalLink className="w-3 h-3" />
               </a>
@@ -447,7 +444,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                   }
                   if (!isNext) return;
                   switch (stage.status) {
-                    case "info_sent": setIniciarAtendimentoOpen(true); break;
+                    case "info_sent": handlePrimaryAction(); break;
                     case "scheduling": setAgendamentoOpen(true); break;
                     case "docs_received":
                       if (lead.comparecimento === true) setPropostaOpen(true);
@@ -580,61 +577,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
           </div>
         )}
 
-        {/* Iniciar Atendimento inline textarea */}
-        {iniciarAtendimentoOpen && lead.status === "new" && (
-          <div className="mb-6 bg-[#111114] border border-emerald-500/20 rounded-xl p-4 space-y-3">
-            <p className="text-xs font-medium text-emerald-400">Mensagem inicial para {lead.name}</p>
-            <Textarea
-              autoFocus
-              placeholder="Escreva a mensagem que você vai enviar ao lead..."
-              value={iniciarAtendimentoMsg}
-              onChange={(e) => setIniciarAtendimentoMsg(e.target.value)}
-              className="min-h-[80px] bg-[#0a0a0d] border-[#2a2a2e] text-sm text-slate-200 placeholder:text-slate-600 resize-none"
-            />
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                disabled={!iniciarAtendimentoMsg.trim() || iniciarAtendimentoSending}
-                onClick={async () => {
-                  setIniciarAtendimentoSending(true);
-                  try {
-                    const result = await iniciarAtendimento(lead.id);
-                    if (result.success) {
-                      // Fire-and-forget: log interaction without blocking redirect
-                      addInteraction("whatsapp_manual" as any, {
-                        notes: iniciarAtendimentoMsg,
-                        channel: "whatsapp",
-                        createdBy: result.userId,
-                      });
-                      const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-                      toast.success("Atendimento iniciado!");
-                      setIniciarAtendimentoMsg("");
-                      setIniciarAtendimentoOpen(false);
-                      // Redirect immediately without waiting
-                      window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`;
-                    }
-                  } catch {
-                    toast.error("Erro ao iniciar atendimento");
-                  } finally {
-                    setIniciarAtendimentoSending(false);
-                  }
-                }}
-                className="h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
-              >
-                <Play className="w-3.5 h-3.5 mr-1.5" />
-                {iniciarAtendimentoSending ? "Iniciando..." : "Iniciar e Enviar via WhatsApp"}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => { setIniciarAtendimentoOpen(false); setIniciarAtendimentoMsg(""); }}
-                className="h-9 text-xs text-slate-400 hover:text-white"
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        )}
+        {/* Iniciar Atendimento - removed, now opens WhatsApp directly */}
 
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
           {/* ━━━━ LEFT COLUMN (60%) ━━━━ */}

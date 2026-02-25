@@ -81,20 +81,7 @@ export function BrokerSidebar({
           );
         })}
 
-        {/* Inbox */}
-        <button
-          onClick={() => navigate("/corretor/inbox")}
-          className={cn(
-            "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative mt-2",
-            isInboxPage ? "bg-[#2a2a2e] text-[#FFFF00]" : "text-slate-400 hover:text-white"
-          )}
-          title="Inbox"
-        >
-          <Inbox className="w-5 h-5" />
-          <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Inbox
-          </span>
-        </button>
+        {/* Inbox - temporarily disabled */}
 
         {/* Copiloto */}
         <button
@@ -103,11 +90,11 @@ export function BrokerSidebar({
             "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative",
             isCopilotPage ? "bg-[#2a2a2e] text-blue-400" : "text-slate-400 hover:text-white"
           )}
-          title="Copiloto IA"
+          title="Copiloto"
         >
           <Bot className="w-5 h-5" />
           <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            Copiloto IA
+            Copiloto
           </span>
         </button>
 

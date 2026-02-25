@@ -305,72 +305,26 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   // Contextual action handlers
   const handleIniciarAtendimento = async (leadId: string) => {
-    setIniciarModal({ open: true, leadId, message: "" });
-  };
-
-  const handleConfirmIniciarAtendimento = async () => {
-    if (!iniciarModal.leadId || !iniciarModal.message.trim()) return;
-    const result = await iniciarAtendimento(iniciarModal.leadId);
+    const lead = leads.find(l => l.id === leadId);
+    if (!lead) return;
+    
+    const result = await iniciarAtendimento(leadId);
     if (result.success) {
-      const lead = leads.find(l => l.id === iniciarModal.leadId);
+      toast.success("Atendimento iniciado!");
+      
+      // Fire-and-forget: log timeline
       const userId = result.userId;
+      supabase.from("lead_interactions").insert({
+        lead_id: leadId,
+        interaction_type: "whatsapp_manual" as any,
+        notes: "Atendimento iniciado — redirecionado para WhatsApp",
+        channel: "whatsapp",
+        created_by: userId,
+      });
       
-      // Show success immediately & close modal
-      toast.success("Atendimento iniciado! Redirecionando para o chat...");
-      const message = iniciarModal.message;
-      setIniciarModal({ open: false, leadId: null, message: "" });
-
-      // Navigate to inbox immediately (don't block on DB operations)
-      const inboxPath = isAdmin ? "/admin/inbox" : "/corretor/inbox";
-      
-      // Fire-and-forget: timeline log + conversation creation + message send
-      (async () => {
-        try {
-          // Log to timeline (non-blocking)
-          supabase.from("lead_interactions").insert({
-            lead_id: lead?.id,
-            interaction_type: "whatsapp_manual" as any,
-            notes: message,
-            channel: "whatsapp",
-            created_by: userId,
-          });
-
-          if (lead) {
-            const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-            const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
-            
-            const { data: brokerData } = await supabase
-              .from("brokers").select("id").eq("user_id", userId ?? "").maybeSingle();
-            
-            const brokerId_ = brokerData?.id || lead.broker_id;
-            
-            if (brokerId_) {
-              const { data: existingConv } = await supabase
-                .from("conversations").select("id")
-                .eq("broker_id", brokerId_).eq("phone_normalized", formattedPhone).maybeSingle();
-              
-              let convId = existingConv?.id || null;
-              if (!convId) {
-                const { data: newConv } = await supabase
-                  .from("conversations")
-                  .insert({ broker_id: brokerId_, phone: lead.whatsapp, phone_normalized: formattedPhone, lead_id: lead.id, status: "attending", ai_mode: "copilot" })
-                  .select("id").single();
-                convId = newConv?.id || null;
-              }
-              
-              if (convId) {
-                await supabase.functions.invoke("inbox-send-message", {
-                  body: { conversation_id: convId, content: message },
-                });
-              }
-            }
-          }
-        } catch (e) {
-          console.error("Erro no fluxo pós-atendimento:", e);
-        }
-      })();
-
-      navigate(inboxPath);
+      // Open WhatsApp directly
+      const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+      window.open(`https://wa.me/55${cleanPhone}`, "_blank");
     }
   };
 
@@ -652,37 +606,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         preselectedStatus={whatsappPreselectedStatus}
       />
 
-      {/* Iniciar Atendimento Modal */}
-      <Dialog open={iniciarModal.open} onOpenChange={(v) => { if (!v) setIniciarModal({ open: false, leadId: null, message: "" }); }}>
-        <DialogContent className="bg-[#111114] border-[#2a2a2e] max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-sm font-semibold text-slate-200">Iniciar Atendimento</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            <p className="text-xs text-slate-400">Escreva a mensagem que será enviada ao lead via WhatsApp:</p>
-            <Textarea
-              autoFocus
-              placeholder="Escreva sua mensagem aqui..."
-              value={iniciarModal.message}
-              onChange={(e) => setIniciarModal(prev => ({ ...prev, message: e.target.value }))}
-              className="min-h-[100px] bg-[#0a0a0d] border-[#2a2a2e] text-sm text-slate-200 placeholder:text-slate-600 resize-none"
-            />
-            <div className="flex items-center gap-2 justify-end">
-              <Button variant="ghost" size="sm" onClick={() => setIniciarModal({ open: false, leadId: null, message: "" })} className="text-xs text-slate-400">
-                Cancelar
-              </Button>
-              <Button
-                size="sm"
-                disabled={!iniciarModal.message.trim()}
-                onClick={handleConfirmIniciarAtendimento}
-                className="h-9 px-4 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
-              >
-                <Play className="w-3.5 h-3.5 mr-1.5" />Iniciar e Enviar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Iniciar Atendimento Modal - removed, now opens WhatsApp directly */}
     </div>
   );
 }
