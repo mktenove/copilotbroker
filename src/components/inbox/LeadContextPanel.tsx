@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot, LayoutGrid, ExternalLink } from "lucide-react";
+import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot, LayoutGrid, UserRoundSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Conversation } from "@/hooks/use-conversations";
@@ -77,9 +77,9 @@ export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCre
             size="icon"
             onClick={() => onOpenLead ? onOpenLead(lead.id) : navigate(`/corretor/lead/${lead.id}`)}
             className="h-7 w-7 text-slate-400 hover:text-[#FFFF00]"
-            title="Abrir página do lead"
+            title="Ver perfil do lead"
           >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <UserRoundSearch className="w-3.5 h-3.5" />
           </Button>
           <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-slate-400">
             <X className="w-4 h-4" />

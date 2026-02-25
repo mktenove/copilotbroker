@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Bot, User, Archive, ArchiveRestore, MoreVertical, Sparkles, Zap, LayoutGrid, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, Bot, User, Archive, ArchiveRestore, MoreVertical, Sparkles, Zap, LayoutGrid, UserRoundSearch } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -141,9 +141,9 @@ export function ConversationThread({
               size="icon"
               onClick={() => onOpenLead ? onOpenLead(conversation.lead_id!) : navigate(`/corretor/lead/${conversation.lead_id}`)}
               className="text-slate-400 hover:text-[#FFFF00] h-8 w-8"
-              title="Abrir página do lead"
+              title="Ver perfil do lead"
             >
-              <ExternalLink className="w-4 h-4" />
+              <UserRoundSearch className="w-4 h-4" />
             </Button>
           )}
           {conversation.is_archived && onUnarchive ? (
