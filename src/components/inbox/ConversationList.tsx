@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Search, Inbox, MessageSquare, AlertTriangle, Bot, Clock, Flame,
   ArrowUpDown, ThermometerSun, Target, MoreVertical, Check, Zap,
   TrendingUp, Eye, EyeOff, ChevronDown, MessageCircleMore, LayoutGrid, Archive
 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,6 +105,11 @@ function InboxKPIs({ conversations, activeKpi, onKpiClick }: { conversations: Co
   );
 }
 
+// Stable animation style for active cadence (matches KanbanCard)
+const RING_PULSE_STYLE: React.CSSProperties = {
+  animation: "ring-pulse 3s ease-in-out infinite",
+};
+
 export function ConversationList({
   conversations,
   selectedId,
@@ -120,6 +126,25 @@ export function ConversationList({
 }: ConversationListProps) {
   const [sortMode, setSortMode] = useState<SortMode>("recent");
   const [activeKpi, setActiveKpi] = useState<string | null>(null);
+  const [cadenciaLeadIds, setCadenciaLeadIds] = useState<Set<string>>(new Set());
+
+  // Fetch lead IDs with active cadences (pending messages in queue)
+  useEffect(() => {
+    const leadIds = conversations.filter(c => c.lead_id).map(c => c.lead_id!);
+    if (leadIds.length === 0) { setCadenciaLeadIds(new Set()); return; }
+
+    const fetchCadencias = async () => {
+      const { data } = await supabase
+        .from("whatsapp_message_queue")
+        .select("lead_id")
+        .in("lead_id", leadIds)
+        .in("status", ["queued", "scheduled"]);
+      if (data) {
+        setCadenciaLeadIds(new Set(data.map((d: any) => d.lead_id)));
+      }
+    };
+    fetchCadencias();
+  }, [conversations]);
 
   const handleKpiClick = (kpi: string) => {
     setActiveKpi(prev => prev === kpi ? null : kpi);
@@ -281,19 +306,21 @@ export function ConversationList({
               const idleHours = conv.last_message_at
                 ? (Date.now() - new Date(conv.last_message_at).getTime()) / (1000 * 60 * 60)
                 : 0;
+              const hasCadenciaAtiva = conv.lead_id ? cadenciaLeadIds.has(conv.lead_id) : false;
 
               return (
                 <div key={conv.id} className="group relative">
                   <button
                     onClick={() => onSelect(conv)}
                     className={cn(
-                      "w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-all",
+                      "w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left transition-colors",
                       isSelected
                         ? "bg-[#FFFF00]/10 border border-[#FFFF00]/20"
                         : isUnread
                         ? "bg-[#1e1e22] hover:bg-[#252528]"
                         : "hover:bg-[#1e1e22]"
                     )}
+                    style={hasCadenciaAtiva ? RING_PULSE_STYLE : undefined}
                   >
                     {/* Avatar */}
                     <div className={cn(
