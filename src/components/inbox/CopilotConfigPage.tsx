@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Bot, Save, Sparkles, MessageSquare, Target, Sliders, Shield, Building2, Pencil, Trash2, CheckCircle2 } from "lucide-react";
+import { Bot, Save, Sparkles, MessageSquare, Target, Sliders, Shield, Building2, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -57,79 +57,108 @@ const PRIORITY_LABELS: Record<string, string> = {
   fechamento: "Fechamento direto",
 };
 
+function CopilotAvatar({ name, isActive }: { name: string; isActive: boolean }) {
+  return (
+    <div className="relative">
+      {/* Glow ring */}
+      <div className={cn(
+        "absolute -inset-1 rounded-full blur-md transition-opacity duration-1000",
+        isActive ? "bg-[#FFFF00]/20 opacity-100 animate-pulse" : "opacity-0"
+      )} />
+      {/* Avatar */}
+      <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-[#1a1a1e] to-[#0d0d0f] border border-[#FFFF00]/30 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,0,0.08)]">
+        {/* Face */}
+        <div className="relative">
+          {/* Eyes */}
+          <div className="flex gap-3 mb-1.5">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FFFF00] shadow-[0_0_8px_rgba(255,255,0,0.6)]" />
+            <div className="w-2.5 h-2.5 rounded-full bg-[#FFFF00] shadow-[0_0_8px_rgba(255,255,0,0.6)]" />
+          </div>
+          {/* Smile */}
+          <div className="w-6 h-3 mx-auto border-b-2 border-[#FFFF00]/60 rounded-b-full" />
+        </div>
+      </div>
+      {/* Antenna */}
+      <div className="absolute -top-3 left-1/2 -translate-x-1/2 flex flex-col items-center">
+        <div className={cn(
+          "w-2.5 h-2.5 rounded-full border border-[#FFFF00]/40",
+          isActive ? "bg-[#FFFF00] shadow-[0_0_10px_rgba(255,255,0,0.5)]" : "bg-[#2a2a2e]"
+        )} />
+        <div className="w-px h-2 bg-[#FFFF00]/30" />
+      </div>
+    </div>
+  );
+}
+
 function CopilotSummary({ config, onEdit, onDelete }: { config: CopilotConfig; onEdit: () => void; onDelete: () => void }) {
   const personality = PERSONALITIES.find(p => p.id === config.personality);
   const propertyType = PROPERTY_TYPES.find(p => p.id === config.property_type);
 
   return (
-    <div className="max-w-2xl mx-auto pb-24 px-4 space-y-4 pt-4">
-      {/* Status card */}
-      <Card className="bg-[#1a1a1e] border-[#2a2a2e] overflow-hidden">
-        <div className="bg-gradient-to-r from-blue-500/20 to-purple-600/20 p-6 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
-            <Bot className="w-9 h-9 text-white" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-white">{config.name}</h2>
-              {config.is_active && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-medium">
-                  <CheckCircle2 className="w-3 h-3" />
-                  Ativo
-                </span>
-              )}
-              {!config.is_active && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-500/20 text-slate-400 text-xs font-medium">
-                  Inativo
-                </span>
-              )}
-            </div>
-            <p className="text-sm text-slate-400 mt-0.5">
-              {personality?.label} · {personality?.desc}
-            </p>
-          </div>
-        </div>
-      </Card>
+    <div className="max-w-2xl mx-auto pb-24 px-4 space-y-5 pt-6">
+      {/* Hero card */}
+      <div className="relative overflow-hidden rounded-2xl bg-[#1a1a1e] border border-[#2a2a2e]">
+        {/* Subtle gradient overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#FFFF00]/[0.03] via-transparent to-transparent pointer-events-none" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#FFFF00]/20 to-transparent" />
 
-      {/* Summary cards */}
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryItem label="Persuasão" value={`${config.persuasion_level}%`} />
-        <SummaryItem label="Objetividade" value={`${config.objectivity_level}%`} />
-        <SummaryItem label="Prioridade" value={PRIORITY_LABELS[config.commercial_priority] || config.commercial_priority} />
-        <SummaryItem label="Autonomia" value={AUTONOMY_LABELS[config.max_autonomy] || config.max_autonomy} />
-        <SummaryItem label="Imóvel" value={propertyType?.label || config.property_type} />
-        <SummaryItem label="Gatilhos mentais" value={config.use_mental_triggers ? "Sim" : "Não"} />
-        <SummaryItem label="Emojis" value={config.allow_emojis ? "Sim" : "Não"} />
-        <SummaryItem label="Follow-up auto" value={config.followup_auto ? "Sim" : "Não"} />
+        <div className="relative px-6 pt-8 pb-6 flex flex-col items-center text-center">
+          <CopilotAvatar name={config.name} isActive={config.is_active} />
+
+          <h2 className="text-xl font-bold text-white mt-5 tracking-tight">{config.name}</h2>
+
+          <div className="flex items-center gap-2 mt-2">
+            {config.is_active ? (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#FFFF00]/10 border border-[#FFFF00]/20 text-[#FFFF00] text-xs font-semibold tracking-wide uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#FFFF00] animate-pulse" />
+                Online
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-500/10 border border-slate-500/20 text-slate-500 text-xs font-semibold tracking-wide uppercase">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                Offline
+              </span>
+            )}
+          </div>
+
+          <p className="text-sm text-slate-500 mt-3">
+            {personality?.label} · {personality?.desc}
+          </p>
+        </div>
       </div>
 
-      {config.region && (
-        <Card className="bg-[#1a1a1e] border-[#2a2a2e] p-3">
-          <p className="text-xs text-slate-500">Região</p>
-          <p className="text-sm text-slate-200">{config.region}</p>
-        </Card>
-      )}
+      {/* Stats bar */}
+      <div className="grid grid-cols-3 gap-px rounded-xl overflow-hidden border border-[#2a2a2e]">
+        <StatCell label="Persuasão" value={`${config.persuasion_level}%`} />
+        <StatCell label="Objetividade" value={`${config.objectivity_level}%`} />
+        <StatCell label="Autonomia" value={AUTONOMY_LABELS[config.max_autonomy]?.split(" ")[0] || "—"} />
+      </div>
 
-      {config.target_audience && (
-        <Card className="bg-[#1a1a1e] border-[#2a2a2e] p-3">
-          <p className="text-xs text-slate-500">Público-alvo</p>
-          <p className="text-sm text-slate-200">{config.target_audience}</p>
-        </Card>
-      )}
+      {/* Config details */}
+      <div className="space-y-px rounded-xl overflow-hidden border border-[#2a2a2e]">
+        <DetailRow label="Prioridade comercial" value={PRIORITY_LABELS[config.commercial_priority] || config.commercial_priority} />
+        <DetailRow label="Tipo de imóvel" value={propertyType?.label || config.property_type} />
+        <DetailRow label="Gatilhos mentais" value={config.use_mental_triggers ? "Ativado" : "Desativado"} highlight={config.use_mental_triggers} />
+        <DetailRow label="Emojis" value={config.allow_emojis ? "Ativado" : "Desativado"} highlight={config.allow_emojis} />
+        <DetailRow label="Follow-up automático" value={config.followup_auto ? "Ativado" : "Desativado"} highlight={config.followup_auto} />
+        <DetailRow label="Visita presencial" value={config.incentive_visit ? "Sim" : "Não"} highlight={config.incentive_visit} />
+        {config.region && <DetailRow label="Região" value={config.region} />}
+        {config.target_audience && <DetailRow label="Público-alvo" value={config.target_audience} />}
+      </div>
 
       {/* Actions */}
-      <div className="flex gap-3">
+      <div className="flex gap-3 pt-1">
         <Button
           onClick={onEdit}
-          className="flex-1 bg-[#FFFF00] text-black hover:bg-[#FFFF00]/80 font-medium"
+          className="flex-1 bg-[#FFFF00] text-black hover:bg-[#FFFF00]/80 font-semibold h-11 rounded-xl"
         >
           <Pencil className="w-4 h-4 mr-2" />
-          Editar
+          Editar Copiloto
         </Button>
 
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10 hover:text-red-300">
+            <Button variant="outline" className="h-11 w-11 rounded-xl border-[#2a2a2e] text-slate-500 hover:border-red-500/30 hover:text-red-400 hover:bg-red-500/5 p-0">
               <Trash2 className="w-4 h-4" />
             </Button>
           </AlertDialogTrigger>
@@ -153,14 +182,27 @@ function CopilotSummary({ config, onEdit, onDelete }: { config: CopilotConfig; o
   );
 }
 
-function SummaryItem({ label, value }: { label: string; value: string }) {
+function StatCell({ label, value }: { label: string; value: string }) {
   return (
-    <Card className="bg-[#1a1a1e] border-[#2a2a2e] p-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-sm text-slate-200 font-medium">{value}</p>
-    </Card>
+    <div className="bg-[#1a1a1e] px-3 py-3 text-center">
+      <p className="text-base font-bold text-white tracking-tight">{value}</p>
+      <p className="text-[10px] text-slate-500 uppercase tracking-wider mt-0.5">{label}</p>
+    </div>
   );
 }
+
+function DetailRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className="flex items-center justify-between px-4 py-3 bg-[#1a1a1e]">
+      <span className="text-xs text-slate-500">{label}</span>
+      <span className={cn(
+        "text-xs font-medium",
+        highlight ? "text-[#FFFF00]" : "text-slate-300"
+      )}>{value}</span>
+    </div>
+  );
+}
+
 
 export function CopilotConfigPage({ brokerId }: CopilotConfigPageProps) {
   const { config, isLoading, saveConfig, fetchConfig } = useCopilotConfig(brokerId);
