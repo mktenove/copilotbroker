@@ -26,7 +26,7 @@ import AdminWhatsApp from "./pages/AdminWhatsApp";
 import BrokerAdmin from "./pages/BrokerAdmin";
 import BrokerProjects from "./pages/BrokerProjects";
 import BrokerSignup from "./pages/BrokerSignup";
-import BrokerWhatsApp from "./pages/BrokerWhatsApp";
+
 import BrokerRoletasPage from "./pages/BrokerRoletasPage";
 import BrokerInbox from "./pages/BrokerInbox";
 import BrokerCopilotConfig from "./pages/BrokerCopilotConfig";
@@ -80,7 +80,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
             <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
-            <Route path="/corretor/whatsapp" element={<BrokerWhatsApp />} />
+            <Route path="/corretor/whatsapp" element={<Navigate to="/corretor/copiloto" replace />} />
             <Route path="/admin" element={<Admin />} />
             <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
             <Route path="/admin/inbox" element={<AdminInbox />} />
