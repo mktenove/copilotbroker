@@ -412,6 +412,306 @@ async function archiveMessageToConversation(
   }
 }
 
+// ========================= UAZAPI SEND =========================
+
+const UAZAPI_INSTANCE_URL = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
+const UAZAPI_TOKEN = Deno.env.get("UAZAPI_TOKEN") || "";
+
+function formatPhoneForUAZAPI(phone: string): string {
+  const cleaned = phone.replace(/\D/g, "");
+  return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
+}
+
+async function sendViaUAZAPI(
+  instanceToken: string | null,
+  phone: string,
+  text: string
+): Promise<{ success: boolean; messageId?: string; error?: string }> {
+  const cleanPhone = formatPhoneForUAZAPI(phone);
+  const token = instanceToken || UAZAPI_TOKEN;
+
+  let baseUrl = UAZAPI_INSTANCE_URL.replace(/\/$/, "");
+  try { baseUrl = new URL(baseUrl).origin; } catch { /* keep */ }
+
+  const endpoints = ["/send/text", "/chat/send/text"];
+  const authHeaders = [
+    { token },
+    { admintoken: token },
+    { apikey: token },
+    { "x-api-key": token },
+    { Authorization: `Bearer ${token}` },
+  ];
+
+  for (const endpoint of endpoints) {
+    for (const authHeader of authHeaders) {
+      try {
+        const res = await fetch(`${baseUrl}${endpoint}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({ number: cleanPhone, text }),
+        });
+        if (res.status === 401 || res.status === 404) { await res.text(); continue; }
+        const responseText = await res.text();
+        if (!res.ok) return { success: false, error: `HTTP ${res.status}: ${responseText}` };
+        let result: Record<string, unknown> = {};
+        try { result = JSON.parse(responseText); } catch { /* ok */ }
+        if (result.error) return { success: false, error: String(result.error) };
+        const messageId = String(result.id || result.messageid || (result.key as Record<string, unknown>)?.id || "");
+        return { success: true, messageId };
+      } catch (err) {
+        console.warn(`⚠️ Auto-send fail ${endpoint}:`, (err as Error).message);
+        continue;
+      }
+    }
+  }
+  return { success: false, error: "Todos os endpoints falharam" };
+}
+
+// ========================= AUTO RESPONSE (AI PILOT) =========================
+
+async function handleAutoResponse(
+  supabase: SupabaseClient,
+  brokerId: string,
+  phone: string,
+  phoneNormalized: string,
+  conversationId: string,
+  senderName?: string
+): Promise<void> {
+  try {
+    // 1. Check conversation ai_mode
+    const { data: conv } = await supabase
+      .from("conversations")
+      .select("ai_mode, lead_id, last_message_at")
+      .eq("id", conversationId)
+      .single();
+
+    if (!conv || conv.ai_mode !== "ai_active") return;
+
+    // 2. Rate limit: skip if last message was < 30s ago (prevent loops)
+    if (conv.last_message_at) {
+      const lastMsgTime = new Date(conv.last_message_at).getTime();
+      const now = Date.now();
+      if (now - lastMsgTime < 30000) {
+        console.log("⏳ Auto-response rate limited (< 30s since last message)");
+        return;
+      }
+    }
+
+    // 3. Check broker instance is connected
+    const { data: instance } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("instance_name, instance_token, status, working_hours_start, working_hours_end")
+      .eq("broker_id", brokerId)
+      .maybeSingle();
+
+    if (!instance || instance.status !== "connected") {
+      console.log("⚠️ Auto-response skipped: instance not connected");
+      return;
+    }
+
+    // 4. Check working hours (UTC-3)
+    if (instance.working_hours_start && instance.working_hours_end) {
+      const nowBR = new Date(Date.now() - 3 * 60 * 60 * 1000);
+      const hhmm = `${String(nowBR.getUTCHours()).padStart(2, "0")}:${String(nowBR.getUTCMinutes()).padStart(2, "0")}`;
+      if (hhmm < instance.working_hours_start || hhmm > instance.working_hours_end) {
+        console.log(`⏰ Auto-response skipped: outside working hours (${hhmm})`);
+        return;
+      }
+    }
+
+    // 5. Check opt-out
+    const phoneVars = getPhoneVariants(phone);
+    const { data: optout } = await supabase
+      .from("whatsapp_optouts")
+      .select("phone")
+      .in("phone", phoneVars)
+      .maybeSingle();
+
+    if (optout) {
+      console.log("🛑 Auto-response skipped: phone is opted out");
+      return;
+    }
+
+    // 6. Get copilot config
+    const { data: copilotConfig } = await supabase
+      .from("copilot_configs")
+      .select("*")
+      .eq("broker_id", brokerId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!copilotConfig) {
+      console.log("⚠️ Auto-response skipped: no active copilot config");
+      return;
+    }
+
+    // 7. Get last 10 messages for context
+    const { data: recentMsgs } = await supabase
+      .from("conversation_messages")
+      .select("direction, content, sent_by, created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    // 8. Get lead context
+    let leadContext: Record<string, string> = {};
+    if (conv.lead_id) {
+      const { data: lead } = await supabase
+        .from("leads")
+        .select("name, status, notes, project_id, lead_origin")
+        .eq("id", conv.lead_id)
+        .maybeSingle();
+
+      if (lead) {
+        let projectName = "";
+        if (lead.project_id) {
+          const { data: proj } = await supabase
+            .from("projects").select("name").eq("id", lead.project_id).maybeSingle();
+          projectName = proj?.name || "";
+        }
+        leadContext = {
+          name: lead.name || senderName || "Não informado",
+          status: lead.status || "Não informado",
+          project: projectName || "Não informado",
+          origin: lead.lead_origin || "Não informado",
+          notes: lead.notes || "Nenhuma",
+        };
+      }
+    }
+    if (!leadContext.name) leadContext.name = senderName || "Lead";
+
+    // 9. Build AI prompt (reuse copilot-ai logic)
+    const personalityMap: Record<string, string> = {
+      formal: "Seja formal, profissional e direto ao ponto.",
+      consultivo: "Seja consultivo, empático e estratégico. Guie o cliente com perguntas inteligentes.",
+      agressivo: "Seja persuasivo e orientado ao fechamento. Use gatilhos mentais de urgência e escassez.",
+      tecnico: "Seja técnico e informativo. Apresente dados e especificações com precisão.",
+      premium: "Seja sofisticado e exclusivo. Transmita luxo e exclusividade em cada palavra.",
+    };
+
+    const personality = personalityMap[copilotConfig.personality] || personalityMap.consultivo;
+    const emojiRule = copilotConfig.allow_emojis !== false ? "Use emojis com moderação para humanizar." : "Não use emojis.";
+
+    const systemPrompt = `Você é um assistente de vendas imobiliárias respondendo DIRETAMENTE ao cliente via WhatsApp. Você ESTÁ se passando pelo corretor.
+${personality}
+${emojiRule}
+Nível de persuasão: ${copilotConfig.persuasion_level || 50}/100.
+Nível de objetividade: ${copilotConfig.objectivity_level || 50}/100.
+
+REGRAS CRÍTICAS:
+- Responda SEMPRE em português do Brasil
+- Seja conciso (máximo 2 parágrafos curtos, ideal para WhatsApp)
+- NUNCA diga que é uma IA ou assistente virtual
+- Fale como se fosse o corretor de imóveis
+- Foque em avançar o lead no funil de vendas
+- Se o lead demonstrar objeção, trate com empatia
+- NUNCA invente dados sobre o empreendimento
+- Responda de forma natural e humana, como uma conversa de WhatsApp
+${copilotConfig.use_mental_triggers ? "- Use gatilhos mentais sutis (escassez, urgência, prova social)" : ""}
+${copilotConfig.incentive_visit ? "- Incentive visitas ao empreendimento quando fizer sentido" : ""}
+${copilotConfig.incentive_call ? "- Sugira ligações quando o lead parecer interessado" : ""}
+
+CONTEXTO DO LEAD:
+- Nome: ${leadContext.name}
+- Status no funil: ${leadContext.status || "Não informado"}
+- Empreendimento: ${leadContext.project || "Não informado"}
+- Origem: ${leadContext.origin || "Não informado"}
+- Notas: ${leadContext.notes || "Nenhuma"}`;
+
+    // Build messages array from conversation history
+    const aiMessages: Array<{ role: string; content: string }> = [
+      { role: "system", content: systemPrompt },
+    ];
+
+    if (recentMsgs && recentMsgs.length > 0) {
+      const sorted = [...recentMsgs].reverse();
+      for (const m of sorted) {
+        aiMessages.push({
+          role: m.direction === "inbound" ? "user" : "assistant",
+          content: m.content || "[Mídia]",
+        });
+      }
+    }
+
+    // 10. Call AI Gateway (non-streaming)
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      console.error("❌ Auto-response: LOVABLE_API_KEY not configured");
+      return;
+    }
+
+    console.log(`🤖 Generating auto-response for conversation ${conversationId}...`);
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages: aiMessages,
+        stream: false,
+      }),
+    });
+
+    if (!aiResponse.ok) {
+      console.error(`❌ AI gateway error: ${aiResponse.status}`);
+      return;
+    }
+
+    const aiData = await aiResponse.json();
+    const responseText = aiData.choices?.[0]?.message?.content;
+
+    if (!responseText || responseText.trim().length === 0) {
+      console.error("❌ AI returned empty response");
+      return;
+    }
+
+    // 11. Send via UAZAPI
+    const sendResult = await sendViaUAZAPI(
+      instance.instance_token,
+      phoneNormalized || phone,
+      responseText.trim()
+    );
+
+    if (!sendResult.success) {
+      console.error(`❌ Auto-response send failed: ${sendResult.error}`);
+      return;
+    }
+
+    // 12. Save message in conversation
+    await supabase.from("conversation_messages").insert({
+      conversation_id: conversationId,
+      direction: "outbound",
+      content: responseText.trim(),
+      sent_by: "ai",
+      message_type: "text",
+      status: "sent",
+      uazapi_message_id: sendResult.messageId || null,
+    });
+
+    // 13. Register in lead_interactions
+    if (conv.lead_id) {
+      await supabase.from("lead_interactions").insert({
+        lead_id: conv.lead_id,
+        interaction_type: "whatsapp_enviada",
+        broker_id: brokerId,
+        notes: `[IA Auto] ${responseText.trim().substring(0, 180)}`,
+        channel: "whatsapp",
+      }).catch(() => {});
+    }
+
+    // 14. Increment copilot count
+    await supabase.rpc("increment_copilot_count", { _conversation_id: conversationId }).catch(() => {});
+
+    console.log(`✅ Auto-response sent for conversation ${conversationId}: "${responseText.trim().substring(0, 60)}..."`);
+
+  } catch (err) {
+    console.error("❌ handleAutoResponse error:", err);
+  }
+}
+
 // ========================= EVENT HANDLERS =========================
 
 async function handleIncomingMessage(
@@ -504,6 +804,34 @@ async function handleIncomingMessage(
     }
   } else {
     console.log(`💬 Regular DM from ${phone} (no campaign history, skipping opt-out check)`);
+  }
+
+  // Trigger auto-response if ai_mode is active (fire-and-forget, don't block webhook)
+  if (instanceName) {
+    const { data: inst } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("broker_id")
+      .eq("instance_name", instanceName)
+      .maybeSingle();
+
+    if (inst) {
+      const brokerId = (inst as { broker_id: string }).broker_id;
+      const phoneNorm = phone.replace(/\D/g, "");
+      
+      // Find the conversation
+      const { data: convForAuto } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("broker_id", brokerId)
+        .eq("phone_normalized", phoneNorm)
+        .maybeSingle();
+
+      if (convForAuto) {
+        // Don't await — let it run in the background so webhook responds fast
+        handleAutoResponse(supabase, brokerId, phone, phoneNorm, convForAuto.id, msg.pushName)
+          .catch(err => console.error("Auto-response background error:", err));
+      }
+    }
   }
 
   return new Response(JSON.stringify({ success: true, event: "messages" }), {
