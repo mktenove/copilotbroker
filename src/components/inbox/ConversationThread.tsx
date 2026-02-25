@@ -180,7 +180,7 @@ export function ConversationThread({
           </span>
           <Button size="sm" variant="outline" className="h-6 text-xs border-green-500/30 text-green-400"
             onClick={() => onToggleAiMode("copilot")}>
-            Assumir Atendimento
+            Desativar Piloto
           </Button>
         </div>
       )}
@@ -191,7 +191,7 @@ export function ConversationThread({
           </span>
           <Button size="sm" variant="outline" className="h-6 text-xs border-blue-500/30 text-blue-400"
             onClick={() => onToggleAiMode("ai_active")}>
-            Retomar IA
+            Ativar Piloto Automático
           </Button>
         </div>
       )}
