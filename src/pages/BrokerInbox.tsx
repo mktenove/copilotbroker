@@ -38,8 +38,9 @@ export default function BrokerInbox() {
     getBrokerId();
   }, [navigate]);
 
+  const isArchived = statusFilter === "archived";
   const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, updateAiMode } =
-    useConversations({ brokerId: brokerId || undefined, search, statusFilter });
+    useConversations({ brokerId: brokerId || undefined, search, statusFilter: isArchived ? "all" : statusFilter, isArchived });
 
   const { messages, isLoading: messagesLoading, sendMessage } =
     useConversationMessages(selectedConversation?.id || null);

@@ -44,11 +44,13 @@ export default function AdminInbox() {
     fetchBrokers();
   }, []);
 
+  const isArchived = statusFilter === "archived";
   const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, updateAiMode } =
     useConversations({
       brokerId: selectedBrokerId !== "all" ? selectedBrokerId : undefined,
       search,
-      statusFilter,
+      statusFilter: isArchived ? "all" : statusFilter,
+      isArchived,
     });
 
   const { messages, isLoading: messagesLoading, sendMessage } =
