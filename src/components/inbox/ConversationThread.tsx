@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap, LayoutGrid } from "lucide-react";
+import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap, LayoutGrid, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -129,6 +129,17 @@ export function ConversationThread({
         </button>
 
         <div className="flex items-center gap-1">
+          {conversation.lead_id && (
+            <a
+              href={`/corretor/lead/${conversation.lead_id}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-400 hover:text-[#FFFF00] h-8 w-8 inline-flex items-center justify-center rounded-md"
+              title="Abrir página do lead"
+            >
+              <ExternalLink className="w-4 h-4" />
+            </a>
+          )}
           <Button variant="ghost" size="icon" onClick={onArchive} className="text-slate-400 h-8 w-8">
             <Archive className="w-4 h-4" />
           </Button>
