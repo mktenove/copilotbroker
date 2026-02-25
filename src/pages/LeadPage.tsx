@@ -363,8 +363,8 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
     <div className={cn(isEmbedded ? "h-full overflow-auto" : "min-h-screen", "bg-[#0a0a0d] text-white")}>
       {/* ━━━━━━━━━━━━━━ STRATEGIC HEADER ━━━━━━━━━━━━━━ */}
       <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22] pt-safe">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-4 mb-4">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 py-3 sm:py-4">
+          <div className="flex items-center gap-2 sm:gap-4 mb-3 sm:mb-4">
             <button onClick={() => isEmbedded && onBack ? onBack() : navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
               <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </button>
@@ -381,7 +381,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                   {statusConfig.label}
                 </span>
               </div>
-              <div className="flex items-center gap-4 mt-1 text-xs text-slate-500">
+              <div className="flex items-center gap-2 sm:gap-4 mt-1 text-[10px] sm:text-xs text-slate-500 flex-wrap">
                 <span className="flex items-center gap-1"><Timer className="w-3 h-3" />{tempoNoFunil} no funil</span>
                 <span className={cn("flex items-center gap-1 font-medium", slaColor)}><Zap className="w-3 h-3" />{slaLabel}</span>
                 {lead.project?.name && <span className="hidden sm:flex items-center gap-1"><Building2 className="w-3 h-3" />{lead.project.name}</span>}
@@ -509,7 +509,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
       </div>
 
       {/* ━━━━━━━━━━━━━━ MAIN CONTENT ━━━━━━━━━━━━━━ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-10 pb-10">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-8 sm:pt-10 pb-10">
         {slaLabel === "SLA estourado" && (
           <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
             <AlertTriangle className="w-4 h-4 text-red-400 shrink-0" />
