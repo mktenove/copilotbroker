@@ -598,6 +598,21 @@ async function handleAutoResponse(
       .eq("id", brokerId)
       .maybeSingle();
     const brokerName = broker?.name || "o corretor";
+    
+    // Detect gender from first name (common Portuguese female name endings)
+    const firstName = brokerName.split(" ")[0].toLowerCase();
+    const femaleEndings = ["a", "e", "ane", "ene", "ine", "one", "une", "ely", "eli", "ali", "ele", "ile"];
+    const maleExceptions = ["luca", "josue", "andre", "dante", "jorge", "felipe", "guilherme", "henrique", "vicente", "leopolde"];
+    const femaleNames = ["kely", "kelly", "monique", "alice", "ines", "raquel", "mabel", "carmen", "suelen", "miriam", "lilian", "vivian", "marian", "karen", "helen"];
+    
+    const isFemale = femaleNames.includes(firstName) || 
+      (!maleExceptions.includes(firstName) && femaleEndings.some(e => firstName.endsWith(e)));
+    
+    const brokerArticle = isFemale ? "a" : "o";
+    const brokerArticleCap = isFemale ? "A" : "O";
+    const brokerPrep = isFemale ? "da" : "do";
+    const brokerPrepPro = isFemale ? "pra" : "pro";
+    const brokerPronoun = isFemale ? "ela" : "ele";
 
     // 8. Get last 10 messages for context
     const { data: recentMsgs } = await supabase
@@ -646,7 +661,7 @@ async function handleAutoResponse(
     const personality = personalityMap[copilotConfig.personality] || personalityMap.consultivo;
     const emojiRule = copilotConfig.allow_emojis !== false ? "Use emojis com moderação para humanizar." : "Não use emojis.";
 
-    const systemPrompt = `Você é o assistente do corretor ${brokerName}. Você ajuda o corretor respondendo leads via WhatsApp.
+    const systemPrompt = `Você é o assistente ${brokerPrep} especialista ${brokerName}. Você ajuda ${brokerArticle} ${brokerName} respondendo leads via WhatsApp.
 ${personality}
 ${emojiRule}
 Nível de persuasão: ${copilotConfig.persuasion_level || 50}/100.
@@ -656,7 +671,9 @@ REGRAS CRÍTICAS:
 - Responda SEMPRE em português do Brasil
 - Seja MUITO conciso: máximo 2-3 frases curtas por mensagem (estilo WhatsApp real)
 - NUNCA diga que é uma IA, assistente virtual ou bot
-- Fale em nome do corretor ${brokerName}, como se fosse ele
+- Fale em nome ${brokerPrep} especialista ${brokerName}, como se fosse ${brokerPronoun}
+- Sempre se refira ${brokerArticle} ${brokerName} como "especialista" (ex: "${brokerArticleCap} especialista ${brokerName}")
+- Use os artigos corretos: "${brokerArticle} ${brokerName}", "${brokerPrep} ${brokerName}", "${brokerPrepPro} ${brokerName}"
 - Foque em avançar o lead no funil de vendas
 - Se o lead demonstrar objeção, trate com empatia
 - Responda de forma natural e humana, como uma conversa real de WhatsApp
@@ -669,14 +686,14 @@ ${copilotConfig.incentive_call ? "- Sugira ligações quando o lead parecer inte
 REGRA FUNDAMENTAL - NUNCA INVENTE INFORMAÇÕES:
 - Você NÃO tem acesso a informações detalhadas do empreendimento (preços, metragem, plantas, valores de condomínio, etc.)
 - Se o cliente perguntar algo que você NÃO sabe (preço, disponibilidade, detalhes técnicos, financiamento, etc.), NÃO invente
-- Quando não souber a resposta, diga algo como: "Essa informação o ${brokerName} pode te passar com mais detalhes! Quer agendar um bate-papo? Pode ser por ligação, videochamada ou presencial 😊"
+- Quando não souber a resposta, diga algo como: "Essa informação ${brokerArticle} especialista ${brokerName} pode te passar com mais detalhes! Quer agendar um bate-papo? Pode ser por ligação, videochamada ou presencial 😊"
 - Sempre ofereça as 3 opções: ligação, videochamada ou presencial
 - Você PODE conversar naturalmente, cumprimentar, demonstrar interesse e fazer perguntas ao lead
 
 REGRA ABSOLUTA - NUNCA PROMETA ENVIAR ARQUIVOS:
 - Você NÃO pode enviar PDFs, tabelas de preços, fotos, vídeos, documentos ou qualquer arquivo
 - NUNCA diga "vou enviar", "vou mandar", "segue o PDF", "segue a tabela", "vou te passar o material"
-- Se o cliente pedir um arquivo/PDF/tabela/material, responda: "Para te enviar esse material, vou pedir pro ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido com ele? Pode ser por ligação, videochamada ou presencial 😊"
+- Se o cliente pedir um arquivo/PDF/tabela/material, responda: "Para te enviar esse material, vou pedir ${brokerPrepPro} especialista ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido com ${brokerPronoun}? Pode ser por ligação, videochamada ou presencial 😊"
 - Você SÓ pode enviar texto via WhatsApp, nada mais
 
 CONTEXTO DO LEAD:
@@ -747,7 +764,7 @@ CONTEXTO DO LEAD:
     for (const pattern of filePromisePatterns) {
       if (pattern.test(finalText)) {
         console.warn("⚠️ AI promised to send a file — replacing with fallback");
-        finalText = `Para te enviar esse material, vou pedir pro ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido? Pode ser por ligação, videochamada ou presencial 😊`;
+        finalText = `Para te enviar esse material, vou pedir ${brokerPrepPro} especialista ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido com ${brokerPronoun}? Pode ser por ligação, videochamada ou presencial 😊`;
         break;
       }
     }
