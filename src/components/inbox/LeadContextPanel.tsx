@@ -1,4 +1,4 @@
-import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot, LayoutGrid } from "lucide-react";
+import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot, LayoutGrid, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Conversation } from "@/hooks/use-conversations";
@@ -68,9 +68,20 @@ export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCre
       {/* Header */}
       <div className="flex items-center justify-between p-3 border-b border-[#2a2a2e]">
         <h3 className="text-sm font-bold text-white">Contexto do Lead</h3>
-        <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-slate-400">
-          <X className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center gap-1">
+          <a
+            href={`/corretor/lead/${lead.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-[#FFFF00] h-7 w-7 inline-flex items-center justify-center rounded-md"
+            title="Abrir página do lead"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+          </a>
+          <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7 text-slate-400">
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="p-3 space-y-4">
