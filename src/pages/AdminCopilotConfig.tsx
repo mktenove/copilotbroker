@@ -51,7 +51,7 @@ const TAB_GROUPS = [
   {
     label: "Inteligência",
     tabs: [
-      { id: "copilot", label: "Copiloto", icon: Sparkles },
+      // { id: "copilot", label: "Copiloto", icon: Sparkles }, // temporarily disabled
     ],
   },
   {
@@ -263,10 +263,7 @@ export default function AdminCopilotConfig() {
               <span className="text-foreground font-medium">{activeTabData?.label}</span>
             </div>
 
-            {/* Copilot Tab */}
-            <TabsContent value="copilot" className="mt-4">
-              <AdminCopilotOverview />
-            </TabsContent>
+            {/* Copilot Tab - temporarily disabled */}
 
             <TabsContent value="overview" className="mt-4">
               <WhatsAppOverviewTab

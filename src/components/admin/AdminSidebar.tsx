@@ -35,11 +35,11 @@ interface AdminSidebarProps {
 const NAV_ITEMS = [
   { id: "crm", label: "CRM", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
-  { id: "inbox", label: "Inbox", icon: MessageCircle },
+  // { id: "inbox", label: "Inbox", icon: MessageCircle }, // temporarily disabled
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
-  { id: "copilot", label: "Copiloto IA", icon: Bot },
+  { id: "copilot", label: "Copiloto", icon: Bot },
   { id: "analytics", label: "Inteligência", icon: Brain },
 ];
 

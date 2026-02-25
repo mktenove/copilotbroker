@@ -45,7 +45,7 @@ export function BrokerBottomNav({
     isFab?: boolean;
     badge?: number;
   }> = [
-    { id: "inbox", icon: Inbox, badge: inboxUnread },
+    // { id: "inbox", icon: Inbox, badge: inboxUnread }, // temporarily disabled
     { id: "kanban", icon: LayoutDashboard },
     { id: "add", icon: Plus, isFab: true },
     { id: "copilot", icon: Bot },

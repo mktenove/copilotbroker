@@ -25,11 +25,11 @@ interface MobileBottomNavProps {
 }
 
 const DRAWER_ITEMS_STATIC = [
-  { id: "inbox", label: "Inbox", icon: MessageCircle },
+  // { id: "inbox", label: "Inbox", icon: MessageCircle }, // temporarily disabled
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
-  { id: "copilot", label: "Copiloto IA", icon: Bot },
+  { id: "copilot", label: "Copiloto", icon: Bot },
   { id: "analytics", label: "Inteligência", icon: Brain },
   { id: "settings", label: "Configurações", icon: Settings },
 ];
