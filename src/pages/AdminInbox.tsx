@@ -248,7 +248,10 @@ export default function AdminInbox() {
                     unarchiveConversation(selectedConversation!.id);
                     handleBack();
                   }}
-                  onToggleAiMode={(mode) => updateAiMode(selectedConversation!.id, mode)}
+                  onToggleAiMode={(mode) => {
+                    updateAiMode(selectedConversation!.id, mode);
+                    setSelectedConversation(prev => prev ? { ...prev, ai_mode: mode } : prev);
+                  }}
                   copilotSuggestion={suggestion}
                   isGeneratingSuggestion={isGenerating}
                   onRequestSuggestion={handleRequestSuggestion}
