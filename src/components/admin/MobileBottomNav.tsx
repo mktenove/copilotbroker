@@ -5,6 +5,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useInboxUnread } from "@/hooks/use-inbox-unread";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -23,7 +24,7 @@ interface MobileBottomNavProps {
   onNotificationsClick?: () => void;
 }
 
-const DRAWER_ITEMS = [
+const DRAWER_ITEMS_STATIC = [
   { id: "inbox", label: "Inbox", icon: Inbox },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
@@ -40,9 +41,14 @@ export function MobileBottomNav({
   onNotificationsClick 
 }: MobileBottomNavProps) {
   const { unreadCount } = useNotifications();
+  const { unreadCount: inboxUnread } = useInboxUnread();
   const navigate = useNavigate();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
+  const DRAWER_ITEMS = DRAWER_ITEMS_STATIC.map(item =>
+    item.id === "inbox" ? { ...item, badge: inboxUnread } : item
+  );
 
   const navItems = [
     { id: "notifications", icon: Bell, badge: unreadCount },
@@ -163,7 +169,14 @@ export function MobileBottomNav({
                         : "text-slate-300 active:bg-[#1e1e22]"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
+                  <div className="relative">
+                    <Icon className="w-5 h-5" />
+                    {(item as any).badge > 0 && (
+                      <span className="absolute -top-2 -right-2 min-w-[16px] h-[16px] rounded-full bg-red-500 text-[9px] font-bold text-white flex items-center justify-center px-0.5">
+                        {(item as any).badge > 99 ? "99+" : (item as any).badge}
+                      </span>
+                    )}
+                  </div>
                   <span className="text-sm font-medium">{item.label}</span>
                 </button>
               );
