@@ -598,19 +598,20 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                 onClick={async () => {
                   setIniciarAtendimentoSending(true);
                   try {
-                    const ok = await iniciarAtendimento(lead.id);
-                    if (ok) {
-                      await addInteraction("whatsapp_manual" as any, {
+                    const result = await iniciarAtendimento(lead.id);
+                    if (result.success) {
+                      // Fire-and-forget: log interaction without blocking redirect
+                      addInteraction("whatsapp_manual" as any, {
                         notes: iniciarAtendimentoMsg,
                         channel: "whatsapp",
-                        createdBy: (await supabase.auth.getUser()).data.user?.id,
+                        createdBy: result.userId,
                       });
                       const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-                      window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`;
                       toast.success("Atendimento iniciado!");
                       setIniciarAtendimentoMsg("");
                       setIniciarAtendimentoOpen(false);
-                      refreshLead();
+                      // Redirect immediately without waiting
+                      window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarAtendimentoMsg)}`;
                     }
                   } catch {
                     toast.error("Erro ao iniciar atendimento");
