@@ -180,7 +180,7 @@ export default function AdminInbox() {
   };
 
   return (
-    <div className="min-h-screen bg-[#141417]">
+    <div className="min-h-screen bg-[#141417] pt-safe">
       <AdminSidebar activeTab="inbox" onTabChange={(tab) => {
         if (tab === "inbox") return;
         navigate("/admin");

@@ -46,7 +46,7 @@ export function BrokerLayout({
   useBrokerSessionTracker();
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
+    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar pt-safe">
       {/* Sidebar - fixed left, hidden on mobile */}
       <BrokerSidebar
         viewMode={viewMode}
