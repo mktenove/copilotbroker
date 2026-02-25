@@ -125,7 +125,7 @@ export default function BrokerInbox() {
 
         {/* Thread */}
         {showThread && (
-          <div className="flex-1 min-w-0">
+          <div className={`flex-1 min-w-0 ${isMobile ? "animate-in slide-in-from-right-5 duration-200" : ""}`}>
             <ConversationThread
               conversation={selectedConversation!}
               messages={messages}
