@@ -34,7 +34,7 @@ export function BrokerBottomNav({
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
 
-  const isWhatsAppActive = location.pathname === "/corretor/whatsapp";
+  const isCopilotActive = location.pathname === "/corretor/copiloto";
   const isInboxActive = location.pathname === "/corretor/inbox";
 
   const navItems: Array<{
@@ -46,7 +46,7 @@ export function BrokerBottomNav({
     { id: "inbox", icon: Inbox },
     { id: "kanban", icon: LayoutDashboard },
     { id: "add", icon: Plus, isFab: true },
-    { id: "whatsapp", icon: MessageSquare },
+    { id: "copilot", icon: Bot },
     { id: "more", icon: MoreHorizontal },
   ];
 
@@ -63,8 +63,8 @@ export function BrokerBottomNav({
       onAddLead?.();
     } else if (id === "inbox") {
       navigate("/corretor/inbox");
-    } else if (id === "whatsapp") {
-      navigate("/corretor/whatsapp");
+    } else if (id === "copilot") {
+      navigate("/corretor/copiloto");
     } else if (id === "more") {
       setIsMoreOpen(true);
     }
@@ -88,11 +88,11 @@ export function BrokerBottomNav({
   };
 
   const getItemColor = (id: string) => {
-    if (id === "kanban" && viewMode === "kanban" && !isWhatsAppActive && !isInboxActive) {
+    if (id === "kanban" && viewMode === "kanban" && !isCopilotActive && !isInboxActive) {
       return "text-[#FFFF00]";
     }
-    if (id === "whatsapp" && isWhatsAppActive) {
-      return "text-emerald-400";
+    if (id === "copilot" && isCopilotActive) {
+      return "text-blue-400";
     }
     if (id === "inbox" && isInboxActive) {
       return "text-[#FFFF00]";
@@ -101,14 +101,13 @@ export function BrokerBottomNav({
   };
 
   const getActiveIndicator = (id: string) => {
-    if (id === "kanban" && viewMode === "kanban" && !isWhatsAppActive) return true;
-    if (id === "whatsapp" && isWhatsAppActive) return true;
+    if (id === "kanban" && viewMode === "kanban" && !isCopilotActive) return true;
+    if (id === "copilot" && isCopilotActive) return true;
     return false;
   };
 
   const moreMenuItems = [
     { id: "list", label: "Modo Lista", icon: List, description: "Alternar para visualização em lista" },
-    { id: "copilot", label: "Copiloto IA", icon: Bot, description: "Configurar seu assistente de vendas" },
     { id: "notifications", label: "Notificações", icon: Bell, description: "Ver notificações", badge: unreadCount },
     ...(isLeader ? [{ id: "roletas", label: "Roletas", icon: RotateCw, description: "Gerenciar roletas da equipe" }] : []),
     { id: "projects", label: "Empreendimentos", icon: Building2, description: "Ver seus empreendimentos" },
@@ -169,7 +168,7 @@ export function BrokerBottomNav({
                 {getActiveIndicator(item.id) && (
                   <div className={cn(
                     "absolute bottom-1.5 w-1 h-1 rounded-full",
-                    item.id === "whatsapp" ? "bg-emerald-400" : "bg-[#FFFF00]"
+                    item.id === "copilot" ? "bg-blue-400" : "bg-[#FFFF00]"
                   )} />
                 )}
               </button>

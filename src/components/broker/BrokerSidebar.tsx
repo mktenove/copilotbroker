@@ -1,4 +1,4 @@
-import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, MessageSquare, RotateCw, Inbox, Bot } from "lucide-react";
+import { LogOut, LayoutDashboard, List, ExternalLink, Plus, Building2, RotateCw, Inbox, Bot } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import logoEnoveMini from "@/assets/logo-enove-mini.png";
@@ -30,7 +30,6 @@ export function BrokerSidebar({
 }: BrokerSidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
-  const isWhatsAppPage = location.pathname === "/corretor/whatsapp";
   const isRoletasPage = location.pathname === "/corretor/roletas";
   const isInboxPage = location.pathname === "/corretor/inbox";
   const isCopilotPage = location.pathname === "/corretor/copiloto";
@@ -112,20 +111,7 @@ export function BrokerSidebar({
           </span>
         </button>
 
-        {/* WhatsApp */}
-        <button
-          onClick={() => navigate("/corretor/whatsapp")}
-          className={cn(
-            "w-10 h-10 rounded-lg flex items-center justify-center transition-all duration-200 hover:bg-[#2a2a2e] group relative mt-2",
-            isWhatsAppPage ? "bg-[#2a2a2e] text-green-400" : "text-slate-400 hover:text-white"
-          )}
-          title="WhatsApp"
-        >
-          <MessageSquare className="w-5 h-5" />
-          <span className="absolute left-full ml-2 px-2 py-1 bg-[#2a2a2e] text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-            WhatsApp
-          </span>
-        </button>
+        {/* Removed: WhatsApp is now inside Copiloto */}
 
         {/* Roletas - only for leaders */}
         {isLeader && (
