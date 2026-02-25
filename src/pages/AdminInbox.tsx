@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ConversationThread } from "@/components/inbox/ConversationThread";
 import { LeadContextPanel } from "@/components/inbox/LeadContextPanel";
+import { CreateLeadFromChatModal } from "@/components/inbox/CreateLeadFromChatModal";
 import { useConversations, useConversationMessages, Conversation } from "@/hooks/use-conversations";
 import { useCopilotSuggestion } from "@/hooks/use-copilot";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ export default function AdminInbox() {
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showLeadPanel, setShowLeadPanel] = useState(false);
   const [brokers, setBrokers] = useState<{ id: string; name: string }[]>([]);
+  const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
 
   // Fetch brokers list for filter
   useEffect(() => {
@@ -83,17 +85,21 @@ export default function AdminInbox() {
     });
   }, [selectedConversation, messages, generateSuggestion]);
 
-  const handleCreateLeadFromConversation = useCallback(async () => {
+  const handleOpenCreateLeadModal = useCallback(() => {
+    setShowCreateLeadModal(true);
+  }, []);
+
+  const handleLeadCreated = useCallback(async (leadName: string, _: string, projectId: string | null) => {
     if (!selectedConversation) return;
-    const senderName = (selectedConversation.lead as any)?.name || selectedConversation.phone;
     const brokerId = selectedConversation.broker_id;
 
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
-        name: senderName,
+        name: leadName,
         whatsapp: selectedConversation.phone,
         broker_id: brokerId,
+        project_id: projectId,
         status: "new" as any,
         source: "whatsapp",
         lead_origin: "whatsapp_direto",
@@ -122,7 +128,7 @@ export default function AdminInbox() {
     setSelectedConversation({
       ...selectedConversation,
       lead_id: (newLead as any).id,
-      lead: { id: (newLead as any).id, name: senderName, status: "new", project_id: null, notes: null, lead_origin: "whatsapp_direto" },
+      lead: { id: (newLead as any).id, name: leadName, status: "new", project_id: projectId, notes: null, lead_origin: "whatsapp_direto" },
     });
   }, [selectedConversation]);
 
@@ -213,7 +219,7 @@ export default function AdminInbox() {
                 onInsertSuggestion={() => setSuggestion("")}
                 onDismissSuggestion={() => setSuggestion("")}
                 onOpenLeadPanel={() => setShowLeadPanel(!showLeadPanel)}
-                onCreateLead={!selectedConversation!.lead_id ? handleCreateLeadFromConversation : undefined}
+                onCreateLead={!selectedConversation!.lead_id ? handleOpenCreateLeadModal : undefined}
               />
             </div>
           )}
@@ -225,7 +231,7 @@ export default function AdminInbox() {
                 conversation={selectedConversation}
                 onClose={() => setShowLeadPanel(false)}
                 onAdvanceStatus={handleAdvanceStatus}
-                onCreateLead={!selectedConversation.lead_id ? handleCreateLeadFromConversation : undefined}
+                onCreateLead={!selectedConversation.lead_id ? handleOpenCreateLeadModal : undefined}
               />
             </div>
           )}
@@ -233,6 +239,18 @@ export default function AdminInbox() {
       </div>
 
       <MobileBottomNav activeTab="inbox" onTabChange={(tab) => navigate("/admin")} />
+
+      {/* Create Lead Modal */}
+      {selectedConversation && (
+        <CreateLeadFromChatModal
+          open={showCreateLeadModal}
+          onOpenChange={setShowCreateLeadModal}
+          phone={selectedConversation.phone}
+          suggestedName={(selectedConversation.lead as any)?.name || selectedConversation.phone}
+          brokerId={selectedConversation.broker_id}
+          onCreated={handleLeadCreated}
+        />
+      )}
     </div>
   );
 }
