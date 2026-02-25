@@ -562,6 +562,56 @@ app.post("/process", async (c) => {
             });
         }
 
+        // Sync to conversation_messages (Inbox)
+        try {
+          const phoneNorm = "+" + formatPhoneForUAZAPI(queueMsg.phone);
+
+          // Find or create conversation
+          let { data: conv } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("broker_id", instance.broker_id)
+            .eq("phone_normalized", phoneNorm)
+            .maybeSingle();
+
+          if (!conv) {
+            const { data: newConv } = await supabase
+              .from("conversations")
+              .insert({
+                broker_id: instance.broker_id,
+                lead_id: queueMsg.lead_id,
+                phone: queueMsg.phone,
+                phone_normalized: phoneNorm,
+                status: "active",
+                ai_mode: "ai_active",
+              })
+              .select("id")
+              .single();
+            conv = newConv;
+          }
+
+          if (conv) {
+            await supabase.from("conversation_messages").insert({
+              conversation_id: conv.id,
+              direction: "outbound",
+              content: queueMsg.message,
+              sent_by: "ai",
+              message_type: "text",
+              status: "sent",
+              uazapi_message_id: sendResult.messageId || null,
+            });
+
+            await supabase.from("conversations").update({
+              last_message_at: new Date().toISOString(),
+              last_message_preview: queueMsg.message.substring(0, 100),
+              last_message_direction: "outbound",
+              updated_at: new Date().toISOString(),
+            }).eq("id", conv.id);
+          }
+        } catch (syncErr) {
+          console.warn("Falha ao sincronizar com inbox:", syncErr);
+        }
+
         // Move lead to "Atendimento" if still in "new" status (step 1 of campaign)
         if (queueMsg.lead_id && queueMsg.campaign_id && (!queueMsg.step_number || queueMsg.step_number === 1)) {
           const { data: currentLead } = await supabase
