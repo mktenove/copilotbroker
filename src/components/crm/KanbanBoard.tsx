@@ -312,8 +312,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     if (!iniciarModal.leadId || !iniciarModal.message.trim()) return;
     const success = await iniciarAtendimento(iniciarModal.leadId);
     if (success) {
-      // Log message to timeline
       const userId = (await supabase.auth.getUser()).data.user?.id;
+      const lead = leads.find(l => l.id === iniciarModal.leadId);
+      
+      // Log message to timeline
       await supabase.from("lead_interactions").insert({
         lead_id: iniciarModal.leadId,
         interaction_type: "whatsapp_manual" as any,
@@ -321,24 +323,66 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         channel: "whatsapp",
         created_by: userId,
       });
-      
-      // Send first message via inbox edge function
-      const lead = leads.find(l => l.id === iniciarModal.leadId);
+
+      // Find or create conversation, then send first message via edge function
       if (lead) {
         const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-        try {
-          await supabase.functions.invoke("inbox-send-message", {
-            body: { phone: cleanPhone, message: iniciarModal.message, leadId: lead.id },
-          });
-        } catch (e) {
-          console.error("Erro ao enviar mensagem via inbox:", e);
+        const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+        
+        // Get broker_id for the current user
+        const { data: brokerData } = await supabase
+          .from("brokers")
+          .select("id")
+          .eq("user_id", userId ?? "")
+          .maybeSingle();
+        
+        const brokerId_ = brokerData?.id || lead.broker_id;
+        
+        if (brokerId_) {
+          // Find or create conversation
+          let convId: string | null = null;
+          const { data: existingConv } = await supabase
+            .from("conversations")
+            .select("id")
+            .eq("broker_id", brokerId_)
+            .eq("phone_normalized", formattedPhone)
+            .maybeSingle();
+          
+          if (existingConv) {
+            convId = existingConv.id;
+          } else {
+            const { data: newConv } = await supabase
+              .from("conversations")
+              .insert({
+                broker_id: brokerId_,
+                phone: lead.whatsapp,
+                phone_normalized: formattedPhone,
+                lead_id: lead.id,
+                status: "attending",
+                ai_mode: "copilot",
+              })
+              .select("id")
+              .single();
+            convId = newConv?.id || null;
+          }
+          
+          // Send first message via inbox edge function
+          if (convId) {
+            try {
+              await supabase.functions.invoke("inbox-send-message", {
+                body: { conversation_id: convId, content: iniciarModal.message },
+              });
+            } catch (e) {
+              console.error("Erro ao enviar mensagem via inbox:", e);
+            }
+          }
         }
       }
       
       toast.success("Atendimento iniciado! Redirecionando para o chat...");
       setIniciarModal({ open: false, leadId: null, message: "" });
       
-      // Navigate to inbox (broker or admin)
+      // Navigate to inbox
       const inboxPath = isAdmin ? "/admin/inbox" : "/corretor/inbox";
       navigate(inboxPath);
     }
