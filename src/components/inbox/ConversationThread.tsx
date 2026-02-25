@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap, LayoutGrid, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,7 @@ export function ConversationThread({
 }: ConversationThreadProps) {
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
+  const navigate = useNavigate();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const touchStartX = useRef<number | null>(null);
@@ -130,15 +132,15 @@ export function ConversationThread({
 
         <div className="flex items-center gap-1">
           {conversation.lead_id && (
-            <a
-              href={`/corretor/lead/${conversation.lead_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-400 hover:text-[#FFFF00] h-8 w-8 inline-flex items-center justify-center rounded-md"
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => navigate(`/corretor/lead/${conversation.lead_id}`)}
+              className="text-slate-400 hover:text-[#FFFF00] h-8 w-8"
               title="Abrir página do lead"
             >
               <ExternalLink className="w-4 h-4" />
-            </a>
+            </Button>
           )}
           <Button variant="ghost" size="icon" onClick={onArchive} className="text-slate-400 h-8 w-8">
             <Archive className="w-4 h-4" />
