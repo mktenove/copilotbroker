@@ -180,14 +180,18 @@ serve(async (req) => {
 
     // 5. Register in lead_interactions for audit
     if (conv.lead_id) {
-      await supabase.from("lead_interactions").insert({
-        lead_id: conv.lead_id,
-        interaction_type: "whatsapp_enviada",
-        broker_id: conv.broker_id,
-        notes: content.substring(0, 200),
-        channel: "whatsapp",
-        created_by: user.id,
-      }).catch((e: Error) => console.error("Erro ao registrar interação:", e));
+      try {
+        await supabase.from("lead_interactions").insert({
+          lead_id: conv.lead_id,
+          interaction_type: "whatsapp_enviada",
+          broker_id: conv.broker_id,
+          notes: content.substring(0, 200),
+          channel: "whatsapp",
+          created_by: user.id,
+        });
+      } catch (e) {
+        console.error("Erro ao registrar interação:", e);
+      }
     }
 
     // 6. Update conversation status
