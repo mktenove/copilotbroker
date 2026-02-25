@@ -8,7 +8,7 @@ import {
   Settings,
   Plus,
   Shuffle,
-  Inbox,
+  MessageCircle,
   Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -35,7 +35,7 @@ interface AdminSidebarProps {
 const NAV_ITEMS = [
   { id: "crm", label: "CRM", icon: LayoutDashboard },
   { id: "leads", label: "Leads", icon: Users },
-  { id: "inbox", label: "Inbox", icon: Inbox },
+  { id: "inbox", label: "Inbox", icon: MessageCircle },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
@@ -98,6 +98,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
           {NAV_ITEMS.map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
+            const isInbox = item.id === "inbox";
             
             return (
               <Tooltip key={item.id}>
@@ -114,14 +115,21 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     }}
                     className={cn(
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                      isActive 
-                        ? "bg-primary/20 text-primary" 
-                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      isInbox
+                        ? isActive
+                          ? "bg-green-500/20 text-green-400"
+                          : "text-green-400/60 hover:text-green-400 hover:bg-green-500/10"
+                        : isActive 
+                          ? "bg-primary/20 text-primary" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
                     {/* Active indicator bar */}
                     {isActive && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
+                      <div className={cn(
+                        "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full",
+                        isInbox ? "bg-green-400" : "bg-primary"
+                      )} />
                     )}
                     <Icon className="w-5 h-5" />
                     {item.id === "inbox" && inboxUnread > 0 && (

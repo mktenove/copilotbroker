@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   LayoutDashboard, Users, Brain, Plus, Bell, LogOut, 
-  MoreHorizontal, Building2, Shuffle, Settings, Inbox, Bot
+  MoreHorizontal, Building2, Shuffle, Settings, MessageCircle, Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -25,7 +25,7 @@ interface MobileBottomNavProps {
 }
 
 const DRAWER_ITEMS_STATIC = [
-  { id: "inbox", label: "Inbox", icon: Inbox },
+  { id: "inbox", label: "Inbox", icon: MessageCircle },
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
@@ -163,8 +163,8 @@ export function MobileBottomNav({
                   className={cn(
                     "flex items-center gap-3 px-4 py-3 rounded-xl transition-colors",
                     isActive
-                      ? "bg-primary/20 text-primary"
-                      : item.id === "whatsapp"
+                      ? item.id === "inbox" ? "bg-green-500/20 text-green-400" : "bg-primary/20 text-primary"
+                      : item.id === "inbox"
                         ? "text-green-400 active:bg-green-500/10"
                         : "text-slate-300 active:bg-[#1e1e22]"
                   )}
