@@ -28,6 +28,7 @@ interface ConversationThreadProps {
   onDismissSuggestion: () => void;
   onOpenLeadPanel: () => void;
   onCreateLead?: () => void;
+  onOpenLead?: (leadId: string) => void;
 }
 
 export function ConversationThread({
@@ -47,6 +48,7 @@ export function ConversationThread({
   onDismissSuggestion,
   onOpenLeadPanel,
   onCreateLead,
+  onOpenLead,
 }: ConversationThreadProps) {
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -137,7 +139,7 @@ export function ConversationThread({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/corretor/lead/${conversation.lead_id}`)}
+              onClick={() => onOpenLead ? onOpenLead(conversation.lead_id!) : navigate(`/corretor/lead/${conversation.lead_id}`)}
               className="text-slate-400 hover:text-[#FFFF00] h-8 w-8"
               title="Abrir página do lead"
             >
