@@ -321,13 +321,26 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         channel: "whatsapp",
         created_by: userId,
       });
-      toast.success("Atendimento iniciado!");
+      
+      // Send first message via inbox edge function
       const lead = leads.find(l => l.id === iniciarModal.leadId);
       if (lead) {
         const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-        window.location.href = `https://wa.me/55${cleanPhone}?text=${encodeURIComponent(iniciarModal.message)}`;
+        try {
+          await supabase.functions.invoke("inbox-send-message", {
+            body: { phone: cleanPhone, message: iniciarModal.message, leadId: lead.id },
+          });
+        } catch (e) {
+          console.error("Erro ao enviar mensagem via inbox:", e);
+        }
       }
+      
+      toast.success("Atendimento iniciado! Redirecionando para o chat...");
       setIniciarModal({ open: false, leadId: null, message: "" });
+      
+      // Navigate to inbox (broker or admin)
+      const inboxPath = isAdmin ? "/admin/inbox" : "/corretor/inbox";
+      navigate(inboxPath);
     }
   };
 
