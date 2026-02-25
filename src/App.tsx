@@ -22,7 +22,7 @@ import TermosGoldenView from "./pages/goldenview/TermosGoldenView";
 import TermosMauricioCardoso from "./pages/mauriciocardoso/TermosMauricioCardoso";
 import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
-import AdminWhatsApp from "./pages/AdminWhatsApp";
+
 import BrokerAdmin from "./pages/BrokerAdmin";
 import BrokerProjects from "./pages/BrokerProjects";
 import BrokerSignup from "./pages/BrokerSignup";
@@ -82,7 +82,7 @@ const App = () => (
             <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
             <Route path="/corretor/whatsapp" element={<Navigate to="/corretor/copiloto" replace />} />
             <Route path="/admin" element={<Admin />} />
-            <Route path="/admin/whatsapp" element={<AdminWhatsApp />} />
+            <Route path="/admin/whatsapp" element={<Navigate to="/admin/copiloto" replace />} />
             <Route path="/admin/inbox" element={<AdminInbox />} />
             <Route path="/admin/copiloto" element={<AdminCopilotConfig />} />
             <Route path="/corretor/admin" element={<BrokerAdmin />} />
