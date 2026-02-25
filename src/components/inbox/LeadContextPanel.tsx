@@ -166,7 +166,7 @@ export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCre
         {/* AI Mode info */}
         <div className="space-y-1">
           <p className="text-xs font-medium text-slate-300 flex items-center gap-1">
-            <Bot className="w-3 h-3" /> Copiloto
+            <Bot className="w-3 h-3" /> Modo IA
           </p>
           <p className="text-xs text-slate-400">
             {conversation.ai_mode === "ai_active" ? "🟢 Piloto Automático" : "🔵 Modo Copiloto"}

@@ -374,7 +374,7 @@ export function ConversationList({
                         )}
                         {hasCopilot && (
                           <span className="flex items-center gap-0.5 text-[10px] text-green-400">
-                            <Bot className="w-3 h-3" /> IA
+                            <Zap className="w-3 h-3" /> Piloto Auto
                           </span>
                         )}
                         {score > 0 && (
