@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import {
   Search, Inbox, MessageSquare, AlertTriangle, Bot, Clock, Flame,
   ArrowUpDown, ThermometerSun, Target, MoreVertical, Check, Zap,
-  TrendingUp, Eye, EyeOff, ChevronDown, MessageCircleMore, LayoutGrid
+  TrendingUp, Eye, EyeOff, ChevronDown, MessageCircleMore, LayoutGrid, Archive
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -44,6 +44,7 @@ const STATUS_FILTERS = [
   { id: "unread", label: "Não lidas", icon: MessageSquare },
   { id: "attending", label: "Atendendo", icon: Clock },
   { id: "waiting_reply", label: "Aguardando", icon: AlertTriangle },
+  { id: "archived", label: "Arquivadas", icon: Archive },
 ];
 
 const SORT_OPTIONS: { id: SortMode; label: string; icon: typeof ArrowUpDown }[] = [
