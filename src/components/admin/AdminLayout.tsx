@@ -29,7 +29,7 @@ export function AdminLayout({
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar">
+    <div className="min-h-screen bg-[#0f0f12] admin-scrollbar pt-safe">
       {/* Sidebar - fixed left, hidden on mobile */}
       <AdminSidebar
         activeTab={activeTab}

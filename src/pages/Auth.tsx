@@ -112,7 +112,7 @@ const Auth = () => {
       <Helmet>
         <title>CRM | Login - Enove</title>
       </Helmet>
-      <div className="min-h-screen bg-[#0a0a0c] flex">
+      <div className="min-h-screen bg-[#0a0a0c] flex pt-safe">
       {/* Visual Panel - Desktop only */}
       <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e]">
         {/* Geometric pattern - with subtle float animation */}
