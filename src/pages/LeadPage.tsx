@@ -80,6 +80,20 @@ export default function LeadPage() {
   const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
   const cadencia = useCadenciaAtiva(leadId);
 
+  // Check if lead has a linked conversation for chat navigation
+  const { data: linkedConversation } = useQuery({
+    queryKey: ["lead-conversation", leadId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("conversations")
+        .select("id")
+        .eq("lead_id", leadId!)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!leadId,
+  });
+
   // Fetch brokers & projects for editable selects
   const { data: allBrokers = [] } = useQuery({
     queryKey: ["all-brokers-leadpage"],
@@ -344,7 +358,7 @@ export default function LeadPage() {
       <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22] pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <button onClick={() => navigate(role === "admin" ? "/admin" : "/corretor/admin")} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
+            <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
               <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </button>
 
@@ -368,6 +382,14 @@ export default function LeadPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
+              {linkedConversation && (
+                <button
+                  onClick={() => navigate(role === "admin" ? "/admin/inbox" : "/corretor/inbox")}
+                  className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />Chat
+                </button>
+              )}
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all">
                 <MessageCircle className="w-3.5 h-3.5" />WhatsApp<ExternalLink className="w-3 h-3" />
               </a>
