@@ -34,7 +34,7 @@ const Reveal = ({ children, className = "", delay = 0 }: { children: React.React
 
 /* ─── Reusable section wrapper ─── */
 const Section = ({ children, className = "", dark = false, id }: { children: React.ReactNode; className?: string; dark?: boolean; id?: string }) => (
-  <section id={id} className={`py-16 md:py-24 lg:py-32 px-5 md:px-8 ${dark ? "bg-[#0a0a0a] text-white" : "bg-[#f5f0e8] text-[#1a1a1a]"} ${className}`}>
+  <section id={id} className={`py-10 md:py-14 lg:py-18 px-5 md:px-8 ${dark ? "bg-[#0a0a0a] text-white" : "bg-[#f5f0e8] text-[#1a1a1a]"} ${className}`}>
     <div className="max-w-5xl mx-auto">{children}</div>
   </section>
 );
@@ -60,7 +60,7 @@ const Highlight = ({ children }: { children: React.ReactNode }) => (
 );
 
 const Divider = () => (
-  <div className="w-16 h-px bg-[#c9a84c]/40 my-8 md:my-12" />
+  <div className="w-16 h-px bg-[#c9a84c]/40 my-5 md:my-8" />
 );
 
 const BulletList = ({ items, light = false }: { items: string[]; light?: boolean }) => (
@@ -285,7 +285,7 @@ const BairrodasRosas = () => {
       </Section>
 
       {/* ═══════════ CICLO COMPLETO ═══════════ */}
-      <Section className="!py-20 md:!py-32">
+      <Section>
         <SectionLabel>Modelo de Atuação</SectionLabel>
         <SectionTitle>
           Ciclo <Highlight>completo</Highlight> do lançamento
@@ -680,13 +680,13 @@ const BairrodasRosas = () => {
       </Section>
 
       {/* Full-screen logo slide */}
-      <section className="relative min-h-screen flex items-center justify-center bg-[#050505] overflow-hidden">
+      <section className="relative min-h-[70vh] md:min-h-screen flex items-center justify-center bg-[#050505] overflow-hidden">
         <div className="absolute inset-0 opacity-[0.02] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIj48ZmVUdXJidWxlbmNlIHR5cGU9ImZyYWN0YWxOb2lzZSIgYmFzZUZyZXF1ZW5jeT0iLjc1IiBzdGl0Y2hUaWxlcz0ic3RpdGNoIi8+PC9maWx0ZXI+PHJlY3Qgd2lkdGg9IjMwMCIgaGVpZ2h0PSIzMDAiIGZpbHRlcj0idXJsKCNhKSIgb3BhY2l0eT0iLjA1Ii8+PC9zdmc+')]" />
         <Reveal>
           <img 
             src={rosenGartenLogo} 
             alt="Rosen Garten" 
-            className="w-64 sm:w-80 md:w-96 lg:w-[28rem] mx-auto drop-shadow-2xl"
+            className="w-full max-w-2xl md:max-w-4xl px-6 mx-auto drop-shadow-2xl"
           />
         </Reveal>
       </section>
