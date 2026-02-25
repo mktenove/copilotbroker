@@ -487,12 +487,21 @@ async function handleAutoResponse(
 
     if (!conv || conv.ai_mode !== "ai_active") return;
 
-    // 2. Rate limit: skip if last message was < 30s ago (prevent loops)
-    if (conv.last_message_at) {
-      const lastMsgTime = new Date(conv.last_message_at).getTime();
-      const now = Date.now();
-      if (now - lastMsgTime < 30000) {
-        console.log("⏳ Auto-response rate limited (< 30s since last message)");
+    // 2. Rate limit: skip if AI sent a message < 30s ago (prevent loops)
+    const { data: lastAiMsg } = await supabase
+      .from("conversation_messages")
+      .select("created_at")
+      .eq("conversation_id", conversationId)
+      .eq("direction", "outbound")
+      .eq("sent_by", "ai")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (lastAiMsg) {
+      const lastAiTime = new Date(lastAiMsg.created_at).getTime();
+      if (Date.now() - lastAiTime < 30000) {
+        console.log("⏳ Auto-response rate limited (< 30s since last AI message)");
         return;
       }
     }
