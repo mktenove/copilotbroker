@@ -1,87 +1,68 @@
 
 
-## Plano: Sincronizar mensagens de Cadência/Follow-up com o Chat do Inbox
+## Plano: Alinhar Narrativas — "Copiloto" vs "Piloto Automático"
 
-### Problema
-Quando o `whatsapp-message-sender` envia mensagens da fila (cadência 10D, follow-up, campanhas, 1ª mensagem automática), ele registra apenas em `lead_interactions`. Não insere nada em `conversation_messages`, por isso essas mensagens nunca aparecem no chat do Inbox.
+### Regras de naming
 
-O `inbox-send-message` (mensagens manuais do corretor) e o `whatsapp-webhook` (mensagens recebidas) já fazem esse registro corretamente.
+| Conceito | Nome correto | Descrição |
+|----------|-------------|-----------|
+| IA que agenda/envia automações, cadências, follow-ups, 1ª mensagem, campanhas | **Copiloto** | Executa ações automatizadas em nome do corretor |
+| IA que responde sozinha em tempo real (modo `ai_active`) | **Piloto Automático** | Atende o lead de forma autônoma no chat |
+| Modo manual com sugestões | **Modo Copiloto** (sem mudança) | Humano no controle, IA sugere |
 
-### Solução
-Adicionar no `whatsapp-message-sender`, logo após o envio bem-sucedido (linha ~518-562), uma etapa que:
+### O que precisa mudar
 
-1. **Busca a conversa** do lead/broker pelo `phone` normalizado na tabela `conversations`
-2. **Insere em `conversation_messages`** com `direction: "outbound"`, `sent_by: "ai"`, o conteúdo da mensagem e o `uazapi_message_id`
-3. **Atualiza o preview da conversa** (`last_message_at`, `last_message_preview`, `last_message_direction`)
+O problema principal está na **label das mensagens enviadas por IA no chat** (`sent_by === "ai"`). Hoje todas aparecem como "Copiloto", mas precisamos distinguir:
 
-Se não existir uma conversa para aquele broker+phone, o sistema **cria automaticamente** uma nova conversa (isso garante que mesmo leads sem conversa prévia passem a ter histórico).
+- Mensagens enviadas pelo **whatsapp-message-sender** (cadência, follow-up, 1ª mensagem, campanhas) → label **"Copiloto"** (correto)
+- Mensagens enviadas pelo **whatsapp-webhook** auto-reply (modo ai_active) → label **"Piloto Automático"**
 
-### Mudança técnica
+### Arquivos a alterar
 
-#### `supabase/functions/whatsapp-message-sender/index.ts`
-Após o bloco de sucesso do envio (~linha 518), adicionar:
+#### 1. `src/components/inbox/ConversationThread.tsx`
+- **Linha 231**: Onde mostra `<Bot /> Copiloto` para mensagens `sent_by === "ai"` — precisa distinguir:
+  - Se a conversa está em `ai_mode === "ai_active"` E a mensagem foi enviada por IA → mostrar **"Piloto Automático"** com ícone `<Zap />`
+  - Caso contrário (automações/cadência) → manter **"Copiloto"** com ícone `<Bot />`
+  - Para fazer essa distinção de forma precisa, usar o campo `message_type` ou adicionar lógica baseada no contexto. A abordagem mais simples: verificar se existe um campo que diferencia. Na prática, o `whatsapp-webhook` auto-reply já salva com `sent_by: "ai"` igual ao sender das automações, então precisamos de um diferenciador.
+  - **Solução pragmática**: O `whatsapp-webhook` auto-reply insere com `message_type: "text"` e o `whatsapp-message-sender` também. Porém, podemos usar o `status` field ou adicionar uma metadata. A abordagem mais limpa é: usar a propriedade `conversation.ai_mode` como contexto visual no banner (já está correto), e para as mensagens individuais, **manter "Copiloto" para todas as mensagens `sent_by=ai`**, pois ambas são ações da IA agindo em nome do corretor. A distinção real fica nos **banners** e nos **botões de toggle**.
 
-```typescript
-// Sync to conversation_messages (Inbox)
-try {
-  const phoneNorm = formatPhoneForUAZAPI(queueMsg.phone);
-  
-  // Find or create conversation
-  let { data: conv } = await supabase
-    .from("conversations")
-    .select("id")
-    .eq("broker_id", instance.broker_id)
-    .eq("phone_normalized", phoneNorm)
-    .maybeSingle();
+- **Linha 249**: `Sugestão do Copiloto` → manter (correto, são sugestões)
+- **Linha 275**: `Pedir sugestão ao Copiloto` → manter (correto)
+- **Linha 179**: `Piloto Automático ativo` → já está correto
+- **Linha 190**: `Modo Copiloto (Humano no controle)` → já está correto
+- **Linha 182**: Botão "Assumir Atendimento" quando Piloto Automático está ativo → mudar para `Desativar Piloto` (mais claro)
+- **Linha 193-194**: Botão "Retomar IA" quando em modo Copiloto → mudar para `Ativar Piloto Automático`
 
-  if (!conv) {
-    const { data: newConv } = await supabase
-      .from("conversations")
-      .insert({
-        broker_id: instance.broker_id,
-        lead_id: queueMsg.lead_id,
-        phone: queueMsg.phone,
-        phone_normalized: phoneNorm,
-        status: "active",
-        ai_mode: "ai_active",
-      })
-      .select("id")
-      .single();
-    conv = newConv;
-  }
+#### 2. `src/components/inbox/ConversationList.tsx`
+- **Linha 375-378**: Badge `<Bot /> IA` quando `hasCopilot (ai_mode === "ai_active")` → mudar para `<Zap /> Piloto Auto` para diferenciar visualmente que é o Piloto Automático respondendo
 
-  if (conv) {
-    // Insert outbound message
-    await supabase.from("conversation_messages").insert({
-      conversation_id: conv.id,
-      direction: "outbound",
-      content: queueMsg.message,
-      sent_by: "ai",
-      message_type: "text",
-      status: "sent",
-      uazapi_message_id: sendResult.messageId || null,
-    });
+#### 3. `src/components/inbox/LeadContextPanel.tsx`
+- **Linha 169**: Seção header `Copiloto` → mudar para `Modo IA`
+- **Linha 172**: Já está correto (`Piloto Automático` / `Modo Copiloto`)
 
-    // Update conversation preview
-    await supabase.from("conversations").update({
-      last_message_at: new Date().toISOString(),
-      last_message_preview: queueMsg.message.substring(0, 100),
-      last_message_direction: "outbound",
-      updated_at: new Date().toISOString(),
-    }).eq("id", conv.id);
-  }
-} catch (syncErr) {
-  console.warn("Falha ao sincronizar com inbox:", syncErr);
-  // Não bloqueia o fluxo principal
-}
-```
+#### 4. `src/components/inbox/CopilotConfigPage.tsx`
+- Manter todas as referências a "Copiloto" — esta página configura o Copiloto (personalidade da IA que rege tanto automações quanto Piloto Automático)
 
-### O que NÃO muda
-- Nenhuma tabela nova ou migração necessária
-- O fluxo de envio existente permanece intacto (o sync é wrapped em try/catch)
-- `lead_interactions` continua sendo registrado normalmente (auditoria)
-- O realtime do Inbox (`conversation_messages`) já está configurado e vai captar as novas inserções automaticamente
+#### 5. `src/pages/BrokerCopilotConfig.tsx`
+- **Linha 68**: `Copiloto IA` → manter (é a configuração central)
 
-### Resultado
-Mensagens de cadência, follow-up e 1ª mensagem automática aparecerão no chat do Inbox em tempo real, marcadas com o indicador "Copiloto" (ícone de bot), pois `sent_by: "ai"`.
+#### 6. `src/hooks/use-conversations.ts`
+- **Linha 174**: `modo Copiloto ativado` → já correto
+- **Linha 179**: `Modo Copiloto ativado — mensagens automáticas canceladas` → já correto
+- **Linha 185**: `Piloto Automático reativado` → já correto
+
+#### 7. `src/components/broker/BrokerSidebar.tsx` e `BrokerBottomNav.tsx`
+- Manter "Copiloto IA" no menu — é o hub central de configuração
+
+### Resumo das mudanças concretas
+
+| Arquivo | Linha | De | Para |
+|---------|-------|----|------|
+| `ConversationThread.tsx` | 182 | `Assumir Atendimento` | `Desativar Piloto` |
+| `ConversationThread.tsx` | 193-194 | `Retomar IA` | `Ativar Piloto Automático` |
+| `ConversationThread.tsx` | 231 | `<Bot /> Copiloto` (todas msgs AI) | Manter mas adicionar ícone `<Zap />` + "Piloto Automático" quando `conversation.ai_mode === "ai_active"` |
+| `ConversationList.tsx` | 375-378 | `<Bot /> IA` | `<Zap /> Piloto Auto` |
+| `LeadContextPanel.tsx` | 169 | `Copiloto` (header seção) | `Modo IA` |
+
+São 5 pontos de edição em 3 arquivos, sem mudança de lógica — apenas labels e ícones.
 
