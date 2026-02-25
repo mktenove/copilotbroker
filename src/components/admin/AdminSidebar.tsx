@@ -7,7 +7,6 @@ import {
   Brain, 
   Settings,
   Plus,
-  MessageSquare,
   Shuffle,
   Inbox,
   Bot,
@@ -41,7 +40,6 @@ const NAV_ITEMS = [
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
   { id: "copilot", label: "Copiloto IA", icon: Bot },
-  { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "analytics", label: "Inteligência", icon: Brain },
 ];
 
@@ -106,9 +104,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 <TooltipTrigger asChild>
                   <button
                     onClick={() => {
-                      if (item.id === "whatsapp") {
-                        navigate("/admin/whatsapp");
-                      } else if (item.id === "inbox") {
+                      if (item.id === "inbox") {
                         navigate("/admin/inbox");
                       } else if (item.id === "copilot") {
                         navigate("/admin/copiloto");
@@ -118,13 +114,9 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     }}
                     className={cn(
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
-                      isActive && item.id === "whatsapp"
-                        ? "bg-green-500/20 text-green-400"
-                        : isActive 
-                          ? "bg-primary/20 text-primary" 
-                          : item.id === "whatsapp"
-                            ? "text-green-400/70 hover:text-green-400 hover:bg-green-500/10"
-                            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                      isActive 
+                        ? "bg-primary/20 text-primary" 
+                        : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     )}
                   >
                     {/* Active indicator bar */}
