@@ -11,7 +11,29 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [isInstalled, setIsInstalled] = useState(false);
   const navigate = useNavigate();
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    window.addEventListener("appinstalled", () => setIsInstalled(true));
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
+
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === "accepted") setIsInstalled(true);
+    setDeferredPrompt(null);
+  };
 
   const checkUserRoleAndRedirect = async (userId: string) => {
     try {
@@ -238,19 +260,31 @@ const Auth = () => {
               </p>
             </div>
 
-            {/* PWA Install Hint */}
-            <div className="mt-4 opacity-0 animate-fade-in delay-[800ms] lg:delay-[1200ms]">
-              <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-400 text-xs">
-                <Download className="w-4 h-4 text-[#FFFF00] shrink-0" />
-                <p>
-                  <span className="text-slate-300 font-medium">Instale o app:</span>{" "}
-                  <span className="hidden sm:inline">toque em </span>
-                  <Share className="w-3 h-3 inline -mt-0.5 text-slate-300" />{" "}
-                  e depois{" "}
-                  <span className="text-slate-300">"Adicionar à Tela Início"</span>
-                </p>
+            {/* PWA Install Button */}
+            {!isInstalled && (
+              <div className="mt-4 opacity-0 animate-fade-in delay-[800ms] lg:delay-[1200ms]">
+                {deferredPrompt ? (
+                  <button
+                    onClick={handleInstallClick}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-300 text-sm font-medium hover:border-[#FFFF00]/40 hover:text-white transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4 text-[#FFFF00]" />
+                    Instalar App
+                  </button>
+                ) : isIOS ? (
+                  <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-400 text-xs">
+                    <Download className="w-4 h-4 text-[#FFFF00] shrink-0" />
+                    <p>
+                      <span className="text-slate-300 font-medium">Instale o app:</span>{" "}
+                      toque em{" "}
+                      <Share className="w-3 h-3 inline -mt-0.5 text-slate-300" />{" "}
+                      e depois{" "}
+                      <span className="text-slate-300">"Adicionar à Tela Início"</span>
+                    </p>
+                  </div>
+                ) : null}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
