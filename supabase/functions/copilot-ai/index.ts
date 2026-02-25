@@ -122,7 +122,7 @@ REGRAS:
 
       // Track suggestion count
       if (conversation_id) {
-        await supabase.rpc("increment_copilot_count", { _conversation_id: conversation_id }).catch(() => {});
+        try { await supabase.rpc("increment_copilot_count", { _conversation_id: conversation_id }); } catch (_) { /* ignore */ }
       }
 
       return new Response(JSON.stringify({ suggestion: content }), {
@@ -160,7 +160,7 @@ REGRAS:
 
     // Track suggestion count
     if (conversation_id) {
-      supabase.rpc("increment_copilot_count", { _conversation_id: conversation_id }).catch(() => {});
+      Promise.resolve(supabase.rpc("increment_copilot_count", { _conversation_id: conversation_id })).catch(() => {});
     }
 
     return new Response(response.body, {
