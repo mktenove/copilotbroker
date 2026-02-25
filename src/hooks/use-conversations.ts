@@ -175,8 +175,6 @@ export function useConversations(options: UseConversationsOptions = {}) {
           broker_id: conv.broker_id,
           channel: "system",
         } as any);
-
-        toast.success("Modo Copiloto ativado — mensagens automáticas canceladas");
       } else {
         // Log AI reactivation
         await supabase.from("lead_interactions").insert({
@@ -186,11 +184,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
           broker_id: conv.broker_id,
           channel: "system",
         } as any);
-
-        toast.success("Piloto Automático ativado");
       }
-    } else {
-      toast.success(mode === "ai_active" ? "Piloto Automático ativado" : "Modo Copiloto ativado");
     }
   }, []);
 
