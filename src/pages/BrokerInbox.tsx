@@ -75,6 +75,51 @@ export default function BrokerInbox() {
     });
   }, [selectedConversation, messages, generateSuggestion]);
 
+  const handleCreateLeadFromConversation = useCallback(async () => {
+    if (!selectedConversation || !brokerId) return;
+    const senderName = (selectedConversation.lead as any)?.name || selectedConversation.phone;
+    
+    const { data: newLead, error: leadError } = await supabase
+      .from("leads")
+      .insert({
+        name: senderName,
+        whatsapp: selectedConversation.phone,
+        broker_id: brokerId,
+        status: "new" as any,
+        source: "whatsapp",
+        lead_origin: "whatsapp_direto",
+      } as any)
+      .select("id")
+      .single();
+
+    if (leadError || !newLead) {
+      toast.error("Erro ao criar card no Kanban");
+      return;
+    }
+
+    // Link conversation to lead
+    await supabase
+      .from("conversations")
+      .update({ lead_id: (newLead as any).id } as any)
+      .eq("id", selectedConversation.id);
+
+    // Log interaction
+    await supabase.from("lead_interactions").insert({
+      lead_id: (newLead as any).id,
+      interaction_type: "note" as any,
+      notes: "Lead criado a partir da Inbox (WhatsApp direto)",
+      broker_id: brokerId,
+    } as any);
+
+    toast.success("Card criado no Kanban!");
+    // Update local state
+    setSelectedConversation({
+      ...selectedConversation,
+      lead_id: (newLead as any).id,
+      lead: { id: (newLead as any).id, name: senderName, status: "new", project_id: null, notes: null, lead_origin: "whatsapp_direto" },
+    });
+  }, [selectedConversation, brokerId]);
+
   const handleAdvanceStatus = useCallback(async (newStatus: string) => {
     const lead = selectedConversation?.lead as any;
     if (!lead) return;
@@ -144,6 +189,7 @@ export default function BrokerInbox() {
               onInsertSuggestion={() => setSuggestion("")}
               onDismissSuggestion={() => setSuggestion("")}
               onOpenLeadPanel={() => setShowLeadPanel(!showLeadPanel)}
+              onCreateLead={!selectedConversation!.lead_id ? handleCreateLeadFromConversation : undefined}
             />
           </div>
         )}
@@ -155,6 +201,7 @@ export default function BrokerInbox() {
               conversation={selectedConversation}
               onClose={() => setShowLeadPanel(false)}
               onAdvanceStatus={handleAdvanceStatus}
+              onCreateLead={!selectedConversation.lead_id ? handleCreateLeadFromConversation : undefined}
             />
           </div>
         )}
