@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import {
   Search, Inbox, MessageSquare, AlertTriangle, Bot, Clock, Flame,
   ArrowUpDown, ThermometerSun, Target, MoreVertical, Check, Zap,
-  TrendingUp, Eye, EyeOff, ChevronDown
+  TrendingUp, Eye, EyeOff, ChevronDown, MessageCircleMore, LayoutGrid
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -334,6 +334,16 @@ export function ConversationList({
                         {idleHours > 24 && (
                           <span className="flex items-center gap-0.5 text-[10px] text-amber-400/70">
                             <Clock className="w-3 h-3" /> {idleHours > 48 ? `${Math.floor(idleHours / 24)}d` : `${Math.round(idleHours)}h`} parado
+                          </span>
+                        )}
+                        {/* Lead linkage badge */}
+                        {conv.lead_id ? (
+                          <span className="flex items-center gap-0.5 text-[10px] text-emerald-400">
+                            <LayoutGrid className="w-3 h-3" /> Kanban
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-0.5 text-[10px] text-orange-400">
+                            <MessageCircleMore className="w-3 h-3" /> WA direto
                           </span>
                         )}
                       </div>

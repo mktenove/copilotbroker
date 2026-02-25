@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap } from "lucide-react";
+import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +25,7 @@ interface ConversationThreadProps {
   onInsertSuggestion: () => void;
   onDismissSuggestion: () => void;
   onOpenLeadPanel: () => void;
+  onCreateLead?: () => void;
 }
 
 export function ConversationThread({
@@ -42,6 +43,7 @@ export function ConversationThread({
   onInsertSuggestion,
   onDismissSuggestion,
   onOpenLeadPanel,
+  onCreateLead,
 }: ConversationThreadProps) {
   const [inputValue, setInputValue] = useState("");
   const [isSending, setIsSending] = useState(false);
@@ -132,6 +134,19 @@ export function ConversationThread({
           </Button>
         </div>
       </div>
+
+      {/* No Lead Banner */}
+      {!conversation.lead_id && onCreateLead && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-orange-500/10 border-b border-orange-500/20">
+          <span className="text-xs text-orange-400 flex items-center gap-1">
+            <LayoutGrid className="w-3 h-3" /> Contato sem card no Kanban
+          </span>
+          <Button size="sm" className="h-6 text-xs bg-orange-500 hover:bg-orange-600 text-white"
+            onClick={onCreateLead}>
+            Criar Card
+          </Button>
+        </div>
+      )}
 
       {/* AI Mode Banner */}
       {isAiActive && (

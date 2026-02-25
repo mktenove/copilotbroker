@@ -1,4 +1,4 @@
-import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot } from "lucide-react";
+import { X, Phone, Mail, MapPin, Calendar, FileText, ChevronRight, Bot, LayoutGrid } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Conversation } from "@/hooks/use-conversations";
@@ -7,6 +7,7 @@ interface LeadContextPanelProps {
   conversation: Conversation;
   onClose: () => void;
   onAdvanceStatus: (newStatus: string) => void;
+  onCreateLead?: () => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -25,7 +26,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const FUNNEL_STEPS = ["new", "contacted", "registered", "visit_scheduled", "visited", "proposal_sent", "negotiation", "docs_received", "sold"];
 
-export function LeadContextPanel({ conversation, onClose, onAdvanceStatus }: LeadContextPanelProps) {
+export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCreateLead }: LeadContextPanelProps) {
   const lead = conversation.lead as any;
   if (!lead) {
     return (
@@ -36,7 +37,22 @@ export function LeadContextPanel({ conversation, onClose, onAdvanceStatus }: Lea
             <X className="w-4 h-4" />
           </Button>
         </div>
-        <p className="text-sm text-slate-500">Nenhum lead vinculado a esta conversa.</p>
+        <div className="flex flex-col items-center text-center gap-3 py-6">
+          <div className="w-12 h-12 rounded-full bg-orange-500/10 flex items-center justify-center">
+            <LayoutGrid className="w-6 h-6 text-orange-400" />
+          </div>
+          <p className="text-sm text-slate-400">Este contato não tem card no Kanban.</p>
+          {onCreateLead && (
+            <Button
+              size="sm"
+              className="bg-orange-500 hover:bg-orange-600 text-white text-xs"
+              onClick={onCreateLead}
+            >
+              <LayoutGrid className="w-3 h-3 mr-1" />
+              Enviar para Kanban
+            </Button>
+          )}
+        </div>
       </div>
     );
   }
