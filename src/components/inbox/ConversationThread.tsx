@@ -47,6 +47,8 @@ export function ConversationThread({
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const touchStartX = useRef<number | null>(null);
+  const touchStartY = useRef<number | null>(null);
 
   const leadName = (conversation.lead as any)?.name || conversation.phone;
   const isAiActive = conversation.ai_mode === "ai_active";
@@ -90,7 +92,24 @@ export function ConversationThread({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#141417]">
+    <div
+      className="flex flex-col h-full bg-[#141417]"
+      onTouchStart={(e) => {
+        touchStartX.current = e.touches[0].clientX;
+        touchStartY.current = e.touches[0].clientY;
+      }}
+      onTouchEnd={(e) => {
+        if (touchStartX.current === null || touchStartY.current === null) return;
+        const dx = e.changedTouches[0].clientX - touchStartX.current;
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY.current);
+        touchStartX.current = null;
+        touchStartY.current = null;
+        // Swipe right > 80px and mostly horizontal
+        if (dx > 80 && dy < 60) {
+          onBack();
+        }
+      }}
+    >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-[#2a2a2e] bg-[#1a1a1e]">
         <Button variant="ghost" size="icon" onClick={onBack} className="lg:hidden text-slate-400 h-8 w-8">
