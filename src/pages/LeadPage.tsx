@@ -43,9 +43,16 @@ const FUNNEL_STAGES: { status: LeadStatus; label: string; percent: number }[] = 
   { status: "registered", label: "Vendido", percent: 100 },
 ];
 
-export default function LeadPage() {
-  const { leadId } = useParams<{ leadId: string }>();
+interface LeadPageProps {
+  embeddedLeadId?: string;
+  onBack?: () => void;
+}
+
+export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {}) {
+  const { leadId: paramLeadId } = useParams<{ leadId: string }>();
+  const leadId = embeddedLeadId || paramLeadId;
   const navigate = useNavigate();
+  const isEmbedded = !!embeddedLeadId;
   const [lead, setLead] = useState<CRMLead | null>(null);
   const [loading, setLoading] = useState(true);
   const { role, isLeader } = useUserRole();
@@ -124,7 +131,7 @@ export default function LeadPage() {
         .single();
       if (error) {
         toast.error("Lead não encontrado");
-        navigate(-1);
+        isEmbedded && onBack ? onBack() : navigate(-1);
         return;
       }
       const transformed = {
@@ -353,12 +360,12 @@ export default function LeadPage() {
   const whatsappLink = `https://wa.me/55${lead.whatsapp.replace(/\D/g, "")}`;
 
   return (
-    <div className="min-h-screen bg-[#0a0a0d] text-white">
+    <div className={cn(isEmbedded ? "h-full overflow-auto" : "min-h-screen", "bg-[#0a0a0d] text-white")}>
       {/* ━━━━━━━━━━━━━━ STRATEGIC HEADER ━━━━━━━━━━━━━━ */}
       <div className="sticky top-0 z-30 bg-[#0f0f12]/95 backdrop-blur-xl border-b border-[#1e1e22] pt-safe">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-4 mb-4">
-            <button onClick={() => navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
+            <button onClick={() => isEmbedded && onBack ? onBack() : navigate(-1)} className="p-2 rounded-lg hover:bg-[#1e1e22] transition-all group">
               <ArrowLeft className="w-4 h-4 text-slate-500 group-hover:text-white transition-colors" />
             </button>
 
@@ -382,12 +389,20 @@ export default function LeadPage() {
             </div>
 
             <div className="flex items-center gap-2 shrink-0">
-              {linkedConversation && (
+              {linkedConversation && !isEmbedded && (
                 <button
                   onClick={() => navigate(`${role === "admin" ? "/admin/inbox" : "/corretor/inbox"}?conversationId=${linkedConversation.id}`)}
                   className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
                 >
                   <MessageCircle className="w-3.5 h-3.5" />Chat
+                </button>
+              )}
+              {isEmbedded && onBack && (
+                <button
+                  onClick={onBack}
+                  className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-blue-400 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 transition-all"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" />Voltar ao Chat
                 </button>
               )}
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-medium text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/15 border border-emerald-500/20 transition-all">

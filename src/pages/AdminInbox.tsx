@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, lazy, Suspense } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/inbox/ConversationList";
@@ -19,6 +19,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const LeadPage = lazy(() => import("@/pages/LeadPage"));
+
 export default function AdminInbox() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -30,6 +32,7 @@ export default function AdminInbox() {
   const [showLeadPanel, setShowLeadPanel] = useState(false);
   const [brokers, setBrokers] = useState<{ id: string; name: string }[]>([]);
   const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
+  const [viewingLeadId, setViewingLeadId] = useState<string | null>(null);
 
   // Fetch brokers list for filter
   useEffect(() => {
@@ -78,6 +81,15 @@ export default function AdminInbox() {
   const handleBack = useCallback(() => {
     setSelectedConversation(null);
     setShowLeadPanel(false);
+    setViewingLeadId(null);
+  }, []);
+
+  const handleOpenLead = useCallback((leadId: string) => {
+    setViewingLeadId(leadId);
+  }, []);
+
+  const handleBackFromLead = useCallback(() => {
+    setViewingLeadId(null);
   }, []);
 
   const handleRequestSuggestion = useCallback(async () => {
@@ -213,33 +225,40 @@ export default function AdminInbox() {
             </div>
           )}
 
-          {/* Thread */}
+          {/* Thread or Inline LeadPage */}
           {showThread && (
             <div className={`flex-1 min-w-0 ${isMobile ? "animate-in slide-in-from-right-5 duration-200" : ""}`}>
-              <ConversationThread
-                conversation={selectedConversation!}
-                messages={messages}
-                isLoading={messagesLoading}
-                onSendMessage={sendMessage}
-                onBack={handleBack}
-                onMarkAsRead={() => markAsRead(selectedConversation!.id)}
-                onArchive={() => {
-                  archiveConversation(selectedConversation!.id);
-                  handleBack();
-                }}
-                onUnarchive={() => {
-                  unarchiveConversation(selectedConversation!.id);
-                  handleBack();
-                }}
-                onToggleAiMode={(mode) => updateAiMode(selectedConversation!.id, mode)}
-                copilotSuggestion={suggestion}
-                isGeneratingSuggestion={isGenerating}
-                onRequestSuggestion={handleRequestSuggestion}
-                onInsertSuggestion={() => setSuggestion("")}
-                onDismissSuggestion={() => setSuggestion("")}
-                onOpenLeadPanel={() => setShowLeadPanel(!showLeadPanel)}
-                onCreateLead={!selectedConversation!.lead_id ? handleOpenCreateLeadModal : undefined}
-              />
+              {viewingLeadId ? (
+                <Suspense fallback={<div className="flex items-center justify-center h-full"><div className="w-5 h-5 border-2 border-yellow-400 border-t-transparent rounded-full animate-spin" /></div>}>
+                  <LeadPage embeddedLeadId={viewingLeadId} onBack={handleBackFromLead} />
+                </Suspense>
+              ) : (
+                <ConversationThread
+                  conversation={selectedConversation!}
+                  messages={messages}
+                  isLoading={messagesLoading}
+                  onSendMessage={sendMessage}
+                  onBack={handleBack}
+                  onMarkAsRead={() => markAsRead(selectedConversation!.id)}
+                  onArchive={() => {
+                    archiveConversation(selectedConversation!.id);
+                    handleBack();
+                  }}
+                  onUnarchive={() => {
+                    unarchiveConversation(selectedConversation!.id);
+                    handleBack();
+                  }}
+                  onToggleAiMode={(mode) => updateAiMode(selectedConversation!.id, mode)}
+                  copilotSuggestion={suggestion}
+                  isGeneratingSuggestion={isGenerating}
+                  onRequestSuggestion={handleRequestSuggestion}
+                  onInsertSuggestion={() => setSuggestion("")}
+                  onDismissSuggestion={() => setSuggestion("")}
+                  onOpenLeadPanel={() => setShowLeadPanel(!showLeadPanel)}
+                  onCreateLead={!selectedConversation!.lead_id ? handleOpenCreateLeadModal : undefined}
+                  onOpenLead={handleOpenLead}
+                />
+              )}
             </div>
           )}
 
@@ -251,6 +270,7 @@ export default function AdminInbox() {
                 onClose={() => setShowLeadPanel(false)}
                 onAdvanceStatus={handleAdvanceStatus}
                 onCreateLead={!selectedConversation.lead_id ? handleOpenCreateLeadModal : undefined}
+                onOpenLead={handleOpenLead}
               />
             </div>
           )}

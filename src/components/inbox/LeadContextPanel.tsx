@@ -9,6 +9,7 @@ interface LeadContextPanelProps {
   onClose: () => void;
   onAdvanceStatus: (newStatus: string) => void;
   onCreateLead?: () => void;
+  onOpenLead?: (leadId: string) => void;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -27,7 +28,7 @@ const STATUS_LABELS: Record<string, string> = {
 
 const FUNNEL_STEPS = ["new", "contacted", "registered", "visit_scheduled", "visited", "proposal_sent", "negotiation", "docs_received", "sold"];
 
-export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCreateLead }: LeadContextPanelProps) {
+export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCreateLead, onOpenLead }: LeadContextPanelProps) {
   const navigate = useNavigate();
   const lead = conversation.lead as any;
   if (!lead) {
@@ -74,7 +75,7 @@ export function LeadContextPanel({ conversation, onClose, onAdvanceStatus, onCre
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => navigate(`/corretor/lead/${lead.id}`)}
+            onClick={() => onOpenLead ? onOpenLead(lead.id) : navigate(`/corretor/lead/${lead.id}`)}
             className="h-7 w-7 text-slate-400 hover:text-[#FFFF00]"
             title="Abrir página do lead"
           >
