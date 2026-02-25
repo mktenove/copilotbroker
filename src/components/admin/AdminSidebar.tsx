@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
+import { useInboxUnread } from "@/hooks/use-inbox-unread";
 import {
   Tooltip,
   TooltipContent,
@@ -46,6 +47,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
   const navigate = useNavigate();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [userInitial, setUserInitial] = useState("A");
+  const { unreadCount: inboxUnread } = useInboxUnread();
 
   // Fetch user initial
   useEffect(() => {
@@ -126,6 +128,11 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                       <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary rounded-r-full" />
                     )}
                     <Icon className="w-5 h-5" />
+                    {item.id === "inbox" && inboxUnread > 0 && (
+                      <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] rounded-full bg-red-500 text-[10px] font-bold text-white flex items-center justify-center px-1 shadow-md shadow-red-500/50">
+                        {inboxUnread > 99 ? "99+" : inboxUnread}
+                      </span>
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right" className="bg-card border-border text-foreground">

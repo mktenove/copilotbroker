@@ -2,6 +2,7 @@ import { useState } from "react";
 import { LayoutDashboard, Plus, Bell, MessageSquare, MoreHorizontal, List, Building2, LogOut, RotateCw, Inbox, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useInboxUnread } from "@/hooks/use-inbox-unread";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
@@ -30,6 +31,7 @@ export function BrokerBottomNav({
   isLeader = false,
 }: BrokerBottomNavProps) {
   const { unreadCount } = useNotifications();
+  const { unreadCount: inboxUnread } = useInboxUnread();
   const navigate = useNavigate();
   const location = useLocation();
   const [isMoreOpen, setIsMoreOpen] = useState(false);
@@ -43,7 +45,7 @@ export function BrokerBottomNav({
     isFab?: boolean;
     badge?: number;
   }> = [
-    { id: "inbox", icon: Inbox },
+    { id: "inbox", icon: Inbox, badge: inboxUnread },
     { id: "kanban", icon: LayoutDashboard },
     { id: "add", icon: Plus, isFab: true },
     { id: "copilot", icon: Bot },
