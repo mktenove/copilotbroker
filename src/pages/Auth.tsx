@@ -3,7 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, Lock } from "lucide-react";
+import { Mail, Lock, Download, Share, Plus } from "lucide-react";
 import logoEnove from "@/assets/logo-enove.png";
 
 const Auth = () => {
@@ -236,6 +236,20 @@ const Auth = () => {
                   Cadastre-se aqui
                 </Link>
               </p>
+            </div>
+
+            {/* PWA Install Hint */}
+            <div className="mt-4 opacity-0 animate-fade-in delay-[800ms] lg:delay-[1200ms]">
+              <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-400 text-xs">
+                <Download className="w-4 h-4 text-[#FFFF00] shrink-0" />
+                <p>
+                  <span className="text-slate-300 font-medium">Instale o app:</span>{" "}
+                  <span className="hidden sm:inline">toque em </span>
+                  <Share className="w-3 h-3 inline -mt-0.5 text-slate-300" />{" "}
+                  e depois{" "}
+                  <span className="text-slate-300">"Adicionar à Tela Início"</span>
+                </p>
+              </div>
             </div>
           </div>
         </div>
