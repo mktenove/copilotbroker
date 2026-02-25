@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ConversationThread } from "@/components/inbox/ConversationThread";
 import { LeadContextPanel } from "@/components/inbox/LeadContextPanel";
+import { CreateLeadFromChatModal } from "@/components/inbox/CreateLeadFromChatModal";
 import { useConversations, useConversationMessages, Conversation } from "@/hooks/use-conversations";
 import { useCopilotSuggestion } from "@/hooks/use-copilot";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ export default function BrokerInbox() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
   const [showLeadPanel, setShowLeadPanel] = useState(false);
+  const [showCreateLeadModal, setShowCreateLeadModal] = useState(false);
 
   // Get broker id
   useEffect(() => {
@@ -75,16 +77,20 @@ export default function BrokerInbox() {
     });
   }, [selectedConversation, messages, generateSuggestion]);
 
-  const handleCreateLeadFromConversation = useCallback(async () => {
+  const handleOpenCreateLeadModal = useCallback(() => {
+    setShowCreateLeadModal(true);
+  }, []);
+
+  const handleLeadCreated = useCallback(async (leadName: string, _: string, projectId: string | null) => {
     if (!selectedConversation || !brokerId) return;
-    const senderName = (selectedConversation.lead as any)?.name || selectedConversation.phone;
-    
+
     const { data: newLead, error: leadError } = await supabase
       .from("leads")
       .insert({
-        name: senderName,
+        name: leadName,
         whatsapp: selectedConversation.phone,
         broker_id: brokerId,
+        project_id: projectId,
         status: "new" as any,
         source: "whatsapp",
         lead_origin: "whatsapp_direto",
@@ -97,13 +103,11 @@ export default function BrokerInbox() {
       return;
     }
 
-    // Link conversation to lead
     await supabase
       .from("conversations")
       .update({ lead_id: (newLead as any).id } as any)
       .eq("id", selectedConversation.id);
 
-    // Log interaction
     await supabase.from("lead_interactions").insert({
       lead_id: (newLead as any).id,
       interaction_type: "note" as any,
@@ -112,11 +116,10 @@ export default function BrokerInbox() {
     } as any);
 
     toast.success("Card criado no Kanban!");
-    // Update local state
     setSelectedConversation({
       ...selectedConversation,
       lead_id: (newLead as any).id,
-      lead: { id: (newLead as any).id, name: senderName, status: "new", project_id: null, notes: null, lead_origin: "whatsapp_direto" },
+      lead: { id: (newLead as any).id, name: leadName, status: "new", project_id: projectId, notes: null, lead_origin: "whatsapp_direto" },
     });
   }, [selectedConversation, brokerId]);
 
@@ -189,7 +192,7 @@ export default function BrokerInbox() {
               onInsertSuggestion={() => setSuggestion("")}
               onDismissSuggestion={() => setSuggestion("")}
               onOpenLeadPanel={() => setShowLeadPanel(!showLeadPanel)}
-              onCreateLead={!selectedConversation!.lead_id ? handleCreateLeadFromConversation : undefined}
+              onCreateLead={!selectedConversation!.lead_id ? handleOpenCreateLeadModal : undefined}
             />
           </div>
         )}
@@ -201,13 +204,25 @@ export default function BrokerInbox() {
               conversation={selectedConversation}
               onClose={() => setShowLeadPanel(false)}
               onAdvanceStatus={handleAdvanceStatus}
-              onCreateLead={!selectedConversation.lead_id ? handleCreateLeadFromConversation : undefined}
+              onCreateLead={!selectedConversation.lead_id ? handleOpenCreateLeadModal : undefined}
             />
           </div>
         )}
         </div>
       </div>
       <BrokerBottomNav viewMode="kanban" onViewChange={() => navigate("/corretor/admin")} />
+
+      {/* Create Lead Modal */}
+      {selectedConversation && brokerId && (
+        <CreateLeadFromChatModal
+          open={showCreateLeadModal}
+          onOpenChange={setShowCreateLeadModal}
+          phone={selectedConversation.phone}
+          suggestedName={(selectedConversation.lead as any)?.name || selectedConversation.phone}
+          brokerId={brokerId}
+          onCreated={handleLeadCreated}
+        />
+      )}
     </div>
   );
 }
