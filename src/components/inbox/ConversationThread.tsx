@@ -174,23 +174,37 @@ export function ConversationThread({
 
       {/* AI Mode Banner */}
       {isAiActive && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-green-500/10 border-b border-green-500/20">
-          <span className="text-xs text-green-400 flex items-center gap-1">
-            <Zap className="w-3 h-3" /> Piloto Automático ativo
+        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-green-500/15 via-green-500/10 to-emerald-500/15 border-b border-green-500/20 backdrop-blur-sm">
+          <span className="text-xs text-green-400 flex items-center gap-1.5 font-medium">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-400" />
+            </span>
+            <Zap className="w-3.5 h-3.5" /> Piloto Automático ativo
           </span>
-          <Button size="sm" variant="outline" className="h-6 text-xs border-green-500/30 text-green-400"
-            onClick={() => onToggleAiMode("copilot")}>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs border-green-500/30 text-green-400 hover:bg-green-500/20 hover:text-green-300 transition-all rounded-full px-3 gap-1"
+            onClick={() => onToggleAiMode("copilot")}
+          >
+            <User className="w-3 h-3" />
             Desativar Piloto
           </Button>
         </div>
       )}
       {isCopilot && (
-        <div className="flex items-center justify-between px-3 py-1.5 bg-blue-500/10 border-b border-blue-500/20">
-          <span className="text-xs text-blue-400 flex items-center gap-1">
-            <User className="w-3 h-3" /> Modo Copiloto (Humano no controle)
+        <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-indigo-500/10 border-b border-blue-500/20 backdrop-blur-sm">
+          <span className="text-xs text-blue-400 flex items-center gap-1.5 font-medium">
+            <User className="w-3.5 h-3.5" /> Modo Copiloto
+            <span className="text-blue-500/60 font-normal">(Humano no controle)</span>
           </span>
-          <Button size="sm" variant="outline" className="h-6 text-xs border-blue-500/30 text-blue-400"
-            onClick={() => onToggleAiMode("ai_active")}>
+          <Button
+            size="sm"
+            className="h-7 text-xs bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-400 hover:to-emerald-400 text-white border-0 shadow-lg shadow-green-500/20 transition-all rounded-full px-3 gap-1"
+            onClick={() => onToggleAiMode("ai_active")}
+          >
+            <Zap className="w-3 h-3" />
             Ativar Piloto Automático
           </Button>
         </div>
