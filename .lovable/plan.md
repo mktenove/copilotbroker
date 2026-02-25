@@ -1,34 +1,28 @@
 
 
-## Plano: Botão de Instalação PWA Clicável
+## Plano: Substituir botão "Inbox" pelo estilo verde do WhatsApp
 
 ### Contexto
-Atualmente, o aviso "Instale o app" na página de login é apenas texto informativo. O objetivo é transformá-lo em um botão funcional que acione a instalação do PWA diretamente.
+O botão "Inbox" na sidebar do Admin e no menu mobile usa o ícone `Inbox` com estilo padrão. O usuário quer que ele tenha o efeito visual verde do WhatsApp, como o antigo botão "WhatsApp" que existia antes da unificação.
 
-### Abordagem Técnica
+### Alterações
 
-A Web possui uma API nativa chamada `beforeinstallprompt` que permite capturar o prompt de instalação do navegador e acioná-lo programaticamente via botão. No iOS/Safari, essa API não existe — nesse caso, exibiremos as instruções manuais como fallback.
+#### 1. `src/components/admin/AdminSidebar.tsx`
+- Trocar o ícone de `Inbox` para `MessageCircle` (lucide-react) — ícone mais próximo do WhatsApp
+- Adicionar estilo verde especial para o item "inbox":
+  - Quando ativo: `bg-green-500/20 text-green-400` com barra indicadora verde (`bg-green-400`)
+  - Quando inativo: `text-green-400/60 hover:text-green-400 hover:bg-green-500/10`
+  - Badge de unread mantém o estilo atual (vermelho)
+- Manter o label "Inbox" no tooltip
 
-### Alterações em `src/pages/Auth.tsx`
+#### 2. `src/components/admin/MobileBottomNav.tsx`
+- Trocar o ícone de `Inbox` para `MessageCircle` no drawer
+- Aplicar estilo verde no item do drawer: `text-green-400 active:bg-green-500/10`
+- No bottom nav, o ícone de notificações permanece, mas o item "Inbox" no drawer recebe o estilo verde
 
-1. **Adicionar estados para controlar o prompt PWA:**
-   - `deferredPrompt` — armazena o evento `beforeinstallprompt`
-   - `isInstallable` — indica se o navegador suporta instalação nativa
-   - `isIOS` — detecta se é iOS (fallback com instruções manuais)
+#### 3. `src/components/admin/AdminHeader.tsx`
+- Nenhuma alteração necessária (apenas labels de texto)
 
-2. **Adicionar `useEffect` para capturar o evento `beforeinstallprompt`:**
-   - Escuta o evento global e salva no estado
-   - Detecta iOS via `userAgent`
-
-3. **Substituir o bloco "PWA Install Hint" (linhas 241-253) por um botão interativo:**
-   - **Em Android/Desktop (Chrome, Edge):** Botão clicável com ícone `Download` que aciona `deferredPrompt.prompt()` e aguarda a resposta do usuário
-   - **Em iOS:** Mantém as instruções manuais (toque em Compartilhar → Adicionar à Tela Início) pois o Safari não suporta a API
-   - **Se já instalado:** Oculta o botão completamente (via evento `appinstalled`)
-
-4. **Estilo do botão:** Consistente com o design atual — fundo `bg-[#0f0f12]`, borda `border-[#2a2a2e]`, com hover interativo e cursor pointer.
-
-### Resultado Esperado
-- Em navegadores compatíveis: botão "Instalar App" que abre o diálogo nativo de instalação com um clique
-- Em iOS: instruções visuais de como adicionar manualmente à tela inicial
-- Após instalação: o botão desaparece automaticamente
+### Resultado
+O botão de caixa de entrada terá o efeito visual verde característico do WhatsApp em ambas as versões (desktop sidebar e mobile drawer), mantendo a mesma funcionalidade de navegação para `/admin/inbox`.
 
