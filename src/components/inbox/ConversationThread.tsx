@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Send, Bot, User, Archive, MoreVertical, Sparkles, Zap, LayoutGrid, ExternalLink } from "lucide-react";
+import { ArrowLeft, Send, Bot, User, Archive, ArchiveRestore, MoreVertical, Sparkles, Zap, LayoutGrid, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,7 @@ interface ConversationThreadProps {
   onBack: () => void;
   onMarkAsRead: () => void;
   onArchive: () => void;
+  onUnarchive?: () => void;
   onToggleAiMode: (mode: string) => void;
   // Copilot
   copilotSuggestion: string;
@@ -37,6 +38,7 @@ export function ConversationThread({
   onBack,
   onMarkAsRead,
   onArchive,
+  onUnarchive,
   onToggleAiMode,
   copilotSuggestion,
   isGeneratingSuggestion,
@@ -142,9 +144,15 @@ export function ConversationThread({
               <ExternalLink className="w-4 h-4" />
             </Button>
           )}
-          <Button variant="ghost" size="icon" onClick={onArchive} className="text-slate-400 h-8 w-8">
-            <Archive className="w-4 h-4" />
-          </Button>
+          {conversation.is_archived && onUnarchive ? (
+            <Button variant="ghost" size="icon" onClick={onUnarchive} className="text-slate-400 h-8 w-8" title="Desarquivar">
+              <ArchiveRestore className="w-4 h-4" />
+            </Button>
+          ) : (
+            <Button variant="ghost" size="icon" onClick={onArchive} className="text-slate-400 h-8 w-8" title="Arquivar">
+              <Archive className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 

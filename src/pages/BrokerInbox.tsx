@@ -39,7 +39,7 @@ export default function BrokerInbox() {
   }, [navigate]);
 
   const isArchived = statusFilter === "archived";
-  const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, updateAiMode } =
+  const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, unarchiveConversation, updateAiMode } =
     useConversations({ brokerId: brokerId || undefined, search, statusFilter: isArchived ? "all" : statusFilter, isArchived });
 
   const { messages, isLoading: messagesLoading, sendMessage } =
@@ -197,6 +197,10 @@ export default function BrokerInbox() {
               onMarkAsRead={() => markAsRead(selectedConversation!.id)}
               onArchive={() => {
                 archiveConversation(selectedConversation!.id);
+                handleBack();
+              }}
+              onUnarchive={() => {
+                unarchiveConversation(selectedConversation!.id);
                 handleBack();
               }}
               onToggleAiMode={(mode) => updateAiMode(selectedConversation!.id, mode)}
