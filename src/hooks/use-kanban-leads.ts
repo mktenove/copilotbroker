@@ -230,22 +230,38 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
 
   const iniciarAtendimento = useCallback(async (leadId: string) => {
     try {
-      const user = (await supabase.auth.getUser()).data.user;
-      const { data: brokerData } = await supabase
-        .from("brokers").select("id, name").eq("user_id", user?.id ?? "").single();
       const now = new Date().toISOString();
-      const { error } = await supabase
-        .from("leads")
-        .update({ status: "info_sent" as any, atendimento_iniciado_em: now, status_distribuicao: 'atendimento_iniciado' as any, reserva_expira_em: null, updated_at: now })
-        .eq("id", leadId);
-      if (error) throw error;
-      await supabase.from("lead_interactions").insert({
-        lead_id: leadId, interaction_type: "atendimento_iniciado" as any, old_status: "new", new_status: "info_sent",
-        broker_id: brokerData?.id, notes: `Atendimento iniciado por ${brokerData?.name || "corretor"}`, created_by: user?.id,
-      });
+      // Optimistic UI update first for instant feedback
       setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now, last_interaction_at: now } : l));
-      return true;
-    } catch (error) { console.error("Erro ao iniciar atendimento:", error); toast.error("Erro ao iniciar atendimento."); return false; }
+
+      // Parallel: fetch user+broker AND update lead simultaneously
+      const [userResult, updateResult] = await Promise.all([
+        supabase.auth.getUser().then(async ({ data }) => {
+          const { data: broker } = await supabase
+            .from("brokers").select("id, name").eq("user_id", data.user?.id ?? "").single();
+          return { user: data.user, broker };
+        }),
+        supabase.from("leads")
+          .update({ status: "info_sent" as any, atendimento_iniciado_em: now, status_distribuicao: 'atendimento_iniciado' as any, reserva_expira_em: null, updated_at: now })
+          .eq("id", leadId),
+      ]);
+
+      if (updateResult.error) throw updateResult.error;
+
+      // Fire-and-forget interaction log (non-blocking)
+      supabase.from("lead_interactions").insert({
+        lead_id: leadId, interaction_type: "atendimento_iniciado" as any, old_status: "new", new_status: "info_sent",
+        broker_id: userResult.broker?.id, notes: `Atendimento iniciado por ${userResult.broker?.name || "corretor"}`, created_by: userResult.user?.id,
+      }).then(({ error }) => { if (error) console.error("Erro ao logar interação:", error); });
+
+      return { success: true, userId: userResult.user?.id };
+    } catch (error) {
+      console.error("Erro ao iniciar atendimento:", error);
+      toast.error("Erro ao iniciar atendimento.");
+      // Rollback optimistic update
+      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "new" as LeadStatus } : l));
+      return { success: false };
+    }
   }, []);
 
   const registrarAgendamento = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
