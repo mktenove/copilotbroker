@@ -10,6 +10,7 @@ import {
   MessageSquare,
   Shuffle,
   Inbox,
+  Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import logoEnove from "@/assets/logo-enove-mini.png";
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
+  { id: "copilot", label: "Copiloto IA", icon: Bot },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "analytics", label: "Inteligência", icon: Brain },
 ];
@@ -108,6 +110,8 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                         navigate("/admin/whatsapp");
                       } else if (item.id === "inbox") {
                         navigate("/admin/inbox");
+                      } else if (item.id === "copilot") {
+                        navigate("/admin/copiloto");
                       } else {
                         onTabChange(item.id);
                       }
