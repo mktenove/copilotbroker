@@ -9,7 +9,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Loader2, Wifi, Send, Shield, Megaphone, Bot, Sparkles, Users,
-  Eye, Globe, RefreshCw
+  Eye, Globe, RefreshCw, Zap, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalConnectionTab } from "@/components/whatsapp/GlobalConnectionTab";
@@ -21,11 +21,11 @@ import { AutoMessageTab } from "@/components/whatsapp/AutoMessageTab";
 import { CopilotConfigPage } from "@/components/inbox/CopilotConfigPage";
 import { WhatsAppOverviewTab } from "@/components/admin/WhatsAppOverviewTab";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
 import { useWhatsAppGlobalStats } from "@/hooks/use-whatsapp-stats";
 import { useWhatsAppOptouts } from "@/hooks/use-whatsapp-optouts";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface BrokerInstance {
   id: string;
@@ -46,6 +46,27 @@ interface BrokerInstance {
     email: string;
   } | null;
 }
+
+const TAB_GROUPS = [
+  {
+    label: "Inteligência",
+    tabs: [
+      { id: "copilot", label: "Copiloto", icon: Sparkles },
+    ],
+  },
+  {
+    label: "WhatsApp",
+    tabs: [
+      { id: "overview", label: "Visão Global", icon: Eye },
+      { id: "global-connection", label: "Conexão Global", icon: Globe },
+      { id: "connection", label: "Conexão", icon: Wifi },
+      { id: "campaigns", label: "Campanhas", icon: Megaphone },
+      { id: "queue", label: "Fila", icon: Send },
+      { id: "automation", label: "Automação", icon: Bot },
+      { id: "security", label: "Segurança", icon: Shield },
+    ],
+  },
+];
 
 export default function AdminCopilotConfig() {
   const navigate = useNavigate();
@@ -74,7 +95,6 @@ export default function AdminCopilotConfig() {
     enabled: role === "admin",
   });
 
-  // WhatsApp instances
   const { data: instances = [], isLoading: isLoadingInstances, refetch: refetchInstances } = useQuery({
     queryKey: ["admin-whatsapp-instances"],
     queryFn: async () => {
@@ -131,11 +151,14 @@ export default function AdminCopilotConfig() {
 
   if (roleLoading) {
     return (
-      <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
+
+  const activeGroup = TAB_GROUPS.find(g => g.tabs.some(t => t.id === activeTab));
+  const activeTabData = activeGroup?.tabs.find(t => t.id === activeTab);
 
   return (
     <>
@@ -150,90 +173,134 @@ export default function AdminCopilotConfig() {
         }}
         onLogout={handleLogout}
       >
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <Bot className="w-5 h-5 text-white" />
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Hero Header */}
+          <div className="relative overflow-hidden rounded-2xl border border-border bg-card">
+            {/* Gradient accent bar */}
+            <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-primary via-primary/60 to-transparent" />
+            
+            <div className="p-6 flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                {/* Animated robot avatar */}
+                <div className="relative">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20 flex items-center justify-center">
+                    <Bot className="w-7 h-7 text-primary" />
+                  </div>
+                  {/* Online pulse */}
+                  <div className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-card">
+                    <div className="absolute inset-0 rounded-full bg-green-400 animate-ping opacity-75" />
+                  </div>
+                </div>
+                
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-xl font-semibold text-foreground tracking-tight">
+                      Central de Inteligência
+                    </h1>
+                    <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded-full bg-primary/15 text-primary border border-primary/20">
+                      Pro
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Copiloto IA, automações e gestão de comunicação
+                  </p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-lg font-semibold text-white">Copiloto IA & WhatsApp</h1>
-                <p className="text-xs text-slate-400">Assistente IA, conexões e automações</p>
-              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => refetchInstances()}
+                disabled={isLoadingInstances}
+                className="border-border text-muted-foreground hover:text-foreground hover:bg-accent/50"
+              >
+                <RefreshCw className={cn("w-4 h-4 mr-2", isLoadingInstances && "animate-spin")} />
+                Atualizar
+              </Button>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetchInstances()}
-              disabled={isLoadingInstances}
-              className="border-[#2a2a2e] text-slate-400 hover:bg-[#2a2a2e] hover:text-white"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 ${isLoadingInstances ? 'animate-spin' : ''}`} />
-              Atualizar
-            </Button>
           </div>
 
+          {/* Tab Navigation */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-[#1a1a1d] border border-[#2a2a2e] w-full justify-start overflow-x-auto no-scrollbar">
-              <TabsTrigger value="copilot" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Sparkles className="w-4 h-4" />
-                <span className="hidden sm:inline">Copiloto</span>
-              </TabsTrigger>
-              <TabsTrigger value="overview" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Eye className="w-4 h-4" />
-                <span className="hidden sm:inline">Visão Global</span>
-              </TabsTrigger>
-              <TabsTrigger value="global-connection" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Globe className="w-4 h-4" />
-                <span className="hidden sm:inline">Conexão Global</span>
-              </TabsTrigger>
-              <TabsTrigger value="connection" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Wifi className="w-4 h-4" />
-                <span className="hidden sm:inline">Conexão</span>
-              </TabsTrigger>
-              <TabsTrigger value="campaigns" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Megaphone className="w-4 h-4" />
-                <span className="hidden sm:inline">Campanhas</span>
-              </TabsTrigger>
-              <TabsTrigger value="queue" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Send className="w-4 h-4" />
-                <span className="hidden sm:inline">Fila</span>
-              </TabsTrigger>
-              <TabsTrigger value="automation" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Bot className="w-4 h-4" />
-                <span className="hidden sm:inline">Automação</span>
-              </TabsTrigger>
-              <TabsTrigger value="security" className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                <span className="hidden sm:inline">Segurança</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="copilot" className="mt-6">
-              <div className="mb-6 max-w-sm">
-                <Label className="text-xs text-slate-400 mb-2 block">Selecione o corretor</Label>
-                <Select value={selectedBrokerId || ""} onValueChange={setSelectedBrokerId}>
-                  <SelectTrigger className="bg-[#1a1a1e] border-[#2a2a2e] text-white">
-                    <SelectValue placeholder="Escolha um corretor..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {brokers.map((b: any) => (
-                      <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            <div className="rounded-xl border border-border bg-card p-1.5">
+              <div className="flex items-center gap-6 overflow-x-auto no-scrollbar">
+                {TAB_GROUPS.map((group, gi) => (
+                  <div key={group.label} className="flex items-center gap-1 shrink-0">
+                    {gi > 0 && (
+                      <div className="w-px h-6 bg-border mr-2" />
+                    )}
+                    <span className="text-[10px] font-medium uppercase tracking-widest text-muted-foreground/50 px-2 hidden lg:block">
+                      {group.label}
+                    </span>
+                    {group.tabs.map((tab) => {
+                      const Icon = tab.icon;
+                      const isActive = activeTab === tab.id;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id)}
+                          className={cn(
+                            "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 whitespace-nowrap",
+                            isActive
+                              ? "bg-primary/15 text-primary shadow-sm shadow-primary/10"
+                              : "text-muted-foreground hover:text-foreground hover:bg-accent/50"
+                          )}
+                        >
+                          <Icon className="w-4 h-4" />
+                          <span className="hidden sm:inline">{tab.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ))}
               </div>
+            </div>
+
+            {/* Breadcrumb */}
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-3 px-1">
+              <span>{activeGroup?.label}</span>
+              <ChevronRight className="w-3 h-3" />
+              <span className="text-foreground font-medium">{activeTabData?.label}</span>
+            </div>
+
+            {/* Copilot Tab */}
+            <TabsContent value="copilot" className="mt-4">
+              {/* Broker selector card */}
+              <div className="rounded-xl border border-border bg-card p-4 mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground mb-1.5">Corretor selecionado</p>
+                    <Select value={selectedBrokerId || ""} onValueChange={setSelectedBrokerId}>
+                      <SelectTrigger className="bg-background border-border text-foreground h-9">
+                        <SelectValue placeholder="Escolha um corretor..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brokers.map((b: any) => (
+                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
               {selectedBrokerId ? (
                 <CopilotConfigPage brokerId={selectedBrokerId} key={selectedBrokerId} />
               ) : (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <Users className="w-12 h-12 text-slate-600 mb-3" />
-                  <p className="text-slate-400 text-sm">Selecione um corretor para configurar o Copiloto IA</p>
+                <div className="rounded-2xl border border-dashed border-border bg-card/50 flex flex-col items-center justify-center py-20">
+                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                    <Zap className="w-8 h-8 text-primary/60" />
+                  </div>
+                  <p className="text-muted-foreground text-sm font-medium">Selecione um corretor acima</p>
+                  <p className="text-muted-foreground/60 text-xs mt-1">para configurar o Copiloto IA</p>
                 </div>
               )}
             </TabsContent>
 
-            <TabsContent value="overview" className="mt-6">
+            <TabsContent value="overview" className="mt-4">
               <WhatsAppOverviewTab
                 instances={instances}
                 isLoadingInstances={isLoadingInstances}
@@ -247,27 +314,27 @@ export default function AdminCopilotConfig() {
               />
             </TabsContent>
 
-            <TabsContent value="global-connection" className="mt-6">
+            <TabsContent value="global-connection" className="mt-4">
               <GlobalConnectionTab />
             </TabsContent>
 
-            <TabsContent value="connection" className="mt-6">
+            <TabsContent value="connection" className="mt-4">
               <ConnectionTab />
             </TabsContent>
 
-            <TabsContent value="campaigns" className="mt-6">
+            <TabsContent value="campaigns" className="mt-4">
               <CampaignsTab />
             </TabsContent>
 
-            <TabsContent value="queue" className="mt-6">
+            <TabsContent value="queue" className="mt-4">
               <QueueTab />
             </TabsContent>
 
-            <TabsContent value="automation" className="mt-6">
+            <TabsContent value="automation" className="mt-4">
               <AutoMessageTab />
             </TabsContent>
 
-            <TabsContent value="security" className="mt-6">
+            <TabsContent value="security" className="mt-4">
               <SecurityTab />
             </TabsContent>
           </Tabs>
