@@ -187,7 +187,7 @@ export default function AdminInbox() {
       }} onLogout={handleLogout} />
 
       <div className="md:pl-16">
-        <div className="flex h-[calc(100vh-56px)] md:h-screen overflow-hidden">
+        <div className="flex h-[calc(100vh-64px)] md:h-screen overflow-hidden">
           {/* Left panel: filter + list */}
           {showList && (
             <div className={`${isMobile ? "w-full" : "w-80 border-r border-[#2a2a2e]"} flex-shrink-0 flex flex-col`}>

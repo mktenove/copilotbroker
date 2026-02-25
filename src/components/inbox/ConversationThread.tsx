@@ -277,7 +277,7 @@ export function ConversationThread({
       )}
 
       {/* Input */}
-      <div className="px-3 pb-3 pt-1 border-t border-[#2a2a2e]">
+      <div className="px-3 pb-3 pt-1 border-t border-[#2a2a2e] pb-safe">
         <div className="flex items-end gap-2">
           {/* Copilot suggestion button */}
           <Button

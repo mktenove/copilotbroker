@@ -177,7 +177,7 @@ export default function BrokerInbox() {
     <div className="min-h-screen bg-[#141417]">
       <BrokerSidebar viewMode="kanban" onViewChange={() => navigate("/corretor/admin")} onLogout={handleLogout} />
       <div className="lg:pl-16">
-        <div className="flex h-[calc(100vh-56px)] lg:h-screen overflow-hidden">
+        <div className="flex h-[calc(100vh-64px)] lg:h-screen overflow-hidden">
         {/* Conversation List */}
         {showList && (
           <div className={`${isMobile ? "w-full" : "w-80 border-r border-[#2a2a2e]"} flex-shrink-0`}>

@@ -60,22 +60,22 @@ export default function BrokerCopilotConfig() {
         brokerInitial={brokerName?.charAt(0) || "C"}
       />
 
-      <main className="md:ml-16 pb-20 md:pb-0">
-        <header className="sticky top-0 z-30 bg-[#0d0d0f]/95 backdrop-blur-sm border-b border-[#2a2a2e] px-4 py-4">
+      <main className="lg:ml-16 pb-20 lg:pb-0">
+        <header className="sticky top-0 z-30 bg-[#0d0d0f]/95 backdrop-blur-sm border-b border-[#2a2a2e] px-4 py-3 pt-safe">
           <div className="max-w-6xl mx-auto">
-            <h1 className="text-xl font-semibold flex items-center gap-2">
+            <h1 className="text-lg sm:text-xl font-semibold flex items-center gap-2">
               <Bot className="w-5 h-5 text-blue-400" />
               Copiloto IA
             </h1>
-            <p className="text-sm text-slate-400 mt-1">
-              Configure sua conexão, assistente de vendas e automações
+            <p className="text-xs sm:text-sm text-slate-400 mt-0.5">
+              Conexão, assistente e automações
             </p>
           </div>
         </header>
 
-        <div className="max-w-6xl mx-auto p-4">
+        <div className="max-w-6xl mx-auto p-3 sm:p-4">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="bg-[#1a1a1d] border border-[#2a2a2e] w-full justify-start overflow-x-auto">
+            <TabsList className="bg-[#1a1a1d] border border-[#2a2a2e] w-full justify-start overflow-x-auto no-scrollbar">
               <TabsTrigger
                 value="connection"
                 className="text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white flex items-center gap-2"
