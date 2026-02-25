@@ -45,7 +45,7 @@ export default function AdminInbox() {
   }, []);
 
   const isArchived = statusFilter === "archived";
-  const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, updateAiMode } =
+  const { conversations, isLoading, totalUnread, markAsRead, archiveConversation, unarchiveConversation, updateAiMode } =
     useConversations({
       brokerId: selectedBrokerId !== "all" ? selectedBrokerId : undefined,
       search,
@@ -225,6 +225,10 @@ export default function AdminInbox() {
                 onMarkAsRead={() => markAsRead(selectedConversation!.id)}
                 onArchive={() => {
                   archiveConversation(selectedConversation!.id);
+                  handleBack();
+                }}
+                onUnarchive={() => {
+                  unarchiveConversation(selectedConversation!.id);
                   handleBack();
                 }}
                 onToggleAiMode={(mode) => updateAiMode(selectedConversation!.id, mode)}

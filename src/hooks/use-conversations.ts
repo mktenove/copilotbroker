@@ -123,7 +123,17 @@ export function useConversations(options: UseConversationsOptions = {}) {
       .update({ is_archived: true, status: "closed" } as any)
       .eq("id", conversationId);
     toast.success("Conversa arquivada");
-  }, []);
+    fetchConversations();
+  }, [fetchConversations]);
+
+  const unarchiveConversation = useCallback(async (conversationId: string) => {
+    await supabase
+      .from("conversations")
+      .update({ is_archived: false, status: "active" } as any)
+      .eq("id", conversationId);
+    toast.success("Conversa desarquivada");
+    fetchConversations();
+  }, [fetchConversations]);
 
   /**
    * Update AI mode with full handoff logic:
@@ -191,6 +201,7 @@ export function useConversations(options: UseConversationsOptions = {}) {
     fetchConversations,
     markAsRead,
     archiveConversation,
+    unarchiveConversation,
     updateAiMode,
   };
 }
