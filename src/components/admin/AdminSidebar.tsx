@@ -117,8 +117,8 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                       "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
                       isInbox
                         ? isActive
-                          ? "bg-green-500/20 text-green-400"
-                          : "text-green-400/60 hover:text-green-400 hover:bg-green-500/10"
+                          ? "bg-[hsl(145,80%,42%)]/20 text-[hsl(145,80%,55%)] shadow-[0_0_12px_hsl(145,80%,42%,0.3)]"
+                          : "text-[hsl(145,80%,55%)]/70 hover:text-[hsl(145,80%,55%)] hover:bg-[hsl(145,80%,42%)]/10 hover:shadow-[0_0_8px_hsl(145,80%,42%,0.15)]"
                         : isActive 
                           ? "bg-primary/20 text-primary" 
                           : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -128,7 +128,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                     {isActive && (
                       <div className={cn(
                         "absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full",
-                        isInbox ? "bg-green-400" : "bg-primary"
+                        isInbox ? "bg-[hsl(145,80%,55%)]" : "bg-primary"
                       )} />
                     )}
                     <Icon className="w-5 h-5" />
