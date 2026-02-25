@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { ConversationList } from "@/components/inbox/ConversationList";
 import { ConversationThread } from "@/components/inbox/ConversationThread";
@@ -14,6 +14,7 @@ import { BrokerBottomNav } from "@/components/broker/BrokerBottomNav";
 
 export default function BrokerInbox() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const isMobile = useIsMobile();
   const [brokerId, setBrokerId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -44,6 +45,18 @@ export default function BrokerInbox() {
     useConversationMessages(selectedConversation?.id || null);
 
   const { suggestion, isGenerating, generateSuggestion, setSuggestion } = useCopilotSuggestion();
+
+  // Auto-select conversation from query param (e.g. coming from LeadPage)
+  useEffect(() => {
+    const convId = searchParams.get("conversationId");
+    if (convId && conversations.length > 0 && !selectedConversation) {
+      const target = conversations.find(c => c.id === convId);
+      if (target) {
+        setSelectedConversation(target);
+        setSearchParams({}, { replace: true }); // clean URL
+      }
+    }
+  }, [conversations, searchParams, selectedConversation, setSearchParams]);
 
   const handleSelectConversation = useCallback((conv: Conversation) => {
     setSelectedConversation(conv);
