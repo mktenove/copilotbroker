@@ -467,6 +467,43 @@ async function sendViaUAZAPI(
   return { success: false, error: "Todos os endpoints falharam" };
 }
 
+// ========================= TYPING INDICATOR =========================
+
+async function sendTypingPresence(
+  instanceToken: string | null,
+  phone: string
+): Promise<void> {
+  const cleanPhone = formatPhoneForUAZAPI(phone);
+  const token = instanceToken || UAZAPI_TOKEN;
+  let baseUrl = UAZAPI_INSTANCE_URL.replace(/\/$/, "");
+  try { baseUrl = new URL(baseUrl).origin; } catch { /* keep */ }
+
+  // Try common UAZAPI presence endpoints
+  const endpoints = ["/chat/presence", "/presence"];
+  for (const endpoint of endpoints) {
+    try {
+      await fetch(`${baseUrl}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", token: token || "" },
+        body: JSON.stringify({ number: cleanPhone, presence: "composing" }),
+      });
+      return; // sent successfully or at least attempted
+    } catch { continue; }
+  }
+}
+
+function calculateTypingDelay(text: string): number {
+  // Average human types ~40 words/min on mobile ≈ ~200 chars/min ≈ 3.3 chars/sec
+  // We simulate a fast typer: ~6 chars/sec, with min 3s and max 25s
+  const chars = text.length;
+  const baseDelay = Math.ceil(chars / 6) * 1000;
+  return Math.max(3000, Math.min(baseDelay, 25000));
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ========================= AUTO RESPONSE (AI PILOT) =========================
 
 async function handleAutoResponse(
@@ -554,7 +591,15 @@ async function handleAutoResponse(
       return;
     }
 
-    // 7. Get last 10 messages for context
+    // 7. Get broker name
+    const { data: broker } = await supabase
+      .from("brokers")
+      .select("name")
+      .eq("id", brokerId)
+      .maybeSingle();
+    const brokerName = broker?.name || "o corretor";
+
+    // 8. Get last 10 messages for context
     const { data: recentMsgs } = await supabase
       .from("conversation_messages")
       .select("direction, content, sent_by, created_at")
@@ -562,7 +607,7 @@ async function handleAutoResponse(
       .order("created_at", { ascending: false })
       .limit(10);
 
-    // 8. Get lead context
+    // 9. Get lead context
     let leadContext: Record<string, string> = {};
     if (conv.lead_id) {
       const { data: lead } = await supabase
@@ -589,7 +634,7 @@ async function handleAutoResponse(
     }
     if (!leadContext.name) leadContext.name = senderName || "Lead";
 
-    // 9. Build AI prompt (reuse copilot-ai logic)
+    // 10. Build AI prompt
     const personalityMap: Record<string, string> = {
       formal: "Seja formal, profissional e direto ao ponto.",
       consultivo: "Seja consultivo, empático e estratégico. Guie o cliente com perguntas inteligentes.",
@@ -601,7 +646,7 @@ async function handleAutoResponse(
     const personality = personalityMap[copilotConfig.personality] || personalityMap.consultivo;
     const emojiRule = copilotConfig.allow_emojis !== false ? "Use emojis com moderação para humanizar." : "Não use emojis.";
 
-    const systemPrompt = `Você é um assistente de vendas imobiliárias respondendo DIRETAMENTE ao cliente via WhatsApp. Você ESTÁ se passando pelo corretor.
+    const systemPrompt = `Você é o assistente do corretor ${brokerName}. Você ajuda o corretor respondendo leads via WhatsApp.
 ${personality}
 ${emojiRule}
 Nível de persuasão: ${copilotConfig.persuasion_level || 50}/100.
@@ -609,16 +654,24 @@ Nível de objetividade: ${copilotConfig.objectivity_level || 50}/100.
 
 REGRAS CRÍTICAS:
 - Responda SEMPRE em português do Brasil
-- Seja conciso (máximo 2 parágrafos curtos, ideal para WhatsApp)
-- NUNCA diga que é uma IA ou assistente virtual
-- Fale como se fosse o corretor de imóveis
+- Seja MUITO conciso: máximo 2-3 frases curtas por mensagem (estilo WhatsApp real)
+- NUNCA diga que é uma IA, assistente virtual ou bot
+- Fale em nome do corretor ${brokerName}, como se fosse ele
 - Foque em avançar o lead no funil de vendas
 - Se o lead demonstrar objeção, trate com empatia
-- NUNCA invente dados sobre o empreendimento
-- Responda de forma natural e humana, como uma conversa de WhatsApp
+- Responda de forma natural e humana, como uma conversa real de WhatsApp
+- Use frases curtas e informais (como uma pessoa digitando no celular)
+- NÃO envie parágrafos longos, listas ou textos formatados
 ${copilotConfig.use_mental_triggers ? "- Use gatilhos mentais sutis (escassez, urgência, prova social)" : ""}
 ${copilotConfig.incentive_visit ? "- Incentive visitas ao empreendimento quando fizer sentido" : ""}
 ${copilotConfig.incentive_call ? "- Sugira ligações quando o lead parecer interessado" : ""}
+
+REGRA FUNDAMENTAL - NUNCA INVENTE INFORMAÇÕES:
+- Você NÃO tem acesso a informações detalhadas do empreendimento (preços, metragem, plantas, valores de condomínio, etc.)
+- Se o cliente perguntar algo que você NÃO sabe (preço, disponibilidade, detalhes técnicos, financiamento, etc.), NÃO invente
+- Quando não souber a resposta, diga algo como: "Essa informação o ${brokerName} pode te passar com mais detalhes! Quer agendar um bate-papo? Pode ser por ligação, videochamada ou presencial 😊"
+- Sempre ofereça as 3 opções: ligação, videochamada ou presencial
+- Você PODE conversar naturalmente, cumprimentar, demonstrar interesse e fazer perguntas ao lead
 
 CONTEXTO DO LEAD:
 - Nome: ${leadContext.name}
@@ -642,7 +695,7 @@ CONTEXTO DO LEAD:
       }
     }
 
-    // 10. Call AI Gateway (non-streaming)
+    // 11. Call AI Gateway (non-streaming)
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("❌ Auto-response: LOVABLE_API_KEY not configured");
@@ -661,6 +714,7 @@ CONTEXTO DO LEAD:
         model: "google/gemini-3-flash-preview",
         messages: aiMessages,
         stream: false,
+        max_tokens: 200, // Keep responses short
       }),
     });
 
@@ -677,11 +731,23 @@ CONTEXTO DO LEAD:
       return;
     }
 
-    // 11. Send via UAZAPI
+    const finalText = responseText.trim();
+
+    // 12. Simulate typing: send "composing" presence + wait proportional delay
+    const typingDelay = calculateTypingDelay(finalText);
+    console.log(`⌨️ Simulating typing for ${typingDelay / 1000}s (${finalText.length} chars)...`);
+    
+    try {
+      await sendTypingPresence(instance.instance_token, phoneNormalized || phone);
+    } catch { /* non-critical */ }
+    
+    await sleep(typingDelay);
+
+    // 13. Send via UAZAPI
     const sendResult = await sendViaUAZAPI(
       instance.instance_token,
       phoneNormalized || phone,
-      responseText.trim()
+      finalText
     );
 
     if (!sendResult.success) {
@@ -689,32 +755,32 @@ CONTEXTO DO LEAD:
       return;
     }
 
-    // 12. Save message in conversation
+    // 14. Save message in conversation
     await supabase.from("conversation_messages").insert({
       conversation_id: conversationId,
       direction: "outbound",
-      content: responseText.trim(),
+      content: finalText,
       sent_by: "ai",
       message_type: "text",
       status: "sent",
       uazapi_message_id: sendResult.messageId || null,
     });
 
-    // 13. Register in lead_interactions
+    // 15. Register in lead_interactions
     if (conv.lead_id) {
       await supabase.from("lead_interactions").insert({
         lead_id: conv.lead_id,
         interaction_type: "whatsapp_enviada",
         broker_id: brokerId,
-        notes: `[IA Auto] ${responseText.trim().substring(0, 180)}`,
+        notes: `[IA Auto] ${finalText.substring(0, 180)}`,
         channel: "whatsapp",
       }).catch(() => {});
     }
 
-    // 14. Increment copilot count
+    // 16. Increment copilot count
     await supabase.rpc("increment_copilot_count", { _conversation_id: conversationId }).catch(() => {});
 
-    console.log(`✅ Auto-response sent for conversation ${conversationId}: "${responseText.trim().substring(0, 60)}..."`);
+    console.log(`✅ Auto-response sent for conversation ${conversationId}: "${finalText.substring(0, 60)}..."`);
 
   } catch (err) {
     console.error("❌ handleAutoResponse error:", err);
