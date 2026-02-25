@@ -673,6 +673,12 @@ REGRA FUNDAMENTAL - NUNCA INVENTE INFORMAÇÕES:
 - Sempre ofereça as 3 opções: ligação, videochamada ou presencial
 - Você PODE conversar naturalmente, cumprimentar, demonstrar interesse e fazer perguntas ao lead
 
+REGRA ABSOLUTA - NUNCA PROMETA ENVIAR ARQUIVOS:
+- Você NÃO pode enviar PDFs, tabelas de preços, fotos, vídeos, documentos ou qualquer arquivo
+- NUNCA diga "vou enviar", "vou mandar", "segue o PDF", "segue a tabela", "vou te passar o material"
+- Se o cliente pedir um arquivo/PDF/tabela/material, responda: "Para te enviar esse material, vou pedir pro ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido com ele? Pode ser por ligação, videochamada ou presencial 😊"
+- Você SÓ pode enviar texto via WhatsApp, nada mais
+
 CONTEXTO DO LEAD:
 - Nome: ${leadContext.name}
 - Status no funil: ${leadContext.status || "Não informado"}
@@ -731,7 +737,20 @@ CONTEXTO DO LEAD:
       return;
     }
 
-    const finalText = responseText.trim();
+    // Post-generation safety: remove promises to send files
+    let finalText = responseText.trim();
+    const filePromisePatterns = [
+      /vou (te )?(enviar|mandar|passar) (o |um |a )?(pdf|tabela|material|arquivo|documento|foto|vídeo|video|imagem|planta|book)/gi,
+      /segue (o |a )?(pdf|tabela|material|arquivo|documento)/gi,
+      /j[aá] te (envio|mando|passo) (o |a )?(pdf|tabela|material)/gi,
+    ];
+    for (const pattern of filePromisePatterns) {
+      if (pattern.test(finalText)) {
+        console.warn("⚠️ AI promised to send a file — replacing with fallback");
+        finalText = `Para te enviar esse material, vou pedir pro ${brokerName} te mandar diretamente! Quer agendar um bate-papo rápido? Pode ser por ligação, videochamada ou presencial 😊`;
+        break;
+      }
+    }
 
     // 12. Simulate typing: send "composing" presence + wait proportional delay
     const typingDelay = calculateTypingDelay(finalText);
