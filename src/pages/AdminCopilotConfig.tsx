@@ -8,8 +8,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
-  Loader2, Wifi, Send, Shield, Megaphone, Bot, Sparkles, Users,
-  Eye, Globe, RefreshCw, Zap, ChevronRight
+  Loader2, Wifi, Send, Shield, Megaphone, Bot, Sparkles,
+  Eye, Globe, RefreshCw, ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { GlobalConnectionTab } from "@/components/whatsapp/GlobalConnectionTab";
@@ -18,7 +18,7 @@ import { CampaignsTab } from "@/components/whatsapp/CampaignsTab";
 import { QueueTab } from "@/components/whatsapp/QueueTab";
 import { SecurityTab } from "@/components/whatsapp/SecurityTab";
 import { AutoMessageTab } from "@/components/whatsapp/AutoMessageTab";
-import { CopilotConfigPage } from "@/components/inbox/CopilotConfigPage";
+import { AdminCopilotOverview } from "@/components/admin/AdminCopilotOverview";
 import { WhatsAppOverviewTab } from "@/components/admin/WhatsAppOverviewTab";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useWhatsAppGlobalStats } from "@/hooks/use-whatsapp-stats";
@@ -73,7 +73,7 @@ export default function AdminCopilotConfig() {
   const { role, isLoading: roleLoading } = useUserRole();
   const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("copilot");
-  const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
+  const [_selectedBrokerId, _setSelectedBrokerId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!roleLoading && role !== "admin") {
@@ -265,39 +265,7 @@ export default function AdminCopilotConfig() {
 
             {/* Copilot Tab */}
             <TabsContent value="copilot" className="mt-4">
-              {/* Broker selector card */}
-              <div className="rounded-xl border border-border bg-card p-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                    <Users className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs text-muted-foreground mb-1.5">Corretor selecionado</p>
-                    <Select value={selectedBrokerId || ""} onValueChange={setSelectedBrokerId}>
-                      <SelectTrigger className="bg-background border-border text-foreground h-9">
-                        <SelectValue placeholder="Escolha um corretor..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {brokers.map((b: any) => (
-                          <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              {selectedBrokerId ? (
-                <CopilotConfigPage brokerId={selectedBrokerId} key={selectedBrokerId} />
-              ) : (
-                <div className="rounded-2xl border border-dashed border-border bg-card/50 flex flex-col items-center justify-center py-20">
-                  <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                    <Zap className="w-8 h-8 text-primary/60" />
-                  </div>
-                  <p className="text-muted-foreground text-sm font-medium">Selecione um corretor acima</p>
-                  <p className="text-muted-foreground/60 text-xs mt-1">para configurar o Copiloto IA</p>
-                </div>
-              )}
+              <AdminCopilotOverview />
             </TabsContent>
 
             <TabsContent value="overview" className="mt-4">
