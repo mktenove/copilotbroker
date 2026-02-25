@@ -1,0 +1,1 @@
+ALTER TABLE public.copilot_configs ALTER COLUMN is_active SET DEFAULT false;
