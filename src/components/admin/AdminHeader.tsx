@@ -13,6 +13,7 @@ const TAB_LABELS: Record<string, { title: string; subtitle?: string }> = {
   leads: { title: "Leads", subtitle: "Visualize e exporte todos os leads" },
   brokers: { title: "Corretores", subtitle: "Cadastre e gerencie corretores parceiros" },
   projects: { title: "Empreendimentos", subtitle: "Configure seus empreendimentos ativos" },
+  copilot: { title: "Copiloto IA", subtitle: "Configure o assistente IA dos corretores" },
   analytics: { title: "Analytics", subtitle: "Acompanhe métricas e performance" },
 };
 

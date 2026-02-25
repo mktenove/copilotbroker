@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { 
   LayoutDashboard, Users, Brain, Plus, Bell, LogOut, 
-  MoreHorizontal, Building2, MessageSquare, Shuffle, Settings, Inbox
+  MoreHorizontal, Building2, MessageSquare, Shuffle, Settings, Inbox, Bot
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -29,6 +29,7 @@ const DRAWER_ITEMS_STATIC = [
   { id: "brokers", label: "Corretores", icon: Users },
   { id: "roletas", label: "Roletas", icon: Shuffle },
   { id: "projects", label: "Empreendimentos", icon: Building2 },
+  { id: "copilot", label: "Copiloto IA", icon: Bot },
   { id: "whatsapp", label: "WhatsApp", icon: MessageSquare },
   { id: "analytics", label: "Inteligência", icon: Brain },
   { id: "settings", label: "Configurações", icon: Settings },
@@ -82,6 +83,8 @@ export function MobileBottomNav({
       navigate("/admin/whatsapp");
     } else if (id === "inbox") {
       navigate("/admin/inbox");
+    } else if (id === "copilot") {
+      navigate("/admin/copiloto");
     } else if (id === "settings") {
       setIsSettingsOpen(true);
     } else {
