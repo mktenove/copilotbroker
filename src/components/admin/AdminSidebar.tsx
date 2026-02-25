@@ -157,12 +157,12 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
             <TooltipTrigger asChild>
               <button 
                 onClick={() => setIsSettingsOpen(true)}
-                className="w-10 h-10 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-300 hover:bg-[#1e1e22] transition-colors"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
               >
                 <Settings className="w-5 h-5" />
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
+            <TooltipContent side="right" className="bg-card border-border text-foreground">
               Configurações
             </TooltipContent>
           </Tooltip>
@@ -181,7 +181,7 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
                 </Avatar>
               </button>
             </TooltipTrigger>
-            <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-slate-200">
+            <TooltipContent side="right" className="bg-card border-border text-foreground">
               Sair
             </TooltipContent>
           </Tooltip>
