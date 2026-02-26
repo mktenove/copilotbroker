@@ -361,7 +361,7 @@ const BairrodasRosas = () => {
           <Stat value="350" label="Lotes" />
           <Stat value="8.000m²" label="Área de Lazer" />
           <Stat value="R$ 1.300" label="Por m²" />
-          <Stat value="500m²" label="Lotes a partir de" />
+          <Stat value="300m²" label="Lotes a partir de" />
         </div>
 
         <Reveal>
