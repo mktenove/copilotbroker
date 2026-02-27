@@ -24,6 +24,7 @@ interface Broker {
   whatsapp: string | null;
   is_active: boolean;
   lider_id: string | null;
+  nome_equipe: string | null;
   created_at: string;
 }
 
@@ -77,10 +78,14 @@ const TeamView = ({ brokers, leaders, leadsCountMap, lastAccessMap, onRefresh }:
   };
 
   // Group brokers by leader
-  const teams = leaders.map(leader => ({
-    leader,
-    members: brokers.filter(b => b.lider_id === leader.id),
-  }));
+  const teams = leaders.map(leader => {
+    const leaderBroker = brokers.find(b => b.user_id === leader.user_id);
+    return {
+      leader,
+      teamName: leaderBroker?.nome_equipe,
+      members: brokers.filter(b => b.lider_id === leader.id),
+    };
+  });
   const unassigned = brokers.filter(b => !b.lider_id);
 
   const TeamLeadsTotal = (members: Broker[]) =>
@@ -88,7 +93,7 @@ const TeamView = ({ brokers, leaders, leadsCountMap, lastAccessMap, onRefresh }:
 
   return (
     <div className="space-y-4">
-      {teams.map(({ leader, members }) => {
+      {teams.map(({ leader, teamName, members }) => {
         const isExpanded = expandedTeams[leader.id] !== false; // default open
         const totalLeads = TeamLeadsTotal(members);
 
@@ -109,9 +114,14 @@ const TeamView = ({ brokers, leaders, leadsCountMap, lastAccessMap, onRefresh }:
               </Avatar>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="font-semibold text-sm text-foreground truncate">{leader.name}</span>
+                  <span className="font-semibold text-sm text-foreground truncate">
+                    {teamName ? `${teamName}` : leader.name}
+                  </span>
                   <Crown className="w-3.5 h-3.5 text-primary shrink-0" />
                 </div>
+                {teamName && (
+                  <span className="text-[10px] text-muted-foreground">Líder: {leader.name}</span>
+                )}
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0">
                 <span className="flex items-center gap-1">

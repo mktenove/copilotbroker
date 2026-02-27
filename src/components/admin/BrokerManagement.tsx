@@ -45,6 +45,7 @@ interface Broker {
   whatsapp: string | null;
   is_active: boolean;
   lider_id: string | null;
+  nome_equipe: string | null;
   created_at: string;
   projects?: Project[];
 }

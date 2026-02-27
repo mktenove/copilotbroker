@@ -361,6 +361,7 @@ export type Database = {
           is_active: boolean
           lider_id: string | null
           name: string
+          nome_equipe: string | null
           slug: string
           updated_at: string
           user_id: string
@@ -373,6 +374,7 @@ export type Database = {
           is_active?: boolean
           lider_id?: string | null
           name: string
+          nome_equipe?: string | null
           slug: string
           updated_at?: string
           user_id: string
@@ -385,6 +387,7 @@ export type Database = {
           is_active?: boolean
           lider_id?: string | null
           name?: string
+          nome_equipe?: string | null
           slug?: string
           updated_at?: string
           user_id?: string
