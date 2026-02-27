@@ -1090,11 +1090,22 @@ app.post("/:token", async (c) => {
   return handleWebhookPost(c);
 });
 
-// Legacy route (backward compatible)
+// Legacy route (backward compatible — checks header OR body token)
 app.post("/", async (c) => {
   const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
   if (webhookSecret) {
-    const provided = c.req.header("x-webhook-secret") || c.req.header("token");
+    // First check headers
+    let provided = c.req.header("x-webhook-secret") || c.req.header("token");
+    
+    // If not in headers, peek at body token (UAZAPI sends token in JSON body)
+    if (!provided) {
+      try {
+        const cloned = c.req.raw.clone();
+        const body = await cloned.json();
+        provided = body?.token;
+      } catch { /* ignore parse errors */ }
+    }
+    
     if (provided !== webhookSecret) {
       console.warn("🚫 Webhook request rejected: invalid secret");
       return c.json({ error: "Forbidden" }, 403, corsHeaders);
