@@ -1043,17 +1043,8 @@ async function handleMessageStatusUpdate(
 
 app.options("/*", (c) => c.json({}, 200, corsHeaders));
 
-app.post("/", async (c) => {
-  // Validate webhook origin if secret is configured
-  const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
-  if (webhookSecret) {
-    const provided = c.req.header("x-webhook-secret") || c.req.header("token");
-    if (provided !== webhookSecret) {
-      console.warn("🚫 Webhook request rejected: invalid secret");
-      return c.json({ error: "Forbidden" }, 403, corsHeaders);
-    }
-  }
-
+// Shared handler for webhook POST requests
+async function handleWebhookPost(c: any) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   
   try {
@@ -1084,6 +1075,32 @@ app.post("/", async (c) => {
     const error = err as Error;
     return c.json({ success: false, error: error.message }, 200, corsHeaders);
   }
+}
+
+// Route with path token validation (preferred)
+app.post("/:token", async (c) => {
+  const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
+  if (webhookSecret) {
+    const provided = c.req.param("token");
+    if (provided !== webhookSecret) {
+      console.warn("🚫 Webhook rejected: invalid path token");
+      return c.json({ error: "Forbidden" }, 403, corsHeaders);
+    }
+  }
+  return handleWebhookPost(c);
+});
+
+// Legacy route (backward compatible)
+app.post("/", async (c) => {
+  const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
+  if (webhookSecret) {
+    const provided = c.req.header("x-webhook-secret") || c.req.header("token");
+    if (provided !== webhookSecret) {
+      console.warn("🚫 Webhook request rejected: invalid secret");
+      return c.json({ error: "Forbidden" }, 403, corsHeaders);
+    }
+  }
+  return handleWebhookPost(c);
 });
 
 app.get("/health", (c) => {
