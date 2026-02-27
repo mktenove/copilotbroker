@@ -1,20 +1,18 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   DndContext,
   DragOverlay,
   closestCorners,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
   DragStartEvent,
   DragEndEvent
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
-import { Building2, Users, Search, MapPin, X, Play } from "lucide-react";
+import { Building2, Users, Search, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
-import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS, getOriginDisplayLabel } from "@/types/crm";
+import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS } from "@/types/crm";
 import { useCustomOrigins } from "@/hooks/use-custom-origins";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
 import { KanbanColumn } from "./KanbanColumn";
@@ -30,6 +28,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { cancelCadenciaForLead } from "@/hooks/use-cadencia-ativa";
 import { usePropostas } from "@/hooks/use-propostas";
 import { cn } from "@/lib/utils";
+import { useQueryClient } from "@tanstack/react-query";
+import type { KanbanColumnFilters } from "@/hooks/use-kanban-column";
 import {
   Select,
   SelectContent,
@@ -37,9 +37,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -65,17 +62,22 @@ const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_rece
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange, onAddLead }: KanbanBoardProps) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [selectedBroker, setSelectedBroker] = useState<string>("all");
   const [selectedProject, setSelectedProject] = useState<string>("all");
   const [selectedOrigins, setSelectedOrigins] = useState<string[]>([]);
   const { data: customOrigins = [] } = useCustomOrigins();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null); // kept for sheet fallback
+  const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
   const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
   const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
   const [cadenciaLeadIds, setCadenciaLeadIds] = useState<Set<string>>(new Set());
   const [localBrokers, setLocalBrokers] = useState<{ id: string; name: string; slug: string }[]>([]);
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+
+  // Lead lookup map populated by columns
+  const allLeadsRef = useRef<Map<string, CRMLead>>(new Map());
 
   // Modal states
   const [agendamentoModal, setAgendamentoModal] = useState<{ open: boolean; leadId: string | null; isReagendamento?: boolean }>({ open: false, leadId: null });
@@ -83,14 +85,18 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const [propostaModal, setPropostaModal] = useState<{ open: boolean; leadId: string | null; leadProjectId?: string | null; leadBrokerId?: string | null }>({ open: false, leadId: null });
   const [vendaModal, setVendaModal] = useState<{ open: boolean; leadId: string | null }>({ open: false, leadId: null });
   const [perdaModal, setPerdaModal] = useState<{ open: boolean; leadId: string | null; currentStatus: LeadStatus }>({ open: false, leadId: null, currentStatus: "new" });
-  const [iniciarModal, setIniciarModal] = useState<{ open: boolean; leadId: string | null; message: string }>({ open: false, leadId: null, message: "" });
   const [newLeadIds, setNewLeadIds] = useState<Set<string>>(new Set());
   const newLeadTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // usePropostas for the currently open proposta modal lead
   const { criarProposta } = usePropostas(propostaModal.leadId || "");
 
-  // Notification sound (short chime as base64 data URI)
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchTerm), 300);
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  // Notification sound
   const playNotificationSound = useCallback(() => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -113,11 +119,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     playNotificationSound();
     toast.success(`🆕 Novo lead: ${leadName}`);
     setNewLeadIds(prev => new Set(prev).add(leadId));
-    
-    // Clear previous timeout for same lead if any
+
     const existing = newLeadTimeoutsRef.current.get(leadId);
     if (existing) clearTimeout(existing);
-    
+
     const timeout = setTimeout(() => {
       setNewLeadIds(prev => {
         const next = new Set(prev);
@@ -151,14 +156,15 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
   const brokers = brokersProp.length > 0 ? brokersProp : localBrokers;
 
+  // Mutations only (no data fetching)
   const {
-    leads, isLoading, fetchLeads, updateLeadStatus, updateLead, inactivateLead, deleteLead, getLeadsByStatus,
-    iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
+    invalidateAll, updateLeadStatus, updateLead, inactivateLead, deleteLead,
+    iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta,
+    registrarComparecimentoEProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda,
   } = useKanbanLeads({
     brokerId,
     isAdmin,
     projectId: selectedProject === "all" ? null : selectedProject,
-    onNewLead: handleNewLead,
   });
 
   useEffect(() => {
@@ -199,7 +205,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     };
     fetchCadencias();
 
-    // Subscribe to campaign changes
     const channel = supabase
       .channel("kanban-cadencias")
       .on("postgres_changes", { event: "*", schema: "public", table: "whatsapp_campaigns" }, () => {
@@ -210,56 +215,68 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     return () => { supabase.removeChannel(channel); };
   }, []);
 
+  // Realtime subscription for lead changes → invalidate column queries
+  useEffect(() => {
+    const channel = supabase
+      .channel('kanban-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'leads' }, (payload) => {
+        const newRecord = payload.new as any;
+        const oldRecord = payload.old as any;
+
+        const affectedStatuses = new Set<string>();
+        if (newRecord?.status) affectedStatuses.add(newRecord.status);
+        if (oldRecord?.status) affectedStatuses.add(oldRecord.status);
+
+        affectedStatuses.forEach(s => {
+          queryClient.invalidateQueries({ queryKey: ["kanban-column", s] });
+          queryClient.invalidateQueries({ queryKey: ["kanban-count", s] });
+        });
+
+        if (payload.eventType === 'INSERT' && newRecord?.status === 'new') {
+          if (!isAdmin && brokerId && newRecord.broker_id !== brokerId) return;
+          handleNewLead(newRecord.id, newRecord.name || 'Novo lead');
+        }
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient, brokerId, isAdmin, handleNewLead]);
+
+  // Column filters
+  const columnFilters: KanbanColumnFilters = useMemo(() => ({
+    brokerId,
+    isAdmin,
+    projectId: selectedProject === "all" ? null : selectedProject,
+    selectedBroker,
+    selectedOrigins,
+    searchTerm: debouncedSearch,
+  }), [brokerId, isAdmin, selectedProject, selectedBroker, selectedOrigins, debouncedSearch]);
+
+  // Lead lookup callback
+  const handleLeadsLoaded = useCallback((leads: CRMLead[]) => {
+    leads.forEach(l => allLeadsRef.current.set(l.id, l));
+  }, []);
+
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const filteredLeads = leads.filter(lead => {
-    const matchesSearch =
-      lead.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      lead.whatsapp.includes(searchTerm);
-    const matchesBroker =
-      selectedBroker === "all" ||
-      lead.broker_id === selectedBroker ||
-      (selectedBroker === "enove" && !lead.broker_id);
-    const matchesProject =
-      selectedProject === "all" ||
-      lead.project_id === selectedProject;
-    const matchesOrigin =
-      selectedOrigins.length === 0 ||
-      (selectedOrigins.includes("sem_origem") && !lead.lead_origin) ||
-      (lead.lead_origin != null && selectedOrigins.includes(lead.lead_origin));
-    return matchesSearch && matchesBroker && matchesProject && matchesOrigin;
-  });
-
   const handleDragStart = (event: DragStartEvent) => {
-    const lead = leads.find(l => l.id === event.active.id);
+    const lead = event.active.data.current?.lead as CRMLead | undefined;
     if (lead) setActiveLead(lead);
   };
 
-  // Block drag that skips stages
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveLead(null);
     if (!over) return;
 
-    const leadId = active.id as string;
-    const VALID_STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered', 'inactive'];
+    const lead = active.data.current?.lead as CRMLead | undefined;
+    if (!lead) return;
 
-    let newStatus: LeadStatus;
-    if (VALID_STATUSES.includes(over.id as LeadStatus)) {
-      newStatus = over.id as LeadStatus;
-    } else {
-      const targetLead = leads.find(l => l.id === over.id);
-      if (!targetLead) return;
-      newStatus = targetLead.status;
-    }
+    const newStatus = over.id as LeadStatus;
+    if (!STATUS_ORDER.includes(newStatus) || lead.status === newStatus) return;
 
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead || lead.status === newStatus) return;
-
-    // Validate adjacency
     const srcIdx = STATUS_ORDER.indexOf(lead.status);
     const dstIdx = STATUS_ORDER.indexOf(newStatus);
     if (srcIdx === -1 || dstIdx === -1 || Math.abs(dstIdx - srcIdx) > 1) {
@@ -267,15 +284,13 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
       return;
     }
 
-    // For forward moves, require the modal flow (don't allow free advance via drag)
     if (dstIdx > srcIdx) {
       toast.info("Use o botão de ação para avançar o lead com os dados obrigatórios.");
       return;
     }
 
-    // Backward move is allowed via drag (1 step back)
-    await updateLeadStatus(leadId, lead.status, newStatus);
-  }, [leads, updateLeadStatus]);
+    await updateLeadStatus(lead.id, lead.status, newStatus);
+  }, [updateLeadStatus]);
 
   const handleCardClick = (lead: CRMLead) => {
     navigate(`/corretor/lead/${lead.id}`);
@@ -296,23 +311,18 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   };
 
   const handleUpdateOrigin = async (leadId: string, origin: string) => {
-    const lead = leads.find(l => l.id === leadId);
+    const lead = allLeadsRef.current.get(leadId);
     await updateLead(leadId, { lead_origin: origin }, {
       logOriginChange: true,
       oldOrigin: lead?.lead_origin
     });
   };
 
-  // Contextual action handlers
   const handleIniciarAtendimento = async (leadId: string) => {
-    const lead = leads.find(l => l.id === leadId);
-    if (!lead) return;
-    
+    const lead = allLeadsRef.current.get(leadId);
     const result = await iniciarAtendimento(leadId);
     if (result.success) {
       toast.success("Atendimento iniciado!");
-      
-      // Fire-and-forget: log timeline
       const userId = result.userId;
       supabase.from("lead_interactions").insert({
         lead_id: leadId,
@@ -321,10 +331,10 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         channel: "whatsapp",
         created_by: userId,
       });
-      
-      // Open WhatsApp directly
-      const cleanPhone = lead.whatsapp.replace(/\D/g, "");
-      window.open(`https://wa.me/55${cleanPhone}`, "_blank");
+      if (lead) {
+        const cleanPhone = lead.whatsapp.replace(/\D/g, "");
+        window.open(`https://wa.me/55${cleanPhone}`, "_blank");
+      }
     }
   };
 
@@ -362,7 +372,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     <div className="flex flex-col min-h-[700px]">
       {/* Toolbar - Filters */}
       <div className="flex flex-col gap-2 md:gap-0 mb-4 md:mb-6 px-1">
-        {/* Mobile search - full width on top */}
+        {/* Mobile search */}
         <div className="md:hidden relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
@@ -481,7 +491,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
               <KanbanColumn
                 key={status}
                 status={status}
-                leads={filteredLeads.filter(l => l.status === status)}
+                filters={columnFilters}
                 newLeadIds={newLeadIds}
                 cadenciaLeadIds={cadenciaLeadIds}
                 onCancelCadencia={handleCancelCadencia}
@@ -495,11 +505,11 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
                 onOpenPerda={handleOpenPerda}
                 onDispatchWhatsApp={handleDispatchWhatsApp}
                 onAddLead={onAddLead}
-                onOpenProposta={(leadId) => {
-                  const lead = leads.find(l => l.id === leadId);
-                  setPropostaModal({ open: true, leadId, leadProjectId: lead?.project_id, leadBrokerId: lead?.broker_id });
+                onOpenProposta={(lead) => {
+                  setPropostaModal({ open: true, leadId: lead.id, leadProjectId: lead.project_id, leadBrokerId: lead.broker_id });
                 }}
                 onOpenReagendamento={(leadId) => setAgendamentoModal({ open: true, leadId, isReagendamento: true })}
+                onLeadsLoaded={handleLeadsLoaded}
               />
             ))}
           </div>
@@ -524,7 +534,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         brokers={brokers}
         onTransferred={() => {
           setSelectedLead(null);
-          fetchLeads();
+          invalidateAll();
         }}
       />
 
@@ -605,8 +615,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         onOpenChange={setWhatsappCampaignOpen}
         preselectedStatus={whatsappPreselectedStatus}
       />
-
-      {/* Iniciar Atendimento Modal - removed, now opens WhatsApp directly */}
     </div>
   );
 }

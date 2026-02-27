@@ -1,174 +1,50 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { CRMLead, LeadStatus } from "@/types/crm";
 import { toast } from "sonner";
 import { cancelCadenciaForLead } from "@/hooks/use-cadencia-ativa";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 
 interface UseKanbanLeadsOptions {
   brokerId?: string | null;
   isAdmin?: boolean;
   projectId?: string | null;
-  onNewLead?: (leadId: string, leadName: string) => void;
 }
 
-export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead }: UseKanbanLeadsOptions) {
+export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanbanLeadsOptions) {
   const queryClient = useQueryClient();
-  const channelRef = useRef<RealtimeChannel | null>(null);
 
-  const queryKey = ["kanban-leads", brokerId, isAdmin, projectId];
+  const invalidateAll = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ["kanban-column"] });
+    queryClient.invalidateQueries({ queryKey: ["kanban-count"] });
+  }, [queryClient]);
 
-  const { data: leads = [], isLoading } = useQuery<CRMLead[]>({
-    queryKey,
-    queryFn: async () => {
-      let query = supabase
-        .from("leads")
-        .select(`
-          id, name, whatsapp, email, cpf, created_at, updated_at, source, status,
-          lead_origin, lead_origin_detail, broker_id, project_id, roleta_id,
-          corretor_atribuido_id, atribuido_em, atendimento_iniciado_em,
-          reserva_expira_em, status_distribuicao, data_agendamento, tipo_agendamento,
-          comparecimento, valor_proposta, data_envio_proposta, valor_final_venda,
-          data_fechamento, data_perda, etapa_perda, last_interaction_at, notes,
-          inactivation_reason, inactivated_at, motivo_atribuicao, auto_first_message_sent,
-          broker:brokers!leads_broker_id_fkey(id, name, slug),
-          project:projects(id, name, slug, city_slug),
-          attribution:lead_attribution(landing_page)
-        `)
-        .neq("status", "inactive")
-        .order("last_interaction_at", { ascending: false });
+  const invalidateStatuses = useCallback((...statuses: LeadStatus[]) => {
+    statuses.forEach(s => {
+      queryClient.invalidateQueries({ queryKey: ["kanban-column", s] });
+      queryClient.invalidateQueries({ queryKey: ["kanban-count", s] });
+    });
+  }, [queryClient]);
 
-      if (!isAdmin && brokerId) {
-        query = query.eq("broker_id", brokerId);
-      }
-
-      if (projectId) {
-        query = query.eq("project_id", projectId);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-      
-      const transformedData = (data || []).map((lead: any) => ({
-        ...lead,
-        attribution: Array.isArray(lead.attribution) && lead.attribution.length > 0 
-          ? lead.attribution[0] 
-          : lead.attribution
-      }));
-      
-      return transformedData as unknown as CRMLead[];
-    },
-    staleTime: 30 * 1000, // 30s
-    refetchOnWindowFocus: true,
-  });
-
-  // Local state for optimistic updates
-  const [localLeads, setLocalLeads] = useState<CRMLead[]>([]);
-  
-  // Sync query data to local state
-  useEffect(() => {
-    setLocalLeads(leads);
-  }, [leads]);
-
-  const fetchLeads = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey });
-  }, [queryClient, queryKey]);
-
-  // Realtime subscription for lead updates
-  useEffect(() => {
-    if (channelRef.current) {
-      supabase.removeChannel(channelRef.current);
-    }
-
-    const channel = supabase
-      .channel('kanban-leads-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'leads' },
-        (payload) => {
-          const updatedLead = payload.new as any;
-          const oldLead = payload.old as any;
-
-          if (updatedLead.status === 'inactive') {
-            setLocalLeads(prev => prev.filter(l => l.id !== updatedLead.id));
-            return;
-          }
-
-          if (!isAdmin && brokerId) {
-            const wasMyLead = oldLead.broker_id === brokerId;
-            const isMyLead = updatedLead.broker_id === brokerId;
-
-            if (wasMyLead && !isMyLead) {
-              setLocalLeads(prev => prev.filter(l => l.id !== updatedLead.id));
-              return;
-            }
-            if (!wasMyLead && isMyLead) {
-              fetchLeads();
-              return;
-            }
-            if (!isMyLead) return;
-          }
-
-          setLocalLeads(prev => prev.map(l => 
-            l.id === updatedLead.id ? { ...l, ...updatedLead } : l
-          ));
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'leads' },
-        (payload) => {
-          const newLead = payload.new as any;
-          if (!isAdmin && brokerId && newLead.broker_id !== brokerId) return;
-          if (newLead.status === 'inactive') return;
-          onNewLead?.(newLead.id, newLead.name || 'Novo lead');
-          fetchLeads();
-        }
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  }, [brokerId, isAdmin, fetchLeads, onNewLead]);
-
-  const updateLeadStatus = useCallback(async (
-    leadId: string,
-    oldStatus: LeadStatus,
-    newStatus: LeadStatus,
-    userId?: string
-  ) => {
+  const updateLeadStatus = useCallback(async (leadId: string, oldStatus: LeadStatus, newStatus: LeadStatus, userId?: string) => {
     try {
-      const { error: updateError } = await supabase
-        .from("leads")
-        .update({ status: newStatus, updated_at: new Date().toISOString() })
-        .eq("id", leadId);
+      const { error: updateError } = await supabase.from("leads").update({ status: newStatus, updated_at: new Date().toISOString() }).eq("id", leadId);
       if (updateError) throw updateError;
-
-      const { error: interactionError } = await supabase
-        .from("lead_interactions")
-        .insert({ lead_id: leadId, interaction_type: "status_change", old_status: oldStatus, new_status: newStatus, created_by: userId });
-      if (interactionError) throw interactionError;
-
-      setLocalLeads(prev => prev.map(lead => 
-        lead.id === leadId 
-          ? { ...lead, status: newStatus, updated_at: new Date().toISOString(), last_interaction_at: new Date().toISOString() }
-          : lead
-      ));
+      await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "status_change", old_status: oldStatus, new_status: newStatus, created_by: userId });
+      invalidateStatuses(oldStatus, newStatus);
       return true;
     } catch (error) {
       console.error("Erro ao atualizar status:", error);
       toast.error("Erro ao atualizar status do lead.");
       return false;
     }
-  }, []);
+  }, [invalidateStatuses]);
 
   const updateLead = useCallback(async (
-    leadId: string, 
+    leadId: string,
     updates: Partial<CRMLead>,
-    options?: { 
-      logOriginChange?: boolean; 
+    options?: {
+      logOriginChange?: boolean;
       oldOrigin?: string | null;
       logInactivation?: boolean;
       oldStatus?: LeadStatus;
@@ -176,10 +52,7 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
     }
   ) => {
     try {
-      const { error } = await supabase
-        .from("leads")
-        .update({ ...updates, updated_at: new Date().toISOString() })
-        .eq("id", leadId);
+      const { error } = await supabase.from("leads").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", leadId);
       if (error) throw error;
 
       if (options?.logOriginChange && updates.lead_origin !== undefined) {
@@ -200,24 +73,14 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
         });
       }
 
-      setLocalLeads(prev => {
-        if (updates.status === "inactive") {
-          return prev.filter(lead => lead.id !== leadId);
-        }
-        const hasInteraction = options?.logOriginChange || options?.logInactivation;
-        return prev.map(lead => 
-          lead.id === leadId 
-            ? { ...lead, ...updates, updated_at: new Date().toISOString(), ...(hasInteraction ? { last_interaction_at: new Date().toISOString() } : {}) }
-            : lead
-        );
-      });
+      invalidateAll();
       return true;
     } catch (error) {
       console.error("Erro ao atualizar lead:", error);
       toast.error("Erro ao atualizar lead.");
       return false;
     }
-  }, []);
+  }, [invalidateAll]);
 
   const inactivateLead = useCallback(async (leadId: string, reason: string, oldStatus: LeadStatus) => {
     await cancelCadenciaForLead(leadId);
@@ -231,14 +94,9 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
   const iniciarAtendimento = useCallback(async (leadId: string) => {
     try {
       const now = new Date().toISOString();
-      // Optimistic UI update first for instant feedback
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "info_sent" as LeadStatus, atendimento_iniciado_em: now, updated_at: now, last_interaction_at: now } : l));
-
-      // Parallel: fetch user+broker AND update lead simultaneously
       const [userResult, updateResult] = await Promise.all([
         supabase.auth.getUser().then(async ({ data }) => {
-          const { data: broker } = await supabase
-            .from("brokers").select("id, name").eq("user_id", data.user?.id ?? "").single();
+          const { data: broker } = await supabase.from("brokers").select("id, name").eq("user_id", data.user?.id ?? "").single();
           return { user: data.user, broker };
         }),
         supabase.from("leads")
@@ -248,21 +106,19 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
 
       if (updateResult.error) throw updateResult.error;
 
-      // Fire-and-forget interaction log (non-blocking)
       supabase.from("lead_interactions").insert({
         lead_id: leadId, interaction_type: "atendimento_iniciado" as any, old_status: "new", new_status: "info_sent",
         broker_id: userResult.broker?.id, notes: `Atendimento iniciado por ${userResult.broker?.name || "corretor"}`, created_by: userResult.user?.id,
       }).then(({ error }) => { if (error) console.error("Erro ao logar interação:", error); });
 
+      invalidateStatuses("new", "info_sent");
       return { success: true, userId: userResult.user?.id };
     } catch (error) {
       console.error("Erro ao iniciar atendimento:", error);
       toast.error("Erro ao iniciar atendimento.");
-      // Rollback optimistic update
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "new" as LeadStatus } : l));
       return { success: false };
     }
-  }, []);
+  }, [invalidateStatuses]);
 
   const registrarAgendamento = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
     try {
@@ -270,10 +126,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ status: "scheduling" as any, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "agendamento_registrado" as any, old_status: "info_sent", new_status: "scheduling", notes: `Agendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}` });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "scheduling" as LeadStatus, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("info_sent", "scheduling");
       return true;
     } catch (error) { console.error("Erro ao registrar agendamento:", error); toast.error("Erro ao registrar agendamento."); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const registrarComparecimentoEProposta = useCallback(async (leadId: string, valorProposta: number) => {
     try {
@@ -284,10 +140,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
         { lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "✅ Cliente compareceu" },
         { lead_id: leadId, interaction_type: "proposta_enviada" as any, old_status: "scheduling", new_status: "docs_received", notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` }
       ]);
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, comparecimento: true, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("scheduling", "docs_received");
       return true;
     } catch (error) { console.error("Erro ao registrar comparecimento:", error); toast.error("Erro ao registrar comparecimento."); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const registrarComparecimento = useCallback(async (leadId: string) => {
     try {
@@ -295,10 +151,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ comparecimento: true, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "✅ Cliente compareceu" });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, comparecimento: true, updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("scheduling");
       return true;
     } catch (error) { console.error("Erro ao registrar comparecimento:", error); toast.error("Erro ao registrar comparecimento."); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const registrarProposta = useCallback(async (leadId: string, valorProposta: number) => {
     try {
@@ -306,20 +162,20 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ status: "docs_received" as any, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "proposta_enviada" as any, old_status: "scheduling", new_status: "docs_received", notes: `Proposta enviada: R$ ${valorProposta.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "docs_received" as LeadStatus, valor_proposta: valorProposta, data_envio_proposta: now, updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("scheduling", "docs_received");
       return true;
     } catch (error) { console.error("Erro ao registrar proposta:", error); toast.error("Erro ao registrar proposta."); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const registrarNaoComparecimento = useCallback(async (leadId: string) => {
     try {
       const { error } = await supabase.from("leads").update({ comparecimento: false, updated_at: new Date().toISOString() }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "comparecimento_registrado" as any, notes: "❌ Cliente não compareceu" });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, comparecimento: false, last_interaction_at: new Date().toISOString() } : l));
+      invalidateStatuses("scheduling");
       return true;
     } catch (error) { console.error("Erro:", error); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const reagendarLead = useCallback(async (leadId: string, dataAgendamento: Date, tipoAgendamento: string) => {
     try {
@@ -327,10 +183,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "reagendamento" as any, notes: `Reagendamento: ${tipoAgendamento} em ${dataAgendamento.toLocaleDateString("pt-BR")}` });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, data_agendamento: dataAgendamento.toISOString(), tipo_agendamento: tipoAgendamento, comparecimento: null, updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("scheduling");
       return true;
     } catch (error) { console.error("Erro:", error); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const confirmarVenda = useCallback(async (leadId: string, valorFinal: number, dataFechamento: Date) => {
     try {
@@ -339,10 +195,10 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ status: "registered" as any, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), registered_at: now, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "venda_confirmada" as any, old_status: "docs_received", new_status: "registered", notes: `Venda confirmada: R$ ${valorFinal.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` });
-      setLocalLeads(prev => prev.map(l => l.id === leadId ? { ...l, status: "registered" as LeadStatus, valor_final_venda: valorFinal, data_fechamento: dataFechamento.toISOString(), updated_at: now, last_interaction_at: now } : l));
+      invalidateStatuses("docs_received", "registered");
       return true;
     } catch (error) { console.error("Erro ao confirmar venda:", error); toast.error("Erro ao confirmar venda."); return false; }
-  }, []);
+  }, [invalidateStatuses]);
 
   const reactivateLead = useCallback(async (leadId: string) => {
     try {
@@ -350,11 +206,11 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       const { error } = await supabase.from("leads").update({ status: "new" as any, inactivation_reason: null, inactivated_at: null, data_perda: null, etapa_perda: null, updated_at: now }).eq("id", leadId);
       if (error) throw error;
       await supabase.from("lead_interactions").insert({ lead_id: leadId, interaction_type: "reactivation" as any, old_status: "inactive", new_status: "new", notes: "Lead reativado" });
-      fetchLeads();
+      invalidateStatuses("new");
       toast.success("Lead reativado com sucesso!");
       return true;
     } catch (error) { console.error("Erro ao reativar lead:", error); toast.error("Erro ao reativar lead."); return false; }
-  }, [fetchLeads]);
+  }, [invalidateStatuses]);
 
   const deleteLead = useCallback(async (leadId: string) => {
     try {
@@ -363,26 +219,19 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId, onNewLead
       await supabase.from("lead_attribution").delete().eq("lead_id", leadId);
       const { error } = await supabase.from("leads").delete().eq("id", leadId);
       if (error) throw error;
-      setLocalLeads(prev => prev.filter(lead => lead.id !== leadId));
+      invalidateAll();
       toast.success("Lead excluído com sucesso!");
       return true;
     } catch (error) { console.error("Erro ao excluir lead:", error); toast.error("Erro ao excluir lead."); return false; }
-  }, []);
-
-  const getLeadsByStatus = useCallback((status: LeadStatus) => {
-    return localLeads.filter(lead => lead.status === status);
-  }, [localLeads]);
+  }, [invalidateAll]);
 
   return {
-    leads: localLeads,
-    isLoading,
-    fetchLeads,
+    invalidateAll,
     updateLeadStatus,
     updateLead,
     inactivateLead,
     reactivateLead,
     deleteLead,
-    getLeadsByStatus,
     iniciarAtendimento,
     registrarAgendamento,
     registrarComparecimentoEProposta,

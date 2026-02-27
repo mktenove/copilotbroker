@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, CheckCircle2, Lock, RotateCw, AlertTriangle, Play, Calendar, FileText, Trophy, Square } from "lucide-react";
-import { useSortable } from "@dnd-kit/sortable";
+import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
@@ -104,20 +104,18 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging
-  } = useSortable({ id: lead.id, disabled: isMobile });
+  } = useDraggable({ id: lead.id, data: { lead }, disabled: isMobile });
 
   const shouldAnimate = isNew || (hasCadenciaAtiva && !isNew);
   const animationStyle = useMemo(() => {
     const base: React.CSSProperties = {
       transform: CSS.Transform.toString(transform),
-      transition,
     };
     if (isNew) return { ...base, ...RING_PULSE_GLOW_STYLE };
     if (hasCadenciaAtiva) return { ...base, ...RING_PULSE_STYLE };
     return base;
-  }, [transform, transition, isNew, hasCadenciaAtiva]);
+  }, [transform, isNew, hasCadenciaAtiva]);
 
   const timeSinceInteraction = useMemo(() => {
     const date = lead.last_interaction_at ? new Date(lead.last_interaction_at) : new Date(lead.created_at);
