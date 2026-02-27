@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Crown, Users, ShieldPlus, ShieldMinus, BarChart3, UserPlus, UserMinus } from "lucide-react";
+import { Crown, Users, ShieldPlus, ShieldMinus, BarChart3, UserPlus, UserMinus, Pencil } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,11 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
   // Manage members modal state
   const [managingLeader, setManagingLeader] = useState<Leader | null>(null);
   const [managingMembers, setManagingMembers] = useState<string[]>([]);
+
+  // Edit team name modal state
+  const [editingLeader, setEditingLeader] = useState<Leader | null>(null);
+  const [editTeamName, setEditTeamName] = useState("");
+  const [editTeamNameError, setEditTeamNameError] = useState("");
 
   const promotablebrokers = brokers.filter(b => !leaders.some(l => l.user_id === b.user_id));
 
@@ -191,6 +196,44 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
       toast.error("Erro ao remover líder.");
     } finally {
       setRemovingId(null);
+    }
+  };
+
+  // Edit team name
+  const openEditTeamName = (leader: Leader) => {
+    const leaderBroker = brokers.find(b => b.user_id === leader.user_id);
+    setEditTeamName(leaderBroker?.nome_equipe || "");
+    setEditTeamNameError("");
+    setEditingLeader(leader);
+  };
+
+  const saveTeamName = async () => {
+    if (!editingLeader) return;
+    const trimmed = editTeamName.trim();
+    if (!trimmed) {
+      setEditTeamNameError("Nome da equipe é obrigatório.");
+      return;
+    }
+    const leaderBroker = brokers.find(b => b.user_id === editingLeader.user_id);
+    const nameExists = brokers.some(
+      b => b.nome_equipe?.toLowerCase() === trimmed.toLowerCase() && b.id !== leaderBroker?.id
+    );
+    if (nameExists) {
+      setEditTeamNameError("Já existe uma equipe com este nome.");
+      return;
+    }
+    try {
+      const { error } = await (supabase
+        .from("brokers" as any)
+        .update({ nome_equipe: trimmed })
+        .eq("id", leaderBroker?.id) as any);
+      if (error) throw error;
+      toast.success(`Nome da equipe atualizado para "${trimmed}".`);
+      setEditingLeader(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao atualizar nome da equipe:", error);
+      toast.error("Erro ao atualizar nome da equipe.");
     }
   };
 
@@ -413,6 +456,38 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
         </DialogContent>
       </Dialog>
 
+      {/* Edit Team Name Modal */}
+      <Dialog open={!!editingLeader} onOpenChange={(open) => !open && setEditingLeader(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Pencil className="w-4 h-4 text-primary" />
+              Editar Nome da Equipe
+            </DialogTitle>
+            <DialogDescription>
+              Altere o nome da equipe de {editingLeader?.name}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="editTeamName">Nome da Equipe *</Label>
+            <Input
+              id="editTeamName"
+              value={editTeamName}
+              onChange={(e) => { setEditTeamName(e.target.value); setEditTeamNameError(""); }}
+              placeholder="Ex: Sharks, Eagles..."
+              autoFocus
+            />
+            {editTeamNameError && (
+              <p className="text-xs text-destructive">{editTeamNameError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingLeader(null)}>Cancelar</Button>
+            <Button onClick={saveTeamName}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Leaders list */}
       {leaders.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground text-sm">
@@ -470,6 +545,15 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-primary"
+                      onClick={() => openEditTeamName(leader)}
+                      title="Editar nome da equipe"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
                     <Button
                       variant="ghost"
                       size="icon"
