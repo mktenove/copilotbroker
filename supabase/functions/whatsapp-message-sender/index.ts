@@ -3,10 +3,12 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 
 const app = new Hono().basePath("/whatsapp-message-sender");
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+const ALLOWED_ORIGINS = ["https://onovocondominio.com.br", "https://onovocondominio.lovable.app", "https://id-preview--8855e0c5-1ec6-49e7-83f4-12e453004e21.lovable.app"];
+function getDynamicCors(origin: string) {
+  const allowed = ALLOWED_ORIGINS.includes(origin) ? origin : ALLOWED_ORIGINS[0];
+  return { "Access-Control-Allow-Origin": allowed, "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version" };
+}
+const corsHeaders = getDynamicCors(ALLOWED_ORIGINS[0]);
 
 // Configuration
 const UAZAPI_BASE_URL = Deno.env.get("UAZAPI_INSTANCE_URL") || "";
