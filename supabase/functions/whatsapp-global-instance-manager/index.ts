@@ -14,9 +14,18 @@
 
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getCorsHeaders } from "../_shared/security.ts";
 
+// Dynamic CORS helper for Hono — builds headers from the request's Origin
+function getHonoCors(c: { req: { header: (name: string) => string | undefined } }): Record<string, string> {
+  const origin = c.req.header("origin") || "";
+  return { ...getCorsHeaders(new Request("https://dummy", { headers: { origin } })), "Access-Control-Allow-Methods": "GET, POST, OPTIONS" };
+}
+
+// Default corsHeaders for routes that don't have access to `c` easily.
+// The preflight handler uses getHonoCors(c) for dynamic origin.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://onovocondominio.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
@@ -273,7 +282,7 @@ const makeRequest = async (
 
 // CORS preflight handler
 app.options("/*", (c) => {
-  return c.body(null, 204, corsHeaders);
+  return c.body(null, 204, getHonoCors(c));
 });
 
 // GET /status - Check instance status

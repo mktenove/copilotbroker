@@ -1,10 +1,18 @@
 import { Hono } from "https://deno.land/x/hono@v3.12.11/mod.ts";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
+import { getCorsHeaders } from "../_shared/security.ts";
 
 const app = new Hono().basePath("/whatsapp-instance-manager");
 
+// Dynamic CORS helper for Hono
+function getHonoCors(c: { req: { header: (name: string) => string | undefined } }): Record<string, string> {
+  const origin = c.req.header("origin") || "";
+  return getCorsHeaders(new Request("https://dummy", { headers: { origin } }));
+}
+
+// Default corsHeaders for routes — restricted to primary domain (no wildcard).
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Origin": "https://onovocondominio.com.br",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
@@ -254,7 +262,7 @@ const getBrokerId = async (supabase: SupabaseClient<any, any, any>, userId: stri
 
 // CORS preflight
 app.options("/*", (c) => {
-  return c.json({}, 200, corsHeaders);
+  return c.json({}, 200, getHonoCors(c));
 });
 
 // POST /init - Initialize a new UAZAPI instance for broker
