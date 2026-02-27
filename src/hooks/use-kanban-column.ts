@@ -50,8 +50,10 @@ function applyFilters(query: any, filters: KanbanColumnFilters) {
     }
   }
   if (filters.searchTerm && filters.searchTerm.trim()) {
-    const term = filters.searchTerm.trim();
-    query = query.or(`name.ilike.%${term}%,whatsapp.ilike.%${term}%`);
+    const term = filters.searchTerm.trim().replace(/[(),."'\\%_]/g, "");
+    if (term) {
+      query = query.or(`name.ilike.%${term}%,whatsapp.ilike.%${term}%`);
+    }
   }
   return query;
 }

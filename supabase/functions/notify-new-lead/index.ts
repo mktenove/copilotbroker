@@ -11,13 +11,10 @@
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, maskPhone } from "../_shared/security.ts";
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -108,7 +105,7 @@ Deno.serve(async (req) => {
     const brokerId = body.brokerId;
     const source = body.source;
     
-    console.log("📥 Notificação recebida:", { leadId, leadName, leadWhatsapp, brokerId, source });
+    console.log("📥 Notificação recebida:", { leadId, leadName, leadWhatsapp: maskPhone(leadWhatsapp || ""), brokerId, source });
 
     // Determine recipient
     let recipientPhone = fallbackPhone;
@@ -150,7 +147,7 @@ Deno.serve(async (req) => {
 
     // Format phone number (remove non-digits)
     const cleanPhone = recipientPhone.replace(/\D/g, "");
-    console.log(`📱 Enviando para: ${cleanPhone}`);
+    console.log(`📱 Enviando para: ${maskPhone(cleanPhone)}`);
 
     // Build notification message
     const messageText = `🏠 *Novo Lead Cadastrado!*
@@ -263,7 +260,7 @@ Entre em contato o mais rápido possível!`;
     }
     
     return new Response(
-      JSON.stringify({ success: false, error: String(error) }),
+      JSON.stringify({ success: false, error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

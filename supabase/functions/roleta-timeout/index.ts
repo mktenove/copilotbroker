@@ -1,11 +1,8 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-};
+import { getCorsHeaders, maskPhone } from "../_shared/security.ts";
 
 Deno.serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -225,7 +222,7 @@ Deno.serve(async (req) => {
             }),
           });
 
-          console.log(`WhatsApp timeout notification to ${cleanPhone}: ${resp.status}`);
+          console.log(`WhatsApp timeout notification to ${maskPhone(cleanPhone)}: ${resp.status}`);
         } catch (whatsappErr) {
           console.error("WhatsApp timeout notification failed (non-critical):", whatsappErr);
         }
@@ -239,7 +236,7 @@ Deno.serve(async (req) => {
     });
   } catch (error) {
     console.error("Error in roleta-timeout:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

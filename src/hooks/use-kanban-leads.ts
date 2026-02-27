@@ -52,7 +52,21 @@ export function useKanbanLeads({ brokerId, isAdmin = false, projectId }: UseKanb
     }
   ) => {
     try {
-      const { error } = await supabase.from("leads").update({ ...updates, updated_at: new Date().toISOString() }).eq("id", leadId);
+      const ALLOWED_FIELDS = [
+        'status', 'lead_origin', 'lead_origin_detail', 'notes', 'email', 'cpf',
+        'name', 'whatsapp', 'source', 'data_agendamento', 'tipo_agendamento',
+        'comparecimento', 'valor_proposta', 'data_envio_proposta', 'valor_final_venda',
+        'data_fechamento', 'data_perda', 'etapa_perda', 'inactivation_reason',
+        'inactivated_at', 'inactivated_by', 'registered_at', 'registered_by',
+        'auto_first_message_sent', 'auto_first_message_at', 'project_id',
+        'atendimento_iniciado_em', 'status_distribuicao', 'reserva_expira_em',
+        'broker_id', 'roleta_id', 'corretor_atribuido_id', 'motivo_atribuicao',
+      ];
+      const sanitized: Record<string, unknown> = {};
+      for (const [key, val] of Object.entries(updates)) {
+        if (ALLOWED_FIELDS.includes(key)) sanitized[key] = val;
+      }
+      const { error } = await supabase.from("leads").update({ ...sanitized, updated_at: new Date().toISOString() }).eq("id", leadId);
       if (error) throw error;
 
       if (options?.logOriginChange && updates.lead_origin !== undefined) {

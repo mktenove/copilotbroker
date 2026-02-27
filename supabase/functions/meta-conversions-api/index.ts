@@ -1,10 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
-};
+import { getCorsHeaders } from "../_shared/security.ts";
 
 const PIXEL_CONFIGS: Record<string, { tokenEnv: string; defaultUrl: string }> = {
   "880409748241568": {
@@ -20,6 +15,7 @@ const PIXEL_CONFIGS: Record<string, { tokenEnv: string; defaultUrl: string }> = 
 const DEFAULT_PIXEL_ID = "880409748241568";
 
 serve(async (req) => {
+  const corsHeaders = getCorsHeaders(req);
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -72,11 +68,11 @@ serve(async (req) => {
       ],
     };
 
-    const url = `https://graph.facebook.com/v21.0/${resolvedPixelId}/events?access_token=${token}`;
+    const url = `https://graph.facebook.com/v21.0/${resolvedPixelId}/events`;
 
     const response = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
       body: JSON.stringify(eventData),
     });
 
@@ -89,7 +85,7 @@ serve(async (req) => {
   } catch (error) {
     console.error("Meta CAPI error:", error);
     return new Response(
-      JSON.stringify({ success: false, error: error.message }),
+      JSON.stringify({ success: false, error: "Erro interno do servidor" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
