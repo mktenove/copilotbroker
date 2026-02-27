@@ -34,6 +34,7 @@ interface Broker {
   whatsapp: string | null;
   is_active: boolean;
   lider_id: string | null;
+  nome_equipe: string | null;
   created_at: string;
 }
 
@@ -114,9 +115,9 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
       return;
     }
 
-    // Check uniqueness against existing roleta names
-    const nameExists = roletas.some(
-      r => r.nome.toLowerCase() === trimmedName.toLowerCase()
+    // Check uniqueness against other brokers' nome_equipe
+    const nameExists = brokers.some(
+      b => b.nome_equipe?.toLowerCase() === trimmedName.toLowerCase()
     );
     if (nameExists) {
       setTeamNameError("Já existe uma equipe com este nome.");
@@ -139,39 +140,18 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
         return;
       }
 
-      // 2. Create roleta (team) with the given name
-      const { data: newRoleta, error: roletaError } = await (supabase
-        .from("roletas" as any)
-        .insert({
-          nome: trimmedName,
-          lider_id: broker.id,
-          ativa: true,
-        })
-        .select("id")
-        .single() as any);
+      // 2. Save team name on the leader's broker record
+      await (supabase
+        .from("brokers" as any)
+        .update({ nome_equipe: trimmedName })
+        .eq("id", broker.id) as any);
 
-      if (roletaError) throw roletaError;
-
-      // 3. Assign selected members to the team
-      if (selectedMembers.length > 0 && newRoleta?.id) {
-        // Update lider_id on brokers
+      // 3. Assign selected members to the leader
+      if (selectedMembers.length > 0) {
         await (supabase
           .from("brokers" as any)
           .update({ lider_id: broker.id })
           .in("id", selectedMembers) as any);
-
-        // Add as roleta members
-        const membrosInsert = selectedMembers.map((memberId, idx) => ({
-          roleta_id: newRoleta.id,
-          corretor_id: memberId,
-          ordem: idx + 1,
-          ativo: true,
-          status_checkin: false,
-        }));
-
-        await (supabase
-          .from("roletas_membros" as any)
-          .insert(membrosInsert) as any);
       }
 
       toast.success(`${broker.name} promovido a líder! Equipe "${trimmedName}" criada.`);
@@ -444,6 +424,8 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
             const teamMembers = brokers.filter(b => b.lider_id === leader.id);
             const teamLeads = teamMembers.reduce((sum, b) => sum + (leadsCountMap[b.id] || 0), 0);
             const leaderRoletas = roletas.filter(r => r.lider_id === leader.id);
+            const leaderBroker = brokers.find(b => b.user_id === leader.user_id);
+            const teamDisplayName = leaderBroker?.nome_equipe;
 
             return (
               <div
@@ -461,6 +443,9 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
                       <span className="font-semibold text-sm text-foreground truncate">{leader.name}</span>
                       <Crown className="w-3.5 h-3.5 text-primary shrink-0" />
                     </div>
+                    {teamDisplayName && (
+                      <span className="text-xs font-medium text-primary/80">Equipe {teamDisplayName}</span>
+                    )}
 
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
