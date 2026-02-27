@@ -1044,6 +1044,16 @@ async function handleMessageStatusUpdate(
 app.options("/*", (c) => c.json({}, 200, corsHeaders));
 
 app.post("/", async (c) => {
+  // Validate webhook origin if secret is configured
+  const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
+  if (webhookSecret) {
+    const provided = c.req.header("x-webhook-secret") || c.req.header("token");
+    if (provided !== webhookSecret) {
+      console.warn("🚫 Webhook request rejected: invalid secret");
+      return c.json({ error: "Forbidden" }, 403, corsHeaders);
+    }
+  }
+
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   
   try {
