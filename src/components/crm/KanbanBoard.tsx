@@ -547,7 +547,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
         onConfirm={async (reason) => {
           if (!perdaModal.leadId) return;
           const success = await inactivateLead(perdaModal.leadId, reason, perdaModal.currentStatus);
-          if (success) toast.success("Lead marcado como perdido.");
+          if (success) toast.success("Lead inativado com sucesso.");
         }}
       />
 

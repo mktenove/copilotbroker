@@ -332,7 +332,7 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
                   "flex items-center justify-center",
                   "text-slate-500 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                 )}
-                title="Registrar perda"
+                title="Inativar lead"
               >
                 <UserX className="w-4 h-4 md:w-3.5 md:h-3.5" />
               </button>

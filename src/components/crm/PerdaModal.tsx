@@ -34,11 +34,11 @@ export function PerdaModal({ open, onOpenChange, onConfirm }: PerdaModalProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] sm:max-w-md" onClick={(e) => e.stopPropagation()}>
         <DialogHeader>
-          <DialogTitle className="text-red-400">Registrar Perda</DialogTitle>
+          <DialogTitle className="text-red-400">Inativar Lead</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-3 py-4">
-          <label className="text-sm text-slate-400">Motivo da perda *</label>
+          <label className="text-sm text-slate-400">Motivo da inativação *</label>
           <div className="grid grid-cols-2 gap-2">
             {INACTIVATION_REASONS.map(r => (
               <button
@@ -74,7 +74,7 @@ export function PerdaModal({ open, onOpenChange, onConfirm }: PerdaModalProps) {
             disabled={!selectedReason || (selectedReason === "outro" && !customReason) || loading}
             className="bg-red-600 hover:bg-red-700"
           >
-            {loading ? "Salvando..." : "Confirmar Perda"}
+            {loading ? "Salvando..." : "Confirmar Inativação"}
           </Button>
         </DialogFooter>
       </DialogContent>
