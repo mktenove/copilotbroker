@@ -514,6 +514,10 @@ async function handleAutoResponse(
   conversationId: string,
   senderName?: string
 ): Promise<void> {
+  // ⛔ TEMPORARIAMENTE DESATIVADO — Piloto Automático desligado
+  console.log("⛔ Auto-response DISABLED (temporary kill switch)");
+  return;
+
   try {
     // 1. Check conversation ai_mode
     const { data: conv } = await supabase
@@ -864,11 +868,12 @@ async function handleIncomingMessage(
   const direction = msg.fromMe ? "outbound" : "inbound";
   console.log(`📞 ${direction} DM: chatid="${chatid}" | phone="${phone}" | text="${messageText.substring(0, 50)}"`);
 
-  // Archive ALL messages (both inbound and outbound) to conversations
-  await archiveMessageToConversation(
-    supabase, phone, messageText, direction as "inbound" | "outbound",
-    instanceName, msg.pushName, msg.fromMe ? "human" : "lead", msg.id
-  );
+  // ⛔ TEMPORARIAMENTE DESATIVADO — Arquivamento de mensagens no inbox desligado
+  // await archiveMessageToConversation(
+  //   supabase, phone, messageText, direction as "inbound" | "outbound",
+  //   instanceName, msg.pushName, msg.fromMe ? "human" : "lead", msg.id
+  // );
+  console.log("⛔ Message archiving DISABLED (temporary kill switch)");
 
   // Skip further processing for outbound messages
   if (msg.fromMe) {
