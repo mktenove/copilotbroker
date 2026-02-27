@@ -1090,27 +1090,56 @@ app.post("/:token", async (c) => {
   return handleWebhookPost(c);
 });
 
-// Legacy route (backward compatible — checks header OR body token)
+// Legacy route (backward compatible — validates instance token from body)
 app.post("/", async (c) => {
   const webhookSecret = Deno.env.get("UAZAPI_WEBHOOK_SECRET");
-  if (webhookSecret) {
-    // First check headers
-    let provided = c.req.header("x-webhook-secret") || c.req.header("token");
-    
-    // If not in headers, peek at body token (UAZAPI sends token in JSON body)
-    if (!provided) {
-      try {
-        const cloned = c.req.raw.clone();
-        const body = await cloned.json();
-        provided = body?.token;
-      } catch { /* ignore parse errors */ }
+  
+  // First check if path-level secret is provided via headers
+  let headerToken = c.req.header("x-webhook-secret") || c.req.header("token");
+  if (headerToken && webhookSecret && headerToken === webhookSecret) {
+    return handleWebhookPost(c);
+  }
+
+  // Peek at body to get the UAZAPI instance token
+  let bodyToken: string | undefined;
+  try {
+    const cloned = c.req.raw.clone();
+    const body = await cloned.json();
+    bodyToken = body?.token;
+  } catch { /* ignore parse errors */ }
+
+  // Validate: body token must match a known instance token in DB
+  if (bodyToken) {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: knownInstance } = await supabase
+      .from("broker_whatsapp_instances")
+      .select("id")
+      .eq("instance_token", bodyToken)
+      .maybeSingle();
+
+    if (knownInstance) {
+      return handleWebhookPost(c);
     }
-    
-    if (provided !== webhookSecret) {
-      console.warn("🚫 Webhook request rejected: invalid secret");
-      return c.json({ error: "Forbidden" }, 403, corsHeaders);
+
+    // Also check global config
+    const { data: globalConfig } = await supabase
+      .from("global_whatsapp_config")
+      .select("id")
+      .eq("instance_token", bodyToken)
+      .maybeSingle();
+
+    if (globalConfig) {
+      return handleWebhookPost(c);
     }
   }
+
+  // If webhook secret is set, reject unknown tokens
+  if (webhookSecret) {
+    console.warn("🚫 Webhook request rejected: unknown instance token");
+    return c.json({ error: "Forbidden" }, 403, corsHeaders);
+  }
+
+  // No secret configured — allow (open mode)
   return handleWebhookPost(c);
 });
 
