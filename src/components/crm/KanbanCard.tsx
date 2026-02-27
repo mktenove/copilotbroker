@@ -1,10 +1,8 @@
 import { useMemo } from "react";
 import { Clock, MessageCircle, Plus, UserX, Trash2, Mail, Phone, CheckCircle2, Lock, RotateCw, AlertTriangle, Play, Calendar, FileText, Trophy, Square } from "lucide-react";
-import { useDraggable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
 import { CRMLead, LeadStatus, STATUS_CONFIG, getOriginDisplayLabel, getOriginType } from "@/types/crm";
 import { cn } from "@/lib/utils";
-import { useIsMobile } from "@/hooks/use-mobile";
+
 import { OriginCombobox } from "./OriginCombobox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -84,7 +82,7 @@ const RING_PULSE_GLOW_STYLE: React.CSSProperties = {
 };
 
 export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, onClick, onUpdateOrigin, onDelete, onIniciarAtendimento, onOpenAgendamento, onOpenComparecimento, onOpenVenda, onOpenPerda, onOpenProposta, onOpenReagendamento }: KanbanCardProps) {
-  const isMobile = useIsMobile();
+  
 
   // Dynamic action config for scheduling status based on comparecimento
   const actionConfig = useMemo(() => {
@@ -99,23 +97,11 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
     return ACTION_CONFIG[lead.status];
   }, [lead.status, lead.comparecimento]);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    isDragging
-  } = useDraggable({ id: lead.id, data: { lead }, disabled: isMobile });
-
-  const shouldAnimate = isNew || (hasCadenciaAtiva && !isNew);
   const animationStyle = useMemo(() => {
-    const base: React.CSSProperties = {
-      transform: CSS.Transform.toString(transform),
-    };
-    if (isNew) return { ...base, ...RING_PULSE_GLOW_STYLE };
-    if (hasCadenciaAtiva) return { ...base, ...RING_PULSE_STYLE };
-    return base;
-  }, [transform, isNew, hasCadenciaAtiva]);
+    if (isNew) return RING_PULSE_GLOW_STYLE;
+    if (hasCadenciaAtiva) return RING_PULSE_STYLE;
+    return undefined;
+  }, [isNew, hasCadenciaAtiva]);
 
   const timeSinceInteraction = useMemo(() => {
     const date = lead.last_interaction_at ? new Date(lead.last_interaction_at) : new Date(lead.created_at);
@@ -183,18 +169,14 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
 
   return (
     <div
-      ref={setNodeRef}
       style={animationStyle}
-      {...(isMobile ? {} : { ...attributes, ...listeners })}
       onClick={onClick}
       className={cn(
-        "relative rounded-xl",
-        isMobile ? "cursor-pointer" : "cursor-grab active:cursor-grabbing",
+        "relative rounded-xl cursor-pointer",
         "bg-[#1e1e22] border border-[#2a2a2e]",
         "hover:border-primary/50 hover:shadow-[0_8px_30px_rgb(0,0,0,0.3)]",
         "transition-[border-color,transform,opacity] duration-200 ease-out",
         "group overflow-hidden",
-        isDragging && "opacity-70 shadow-2xl rotate-1 scale-105 z-50",
         isStale && !hasCadenciaAtiva && "ring-2 ring-red-400/50",
         isNew && "shadow-[0_0_20px_rgba(52,211,153,0.3)]",
       )}

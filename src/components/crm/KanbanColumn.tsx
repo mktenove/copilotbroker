@@ -1,6 +1,6 @@
 import { useRef, useCallback, useEffect } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useDroppable } from "@dnd-kit/core";
+
 import { Plus, MoreHorizontal, MessageSquare } from "lucide-react";
 import { CRMLead, LeadStatus, STATUS_CONFIG } from "@/types/crm";
 import { useKanbanColumn, KanbanColumnFilters } from "@/hooks/use-kanban-column";
@@ -53,7 +53,6 @@ export function KanbanColumn({
   onDispatchWhatsApp, onAddLead, onOpenProposta, onOpenReagendamento,
   onLeadsLoaded,
 }: KanbanColumnProps) {
-  const { setNodeRef: setDroppableRef, isOver } = useDroppable({ id: status });
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const config = STATUS_CONFIG[status];
   const canDispatchWhatsApp = status !== "inactive" && status !== "registered";
@@ -82,9 +81,8 @@ export function KanbanColumn({
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const setRefs = useCallback((node: HTMLDivElement | null) => {
-    setDroppableRef(node);
     scrollContainerRef.current = node;
-  }, [setDroppableRef]);
+  }, []);
 
   return (
     <div className="flex flex-col w-[280px] md:min-w-[300px] md:max-w-[320px] shrink-0 min-h-[600px]">
@@ -123,8 +121,7 @@ export function KanbanColumn({
         onScroll={handleScroll}
         className={cn(
           "flex-1 min-h-0 p-2 rounded-xl overflow-y-auto scrollbar-subtle",
-          "bg-[#18181b]/50",
-          isOver && "bg-primary/10 ring-2 ring-primary/40"
+          "bg-[#18181b]/50"
         )}
       >
         {isLoading ? (
