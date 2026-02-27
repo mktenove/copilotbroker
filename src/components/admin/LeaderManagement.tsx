@@ -1,10 +1,20 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Crown, Users, ShieldPlus, ShieldMinus, BarChart3 } from "lucide-react";
+import { Crown, Users, ShieldPlus, ShieldMinus, BarChart3, UserPlus, UserMinus } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -12,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 
 interface Broker {
@@ -64,30 +75,112 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
   const [isPromoting, setIsPromoting] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  // Promotion modal state
+  const [showPromotionModal, setShowPromotionModal] = useState(false);
+  const [teamName, setTeamName] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [teamNameError, setTeamNameError] = useState("");
+
+  // Manage members modal state
+  const [managingLeader, setManagingLeader] = useState<Leader | null>(null);
+  const [managingMembers, setManagingMembers] = useState<string[]>([]);
+
   const promotablebrokers = brokers.filter(b => !leaders.some(l => l.user_id === b.user_id));
 
-  const promoteBroker = async () => {
+  const openPromotionModal = () => {
     if (!promotingBrokerId) return;
     const broker = brokers.find(b => b.id === promotingBrokerId);
     if (!broker) return;
 
+    // Pre-select brokers already assigned to this broker as leader
+    const existingSubordinates = brokers
+      .filter(b => b.lider_id === broker.id && b.id !== broker.id)
+      .map(b => b.id);
+
+    setSelectedMembers(existingSubordinates);
+    setTeamName("");
+    setTeamNameError("");
+    setShowPromotionModal(true);
+  };
+
+  const confirmPromotion = async () => {
+    if (!promotingBrokerId) return;
+    const broker = brokers.find(b => b.id === promotingBrokerId);
+    if (!broker) return;
+
+    const trimmedName = teamName.trim();
+    if (!trimmedName) {
+      setTeamNameError("Nome da equipe é obrigatório.");
+      return;
+    }
+
+    // Check uniqueness against existing roleta names
+    const nameExists = roletas.some(
+      r => r.nome.toLowerCase() === trimmedName.toLowerCase()
+    );
+    if (nameExists) {
+      setTeamNameError("Já existe uma equipe com este nome.");
+      return;
+    }
+
     setIsPromoting(true);
     try {
-      const { error } = await (supabase
+      // 1. Insert leader role
+      const { error: roleError } = await (supabase
         .from("user_roles" as any)
         .insert({ user_id: broker.user_id, role: "leader" }) as any);
 
-      if (error) throw error;
-      toast.success(`${broker.name} promovido a líder!`);
+      if (roleError) {
+        if (roleError.message?.includes("duplicate")) {
+          toast.error("Este corretor já é líder.");
+        } else {
+          throw roleError;
+        }
+        return;
+      }
+
+      // 2. Create roleta (team) with the given name
+      const { data: newRoleta, error: roletaError } = await (supabase
+        .from("roletas" as any)
+        .insert({
+          nome: trimmedName,
+          lider_id: broker.id,
+          ativa: true,
+        })
+        .select("id")
+        .single() as any);
+
+      if (roletaError) throw roletaError;
+
+      // 3. Assign selected members to the team
+      if (selectedMembers.length > 0 && newRoleta?.id) {
+        // Update lider_id on brokers
+        await (supabase
+          .from("brokers" as any)
+          .update({ lider_id: broker.id })
+          .in("id", selectedMembers) as any);
+
+        // Add as roleta members
+        const membrosInsert = selectedMembers.map((memberId, idx) => ({
+          roleta_id: newRoleta.id,
+          corretor_id: memberId,
+          ordem: idx + 1,
+          ativo: true,
+          status_checkin: false,
+        }));
+
+        await (supabase
+          .from("roletas_membros" as any)
+          .insert(membrosInsert) as any);
+      }
+
+      toast.success(`${broker.name} promovido a líder! Equipe "${trimmedName}" criada.`);
       setPromotingBrokerId("");
+      setShowPromotionModal(false);
       onRefresh();
     } catch (error: any) {
       console.error("Erro ao promover:", error);
-      if (error.message?.includes("duplicate")) {
-        toast.error("Este corretor já é líder.");
-      } else {
-        toast.error("Erro ao promover corretor.");
-      }
+      toast.error("Erro ao promover corretor.");
     } finally {
       setIsPromoting(false);
     }
@@ -98,7 +191,6 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
 
     setRemovingId(leader.id);
     try {
-      // Remove leader role
       const { error } = await (supabase
         .from("user_roles" as any)
         .delete()
@@ -107,7 +199,6 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
 
       if (error) throw error;
 
-      // Clear lider_id from brokers in this team
       await (supabase
         .from("brokers" as any)
         .update({ lider_id: null })
@@ -122,6 +213,66 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
       setRemovingId(null);
     }
   };
+
+  // Manage members
+  const openManageMembers = (leader: Leader) => {
+    const currentMembers = brokers
+      .filter(b => b.lider_id === leader.id && b.id !== leader.id)
+      .map(b => b.id);
+    setManagingMembers(currentMembers);
+    setManagingLeader(leader);
+  };
+
+  const saveMembers = async () => {
+    if (!managingLeader) return;
+    try {
+      // Remove all current members from this leader
+      await (supabase
+        .from("brokers" as any)
+        .update({ lider_id: null })
+        .eq("lider_id", managingLeader.id) as any);
+
+      // Assign selected members
+      if (managingMembers.length > 0) {
+        await (supabase
+          .from("brokers" as any)
+          .update({ lider_id: managingLeader.id })
+          .in("id", managingMembers) as any);
+      }
+
+      toast.success("Membros da equipe atualizados!");
+      setManagingLeader(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Erro ao atualizar membros:", error);
+      toast.error("Erro ao atualizar membros.");
+    }
+  };
+
+  const toggleMember = (brokerId: string) => {
+    setSelectedMembers(prev =>
+      prev.includes(brokerId)
+        ? prev.filter(id => id !== brokerId)
+        : [...prev, brokerId]
+    );
+  };
+
+  const toggleManagingMember = (brokerId: string) => {
+    setManagingMembers(prev =>
+      prev.includes(brokerId)
+        ? prev.filter(id => id !== brokerId)
+        : [...prev, brokerId]
+    );
+  };
+
+  // Available brokers for member selection (not leaders, not the broker being promoted)
+  const availableMembersForPromotion = brokers.filter(
+    b => b.id !== promotingBrokerId && !leaders.some(l => l.user_id === b.user_id)
+  );
+
+  const availableMembersForManaging = managingLeader
+    ? brokers.filter(b => b.user_id !== managingLeader.user_id && !leaders.some(l => l.user_id === b.user_id && l.id !== managingLeader.id))
+    : [];
 
   return (
     <div className="space-y-6">
@@ -151,14 +302,136 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
           </Select>
           <Button
             size="sm"
-            onClick={promoteBroker}
+            onClick={openPromotionModal}
             disabled={!promotingBrokerId || isPromoting}
             className="shrink-0"
           >
-            {isPromoting ? "Promovendo..." : "Promover"}
+            Promover
           </Button>
         </div>
       </div>
+
+      {/* Promotion Modal */}
+      <Dialog open={showPromotionModal} onOpenChange={setShowPromotionModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Crown className="w-5 h-5 text-primary" />
+              Nova Equipe
+            </DialogTitle>
+            <DialogDescription>
+              Defina o nome da equipe e selecione os membros iniciais.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="teamName">Nome da Equipe *</Label>
+              <Input
+                id="teamName"
+                value={teamName}
+                onChange={(e) => { setTeamName(e.target.value); setTeamNameError(""); }}
+                placeholder="Ex: Sharks, Eagles, Alpha..."
+                autoFocus
+              />
+              {teamNameError && (
+                <p className="text-xs text-destructive">{teamNameError}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Membros da Equipe</Label>
+              <p className="text-xs text-muted-foreground">Selecione os corretores que farão parte desta equipe.</p>
+              <div className="max-h-48 overflow-y-auto space-y-1 rounded-lg border border-border p-2">
+                {availableMembersForPromotion.length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-2">Nenhum corretor disponível</p>
+                ) : (
+                  availableMembersForPromotion.map(broker => (
+                    <label
+                      key={broker.id}
+                      className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedMembers.includes(broker.id)}
+                        onCheckedChange={() => toggleMember(broker.id)}
+                      />
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
+                          {broker.name.charAt(0).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-foreground">{broker.name}</span>
+                      {!broker.is_active && (
+                        <Badge variant="destructive" className="text-[9px] px-1 py-0 h-4 ml-auto">Inativo</Badge>
+                      )}
+                    </label>
+                  ))
+                )}
+              </div>
+              {selectedMembers.length > 0 && (
+                <p className="text-xs text-muted-foreground">{selectedMembers.length} membro{selectedMembers.length !== 1 ? 's' : ''} selecionado{selectedMembers.length !== 1 ? 's' : ''}</p>
+              )}
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPromotionModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={confirmPromotion} disabled={isPromoting}>
+              {isPromoting ? "Criando..." : "Confirmar Promoção"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manage Members Modal */}
+      <Dialog open={!!managingLeader} onOpenChange={(open) => !open && setManagingLeader(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              Gerenciar Membros — {managingLeader?.name}
+            </DialogTitle>
+            <DialogDescription>
+              Adicione ou remova corretores desta equipe.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="max-h-60 overflow-y-auto space-y-1 rounded-lg border border-border p-2">
+            {availableMembersForManaging.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-2">Nenhum corretor disponível</p>
+            ) : (
+              availableMembersForManaging.map(broker => (
+                <label
+                  key={broker.id}
+                  className="flex items-center gap-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                >
+                  <Checkbox
+                    checked={managingMembers.includes(broker.id)}
+                    onCheckedChange={() => toggleManagingMember(broker.id)}
+                  />
+                  <Avatar className="w-6 h-6">
+                    <AvatarFallback className={cn("text-white text-[9px] font-medium bg-gradient-to-br", getAvatarGradient(broker.name))}>
+                      {broker.name.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-foreground">{broker.name}</span>
+                </label>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManagingLeader(null)}>
+              Cancelar
+            </Button>
+            <Button onClick={saveMembers}>
+              Salvar Membros
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Leaders list */}
       {leaders.length === 0 ? (
@@ -211,16 +484,27 @@ const LeaderManagement = ({ brokers, leaders, leadsCountMap, roletas, onRefresh 
                     )}
                   </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
-                    onClick={() => removeLeader(leader)}
-                    disabled={removingId === leader.id}
-                    title="Remover como líder"
-                  >
-                    <ShieldMinus className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-primary"
+                      onClick={() => openManageMembers(leader)}
+                      title="Gerenciar membros"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-muted-foreground hover:text-destructive"
+                      onClick={() => removeLeader(leader)}
+                      disabled={removingId === leader.id}
+                      title="Remover como líder"
+                    >
+                      <ShieldMinus className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             );
