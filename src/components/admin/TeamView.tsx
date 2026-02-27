@@ -86,7 +86,8 @@ const TeamView = ({ brokers, leaders, leadsCountMap, lastAccessMap, onRefresh }:
       members: brokers.filter(b => b.lider_id === leader.id),
     };
   });
-  const unassigned = brokers.filter(b => !b.lider_id);
+  const leaderIds = new Set(leaders.map(l => l.id));
+  const unassigned = brokers.filter(b => !b.lider_id && !leaderIds.has(b.id));
 
   const TeamLeadsTotal = (members: Broker[]) =>
     members.reduce((sum, b) => sum + (leadsCountMap[b.id] || 0), 0);
