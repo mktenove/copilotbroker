@@ -567,7 +567,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
               </Button>
             )}
             <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
-              <UserX className="w-3.5 h-3.5 mr-1.5" />Perda
+              <UserX className="w-3.5 h-3.5 mr-1.5" />Inativar
             </Button>
             {canTransfer && (
               <Button variant="outline" size="sm" onClick={() => setTransferOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-[#2a2a2e] text-slate-400 hover:bg-[#1e1e22]">
@@ -877,7 +877,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
         onOpenChange={setPerdaOpen}
         onConfirm={async (reason) => {
           const ok = await inactivateLead(lead.id, reason, lead.status);
-          if (ok) { toast.success("Lead marcado como perdido."); refreshLead(); }
+          if (ok) { toast.success("Lead inativado com sucesso."); refreshLead(); }
         }}
       />
       <FollowUpSheet
