@@ -1,15 +1,5 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  DndContext,
-  DragOverlay,
-  closestCorners,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  DragStartEvent,
-  DragEndEvent
-} from "@dnd-kit/core";
 import { Building2, Users, Search, MapPin, X } from "lucide-react";
 import { toast } from "sonner";
 import { CRMLead, LeadStatus, STATUS_CONFIG, LEAD_ORIGINS } from "@/types/crm";
@@ -69,7 +59,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
   const { data: customOrigins = [] } = useCustomOrigins();
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedLead, setSelectedLead] = useState<CRMLead | null>(null);
-  const [activeLead, setActiveLead] = useState<CRMLead | null>(null);
+  
   const [whatsappCampaignOpen, setWhatsappCampaignOpen] = useState(false);
   const [whatsappPreselectedStatus, setWhatsappPreselectedStatus] = useState<LeadStatus | undefined>();
   const [cadenciaLeadIds, setCadenciaLeadIds] = useState<Set<string>>(new Set());
@@ -257,40 +247,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
     leads.forEach(l => allLeadsRef.current.set(l.id, l));
   }, []);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
-  );
-
-  const handleDragStart = (event: DragStartEvent) => {
-    const lead = event.active.data.current?.lead as CRMLead | undefined;
-    if (lead) setActiveLead(lead);
-  };
-
-  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveLead(null);
-    if (!over) return;
-
-    const lead = active.data.current?.lead as CRMLead | undefined;
-    if (!lead) return;
-
-    const newStatus = over.id as LeadStatus;
-    if (!STATUS_ORDER.includes(newStatus) || lead.status === newStatus) return;
-
-    const srcIdx = STATUS_ORDER.indexOf(lead.status);
-    const dstIdx = STATUS_ORDER.indexOf(newStatus);
-    if (srcIdx === -1 || dstIdx === -1 || Math.abs(dstIdx - srcIdx) > 1) {
-      toast.error("Não é possível pular etapas no funil. Use os botões de ação.");
-      return;
-    }
-
-    if (dstIdx > srcIdx) {
-      toast.info("Use o botão de ação para avançar o lead com os dados obrigatórios.");
-      return;
-    }
-
-    await updateLeadStatus(lead.id, lead.status, newStatus);
-  }, [updateLeadStatus]);
 
   const handleCardClick = (lead: CRMLead) => {
     navigate(`/corretor/lead/${lead.id}`);
@@ -480,12 +436,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
 
       {/* Kanban Board */}
       <div className="flex-1 min-h-0 overflow-x-auto overflow-y-hidden scrollbar-subtle pb-4 -mx-3 px-3 md:mx-0 md:px-0">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
           <div className="flex gap-3 md:gap-4 min-w-max">
             {STATUSES.map(status => (
               <KanbanColumn
@@ -513,15 +463,6 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
               />
             ))}
           </div>
-
-          <DragOverlay>
-            {activeLead && (
-              <div className="opacity-90">
-                <KanbanCard lead={activeLead} onClick={() => {}} />
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
       </div>
 
       {/* Lead Detail Sheet */}
