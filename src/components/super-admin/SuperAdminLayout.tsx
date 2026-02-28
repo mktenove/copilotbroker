@@ -1,15 +1,16 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Outlet } from "react-router-dom";
+import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
+import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, Shield, ChevronLeft, ChevronRight,
+  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import copilotIcon from "@/assets/copilot-icon.png";
-import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { RefreshCw } from "lucide-react";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/super-admin" },
@@ -21,45 +22,33 @@ const NAV_ITEMS = [
 ];
 
 export default function SuperAdminLayout() {
-  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const { role, isLoading } = useUserRole();
   const [collapsed, setCollapsed] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => { checkAccess(); }, []);
-
-  const checkAccess = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { setIsCheckingAuth(false); return; }
-    const { data: roles } = await (supabase.from("user_roles" as any).select("role").eq("user_id", session.user.id) as any);
-    const isAdmin = (roles || []).some((r: any) => r.role === "admin");
-    if (!isAdmin) { await supabase.auth.signOut(); setIsCheckingAuth(false); return; }
-    setIsSuperAdmin(true);
-    setIsCheckingAuth(false);
-  };
-
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsSuperAdmin(false);
-  };
 
   const isActive = (path: string) => {
     if (path === "/super-admin") return location.pathname === "/super-admin";
     return location.pathname.startsWith(path);
   };
 
-  if (isCheckingAuth) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
-        <div className="w-12 h-12 border-2 border-[#FFFF00] border-t-transparent rounded-full animate-spin" />
+        <RefreshCw className="w-12 h-12 animate-spin text-[#FFFF00]" />
       </div>
     );
   }
 
-  if (!isSuperAdmin) {
-    return <SuperAdminLogin onAuthenticated={checkAccess} />;
+  // Only super admins (role === 'admin') can access
+  if (role !== "admin") {
+    return <Navigate to="/auth" replace />;
   }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
 
   return (
     <TooltipProvider delayDuration={100}>
