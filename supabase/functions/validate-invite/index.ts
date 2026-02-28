@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     if (inviteErr || !invite) throw new Error("Convite não encontrado");
 
-    if (invite.status !== "sent") throw new Error("Este convite já foi utilizado ou cancelado");
+    if (!["sent", "opened"].includes(invite.status)) throw new Error("Este convite já foi utilizado ou cancelado");
 
     if (new Date(invite.expires_at) < new Date()) {
       await supabase
