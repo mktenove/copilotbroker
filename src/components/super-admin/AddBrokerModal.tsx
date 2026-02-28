@@ -41,7 +41,7 @@ const AddBrokerModal = ({ onSuccess }: AddBrokerModalProps) => {
     try {
       const slug = generateSlug(form.name);
 
-      // 1. Create tenant
+      // 1. Create tenant with owner_email for pending linking
       const { data: tenant, error: tenantError } = await (supabase
         .from("tenants" as any)
         .insert({
@@ -50,6 +50,7 @@ const AddBrokerModal = ({ onSuccess }: AddBrokerModalProps) => {
           plan_type: form.plan_type,
           included_users: form.included_users,
           status: "active",
+          owner_email: form.email.trim(),
         })
         .select("id")
         .single() as any);
@@ -149,8 +150,7 @@ const AddBrokerModal = ({ onSuccess }: AddBrokerModalProps) => {
               </SelectTrigger>
               <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                 <SelectItem value="broker">Corretor</SelectItem>
-                <SelectItem value="imobiliaria">Imobiliária</SelectItem>
-                <SelectItem value="incorporadora">Incorporadora</SelectItem>
+                <SelectItem value="real_estate">Imobiliária</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1868,6 +1868,7 @@ export type Database = {
           id: string
           included_users: number
           name: string
+          owner_email: string | null
           owner_user_id: string | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           slug: string
@@ -1883,6 +1884,7 @@ export type Database = {
           id?: string
           included_users?: number
           name: string
+          owner_email?: string | null
           owner_user_id?: string | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           slug: string
@@ -1898,6 +1900,7 @@ export type Database = {
           id?: string
           included_users?: number
           name?: string
+          owner_email?: string | null
           owner_user_id?: string | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           slug?: string
