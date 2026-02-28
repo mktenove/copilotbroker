@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-import AddTenantModal from "@/components/super-admin/AddTenantModal";
+
 import TenantDetailSheet from "@/components/super-admin/TenantDetailSheet";
 
 interface Tenant {
@@ -86,12 +86,9 @@ const SuperAdminDashboard = () => {
             <h1 className="text-xl font-bold">Dashboard</h1>
             <p className="text-xs text-slate-500">Visão geral da plataforma</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading} className="border-[#2a2a2e] text-slate-300 hover:text-white">
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            </Button>
-            <AddTenantModal onSuccess={loadData} />
-          </div>
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading} className="border-[#2a2a2e] text-slate-300 hover:text-white">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
         </div>
 
         <div className="p-6 space-y-6">
