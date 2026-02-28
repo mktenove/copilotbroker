@@ -1,61 +1,59 @@
 
 
-## Varredura Completa: Restos do Sistema Antigo
+## Audit: Frontend reflection of all implementations
 
-Encontrei **resquícios significativos** em diversas áreas do projeto. Abaixo está o inventário completo e o plano de limpeza.
+### 1. Subscription Status Lifecycle — **OK**
 
----
+- **SubscriptionGuard.tsx**: Handles `suspended` (blocking UI with Customer Portal button), `canceled` (redirect to `/planos`), and no-tenant (redirect to `/planos`). Super admins bypass.
+- **TenantContext.tsx**: Fetches `status` from `tenants` table and exposes it.
+- **stripe-webhook**: Handles `invoice.paid` → active, `invoice.payment_failed` → past_due (3-day grace), `customer.subscription.deleted` → canceled.
+- **suspend-past-due**: Cron-triggered function to auto-suspend after grace period.
+- **No issues found.**
 
-### 1. Build Error (Crítico - Imediato)
-- **`src/pages/Onboarding.tsx`**: Importa `logo-enove.png` que foi deletado. Precisa trocar para `copilot-logo-dark.png`.
+### 2. Seat Management — **OK**
 
-### 2. Páginas com Branding "Enove" (Substituir por "Copilot Broker")
-| Arquivo | Problema |
-|---------|----------|
-| `src/pages/Onboarding.tsx` | Logo Enove, título "Configurar Conta \| Enove" |
-| `src/pages/BrokerSignup.tsx` | Logo Enove, texto "Corretor Enove", importa `logo-enove.png` |
-| `src/pages/Admin.tsx` | Título "CRM \| Enove", labels "Enove" nos cards de contagem |
-| `src/pages/BrokerAdmin.tsx` | Título "CRM \| Enove" |
-| `src/pages/AdminCopilotConfig.tsx` | Título "Copiloto IA & WhatsApp \| Enove" |
-| `src/pages/Termos.tsx` | Todo o conteúdo refere "ENOVE IMOBILIÁRIA LTDA", "Novo Condomínio de Estância Velha" |
-| `src/pages/Home.tsx` | Canonical URL aponta para `onovocondominio.com.br` |
+- **TenantDetailSheet.tsx**: "Limites e Assentos" section with:
+  - "Sincronizar com Stripe" button → calls `manage-seats` edge function with `sync_from_stripe`
+  - "Atualizar quantity no Stripe" button → calls `manage-seats` with `update_stripe_quantity` (with confirmation dialog)
+  - Manual cortesia update (with warning it doesn't touch Stripe)
+  - User limit warning when `activeMembers >= maxUsers`
+- **manage-seats edge function**: Fully implemented with both actions + audit logging.
+- **check_user_limit trigger**: Enforces `USER_LIMIT_EXCEEDED` at DB level.
+- **No issues found.**
 
-### 3. Componentes com Referências Legadas
-| Arquivo | Problema |
-|---------|----------|
-| `src/components/admin/AdminSidebar.tsx` | Importa `logo-enove-mini.png` |
-| `src/components/broker/BrokerSidebar.tsx` | Importa `logo-enove-mini.png` |
-| `src/components/admin/LeadsTable.tsx` | Label "Enove" para source |
-| `src/components/admin/AnalyticsDashboard.tsx` | "Distribuição Enove vs Corretores" |
-| `src/components/admin/ExportButton.tsx` | Source "Enove" |
-| `src/components/admin/BrokerManagement.tsx` | URLs hardcoded `/estanciavelha/` |
-| `src/components/crm/KanbanBoard.tsx` | Filtro "Enove (Direto)" |
-| `src/components/whatsapp/AutoCadenciaRuleEditor.tsx` | Mensagem template menciona "Enove Imobiliária" |
-| `src/components/AppHead.tsx` | Título "Enove", cor `#B8860B`, refs a manifests deletados |
-| `src/components/home/*` | Toda a seção Home refere "Enove Select", "lançamentos imobiliários no RS" |
+### 3. Super Admin Route Protection — **OK**
 
-### 4. Hooks com URLs Legadas
-| Arquivo | Problema |
-|---------|----------|
-| `src/hooks/use-broker-projects.ts` | URLs hardcoded para `/estanciavelha/`, `/prontos/` |
-| `src/hooks/use-kanban-column.ts` | Filtro `"enove"` |
-| `src/hooks/use-page-tracking.ts` | Domínio `onovocondominio` nos ownDomains |
+- Routes wrapped in `<ProtectedRoute>` in App.tsx.
+- `SuperAdminLayout` checks `role === "admin"` via `useUserRole()`, redirects to `/auth` if unauthorized.
+- **No issues found.**
 
-### 5. CSS com Variáveis Legadas
-- **`src/index.css`**: Toda a paleta "Mauricio Cardoso - Botanical Luxury Palette" (`--mc-sage`, `--mc-stone`, etc.), comentários "luxury real estate"
+### 4. Billing Events Debug Page — **OK**
 
-### 6. Arquivos Públicos
-- **`public/manifest.json`**: Nome "Enove Imobiliária", referencia `favicon-enove.png` (deletado)
+- Route registered at `/super-admin/billing-events`.
+- Filters (processed status, type), search, reprocess button, payload viewer all present.
+- **No issues found.**
+
+### 5. Minor Gap: No sidebar link to Billing Events
+
+The `SuperAdminLayout` NAV_ITEMS only has "Billing / Webhooks" pointing to `/super-admin/billing`. There is **no sidebar navigation item** for the new `/super-admin/billing-events` route. Users must know the URL manually.
+
+**Fix**: Either add a nav item for Billing Events in the sidebar, or add a link/button from the existing Billing page to navigate to Billing Events.
+
+### 6. Minor Gap: `past_due` status not handled in SubscriptionGuard
+
+The `SubscriptionGuard` handles `suspended` and `canceled`, but does **not** show any warning for `past_due` tenants. Users in `past_due` (grace period) can use the app normally with no indication that payment failed. Consider adding a warning banner.
 
 ---
 
-### Plano de Correção (7 tarefas)
+### Summary
 
-1. **Corrigir build error**: Atualizar `Onboarding.tsx` para usar `copilot-logo-dark.png` e branding Copilot Broker
-2. **Atualizar branding nas páginas**: Substituir "Enove" por "Copilot Broker" em `Admin.tsx`, `BrokerAdmin.tsx`, `BrokerSignup.tsx`, `AdminCopilotConfig.tsx`
-3. **Atualizar sidebars**: Trocar `logo-enove-mini.png` por `copilot-icon.png` em `AdminSidebar.tsx` e `BrokerSidebar.tsx`
-4. **Limpar componentes CRM**: Substituir labels "Enove" por "Direto" (leads sem corretor) em `LeadsTable`, `KanbanBoard`, `AnalyticsDashboard`, `ExportButton`
-5. **Remover URLs legadas**: Limpar referências a `/estanciavelha/` e `/prontos/` em `use-broker-projects.ts`, `BrokerManagement.tsx`; atualizar `use-page-tracking.ts`
-6. **Limpar CSS e AppHead**: Remover variáveis Mauricio Cardoso do `index.css`; atualizar `AppHead.tsx` para Copilot Broker; atualizar `manifest.json`
-7. **Reescrever Termos.tsx**: Atualizar os termos legais para Copilot Broker (ou criar placeholder genérico), remover referências a "Estância Velha" e "ENOVE IMOBILIÁRIA LTDA"
+All core implementations are correctly reflected in the frontend. Two minor gaps:
+
+1. **Add sidebar link or in-page button** to navigate to Billing Events from the Billing page
+2. **Add a warning banner** for `past_due` status in SubscriptionGuard (optional — currently they have 3 days before suspension)
+
+### Implementation Steps
+
+1. Add a link from SuperAdminBilling page to `/super-admin/billing-events` (or add nav item)
+2. Add an optional `past_due` warning banner in SubscriptionGuard that shows "Pagamento pendente" message but still allows access
 
