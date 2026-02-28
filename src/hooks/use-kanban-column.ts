@@ -32,7 +32,7 @@ function applyFilters(query: any, filters: KanbanColumnFilters) {
     query = query.eq("project_id", filters.projectId);
   }
   if (filters.selectedBroker && filters.selectedBroker !== "all") {
-    if (filters.selectedBroker === "enove") {
+    if (filters.selectedBroker === "direto") {
       query = query.is("broker_id", null);
     } else {
       query = query.eq("broker_id", filters.selectedBroker);
