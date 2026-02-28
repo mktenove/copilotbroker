@@ -1,59 +1,44 @@
 
 
-## Audit: Frontend reflection of all implementations
+## Plan: Refatorar `/accept-invite` para fluxo OTP
 
-### 1. Subscription Status Lifecycle — **OK**
+A página atual usa um formulário de criação de senha. O novo fluxo exige verificar sessão ativa e, se não autenticada, disparar `signInWithOtp` para o email do convite.
 
-- **SubscriptionGuard.tsx**: Handles `suspended` (blocking UI with Customer Portal button), `canceled` (redirect to `/planos`), and no-tenant (redirect to `/planos`). Super admins bypass.
-- **TenantContext.tsx**: Fetches `status` from `tenants` table and exposes it.
-- **stripe-webhook**: Handles `invoice.paid` → active, `invoice.payment_failed` → past_due (3-day grace), `customer.subscription.deleted` → canceled.
-- **suspend-past-due**: Cron-triggered function to auto-suspend after grace period.
-- **No issues found.**
+### Mudanças
 
-### 2. Seat Management — **OK**
+**1. Reescrever `src/pages/AcceptInvite.tsx`**
 
-- **TenantDetailSheet.tsx**: "Limites e Assentos" section with:
-  - "Sincronizar com Stripe" button → calls `manage-seats` edge function with `sync_from_stripe`
-  - "Atualizar quantity no Stripe" button → calls `manage-seats` with `update_stripe_quantity` (with confirmation dialog)
-  - Manual cortesia update (with warning it doesn't touch Stripe)
-  - User limit warning when `activeMembers >= maxUsers`
-- **manage-seats edge function**: Fully implemented with both actions + audit logging.
-- **check_user_limit trigger**: Enforces `USER_LIMIT_EXCEEDED` at DB level.
-- **No issues found.**
+Nova máquina de estados com 5 telas:
 
-### 3. Super Admin Route Protection — **OK**
+- **`validating`** — Spinner "Validando convite..." + chama `validate-invite` para obter email
+- **`needs_auth`** — Email pré-preenchido (readonly) + botão "Enviar link de acesso" → chama `supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: 'https://copilotbroker.lovable.app/aceitar-convite?token=TOKEN' } })`; ao sucesso, troca para estado `otp_sent`
+- **`otp_sent`** — Mensagem "Enviamos um link para seu e-mail. Verifique sua caixa de entrada." com ícone de email
+- **`accepting`** — Spinner "Ativando seu acesso..." + chama `accept-invite` com `{ token }`; ao sucesso, redireciona para `/corretor/admin`
+- **`error`** — Mensagens diferenciadas:
+  - Convite expirado → "Este convite expirou. Solicite um novo convite ao administrador."
+  - Convite cancelado → "Este convite foi cancelado."
+  - Token inválido → "Convite não encontrado."
+  - Email não confere → "O email logado não corresponde ao convite."
 
-- Routes wrapped in `<ProtectedRoute>` in App.tsx.
-- `SuperAdminLayout` checks `role === "admin"` via `useUserRole()`, redirects to `/auth` if unauthorized.
-- **No issues found.**
+Lógica principal no `useEffect` após validação:
+```
+1. validate-invite → obter email
+2. Checar supabase.auth.getSession()
+   - Se tem sessão → ir direto para "accepting" (chamar accept-invite)
+   - Se não → mostrar tela "needs_auth"
+```
 
-### 4. Billing Events Debug Page — **OK**
+Também escutar `onAuthStateChange` para quando o usuário voltar do magic link (já autenticado), automaticamente chamar `accept-invite`.
 
-- Route registered at `/super-admin/billing-events`.
-- Filters (processed status, type), search, reprocess button, payload viewer all present.
-- **No issues found.**
+**2. Atualizar `validate-invite` edge function**
 
-### 5. Minor Gap: No sidebar link to Billing Events
+Permitir status `opened` além de `sent` (o usuário pode recarregar a página). Linha 32 do validate-invite atual rejeita tudo que não é `sent` — mudar para aceitar `sent` ou `opened`.
 
-The `SuperAdminLayout` NAV_ITEMS only has "Billing / Webhooks" pointing to `/super-admin/billing`. There is **no sidebar navigation item** for the new `/super-admin/billing-events` route. Users must know the URL manually.
+**3. Visual**
 
-**Fix**: Either add a nav item for Billing Events in the sidebar, or add a link/button from the existing Billing page to navigate to Billing Events.
+Manter o estilo do tema escuro/aviation do projeto (bg-black, font-mono, cores `#FFFF00`) para consistência com a página de Auth, em vez do estilo genérico Card atual.
 
-### 6. Minor Gap: `past_due` status not handled in SubscriptionGuard
-
-The `SubscriptionGuard` handles `suspended` and `canceled`, but does **not** show any warning for `past_due` tenants. Users in `past_due` (grace period) can use the app normally with no indication that payment failed. Consider adding a warning banner.
-
----
-
-### Summary
-
-All core implementations are correctly reflected in the frontend. Two minor gaps:
-
-1. **Add sidebar link or in-page button** to navigate to Billing Events from the Billing page
-2. **Add a warning banner** for `past_due` status in SubscriptionGuard (optional — currently they have 3 days before suspension)
-
-### Implementation Steps
-
-1. Add a link from SuperAdminBilling page to `/super-admin/billing-events` (or add nav item)
-2. Add an optional `past_due` warning banner in SubscriptionGuard that shows "Pagamento pendente" message but still allows access
+### Arquivos a editar
+- `src/pages/AcceptInvite.tsx` — reescrever completo
+- `supabase/functions/validate-invite/index.ts` — aceitar status `opened`
 
