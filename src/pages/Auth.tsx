@@ -3,8 +3,9 @@ import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Mail, Lock, Download, Share, Plus } from "lucide-react";
-import logoEnove from "@/assets/logo-enove.png";
+import { Mail, Lock, Download, Share, Plane } from "lucide-react";
+import copilotLogoDark from "@/assets/copilot-logo-dark.png";
+import copilotIcon from "@/assets/copilot-icon.png";
 
 const Auth = () => {
   const [email, setEmail] = useState("");
@@ -38,7 +39,6 @@ const Auth = () => {
 
   const checkUserRoleAndRedirect = async (userId: string) => {
     try {
-      // If user was trying to access a specific page, go back there
       const from = (routeLocation.state as any)?.from;
 
       const { data: rolesData, error } = await (supabase
@@ -124,10 +124,10 @@ const Auth = () => {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
+      <div className="min-h-screen bg-[#05050a] flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-[#FFFF00] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Verificando autenticação...</p>
+          <div className="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 font-mono text-sm">Verificando autenticação...</p>
         </div>
       </div>
     );
@@ -136,162 +136,217 @@ const Auth = () => {
   return (
     <>
       <Helmet>
-        <title>CRM | Login - Enove</title>
+        <title>Login | Copilot Broker</title>
       </Helmet>
-      <div className="min-h-screen bg-[#0a0a0c] flex pt-safe">
-      {/* Visual Panel - Desktop only */}
-      <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-gradient-to-br from-[#0a0a0c] via-[#0f0f12] to-[#1a1a1e]">
-        {/* Geometric pattern - with subtle float animation */}
-        <div className="absolute inset-0 opacity-10 animate-float-subtle">
-          <div 
-            className="absolute inset-0" 
-            style={{
-              backgroundImage: `linear-gradient(rgba(255,255,0,0.1) 1px, transparent 1px),
-                                linear-gradient(90deg, rgba(255,255,0,0.1) 1px, transparent 1px)`,
-              backgroundSize: '60px 60px'
-            }} 
-          />
-        </div>
-        
-        {/* Central glow */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-[#FFFF00]/5 rounded-full blur-3xl" />
-        
-        {/* Content */}
-        <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-          <img 
-            src={logoEnove} 
-            alt="Enove" 
-            className="h-16 mb-8 opacity-0 animate-fade-in-down" 
-          />
-          <h1 className="font-serif text-5xl font-bold text-white text-center mb-4 opacity-0 animate-fade-in-left delay-200">
-            Central de Gestão
-          </h1>
-          <div className="h-1 bg-[#FFFF00] rounded-full mb-6 opacity-0 animate-expand-width delay-400" />
-          <p className="text-slate-400 text-lg text-center max-w-md opacity-0 animate-fade-up delay-500">
-            Acesse o painel para gerenciar seus leads e acompanhar suas vendas
-          </p>
-        </div>
-      </div>
+      <div className="min-h-screen bg-[#05050a] flex pt-safe">
+        {/* Visual Panel - Desktop only */}
+        <div className="hidden lg:flex lg:w-3/5 relative overflow-hidden bg-[#05050a]">
+          {/* Runway lights pattern */}
+          <div className="absolute inset-0">
+            {/* Vertical runway center line */}
+            <div className="absolute left-1/2 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-amber-500/20 to-transparent" />
+            
+            {/* Horizontal lines */}
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute left-1/2 -translate-x-1/2 h-px bg-amber-500/10"
+                style={{
+                  top: `${8 + i * 8}%`,
+                  width: `${20 + i * 5}%`,
+                }}
+              />
+            ))}
 
-      {/* Login Form Panel */}
-      <div className="w-full lg:w-2/5 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
-          {/* Mobile Header */}
-          <div className="lg:hidden text-center mb-8">
-            <img 
-              src={logoEnove} 
-              alt="Enove" 
-              className="h-12 mx-auto mb-6 opacity-0 animate-fade-in" 
-            />
-            <h1 className="font-serif text-3xl font-bold text-white mb-2 opacity-0 animate-fade-up delay-100">
-              Acesso ao Painel
-            </h1>
-            <div className="w-16 h-0.5 bg-[#FFFF00] mx-auto opacity-0 animate-expand-width delay-200" />
+            {/* Runway edge lights */}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={`light-l-${i}`} className="absolute" style={{ left: "30%", top: `${15 + i * 10}%` }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500/40" style={{ animationDelay: `${i * 200}ms`, animation: "pulse 2s ease-in-out infinite" }} />
+              </div>
+            ))}
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={`light-r-${i}`} className="absolute" style={{ right: "30%", top: `${15 + i * 10}%` }}>
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500/40" style={{ animationDelay: `${i * 200}ms`, animation: "pulse 2s ease-in-out infinite" }} />
+              </div>
+            ))}
           </div>
 
-          {/* Card */}
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-2xl p-8 shadow-2xl shadow-black/50 opacity-0 animate-scale-in delay-300 lg:delay-500">
-            {/* Desktop Title */}
-            <div className="hidden lg:block mb-8">
-              <h2 className="text-2xl font-semibold text-white mb-2 opacity-0 animate-fade-in delay-600">Bem-vindo</h2>
-              <p className="text-slate-400 opacity-0 animate-fade-in delay-700">Entre com suas credenciais</p>
+          {/* Central glow */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-amber-500/[0.03] rounded-full blur-[120px]" />
+
+          {/* Content */}
+          <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
+            <img 
+              src={copilotLogoDark} 
+              alt="Copilot Broker" 
+              className="h-10 mb-10 opacity-90" 
+            />
+            
+            <div className="flex items-center gap-3 mb-4">
+              <Plane className="w-5 h-5 text-amber-500/60 -rotate-45" />
+              <p className="font-mono text-[10px] tracking-[0.4em] uppercase text-amber-500/50">
+                Flight Deck Access
+              </p>
+              <Plane className="w-5 h-5 text-amber-500/60 rotate-[135deg]" />
             </div>
+
+            <h1 className="font-mono text-4xl lg:text-5xl font-bold text-white text-center mb-4 tracking-tight">
+              Central de
+              <span className="block text-amber-400">Comando</span>
+            </h1>
             
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Email Field */}
-              <div className="opacity-0 animate-fade-up delay-[400ms] lg:delay-[800ms]">
-                <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="email"
-                    id="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3.5 bg-[#0f0f12] border border-[#2a2a2e] rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-[#FFFF00]/50 focus:ring-2 focus:ring-[#FFFF00]/20 transition-all"
-                    placeholder="seu@email.com"
-                  />
-                </div>
-              </div>
-              
-              {/* Password Field */}
-              <div className="opacity-0 animate-fade-up delay-[500ms] lg:delay-[900ms]">
-                <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
-                  Senha
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
-                  <input
-                    type="password"
-                    id="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-12 pr-4 py-3.5 bg-[#0f0f12] border border-[#2a2a2e] rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-[#FFFF00]/50 focus:ring-2 focus:ring-[#FFFF00]/20 transition-all"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
-              
-              {/* Login Button */}
-              <div className="opacity-0 animate-scale-in delay-[600ms] lg:delay-[1000ms]">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full py-4 bg-[#FFFF00] text-black font-bold rounded-xl transition-all hover:shadow-[0_0_30px_rgba(255,255,0,0.4)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
-                >
-                  {isLoading ? (
-                    <span className="flex items-center justify-center gap-2">
-                      <div className="w-5 h-5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                      Entrando...
-                    </span>
-                  ) : (
-                    "Entrar"
-                  )}
-                </button>
-              </div>
-            </form>
+            <div className="w-24 h-0.5 bg-gradient-to-r from-transparent via-amber-500 to-transparent rounded-full mb-6" />
             
-            {/* Broker Link */}
-            <div className="mt-6 pt-6 border-t border-[#2a2a2e] opacity-0 animate-fade-in delay-[700ms] lg:delay-[1100ms]">
-              <p className="text-center text-sm text-slate-400">
-                É corretor?{" "}
-                <Link to="/corretor/cadastro" className="text-[#FFFF00] hover:underline font-medium">
-                  Cadastre-se aqui
-                </Link>
+            <p className="text-slate-500 text-sm text-center max-w-sm font-mono leading-relaxed">
+              Gerencie seus leads, acompanhe vendas e potencialize resultados com IA
+            </p>
+
+            {/* HUD corners */}
+            <div className="absolute top-8 left-8 w-16 h-16">
+              <div className="absolute top-0 left-0 w-full h-px bg-gradient-to-r from-amber-500/30 to-transparent" />
+              <div className="absolute top-0 left-0 h-full w-px bg-gradient-to-b from-amber-500/30 to-transparent" />
+            </div>
+            <div className="absolute top-8 right-8 w-16 h-16">
+              <div className="absolute top-0 right-0 w-full h-px bg-gradient-to-l from-amber-500/30 to-transparent" />
+              <div className="absolute top-0 right-0 h-full w-px bg-gradient-to-b from-amber-500/30 to-transparent" />
+            </div>
+            <div className="absolute bottom-8 left-8 w-16 h-16">
+              <div className="absolute bottom-0 left-0 w-full h-px bg-gradient-to-r from-amber-500/30 to-transparent" />
+              <div className="absolute bottom-0 left-0 h-full w-px bg-gradient-to-t from-amber-500/30 to-transparent" />
+            </div>
+            <div className="absolute bottom-8 right-8 w-16 h-16">
+              <div className="absolute bottom-0 right-0 w-full h-px bg-gradient-to-l from-amber-500/30 to-transparent" />
+              <div className="absolute bottom-0 right-0 h-full w-px bg-gradient-to-t from-amber-500/30 to-transparent" />
+            </div>
+          </div>
+        </div>
+
+        {/* Login Form Panel */}
+        <div className="w-full lg:w-2/5 flex items-center justify-center p-6 relative">
+          {/* Subtle side border glow */}
+          <div className="hidden lg:block absolute left-0 top-0 bottom-0 w-px bg-gradient-to-b from-transparent via-amber-500/20 to-transparent" />
+
+          <div className="w-full max-w-md">
+            {/* Mobile Header */}
+            <div className="lg:hidden text-center mb-8">
+              <img 
+                src={copilotIcon} 
+                alt="Copilot" 
+                className="h-12 mx-auto mb-4" 
+              />
+              <img 
+                src={copilotLogoDark} 
+                alt="Copilot Broker" 
+                className="h-7 mx-auto mb-3" 
+              />
+              <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-amber-500/50">
+                Flight Deck Access
               </p>
             </div>
 
-            {/* PWA Install Button */}
-            {!isInstalled && (
-              <div className="mt-4 opacity-0 animate-fade-in delay-[800ms] lg:delay-[1200ms]">
-                {deferredPrompt ? (
-                  <button
-                    onClick={handleInstallClick}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-300 text-sm font-medium hover:border-[#FFFF00]/40 hover:text-white transition-all cursor-pointer"
-                  >
-                    <Download className="w-4 h-4 text-[#FFFF00]" />
-                    Instalar App
-                  </button>
-                ) : isIOS ? (
-                  <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#0f0f12] border border-[#2a2a2e] text-slate-400 text-xs">
-                    <Download className="w-4 h-4 text-[#FFFF00] shrink-0" />
-                    <p>
-                      <span className="text-slate-300 font-medium">Instale o app:</span>{" "}
-                      toque em{" "}
-                      <Share className="w-3 h-3 inline -mt-0.5 text-slate-300" />{" "}
-                      e depois{" "}
-                      <span className="text-slate-300">"Adicionar à Tela Início"</span>
-                    </p>
-                  </div>
-                ) : null}
+            {/* Card */}
+            <div className="bg-[#0c0c14]/80 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-8 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
+              {/* Desktop Title */}
+              <div className="hidden lg:block mb-8">
+                <h2 className="text-xl font-mono font-bold text-white mb-1.5">Bem-vindo a bordo</h2>
+                <p className="text-slate-500 text-sm font-mono">Entre com suas credenciais</p>
               </div>
-            )}
+              
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div>
+                  <label htmlFor="email" className="block text-xs font-mono font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                    <input
+                      type="email"
+                      id="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-[#08080f] border border-slate-800 rounded-xl text-white font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                      placeholder="seu@email.com"
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label htmlFor="password" className="block text-xs font-mono font-medium text-slate-400 mb-2 uppercase tracking-wider">
+                    Senha
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                    <input
+                      type="password"
+                      id="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-11 pr-4 py-3.5 bg-[#08080f] border border-slate-800 rounded-xl text-white font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-amber-500/40 focus:ring-2 focus:ring-amber-500/10 transition-all"
+                      placeholder="••••••••"
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full py-4 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-mono font-bold text-sm uppercase tracking-wider rounded-xl transition-all hover:shadow-[0_0_40px_rgba(245,158,11,0.3)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Entrando...
+                    </span>
+                  ) : (
+                    "Decolar"
+                  )}
+                </button>
+              </form>
+              
+              {/* Broker Link */}
+              <div className="mt-6 pt-6 border-t border-slate-800/50">
+                <p className="text-center text-sm text-slate-500 font-mono">
+                  É corretor?{" "}
+                  <Link to="/corretor/cadastro" className="text-amber-400 hover:text-amber-300 hover:underline font-medium transition-colors">
+                    Cadastre-se aqui
+                  </Link>
+                </p>
+              </div>
+
+              {/* PWA Install Button */}
+              {!isInstalled && (
+                <div className="mt-4">
+                  {deferredPrompt ? (
+                    <button
+                      onClick={handleInstallClick}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#08080f] border border-slate-800 text-slate-400 text-sm font-mono hover:border-amber-500/30 hover:text-slate-300 transition-all cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 text-amber-400" />
+                      Instalar App
+                    </button>
+                  ) : isIOS ? (
+                    <div className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#08080f] border border-slate-800 text-slate-500 text-xs font-mono">
+                      <Download className="w-4 h-4 text-amber-400 shrink-0" />
+                      <p>
+                        <span className="text-slate-400 font-medium">Instale o app:</span>{" "}
+                        toque em{" "}
+                        <Share className="w-3 h-3 inline -mt-0.5 text-slate-400" />{" "}
+                        e depois{" "}
+                        <span className="text-slate-400">"Adicionar à Tela Início"</span>
+                      </p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <img src={copilotLogoDark} alt="Copilot Broker" className="h-3.5 opacity-20" />
+            </div>
           </div>
         </div>
-      </div>
       </div>
     </>
   );
