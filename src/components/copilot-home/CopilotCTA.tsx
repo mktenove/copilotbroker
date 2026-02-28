@@ -30,10 +30,10 @@ const CopilotCTA = () => {
         </p>
 
         <a
-          href="/auth"
+          href="/signup"
           className="btn-primary text-base inline-flex items-center gap-3"
         >
-          Criar Minha Conta Grátis
+          Criar Minha Conta
           <ArrowRight className="w-5 h-5" />
         </a>
 

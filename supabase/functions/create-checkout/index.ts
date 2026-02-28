@@ -74,8 +74,8 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: lineItems,
       mode: "subscription",
-      success_url: `${origin}/onboarding?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/auth`,
+      success_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/signup?plan=${plan_type}&users=${plan.included_users + (extra_users || 0)}`,
       metadata: {
         user_id: user.id,
         plan_type,
