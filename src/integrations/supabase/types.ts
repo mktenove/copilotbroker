@@ -52,6 +52,33 @@ export type Database = {
           },
         ]
       }
+      billing_events: {
+        Row: {
+          created_at: string
+          id: string
+          payload: Json
+          processed: boolean
+          stripe_event_id: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          stripe_event_id: string
+          type: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          payload?: Json
+          processed?: boolean
+          stripe_event_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
       broker_activity_logs: {
         Row: {
           activity_type: string
@@ -1492,6 +1519,133 @@ export type Database = {
           },
         ]
       }
+      tenant_entitlements: {
+        Row: {
+          created_at: string
+          features: Json
+          id: string
+          max_leads: number | null
+          max_projects: number | null
+          max_users: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          features?: Json
+          id?: string
+          max_leads?: number | null
+          max_projects?: number | null
+          max_users?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          features?: Json
+          id?: string
+          max_leads?: number | null
+          max_projects?: number | null
+          max_users?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_entitlements_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_memberships: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          role: string
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: string
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          role?: string
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_memberships_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenants: {
+        Row: {
+          created_at: string
+          extra_users: number
+          grace_period_ends_at: string | null
+          id: string
+          included_users: number
+          name: string
+          owner_user_id: string | null
+          plan_type: Database["public"]["Enums"]["plan_type"]
+          slug: string
+          status: Database["public"]["Enums"]["tenant_status"]
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          extra_users?: number
+          grace_period_ends_at?: string | null
+          id?: string
+          included_users?: number
+          name: string
+          owner_user_id?: string | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          slug: string
+          status?: Database["public"]["Enums"]["tenant_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          extra_users?: number
+          grace_period_ends_at?: string | null
+          id?: string
+          included_users?: number
+          name?: string
+          owner_user_id?: string | null
+          plan_type?: Database["public"]["Enums"]["plan_type"]
+          slug?: string
+          status?: Database["public"]["Enums"]["tenant_status"]
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1826,6 +1980,7 @@ export type Database = {
     Functions: {
       get_my_broker_id: { Args: never; Returns: string }
       get_my_roleta_ids: { Args: never; Returns: string[] }
+      get_my_tenant_id: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1881,6 +2036,13 @@ export type Database = {
         | "docs_received"
         | "registered"
         | "inactive"
+      plan_type: "broker" | "real_estate"
+      tenant_status:
+        | "active"
+        | "past_due"
+        | "suspended"
+        | "canceled"
+        | "trialing"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2047,6 +2209,14 @@ export const Constants = {
         "docs_received",
         "registered",
         "inactive",
+      ],
+      plan_type: ["broker", "real_estate"],
+      tenant_status: [
+        "active",
+        "past_due",
+        "suspended",
+        "canceled",
+        "trialing",
       ],
     },
   },
