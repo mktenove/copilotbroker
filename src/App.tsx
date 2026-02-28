@@ -73,8 +73,8 @@ const App = () => (
             <Route path="/corretor/lead/:leadId" element={<ProtectedRoute><SubscriptionGuard><LeadPage /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/termos" element={<Termos />} />
 
-            {/* Super Admin with layout */}
-            <Route path="/super-admin" element={<SuperAdminLayout />}>
+            {/* Super Admin with layout — requires auth */}
+            <Route path="/super-admin" element={<ProtectedRoute><SuperAdminLayout /></ProtectedRoute>}>
               <Route index element={<SuperAdminDashboard />} />
               <Route path="brokers" element={<SuperAdminBrokers />} />
               <Route path="brokers/new" element={<SuperAdminAddBroker />} />
