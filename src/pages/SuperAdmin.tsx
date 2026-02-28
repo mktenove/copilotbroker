@@ -154,6 +154,14 @@ const SuperAdmin = () => {
               <AddProjectModal onSuccess={loadData} />
               <AddBrokerModal onSuccess={loadData} />
               <Button
+                size="sm"
+                onClick={() => navigate("/super-admin/brokers")}
+                className="bg-[#FFFF00] text-black hover:bg-[#e6e600]"
+              >
+                <Users className="w-4 h-4 mr-2" />
+                Gestão Brokers
+              </Button>
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/admin")}
