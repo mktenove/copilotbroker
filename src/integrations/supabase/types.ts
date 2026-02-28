@@ -912,6 +912,7 @@ export type Database = {
           id: string
           invited_by: string
           message: string | null
+          role: string
           status: string
           tenant_id: string
           token: string
@@ -925,6 +926,7 @@ export type Database = {
           id?: string
           invited_by: string
           message?: string | null
+          role?: string
           status?: string
           tenant_id: string
           token?: string
@@ -938,6 +940,7 @@ export type Database = {
           id?: string
           invited_by?: string
           message?: string | null
+          role?: string
           status?: string
           tenant_id?: string
           token?: string
