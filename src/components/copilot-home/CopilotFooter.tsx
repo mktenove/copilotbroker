@@ -7,7 +7,7 @@ const CopilotFooter = () => {
     <footer className="py-10 bg-background border-t border-border/30" role="contentinfo">
       <div className="container">
         <div className="flex flex-col items-center gap-5">
-          <img src={copilotLogo} alt="Copilot Broker" className="h-8 w-auto" loading="lazy" />
+          <img src={copilotLogo} alt="Copilot Broker" className="h-12 w-auto" loading="lazy" />
 
           <nav className="flex gap-6 text-sm text-muted-foreground">
             <a href="/termos" className="hover:text-foreground transition-colors">Termos</a>

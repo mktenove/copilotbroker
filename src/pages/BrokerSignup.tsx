@@ -125,7 +125,7 @@ const BrokerSignup = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
-          <img src={logoCopilot} alt="Copilot Broker" className="h-16 w-auto object-contain mb-10 opacity-0 animate-fade-in-down" />
+          <img src={logoCopilot} alt="Copilot Broker" className="h-20 w-auto object-contain mb-10 opacity-0 animate-fade-in-down" />
           <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6 opacity-0 animate-fade-in-left delay-200">
             Seja um<br /><span className="text-primary">Corretor Copilot</span>
           </h1>
@@ -142,7 +142,7 @@ const BrokerSignup = () => {
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
             <Link to="/">
-              <img src={logoCopilot} alt="Copilot Broker" className="h-10 w-auto object-contain mx-auto mb-6 opacity-0 animate-fade-in" />
+              <img src={logoCopilot} alt="Copilot Broker" className="h-14 w-auto object-contain mx-auto mb-6 opacity-0 animate-fade-in" />
             </Link>
             <h1 className="font-serif text-3xl font-bold text-white mb-3 opacity-0 animate-fade-up delay-100">
               Cadastro de Corretor

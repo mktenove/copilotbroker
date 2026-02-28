@@ -13,7 +13,7 @@ const Pricing = () => {
         <header className="border-b border-border/30 px-6 py-4">
           <div className="max-w-4xl mx-auto flex items-center justify-between">
             <a href="/">
-              <img src={copilotLogo} alt="Copilot Broker" className="h-8" />
+              <img src={copilotLogo} alt="Copilot Broker" className="h-12" />
             </a>
             <a href="/auth" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-mono">
               Já tenho conta

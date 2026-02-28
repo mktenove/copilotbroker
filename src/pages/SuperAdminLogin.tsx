@@ -79,7 +79,7 @@ const SuperAdminLogin = ({ onAuthenticated }: SuperAdminLoginProps) => {
       <div className="w-full max-w-sm relative z-10">
         {/* Header */}
         <div className="text-center mb-8">
-          <img src={copilotLogo} alt="Copilot Broker" className="h-14 mx-auto mb-6" />
+          <img src={copilotLogo} alt="Copilot Broker" className="h-16 mx-auto mb-6" />
           <div className="w-14 h-14 rounded-xl bg-[#FFFF00]/10 border border-[#FFFF00]/20 flex items-center justify-center mx-auto mb-5">
             <Shield className="w-7 h-7 text-[#FFFF00]" />
           </div>

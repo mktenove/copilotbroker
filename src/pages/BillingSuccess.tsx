@@ -27,7 +27,7 @@ const BillingSuccess = () => {
       <Helmet><title>Pagamento Confirmado | Copilot Broker</title></Helmet>
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <img src={copilotLogo} alt="Copilot Broker" className="h-10 mx-auto mb-8 opacity-60" />
+          <img src={copilotLogo} alt="Copilot Broker" className="h-14 mx-auto mb-8 opacity-60" />
           <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-primary" />
           </div>
