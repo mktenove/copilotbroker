@@ -154,7 +154,7 @@ const Auth = () => {
 
           {/* Content */}
           <div className="relative z-10 flex flex-col items-center justify-center w-full p-12">
-            <img src={copilotLogo} alt="Copilot Broker" className="h-14 mb-10" />
+            <img src={copilotLogo} alt="Copilot Broker" className="h-20 mb-10" />
 
             <div className="flex items-center gap-3 mb-4">
               <Plane className="w-5 h-5 text-[#FFFF00]/50 -rotate-45" />
@@ -202,7 +202,7 @@ const Auth = () => {
           <div className="w-full max-w-md">
             {/* Mobile Header */}
             <div className="lg:hidden text-center mb-8">
-              <img src={copilotLogo} alt="Copilot Broker" className="h-10 mx-auto mb-4" />
+              <img src={copilotLogo} alt="Copilot Broker" className="h-14 mx-auto mb-4" />
               <p className="font-mono text-[10px] tracking-[0.3em] uppercase text-[#FFFF00]/40">
                 Flight Deck Access
               </p>
@@ -300,7 +300,7 @@ const Auth = () => {
             </div>
 
             <div className="flex items-center justify-center mt-6">
-              <img src={copilotLogo} alt="Copilot Broker" className="h-4 opacity-20" />
+              <img src={copilotLogo} alt="Copilot Broker" className="h-6 opacity-20" />
             </div>
           </div>
         </div>

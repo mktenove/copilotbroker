@@ -135,7 +135,7 @@ const Signup = () => {
               {/* Logo */}
               <div className="flex items-center justify-between mb-8 lg:mb-12">
                 <Link to="/">
-                  <img src={copilotLogo} alt="Copilot Broker" className="h-8 lg:h-10" />
+                  <img src={copilotLogo} alt="Copilot Broker" className="h-12 lg:h-14" />
                 </Link>
                 <Link to="/auth" className="text-xs text-muted-foreground hover:text-primary font-mono transition-colors lg:hidden">
                   Já sou cliente →

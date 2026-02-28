@@ -15,7 +15,7 @@ const BillingCancel = () => {
       <Helmet><title>Pagamento Cancelado | Copilot Broker</title></Helmet>
       <div className="min-h-screen bg-black flex items-center justify-center px-4">
         <div className="text-center max-w-md">
-          <img src={copilotLogo} alt="Copilot Broker" className="h-10 mx-auto mb-8 opacity-60" />
+          <img src={copilotLogo} alt="Copilot Broker" className="h-14 mx-auto mb-8 opacity-60" />
           <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-6">
             <XCircle className="w-10 h-10 text-red-400" />
           </div>

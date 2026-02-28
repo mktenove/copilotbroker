@@ -130,7 +130,7 @@ const AcceptInvite = () => {
         <div className="relative z-10 w-full max-w-md space-y-8">
           {/* Logo */}
           <div className="flex flex-col items-center gap-3">
-            <img src={copilotLogo} alt="Copilot" className="h-8 opacity-80" />
+            <img src={copilotLogo} alt="Copilot" className="h-14 opacity-80" />
             <div className="flex items-center gap-2 text-[#FFFF00]/60 text-xs tracking-[0.3em] uppercase">
               <Plane className="w-3 h-3" />
               <span>Sistema de Convites</span>
