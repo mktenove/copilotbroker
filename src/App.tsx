@@ -26,11 +26,20 @@ import AdminInbox from "./pages/AdminInbox";
 import AdminCopilotConfig from "./pages/AdminCopilotConfig";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
-import SuperAdmin from "./pages/SuperAdmin";
+import NotFound from "./pages/NotFound";
+
+// Super Admin
+import SuperAdminLayout from "./components/super-admin/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
 import SuperAdminBrokers from "./pages/super-admin/SuperAdminBrokers";
 import SuperAdminAddBroker from "./pages/super-admin/SuperAdminAddBroker";
 import SuperAdminInvites from "./pages/super-admin/SuperAdminInvites";
-import NotFound from "./pages/NotFound";
+import SuperAdminRealEstate from "./pages/super-admin/SuperAdminRealEstate";
+import SuperAdminRealEstateNew from "./pages/super-admin/SuperAdminRealEstateNew";
+import SuperAdminRealEstateInvites from "./pages/super-admin/SuperAdminRealEstateInvites";
+import SuperAdminAudit from "./pages/super-admin/SuperAdminAudit";
+import SuperAdminBilling from "./pages/super-admin/SuperAdminBilling";
+import SuperAdminAffiliates from "./pages/super-admin/SuperAdminAffiliates";
 
 const queryClient = new QueryClient();
 
@@ -40,7 +49,6 @@ const App = () => (
       <QueryClientProvider client={queryClient}>
         <TenantProvider>
         <TooltipProvider>
-          {/* Toasters removed per user request */}
           <BrowserRouter>
             <AppHead />
             <Routes>
@@ -63,10 +71,20 @@ const App = () => (
             <Route path="/corretor/copiloto" element={<ProtectedRoute><SubscriptionGuard><BrokerCopilotConfig /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/corretor/lead/:leadId" element={<ProtectedRoute><SubscriptionGuard><LeadPage /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/termos" element={<Termos />} />
-            <Route path="/super-admin" element={<SuperAdmin />} />
-            <Route path="/super-admin/brokers" element={<SuperAdminBrokers />} />
-            <Route path="/super-admin/brokers/new" element={<SuperAdminAddBroker />} />
-            <Route path="/super-admin/brokers/invites" element={<SuperAdminInvites />} />
+
+            {/* Super Admin with layout */}
+            <Route path="/super-admin" element={<SuperAdminLayout />}>
+              <Route index element={<SuperAdminDashboard />} />
+              <Route path="brokers" element={<SuperAdminBrokers />} />
+              <Route path="brokers/new" element={<SuperAdminAddBroker />} />
+              <Route path="brokers/invites" element={<SuperAdminInvites />} />
+              <Route path="tenants/real-estate" element={<SuperAdminRealEstate />} />
+              <Route path="tenants/real-estate/new" element={<SuperAdminRealEstateNew />} />
+              <Route path="tenants/real-estate/invites" element={<SuperAdminRealEstateInvites />} />
+              <Route path="audit" element={<SuperAdminAudit />} />
+              <Route path="billing" element={<SuperAdminBilling />} />
+              <Route path="affiliates" element={<SuperAdminAffiliates />} />
+            </Route>
             
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFound />} />
