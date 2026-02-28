@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { Shield, Building2, Users, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
+import AddBrokerModal from "@/components/super-admin/AddBrokerModal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -148,6 +149,7 @@ const SuperAdmin = () => {
                 <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? "animate-spin" : ""}`} />
                 Atualizar
               </Button>
+              <AddBrokerModal onSuccess={loadData} />
               <Button
                 variant="outline"
                 size="sm"
