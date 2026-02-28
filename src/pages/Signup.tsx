@@ -34,7 +34,6 @@ const Signup = () => {
       async (event, session) => {
         if (event === "TOKEN_REFRESHED") return;
         if (session) {
-          // Already logged in — go to checkout
           await startCheckout();
         } else {
           setIsCheckingAuth(false);
@@ -111,10 +110,10 @@ const Signup = () => {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-2 border-[#FFFF00] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-mono text-sm">Verificando...</p>
+          <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground font-mono text-sm">Verificando...</p>
         </div>
       </div>
     );
@@ -127,41 +126,40 @@ const Signup = () => {
         <meta name="description" content="Crie sua conta no Copilot Broker e comece a vender mais com IA." />
       </Helmet>
 
-      <div className="min-h-screen bg-black text-white">
-        {/* Desktop: Full two-panel layout. Mobile: single column */}
+      <div className="min-h-screen bg-background text-foreground">
         <div className="flex flex-col lg:flex-row min-h-screen">
 
-          {/* LEFT PANEL — Branding + Plan Selection (desktop: fixed side panel) */}
-          <div className="lg:w-[55%] xl:w-[50%] lg:min-h-screen lg:sticky lg:top-0 bg-gradient-to-br from-black via-[#050505] to-[#0a0a0a] lg:border-r border-[#1a1a1a]">
+          {/* LEFT PANEL — Branding + Plan Selection */}
+          <div className="lg:w-[55%] xl:w-[50%] lg:min-h-screen lg:sticky lg:top-0 bg-gradient-to-br from-background via-background to-card lg:border-r border-border">
             <div className="p-6 sm:p-8 lg:p-12 xl:p-16 flex flex-col h-full">
               {/* Logo */}
               <div className="flex items-center justify-between mb-8 lg:mb-12">
                 <Link to="/">
                   <img src={copilotLogo} alt="Copilot Broker" className="h-8 lg:h-10" />
                 </Link>
-                <Link to="/auth" className="text-xs text-slate-500 hover:text-[#FFFF00] font-mono transition-colors lg:hidden">
+                <Link to="/auth" className="text-xs text-muted-foreground hover:text-primary font-mono transition-colors lg:hidden">
                   Já sou cliente →
                 </Link>
               </div>
 
               {/* Headline */}
               <div className="mb-8 lg:mb-10">
-                <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 rounded-full border border-[#FFFF00]/20 bg-[#FFFF00]/5">
-                  <Plane className="w-3.5 h-3.5 text-[#FFFF00]" />
-                  <span className="text-[10px] font-mono font-semibold tracking-[0.3em] uppercase text-[#FFFF00]">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-4 rounded-full border border-primary/20 bg-primary/5">
+                  <Plane className="w-3.5 h-3.5 text-primary" />
+                  <span className="text-[10px] font-mono font-semibold tracking-[0.3em] uppercase text-primary">
                     Acesso em minutos
                   </span>
                 </div>
                 <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[2.75rem] font-bold mb-3 tracking-tight leading-tight">
                   Você está a 1 passo de operar como um{" "}
-                  <span className="text-[#FFFF00]">corretor de alta performance.</span>
+                  <span className="text-primary">corretor de alta performance.</span>
                 </h1>
-                <p className="text-slate-400 text-sm lg:text-base font-mono max-w-md">
+                <p className="text-muted-foreground text-sm lg:text-base font-mono max-w-md">
                   Crie sua conta e confirme o pagamento. Acesso liberado em minutos.
                 </p>
               </div>
 
-              {/* Progress Steps — horizontal on desktop */}
+              {/* Progress Steps */}
               <div className="flex items-center gap-2 sm:gap-4 mb-8 lg:mb-10">
                 {[
                   { step: 1, label: "Criar conta", active: true },
@@ -170,21 +168,21 @@ const Signup = () => {
                 ].map(({ step, label, active }) => (
                   <div key={step} className="flex items-center gap-2 sm:gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
-                      active ? "bg-[#FFFF00] text-black" : "bg-[#1a1a1a] text-slate-500 border border-[#333]"
+                      active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground border border-border"
                     }`}>
                       {step}
                     </div>
-                    <span className={`text-xs sm:text-sm font-mono hidden sm:inline whitespace-nowrap ${active ? "text-white" : "text-slate-500"}`}>
+                    <span className={`text-xs sm:text-sm font-mono hidden sm:inline whitespace-nowrap ${active ? "text-foreground" : "text-muted-foreground"}`}>
                       {label}
                     </span>
-                    {step < 3 && <div className="w-6 sm:w-10 h-px bg-[#333]" />}
+                    {step < 3 && <div className="w-6 sm:w-10 h-px bg-border" />}
                   </div>
                 ))}
               </div>
 
               {/* Plan Cards */}
               <div className="space-y-4 flex-1">
-                <h2 className="text-sm font-mono font-semibold text-slate-400 uppercase tracking-wider mb-3">Escolha seu plano</h2>
+                <h2 className="text-sm font-mono font-semibold text-muted-foreground uppercase tracking-wider mb-3">Escolha seu plano</h2>
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
                   {(["broker", "imobiliaria"] as PlanType[]).map((key) => {
@@ -202,25 +200,25 @@ const Signup = () => {
                         onClick={() => setSelectedPlan(key)}
                         className={`relative w-full text-left rounded-2xl border-2 p-5 transition-all duration-300 ${
                           isSelected
-                            ? "border-[#FFFF00] bg-[#FFFF00]/5 shadow-[0_0_30px_rgba(255,255,0,0.08)]"
-                            : "border-[#222] bg-[#0a0a0a] hover:border-[#FFFF00]/30"
+                            ? "border-primary bg-primary/5 shadow-[0_0_30px_hsl(var(--primary)/0.08)]"
+                            : "border-border bg-card hover:border-primary/30"
                         }`}
                       >
                         {key === "imobiliaria" && (
-                          <span className="absolute -top-2.5 left-5 px-3 py-0.5 bg-[#FFFF00] text-black text-[10px] font-bold uppercase tracking-wider rounded-full font-mono">
+                          <span className="absolute -top-2.5 left-5 px-3 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full font-mono">
                             Popular
                           </span>
                         )}
 
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-2">
-                            <Icon className="w-5 h-5 text-[#FFFF00]" />
+                            <Icon className="w-5 h-5 text-primary" />
                             <h3 className="text-lg font-bold">{p.name}</h3>
                           </div>
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            isSelected ? "border-[#FFFF00] bg-[#FFFF00]" : "border-[#444]"
+                            isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
                           }`}>
-                            {isSelected && <Check className="w-3 h-3 text-black" />}
+                            {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
                           </div>
                         </div>
 
@@ -228,34 +226,34 @@ const Signup = () => {
                           <span className="text-2xl font-bold font-mono">
                             R$ {p.price.toFixed(2).replace(".", ",")}
                           </span>
-                          <span className="text-slate-400 text-sm">/mês</span>
+                          <span className="text-muted-foreground text-sm">/mês</span>
                         </div>
 
-                        <ul className="space-y-1.5 text-sm text-slate-400">
+                        <ul className="space-y-1.5 text-sm text-muted-foreground">
                           {bullets.map((b) => (
                             <li key={b} className="flex items-start gap-2">
-                              <Check className="w-3.5 h-3.5 text-[#FFFF00] shrink-0 mt-0.5" />
+                              <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
                               <span>{b}</span>
                             </li>
                           ))}
                         </ul>
 
                         {key === "imobiliaria" && isSelected && (
-                          <div className="mt-4 pt-4 border-t border-[#222]" onClick={(e) => e.stopPropagation()}>
-                            <p className="text-sm text-slate-400 mb-2 font-mono">
+                          <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
+                            <p className="text-sm text-muted-foreground mb-2 font-mono">
                               Usuários extras (R$ {EXTRA_USER_PRICE.price.toFixed(2).replace(".", ",")}/mês cada)
                             </p>
                             <div className="flex items-center gap-3">
-                              <button type="button" onClick={() => setExtraUsers(Math.max(0, extraUsers - 1))} className="w-8 h-8 rounded-lg bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:border-[#FFFF00]/30">
+                              <button type="button" onClick={() => setExtraUsers(Math.max(0, extraUsers - 1))} className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:border-primary/30">
                                 <Minus className="w-4 h-4" />
                               </button>
                               <span className="text-lg font-semibold w-8 text-center font-mono">{extraUsers}</span>
-                              <button type="button" onClick={() => setExtraUsers(extraUsers + 1)} className="w-8 h-8 rounded-lg bg-[#1a1a1a] border border-[#333] flex items-center justify-center hover:border-[#FFFF00]/30">
+                              <button type="button" onClick={() => setExtraUsers(extraUsers + 1)} className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:border-primary/30">
                                 <Plus className="w-4 h-4" />
                               </button>
                             </div>
                             {extraUsers > 0 && (
-                              <p className="text-xs text-slate-500 mt-2 font-mono">
+                              <p className="text-xs text-muted-foreground mt-2 font-mono">
                                 Total: {3 + extraUsers} usuários · R$ {total.toFixed(2).replace(".", ",")}/mês
                               </p>
                             )}
@@ -266,55 +264,55 @@ const Signup = () => {
                   })}
                 </div>
 
-                {/* Price summary — desktop: bottom of left panel */}
-                <div className="rounded-xl bg-[#0a0a0a] border border-[#222] p-4 font-mono mt-4">
-                  <div className="flex justify-between text-sm text-slate-400">
+                {/* Price summary */}
+                <div className="rounded-xl bg-card border border-border p-4 font-mono mt-4">
+                  <div className="flex justify-between text-sm text-muted-foreground">
                     <span>Plano {plan.name}</span>
                     <span>R$ {plan.price.toFixed(2).replace(".", ",")}</span>
                   </div>
                   {selectedPlan === "imobiliaria" && extraUsers > 0 && (
-                    <div className="flex justify-between text-sm text-slate-400 mt-1">
+                    <div className="flex justify-between text-sm text-muted-foreground mt-1">
                       <span>{extraUsers} usuário(s) extra(s)</span>
                       <span>R$ {(extraUsers * EXTRA_USER_PRICE.price).toFixed(2).replace(".", ",")}</span>
                     </div>
                   )}
-                  <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-[#222]">
+                  <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-border">
                     <span>Total mensal</span>
-                    <span className="text-[#FFFF00]">R$ {total.toFixed(2).replace(".", ",")}</span>
+                    <span className="text-primary">R$ {total.toFixed(2).replace(".", ",")}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* RIGHT PANEL — Sign up form (desktop: centered vertically) */}
+          {/* RIGHT PANEL — Sign up form */}
           <div className="lg:w-[45%] xl:w-[50%] flex items-center justify-center p-6 sm:p-8 lg:p-12 xl:p-16">
             <div className="w-full max-w-md">
-              {/* Desktop-only login link at top-right */}
+              {/* Desktop-only login link */}
               <div className="hidden lg:flex justify-end mb-8">
-                <Link to="/auth" className="text-sm text-slate-500 hover:text-[#FFFF00] font-mono transition-colors">
-                  Já sou cliente? <span className="text-[#FFFF00]">Fazer login →</span>
+                <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary font-mono transition-colors">
+                  Já sou cliente? <span className="text-primary">Fazer login →</span>
                 </Link>
               </div>
 
-              <div className="bg-[#0a0a0a] border border-[#1a1a1a] rounded-2xl p-6 sm:p-8 lg:p-10">
+              <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 lg:p-10">
                 <div className="mb-8">
-                  <h2 className="text-xl lg:text-2xl font-bold text-white mb-2">Crie sua conta</h2>
-                  <p className="text-sm text-slate-500 font-mono">Preencha abaixo e vá para o pagamento.</p>
+                  <h2 className="text-xl lg:text-2xl font-bold mb-2">Crie sua conta</h2>
+                  <p className="text-sm text-muted-foreground font-mono">Preencha abaixo e vá para o pagamento.</p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-mono font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-mono font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
                       Nome completo
                     </label>
                     <div className="relative">
-                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                      <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <input
                         type="text"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3.5 bg-black border border-[#222] rounded-xl text-white font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#FFFF00]/40 focus:ring-2 focus:ring-[#FFFF00]/10 transition-all"
+                        className="w-full pl-10 pr-4 py-3.5 bg-background border border-border rounded-xl text-foreground font-mono text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
                         placeholder="Seu nome"
                         required
                       />
@@ -322,16 +320,16 @@ const Signup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-mono font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
                       Email
                     </label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3.5 bg-black border border-[#222] rounded-xl text-white font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#FFFF00]/40 focus:ring-2 focus:ring-[#FFFF00]/10 transition-all"
+                        className="w-full pl-10 pr-4 py-3.5 bg-background border border-border rounded-xl text-foreground font-mono text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
                         placeholder="seu@email.com"
                         required
                       />
@@ -339,16 +337,16 @@ const Signup = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-mono font-medium text-slate-400 mb-1.5 uppercase tracking-wider">
+                    <label className="block text-xs font-mono font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
                       Senha
                     </label>
                     <div className="relative">
-                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-600" />
+                      <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
                       <input
                         type="password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="w-full pl-10 pr-4 py-3.5 bg-black border border-[#222] rounded-xl text-white font-mono text-sm placeholder:text-slate-600 focus:outline-none focus:border-[#FFFF00]/40 focus:ring-2 focus:ring-[#FFFF00]/10 transition-all"
+                        className="w-full pl-10 pr-4 py-3.5 bg-background border border-border rounded-xl text-foreground font-mono text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
                         placeholder="Mínimo 6 caracteres"
                         minLength={6}
                         required
@@ -361,11 +359,11 @@ const Signup = () => {
                       type="checkbox"
                       checked={agreedTerms}
                       onChange={(e) => setAgreedTerms(e.target.checked)}
-                      className="mt-1 rounded border-[#333] bg-black text-[#FFFF00] focus:ring-[#FFFF00]/20"
+                      className="mt-1 rounded border-border bg-background text-primary focus:ring-primary/20"
                     />
-                    <span className="text-xs text-slate-500 font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                       Li e aceito os{" "}
-                      <Link to="/termos" className="text-[#FFFF00] hover:underline" target="_blank">
+                      <Link to="/termos" className="text-primary hover:underline" target="_blank">
                         Termos de Uso
                       </Link>
                     </span>
@@ -374,11 +372,11 @@ const Signup = () => {
                   <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full py-4 bg-[#FFFF00] text-black font-mono font-bold text-sm uppercase tracking-wider rounded-xl transition-all hover:shadow-[0_0_40px_rgba(255,255,0,0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="w-full py-4 bg-primary text-primary-foreground font-mono font-bold text-sm uppercase tracking-wider rounded-xl transition-all hover:shadow-[0_0_40px_hsl(var(--primary)/0.35)] hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {isLoading ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                        <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
                         Criando conta...
                       </>
                     ) : (
@@ -391,24 +389,24 @@ const Signup = () => {
                 </form>
 
                 {/* Trust signals */}
-                <div className="mt-8 pt-6 border-t border-[#1a1a1a] grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { icon: Shield, text: "Pagamento 100% seguro via Stripe" },
                     { icon: Check, text: "Sem fidelidade • Cancele quando quiser" },
                     { icon: Lock, text: "Dados protegidos (LGPD)" },
                   ].map(({ icon: Icon, text }) => (
-                    <div key={text} className="flex items-center gap-2 text-xs text-slate-500 font-mono">
-                      <Icon className="w-3.5 h-3.5 text-[#FFFF00]/50 shrink-0" />
+                    <div key={text} className="flex items-center gap-2 text-xs text-muted-foreground font-mono">
+                      <Icon className="w-3.5 h-3.5 text-primary/50 shrink-0" />
                       {text}
                     </div>
                   ))}
                 </div>
 
                 {/* Mobile login link */}
-                <div className="mt-6 pt-4 border-t border-[#1a1a1a] text-center lg:hidden">
-                  <p className="text-sm text-slate-500 font-mono">
+                <div className="mt-6 pt-4 border-t border-border text-center lg:hidden">
+                  <p className="text-sm text-muted-foreground font-mono">
                     Já sou cliente?{" "}
-                    <Link to="/auth" className="text-[#FFFF00] hover:underline font-medium">
+                    <Link to="/auth" className="text-primary hover:underline font-medium">
                       Fazer login
                     </Link>
                   </p>
