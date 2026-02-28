@@ -3,14 +3,14 @@ import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, ChevronLeft, ChevronRight,
+  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import copilotIcon from "@/assets/copilot-icon.png";
 import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { RefreshCw } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/super-admin" },
@@ -22,16 +22,40 @@ const NAV_ITEMS = [
   { id: "audit", label: "Auditoria", icon: ScrollText, path: "/super-admin/audit" },
 ];
 
+const BREADCRUMB_MAP: Record<string, { title: string; subtitle?: string }> = {
+  "/super-admin": { title: "Dashboard", subtitle: "Visão geral da plataforma" },
+  "/super-admin/tenants/real-estate": { title: "Imobiliárias", subtitle: "Gestão de tenants imobiliária" },
+  "/super-admin/tenants/real-estate/new": { title: "Nova Imobiliária", subtitle: "Cadastro de tenant" },
+  "/super-admin/tenants/real-estate/invites": { title: "Convites — Imobiliárias", subtitle: "Gerenciar convites" },
+  "/super-admin/brokers": { title: "Brokers", subtitle: "Gestão de corretores autônomos" },
+  "/super-admin/brokers/new": { title: "Adicionar Broker", subtitle: "Cadastro de broker" },
+  "/super-admin/brokers/invites": { title: "Convites — Brokers", subtitle: "Gerenciar convites" },
+  "/super-admin/affiliates": { title: "Afiliados", subtitle: "Em breve" },
+  "/super-admin/billing": { title: "Billing / Webhooks", subtitle: "Eventos do Stripe" },
+  "/super-admin/billing-events": { title: "Billing Events", subtitle: "Debug de webhooks" },
+  "/super-admin/audit": { title: "Auditoria", subtitle: "Logs de ações administrativas" },
+};
+
 export default function SuperAdminLayout() {
   const { role, isLoading } = useUserRole();
-  const [collapsed, setCollapsed] = useState(false);
+  const [userInitial, setUserInitial] = useState("S");
   const navigate = useNavigate();
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchInitial = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.email) setUserInitial(user.email.charAt(0).toUpperCase());
+    };
+    fetchInitial();
+  }, []);
 
   const isActive = (path: string) => {
     if (path === "/super-admin") return location.pathname === "/super-admin";
     return location.pathname.startsWith(path);
   };
+
+  const currentBreadcrumb = BREADCRUMB_MAP[location.pathname] || { title: "Super Admin" };
 
   if (isLoading) {
     return (
@@ -41,7 +65,6 @@ export default function SuperAdminLayout() {
     );
   }
 
-  // Only super admins (role === 'admin') can access
   if (role !== "admin") {
     return <Navigate to="/auth" replace />;
   }
@@ -53,84 +76,91 @@ export default function SuperAdminLayout() {
 
   return (
     <TooltipProvider delayDuration={100}>
-      <div className="min-h-screen bg-[#0a0a0c] flex">
-        {/* Sidebar */}
-        <aside className={cn(
-          "fixed left-0 top-0 bottom-0 z-40 flex flex-col border-r border-[#2a2a2e] bg-[#0f0f12] transition-all duration-200",
-          collapsed ? "w-16" : "w-56"
-        )}>
+      <div className="min-h-screen bg-[#0f0f12] flex">
+        {/* Sidebar — icon-only, w-16, fixed */}
+        <aside className="fixed left-0 top-0 bottom-0 z-40 flex flex-col w-16 bg-[#141417] border-r border-[#2a2a2e]">
           {/* Logo */}
-          <div className="flex items-center gap-3 px-4 pt-5 pb-4">
-            <img src={copilotIcon} alt="Copilot" className="h-7 w-7 flex-shrink-0" />
-            {!collapsed && (
-              <div className="overflow-hidden">
-                <p className="text-xs font-bold text-white leading-tight truncate">COPILOT BROKER</p>
-                <p className="text-[10px] text-[#FFFF00]/60 font-mono tracking-wider">CONTROL TOWER</p>
-              </div>
-            )}
+          <div className="flex items-center justify-center pt-4 pb-3">
+            <img src={copilotIcon} alt="Copilot" className="h-6 w-6 object-contain" />
           </div>
 
           {/* Nav */}
-          <nav className="flex-1 flex flex-col gap-0.5 px-2 py-3">
+          <nav className="flex-1 flex flex-col items-center gap-1 py-4">
             {NAV_ITEMS.map((item) => {
               const active = isActive(item.path);
               const Icon = item.icon;
-              const btn = (
-                <button
-                  key={item.id}
-                  onClick={() => navigate(item.path)}
-                  className={cn(
-                    "w-full flex items-center gap-3 rounded-lg transition-all text-sm font-medium",
-                    collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5",
-                    active
-                      ? "bg-[#FFFF00]/10 text-[#FFFF00]"
-                      : "text-slate-400 hover:text-white hover:bg-white/5"
-                  )}
-                >
-                  <Icon className="w-[18px] h-[18px] flex-shrink-0" />
-                  {!collapsed && <span className="truncate">{item.label}</span>}
-                </button>
-              );
-
-              return collapsed ? (
+              return (
                 <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>{btn}</TooltipTrigger>
-                  <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-white">
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => navigate(item.path)}
+                      className={cn(
+                        "relative w-10 h-10 rounded-xl flex items-center justify-center transition-all duration-200",
+                        active
+                          ? "bg-[#FFFF00]/15 text-[#FFFF00]"
+                          : "text-slate-500 hover:text-slate-200 hover:bg-white/5"
+                      )}
+                    >
+                      {active && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 rounded-r-full bg-[#FFFF00]" />
+                      )}
+                      <Icon className="w-5 h-5" />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-white text-xs">
                     {item.label}
                   </TooltipContent>
                 </Tooltip>
-              ) : btn;
+              );
             })}
           </nav>
 
           {/* Bottom */}
-          <div className="px-2 pb-4 space-y-1">
-            <button
-              onClick={() => setCollapsed(!collapsed)}
-              className="w-full flex items-center justify-center gap-2 text-slate-500 hover:text-slate-300 py-2 rounded-lg hover:bg-white/5 transition-colors text-xs"
-            >
-              {collapsed ? <ChevronRight className="w-4 h-4" /> : <><ChevronLeft className="w-4 h-4" /><span>Recolher</span></>}
-            </button>
-            <button
-              onClick={handleLogout}
-              className={cn(
-                "w-full flex items-center gap-3 rounded-lg text-red-400/70 hover:text-red-400 hover:bg-red-500/5 transition-all text-sm",
-                collapsed ? "justify-center px-0 py-2.5" : "px-3 py-2.5"
-              )}
-            >
-              <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
-              {!collapsed && <span>Sair</span>}
-            </button>
+          <div className="flex flex-col items-center gap-2 py-4 border-t border-[#2a2a2e]">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleLogout}
+                  className="w-10 h-10 rounded-full overflow-hidden border-2 border-transparent hover:border-red-500/50 transition-colors"
+                >
+                  <Avatar className="w-full h-full">
+                    <AvatarFallback className="bg-[#FFFF00]/10 text-[#FFFF00] text-sm font-bold">
+                      {userInitial}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="bg-[#1e1e22] border-[#2a2a2e] text-white text-xs">
+                Sair
+              </TooltipContent>
+            </Tooltip>
           </div>
         </aside>
 
-        {/* Content */}
-        <main className={cn(
-          "flex-1 transition-all duration-200",
-          collapsed ? "ml-16" : "ml-56"
-        )}>
-          <Outlet />
-        </main>
+        {/* Main content */}
+        <div className="flex-1 ml-16 min-h-screen flex flex-col">
+          {/* Sticky header with breadcrumb */}
+          <header className="sticky top-0 z-30 bg-[#141417]/95 backdrop-blur-sm border-b border-[#2a2a2e]">
+            <div className="flex items-center justify-between px-6 py-3">
+              <nav className="flex items-center gap-2 text-sm">
+                <span className="text-slate-500 font-mono text-xs tracking-wider">CONTROL TOWER</span>
+                <span className="text-slate-600">›</span>
+                <span className="text-white font-medium">{currentBreadcrumb.title}</span>
+                {currentBreadcrumb.subtitle && (
+                  <>
+                    <span className="text-slate-600">·</span>
+                    <span className="text-slate-500 text-xs">{currentBreadcrumb.subtitle}</span>
+                  </>
+                )}
+              </nav>
+            </div>
+          </header>
+
+          {/* Page content */}
+          <main className="flex-1">
+            <Outlet />
+          </main>
+        </div>
       </div>
     </TooltipProvider>
   );
