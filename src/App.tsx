@@ -23,6 +23,8 @@ import MauricioCardosoBrokerLandingPage from "./pages/mauriciocardoso/MauricioCa
 import TermosGoldenView from "./pages/goldenview/TermosGoldenView";
 import TermosMauricioCardoso from "./pages/mauriciocardoso/TermosMauricioCardoso";
 import Auth from "./pages/Auth";
+import Pricing from "./pages/Pricing";
+import Onboarding from "./pages/Onboarding";
 import Admin from "./pages/Admin";
 
 import BrokerAdmin from "./pages/BrokerAdmin";
@@ -82,6 +84,8 @@ const App = () => (
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
+            <Route path="/planos" element={<Pricing />} />
+            <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
             <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
             <Route path="/corretor/whatsapp" element={<Navigate to="/corretor/copiloto" replace />} />
