@@ -11,6 +11,7 @@ export interface Project {
   hero_subtitle: string | null;
   features: ProjectFeatures | null;
   webhook_url: string | null;
+  tenant_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +57,7 @@ export interface BrokerProject {
   broker_id: string;
   project_id: string;
   is_active: boolean;
+  tenant_id: string | null;
   created_at: string;
   broker?: {
     id: string;
