@@ -1957,6 +1957,8 @@ export type Database = {
       tenants: {
         Row: {
           admin_notes: string | null
+          city: string | null
+          cnpj: string | null
           created_at: string
           extra_users: number
           grace_period_ends_at: string | null
@@ -1964,17 +1966,24 @@ export type Database = {
           included_users: number
           name: string
           owner_email: string | null
+          owner_name: string | null
+          owner_phone: string | null
           owner_user_id: string | null
+          phone: string | null
           plan_type: Database["public"]["Enums"]["plan_type"]
           slug: string
+          state: string | null
           status: Database["public"]["Enums"]["tenant_status"]
           stripe_customer_id: string | null
           stripe_subscription_id: string | null
+          tag: string | null
           trial_ends_at: string | null
           updated_at: string
         }
         Insert: {
           admin_notes?: string | null
+          city?: string | null
+          cnpj?: string | null
           created_at?: string
           extra_users?: number
           grace_period_ends_at?: string | null
@@ -1982,17 +1991,24 @@ export type Database = {
           included_users?: number
           name: string
           owner_email?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
           owner_user_id?: string | null
+          phone?: string | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           slug: string
+          state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          tag?: string | null
           trial_ends_at?: string | null
           updated_at?: string
         }
         Update: {
           admin_notes?: string | null
+          city?: string | null
+          cnpj?: string | null
           created_at?: string
           extra_users?: number
           grace_period_ends_at?: string | null
@@ -2000,12 +2016,17 @@ export type Database = {
           included_users?: number
           name?: string
           owner_email?: string | null
+          owner_name?: string | null
+          owner_phone?: string | null
           owner_user_id?: string | null
+          phone?: string | null
           plan_type?: Database["public"]["Enums"]["plan_type"]
           slug?: string
+          state?: string | null
           status?: Database["public"]["Enums"]["tenant_status"]
           stripe_customer_id?: string | null
           stripe_subscription_id?: string | null
+          tag?: string | null
           trial_ends_at?: string | null
           updated_at?: string
         }
