@@ -64,7 +64,7 @@ const LeadsTable = ({ leads, isLoading, searchTerm, showSource = true, showStatu
 
   const getSourceLabel = (lead: Lead) => {
     if (lead.source === "enove") {
-      return <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Enove</span>;
+      return <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full">Direto</span>;
     }
     return (
       <span className="px-2 py-1 bg-accent text-accent-foreground text-xs rounded-full">

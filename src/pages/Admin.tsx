@@ -434,7 +434,7 @@ const Admin = () => {
   return (
     <>
       <Helmet>
-        <title>CRM | Enove</title>
+        <title>CRM | Copilot Broker</title>
       </Helmet>
       <AdminLayout
         activeTab={activeTab}
@@ -479,7 +479,7 @@ const Admin = () => {
                   <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-[#FFFF00]" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs sm:text-sm text-slate-400">Enove</p>
+                  <p className="text-xs sm:text-sm text-slate-400">Direto</p>
                   <p className="text-xl sm:text-2xl font-bold text-white">{enoveCount}</p>
                 </div>
               </div>

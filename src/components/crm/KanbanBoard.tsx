@@ -406,7 +406,7 @@ export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = 
             </SelectTrigger>
             <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
               <SelectItem value="all">Corretor</SelectItem>
-              <SelectItem value="enove">Enove (Direto)</SelectItem>
+              <SelectItem value="enove">Direto (sem corretor)</SelectItem>
               {brokers.map(broker => (
                 <SelectItem key={broker.id} value={broker.id}>{broker.name}</SelectItem>
               ))}

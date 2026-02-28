@@ -163,7 +163,7 @@ export default function AdminCopilotConfig() {
   return (
     <>
       <Helmet>
-        <title>Copiloto IA & WhatsApp | Enove</title>
+        <title>Copiloto IA & WhatsApp | Copilot Broker</title>
       </Helmet>
       <AdminLayout
         activeTab="copilot"

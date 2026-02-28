@@ -365,7 +365,7 @@ const BrokerManagement = () => {
           await syncBrokerProjects(newBroker.id, selectedProjects);
         }
 
-        toast.success(`Corretor criado! URL: /estanciavelha/${slug}`);
+        toast.success(`Corretor criado com sucesso!`);
       }
 
       setIsDialogOpen(false);
@@ -422,7 +422,7 @@ const BrokerManagement = () => {
   };
 
   const copyLink = async (slug: string) => {
-    const url = `${window.location.origin}/estanciavelha/${slug}`;
+    const url = `${window.location.origin}/corretor/${slug}`;
     await navigator.clipboard.writeText(url);
     setCopiedSlug(slug);
     toast.success("Link copiado!");

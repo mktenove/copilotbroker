@@ -62,7 +62,7 @@ const ExportButton = ({ leads, filename = "leads" }: ExportButtonProps) => {
       lead.whatsapp,
       lead.email || "",
       getStatusLabel(lead.status),
-      lead.source === "enove" ? "Enove" : lead.source,
+      lead.source === "enove" ? "Direto" : lead.source,
       getOriginDisplayLabel(lead.lead_origin || null),
       lead.broker?.name || "",
       formatDate(lead.created_at),

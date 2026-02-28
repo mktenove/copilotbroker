@@ -252,7 +252,7 @@ const formatDomainName = (domain: string): string => {
 const isOwnDomain = (referrer: string): boolean => {
   const ownDomains = [
     'lovable.app',
-    'onovocondominio',
+    'copilotbroker',
     'localhost',
     '127.0.0.1',
   ];

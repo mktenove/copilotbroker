@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Eye, EyeOff, ArrowLeft, Mail, Lock, User, Phone } from "lucide-react";
 import { WhatsAppInput, isValidBrazilianWhatsApp } from "@/components/ui/whatsapp-input";
-import logoEnove from "@/assets/logo-enove.png";
+import logoCopilot from "@/assets/copilot-logo-dark.png";
 
 type Step = "auth" | "profile";
 
@@ -104,7 +104,7 @@ const BrokerSignup = () => {
           is_active: true,
         });
       if (brokerError) throw brokerError;
-      toast.success("Perfil criado com sucesso! Bem-vindo à Enove.");
+      toast.success("Perfil criado com sucesso! Bem-vindo ao Copilot Broker.");
       navigate("/corretor/admin");
     } catch (error: any) {
       console.error("Erro ao criar perfil:", error);
@@ -125,9 +125,9 @@ const BrokerSignup = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
         </div>
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-24">
-          <img src={logoEnove} alt="Enove" className="h-16 w-auto object-contain mb-10 opacity-0 animate-fade-in-down" />
+          <img src={logoCopilot} alt="Copilot Broker" className="h-16 w-auto object-contain mb-10 opacity-0 animate-fade-in-down" />
           <h1 className="font-serif text-4xl xl:text-6xl font-bold text-white leading-tight mb-6 opacity-0 animate-fade-in-left delay-200">
-            Seja um<br /><span className="text-primary">Corretor Enove</span>
+            Seja um<br /><span className="text-primary">Corretor Copilot</span>
           </h1>
           <div className="h-1 bg-primary mb-8 opacity-0 animate-expand-width delay-400" />
           <p className="text-lg xl:text-xl text-slate-400 max-w-md leading-relaxed opacity-0 animate-fade-up delay-500">
@@ -142,7 +142,7 @@ const BrokerSignup = () => {
           {/* Mobile Header */}
           <div className="lg:hidden text-center mb-8">
             <Link to="/">
-              <img src={logoEnove} alt="Enove" className="h-10 w-auto object-contain mx-auto mb-6 opacity-0 animate-fade-in" />
+              <img src={logoCopilot} alt="Copilot Broker" className="h-10 w-auto object-contain mx-auto mb-6 opacity-0 animate-fade-in" />
             </Link>
             <h1 className="font-serif text-3xl font-bold text-white mb-3 opacity-0 animate-fade-up delay-100">
               Cadastro de Corretor
