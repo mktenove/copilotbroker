@@ -43,6 +43,9 @@ import ProntosBrokerPage from "./pages/ProntosBrokerPage";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
 import SuperAdmin from "./pages/SuperAdmin";
+import SuperAdminBrokers from "./pages/super-admin/SuperAdminBrokers";
+import SuperAdminAddBroker from "./pages/super-admin/SuperAdminAddBroker";
+import SuperAdminInvites from "./pages/super-admin/SuperAdminInvites";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -103,6 +106,9 @@ const App = () => (
             <Route path="/corretor/lead/:leadId" element={<ProtectedRoute><SubscriptionGuard><LeadPage /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/termos" element={<Termos />} />
             <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
+            <Route path="/super-admin/brokers" element={<ProtectedRoute><SuperAdminBrokers /></ProtectedRoute>} />
+            <Route path="/super-admin/brokers/new" element={<ProtectedRoute><SuperAdminAddBroker /></ProtectedRoute>} />
+            <Route path="/super-admin/brokers/invites" element={<ProtectedRoute><SuperAdminInvites /></ProtectedRoute>} />
             
             {/* Dynamic city/project routes - MUST BE AFTER specific routes */}
             <Route path="/:citySlug/:projectSlug" element={<ProjectLandingPage />} />
