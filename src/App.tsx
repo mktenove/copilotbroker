@@ -105,10 +105,10 @@ const App = () => (
             <Route path="/corretor/copiloto" element={<ProtectedRoute><SubscriptionGuard><BrokerCopilotConfig /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/corretor/lead/:leadId" element={<ProtectedRoute><SubscriptionGuard><LeadPage /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/termos" element={<Termos />} />
-            <Route path="/super-admin" element={<ProtectedRoute><SuperAdmin /></ProtectedRoute>} />
-            <Route path="/super-admin/brokers" element={<ProtectedRoute><SuperAdminBrokers /></ProtectedRoute>} />
-            <Route path="/super-admin/brokers/new" element={<ProtectedRoute><SuperAdminAddBroker /></ProtectedRoute>} />
-            <Route path="/super-admin/brokers/invites" element={<ProtectedRoute><SuperAdminInvites /></ProtectedRoute>} />
+            <Route path="/super-admin" element={<SuperAdmin />} />
+            <Route path="/super-admin/brokers" element={<SuperAdminBrokers />} />
+            <Route path="/super-admin/brokers/new" element={<SuperAdminAddBroker />} />
+            <Route path="/super-admin/brokers/invites" element={<SuperAdminInvites />} />
             
             {/* Dynamic city/project routes - MUST BE AFTER specific routes */}
             <Route path="/:citySlug/:projectSlug" element={<ProjectLandingPage />} />
