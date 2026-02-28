@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ const Auth = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const navigate = useNavigate();
+  const routeLocation = useLocation();
 
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
@@ -37,6 +38,13 @@ const Auth = () => {
 
   const checkUserRoleAndRedirect = async (userId: string) => {
     try {
+      // If user was trying to access a specific page, go back there
+      const from = (routeLocation.state as any)?.from;
+      if (from && from.startsWith("/super-admin")) {
+        navigate(from, { replace: true });
+        return;
+      }
+
       const { data: rolesData, error } = await (supabase
         .from("user_roles" as any)
         .select("role")
@@ -50,8 +58,8 @@ const Auth = () => {
 
       const roles = (rolesData || []).map((r: { role: string }) => r.role);
       
-      if (roles.includes("admin")) {
-        navigate("/admin");
+      if (from) {
+        navigate(from, { replace: true });
       } else if (roles.includes("broker") || roles.includes("leader")) {
         navigate("/corretor/admin");
       } else {
