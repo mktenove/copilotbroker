@@ -188,14 +188,8 @@ const SuperAdminAddBroker = () => {
     return (
       <>
         <Helmet><title>Convite Criado | Super Admin</title></Helmet>
-        <div className="min-h-screen bg-[#0a0a0c] text-white">
-          <div className="border-b border-[#2a2a2e] bg-[#0f0f12]">
-            <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-              <Shield className="w-5 h-5 text-[#FFFF00]" />
-              <h1 className="text-lg font-bold">Convite Criado</h1>
-            </div>
-          </div>
-          <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+        <div className="text-white p-6">
+          <div className="max-w-3xl mx-auto space-y-6">
             <Card className="bg-[#1e1e22] border-[#2a2a2e]">
               <CardContent className="p-6 space-y-6">
                 <div className="flex items-center gap-3">
@@ -254,14 +248,8 @@ const SuperAdminAddBroker = () => {
     return (
       <>
         <Helmet><title>Checkout | Super Admin</title></Helmet>
-        <div className="min-h-screen bg-[#0a0a0c] text-white">
-          <div className="border-b border-[#2a2a2e] bg-[#0f0f12]">
-            <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-              <Shield className="w-5 h-5 text-[#FFFF00]" />
-              <h1 className="text-lg font-bold">Link de Checkout</h1>
-            </div>
-          </div>
-          <div className="max-w-3xl mx-auto px-4 py-6">
+        <div className="text-white p-6">
+          <div className="max-w-3xl mx-auto">
             <Card className="bg-[#1e1e22] border-[#2a2a2e]">
               <CardHeader><CardTitle className="text-white">Link de Checkout Gerado</CardTitle></CardHeader>
               <CardContent className="space-y-4">
@@ -287,18 +275,8 @@ const SuperAdminAddBroker = () => {
   return (
     <>
       <Helmet><title>Adicionar Broker | Super Admin</title></Helmet>
-      <div className="min-h-screen bg-[#0a0a0c] text-white">
-        <div className="border-b border-[#2a2a2e] bg-[#0f0f12]">
-          <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => navigate("/super-admin/brokers")} className="text-slate-300 hover:text-white">
-              <ArrowLeft className="w-4 h-4 mr-1" />Voltar
-            </Button>
-            <Shield className="w-5 h-5 text-[#FFFF00]" />
-            <h1 className="text-lg font-bold">Adicionar Broker</h1>
-          </div>
-        </div>
-
-        <div className="max-w-3xl mx-auto px-4 py-6">
+      <div className="text-white p-6">
+        <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Dados */}
             <Card className="bg-[#1e1e22] border-[#2a2a2e]">

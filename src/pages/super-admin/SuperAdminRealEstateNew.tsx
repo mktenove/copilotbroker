@@ -253,16 +253,8 @@ const SuperAdminRealEstateNew = () => {
   return (
     <>
       <Helmet><title>Nova Imobiliária | Super Admin</title></Helmet>
-      <div className="text-white">
-        <div className="border-b border-[#2a2a2e] bg-[#0f0f12] px-6 py-4 flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => navigate("/super-admin/tenants/real-estate")} className="text-slate-300 hover:text-white">
-            <ArrowLeft className="w-4 h-4 mr-1" />Voltar
-          </Button>
-          <Building2 className="w-5 h-5 text-[#FFFF00]" />
-          <h1 className="text-lg font-bold">Nova Imobiliária</h1>
-        </div>
-
-        <div className="max-w-3xl mx-auto p-6">
+      <div className="text-white p-6">
+        <div className="max-w-3xl mx-auto">
           <form onSubmit={handleSubmit} className="space-y-6">
 
             {/* Section A — Dados da imobiliária */}

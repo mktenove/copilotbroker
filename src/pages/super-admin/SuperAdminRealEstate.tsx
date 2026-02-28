@@ -232,27 +232,19 @@ const SuperAdminRealEstate = () => {
   return (
     <>
       <Helmet><title>Imobiliárias | Super Admin</title></Helmet>
-      <div className="text-white">
-        {/* Header */}
-        <div className="border-b border-[#2a2a2e] bg-[#0f0f12] px-6 py-4 flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-xl font-bold flex items-center gap-2"><Building2 className="w-5 h-5 text-[#FFFF00]" />Imobiliárias</h1>
-            <p className="text-xs text-slate-500">{tenants.length} tenants do tipo imobiliária</p>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading} className="border-[#2a2a2e] text-slate-300 hover:text-white">
-              <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate("/super-admin/tenants/real-estate/invites")} className="border-[#2a2a2e] text-slate-300 hover:text-white">
-              <Mail className="w-4 h-4 mr-1.5" />Convites
-            </Button>
-            <Button size="sm" onClick={() => navigate("/super-admin/tenants/real-estate/new")} className="bg-[#FFFF00] text-black hover:bg-[#e6e600]">
-              <Plus className="w-4 h-4 mr-1.5" />Nova Imobiliária
-            </Button>
-          </div>
+      <div className="text-white p-6 space-y-6">
+        {/* Action bar */}
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={loadData} disabled={isLoading} className="border-[#2a2a2e] text-slate-300 hover:text-white bg-transparent">
+            <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate("/super-admin/tenants/real-estate/invites")} className="border-[#2a2a2e] text-slate-300 hover:text-white bg-transparent">
+            <Mail className="w-4 h-4 mr-1.5" />Convites
+          </Button>
+          <Button size="sm" onClick={() => navigate("/super-admin/tenants/real-estate/new")} className="bg-[#FFFF00] text-black hover:bg-[#e6e600]">
+            <Plus className="w-4 h-4 mr-1.5" />Nova Imobiliária
+          </Button>
         </div>
-
-        <div className="p-6 space-y-6">
           {/* KPIs */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {[
@@ -509,8 +501,7 @@ const SuperAdminRealEstate = () => {
           </div>
         </div>
 
-        <TenantDetailSheet tenantId={selectedTenant?.id || null} tenantName={selectedTenant?.name || ""} open={!!selectedTenant} onOpenChange={open => !open && setSelectedTenant(null)} />
-      </div>
+      <TenantDetailSheet tenantId={selectedTenant?.id || null} tenantName={selectedTenant?.name || ""} open={!!selectedTenant} onOpenChange={open => !open && setSelectedTenant(null)} />
     </>
   );
 };
