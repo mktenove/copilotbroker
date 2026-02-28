@@ -16,7 +16,8 @@ const CopilotPricing = () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
-        navigate("/auth");
+        const usersParam = selectedPlan === "imobiliaria" && extraUsers > 0 ? `&users=${3 + extraUsers}` : "";
+        navigate(`/signup?plan=${selectedPlan}${usersParam}`);
         return;
       }
       const { data, error } = await supabase.functions.invoke("create-checkout", {

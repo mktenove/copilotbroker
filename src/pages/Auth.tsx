@@ -211,8 +211,8 @@ const Auth = () => {
             {/* Card */}
             <div className="bg-[#0a0a0a]/90 backdrop-blur-xl border border-[#1a1a1a] rounded-2xl p-8 shadow-[0_0_80px_rgba(0,0,0,0.5)]">
               <div className="hidden lg:block mb-8">
-                <h2 className="text-xl font-mono font-bold text-white mb-1.5">Bem-vindo a bordo</h2>
-                <p className="text-slate-500 text-sm font-mono">Entre com suas credenciais</p>
+                <h2 className="text-xl font-mono font-bold text-white mb-1.5">Entrar</h2>
+                <p className="text-slate-500 text-sm font-mono">Acesse sua conta.</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-5">
@@ -268,9 +268,9 @@ const Auth = () => {
 
               <div className="mt-6 pt-6 border-t border-[#1a1a1a]">
                 <p className="text-center text-sm text-slate-500 font-mono">
-                  É corretor?{" "}
-                  <Link to="/corretor/cadastro" className="text-[#FFFF00] hover:text-[#FFFF00]/80 hover:underline font-medium transition-colors">
-                    Cadastre-se aqui
+                  Não tem conta?{" "}
+                  <Link to="/signup?plan=broker" className="text-[#FFFF00] hover:text-[#FFFF00]/80 hover:underline font-medium transition-colors">
+                    Criar conta
                   </Link>
                 </p>
               </div>

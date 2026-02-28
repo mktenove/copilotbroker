@@ -27,6 +27,9 @@ import AdminInbox from "./pages/AdminInbox";
 import AdminCopilotConfig from "./pages/AdminCopilotConfig";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
+import Signup from "./pages/Signup";
+import BillingSuccess from "./pages/BillingSuccess";
+import BillingCancel from "./pages/BillingCancel";
 import NotFound from "./pages/NotFound";
 
 // Super Admin
@@ -61,6 +64,9 @@ const App = () => (
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
+            <Route path="/signup" element={<Signup />} />
+            <Route path="/billing/success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
+            <Route path="/billing/cancel" element={<BillingCancel />} />
             <Route path="/planos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />

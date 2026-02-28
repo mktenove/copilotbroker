@@ -62,7 +62,7 @@ const CopilotHero = () => {
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
-            href="/auth"
+            href="/signup"
             className="btn-primary text-base gap-2"
           >
             Começar Agora
