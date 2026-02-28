@@ -23,7 +23,9 @@ export type Database = {
           created_at: string
           id: string
           metadata: Json | null
+          target_id: string | null
           target_tenant_id: string | null
+          target_type: string | null
           target_user_id: string | null
         }
         Insert: {
@@ -34,7 +36,9 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
+          target_id?: string | null
           target_tenant_id?: string | null
+          target_type?: string | null
           target_user_id?: string | null
         }
         Update: {
@@ -45,7 +49,9 @@ export type Database = {
           created_at?: string
           id?: string
           metadata?: Json | null
+          target_id?: string | null
           target_tenant_id?: string | null
+          target_type?: string | null
           target_user_id?: string | null
         }
         Relationships: [

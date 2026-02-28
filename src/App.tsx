@@ -39,6 +39,7 @@ import SuperAdminRealEstateNew from "./pages/super-admin/SuperAdminRealEstateNew
 import SuperAdminRealEstateInvites from "./pages/super-admin/SuperAdminRealEstateInvites";
 import SuperAdminAudit from "./pages/super-admin/SuperAdminAudit";
 import SuperAdminBilling from "./pages/super-admin/SuperAdminBilling";
+import SuperAdminBillingEvents from "./pages/super-admin/SuperAdminBillingEvents";
 import SuperAdminAffiliates from "./pages/super-admin/SuperAdminAffiliates";
 
 const queryClient = new QueryClient();
@@ -83,6 +84,7 @@ const App = () => (
               <Route path="tenants/real-estate/invites" element={<SuperAdminRealEstateInvites />} />
               <Route path="audit" element={<SuperAdminAudit />} />
               <Route path="billing" element={<SuperAdminBilling />} />
+              <Route path="billing-events" element={<SuperAdminBillingEvents />} />
               <Route path="affiliates" element={<SuperAdminAffiliates />} />
             </Route>
             
