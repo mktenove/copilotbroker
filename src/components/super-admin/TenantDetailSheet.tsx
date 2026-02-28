@@ -311,6 +311,24 @@ const TenantDetailSheet = ({ tenantId, tenantName, open, onOpenChange }: TenantD
                           <ExternalLink className="w-3 h-3 mr-1" />Subscription
                         </Button>
                       )}
+                      <Button
+                        size="sm" variant="outline"
+                        className="border-purple-500/30 text-purple-400 hover:bg-purple-500/10 text-xs"
+                        onClick={async () => {
+                          try {
+                            const { data, error } = await supabase.functions.invoke("customer-portal", {
+                              body: { customer_id: tenant.stripe_customer_id },
+                            });
+                            if (error) throw error;
+                            if (data?.url) window.open(data.url, "_blank");
+                            else toast.error("Não foi possível gerar link do portal");
+                          } catch (err: any) {
+                            toast.error(err.message || "Erro ao abrir portal");
+                          }
+                        }}
+                      >
+                        <ExternalLink className="w-3 h-3 mr-1" />Abrir Customer Portal
+                      </Button>
                     </div>
                   </>
                 ) : (

@@ -79,6 +79,11 @@ serve(async (req) => {
         await handlePaymentFailed(supabase, invoice);
         break;
       }
+      case "invoice.paid": {
+        const invoice = event.data.object as Stripe.Invoice;
+        await handleInvoicePaid(supabase, invoice);
+        break;
+      }
     }
 
     // Mark processed
@@ -260,4 +265,30 @@ async function handlePaymentFailed(supabase: any, invoice: Stripe.Invoice) {
     .eq("id", tenant.id);
 
   log("Tenant set to past_due", { tenantId: tenant.id });
+}
+
+async function handleInvoicePaid(supabase: any, invoice: Stripe.Invoice) {
+  const customerId = invoice.customer as string;
+  log("Invoice paid", { customerId, invoiceId: invoice.id });
+
+  const { data: tenant } = await supabase
+    .from("tenants")
+    .select("id, status")
+    .eq("stripe_customer_id", customerId)
+    .maybeSingle();
+
+  if (!tenant) return;
+
+  // Only update if tenant was in a non-active state
+  if (tenant.status !== "active") {
+    await supabase
+      .from("tenants")
+      .update({
+        status: "active",
+        grace_period_ends_at: null,
+      })
+      .eq("id", tenant.id);
+
+    log("Tenant reactivated via invoice.paid", { tenantId: tenant.id });
+  }
 }
