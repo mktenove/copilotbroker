@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { InviteMemberModal } from "./InviteMemberModal";
 import { toast } from "sonner";
 import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail, Crown, Users } from "lucide-react";
 import {
@@ -97,6 +98,7 @@ const BrokerManagement = () => {
   });
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [selectedBrokerForHistory, setSelectedBrokerForHistory] = useState<Broker | null>(null);
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
   
   const { lastAccessMap, leadsCountMap, fetchLastAccess } = useBrokersLastAccess();
 
@@ -481,16 +483,24 @@ const BrokerManagement = () => {
             {activeCount} ativo{activeCount !== 1 ? 's' : ''} · {leaders.length} líder{leaders.length !== 1 ? 'es' : ''} · {brokers.length} total
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <button
-              onClick={() => handleOpenDialog()}
-              className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20"
-            >
-              <Plus className="w-5 h-5" />
-              Novo Corretor
-            </button>
-          </DialogTrigger>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsInviteOpen(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground font-semibold rounded-xl hover:brightness-110 transition-all border border-border"
+          >
+            <Users className="w-5 h-5" />
+            Convidar Membro
+          </button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <button
+                onClick={() => handleOpenDialog()}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20"
+              >
+                <Plus className="w-5 h-5" />
+                Novo Corretor
+              </button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>
@@ -622,6 +632,7 @@ const BrokerManagement = () => {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       {/* Tabs */}
@@ -823,6 +834,11 @@ const BrokerManagement = () => {
         broker={selectedBrokerForHistory}
         isOpen={!!selectedBrokerForHistory}
         onClose={() => setSelectedBrokerForHistory(null)}
+      />
+      <InviteMemberModal
+        isOpen={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        onSuccess={fetchAll}
       />
     </div>
   );
