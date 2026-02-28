@@ -99,5 +99,21 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     return <Navigate to="/planos" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {status === "past_due" && (
+        <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-4 py-3 flex items-center justify-center gap-3">
+          <AlertTriangle className="w-4 h-4 text-yellow-500 flex-shrink-0" />
+          <p className="text-sm text-yellow-200">
+            Seu pagamento falhou. Atualize seu método de pagamento para evitar a suspensão da conta.
+          </p>
+          <Button variant="outline" size="sm" onClick={handleOpenPortal} disabled={openingPortal} className="border-yellow-500/30 text-yellow-300 hover:text-yellow-100 flex-shrink-0">
+            {openingPortal ? <RefreshCw className="w-3 h-3 animate-spin" /> : <CreditCard className="w-3 h-3" />}
+            <span className="ml-1">Atualizar</span>
+          </Button>
+        </div>
+      )}
+      {children}
+    </>
+  );
 }
