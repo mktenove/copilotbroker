@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+import { SubscriptionGuard } from "@/components/auth/SubscriptionGuard";
 import AppHead from "@/components/AppHead";
 import Home from "./pages/Home";
 // Backup: landing pages completas de Estância Velha (reativar trocando as rotas abaixo)
@@ -84,20 +86,20 @@ const App = () => (
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
-            <Route path="/planos" element={<Pricing />} />
-            <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/planos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
+            <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
             <Route path="/corretor/cadastro" element={<BrokerSignup />} />
-            <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
+            <Route path="/corretor/empreendimentos" element={<ProtectedRoute><SubscriptionGuard><BrokerProjects /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/corretor/whatsapp" element={<Navigate to="/corretor/copiloto" replace />} />
-            <Route path="/admin" element={<Admin />} />
+            <Route path="/admin" element={<ProtectedRoute><SubscriptionGuard><Admin /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/admin/whatsapp" element={<Navigate to="/admin/copiloto" replace />} />
-            <Route path="/admin/inbox" element={<AdminInbox />} />
-            <Route path="/admin/copiloto" element={<AdminCopilotConfig />} />
-            <Route path="/corretor/admin" element={<BrokerAdmin />} />
-            <Route path="/corretor/roletas" element={<BrokerRoletasPage />} />
-            <Route path="/corretor/inbox" element={<BrokerInbox />} />
-            <Route path="/corretor/copiloto" element={<BrokerCopilotConfig />} />
-            <Route path="/corretor/lead/:leadId" element={<LeadPage />} />
+            <Route path="/admin/inbox" element={<ProtectedRoute><SubscriptionGuard><AdminInbox /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/admin/copiloto" element={<ProtectedRoute><SubscriptionGuard><AdminCopilotConfig /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/corretor/admin" element={<ProtectedRoute><SubscriptionGuard><BrokerAdmin /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/corretor/roletas" element={<ProtectedRoute><SubscriptionGuard><BrokerRoletasPage /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/corretor/inbox" element={<ProtectedRoute><SubscriptionGuard><BrokerInbox /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/corretor/copiloto" element={<ProtectedRoute><SubscriptionGuard><BrokerCopilotConfig /></SubscriptionGuard></ProtectedRoute>} />
+            <Route path="/corretor/lead/:leadId" element={<ProtectedRoute><SubscriptionGuard><LeadPage /></SubscriptionGuard></ProtectedRoute>} />
             <Route path="/termos" element={<Termos />} />
             
             {/* Dynamic city/project routes - MUST BE AFTER specific routes */}
