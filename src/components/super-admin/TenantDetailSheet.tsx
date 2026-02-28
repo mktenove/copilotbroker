@@ -91,6 +91,8 @@ const TenantDetailSheet = ({ tenantId, tenantName, open, onOpenChange }: TenantD
   const [savingNotes, setSavingNotes] = useState(false);
   const [extraUsers, setExtraUsers] = useState(0);
   const [savingSeats, setSavingSeats] = useState(false);
+  const [syncingStripe, setSyncingStripe] = useState(false);
+  const [updatingStripe, setUpdatingStripe] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!tenantId) return;
@@ -171,6 +173,42 @@ const TenantDetailSheet = ({ tenantId, tenantName, open, onOpenChange }: TenantD
     toast.success(`Seats atualizados: max_users = ${newMax}`);
     setSavingSeats(false);
     loadData();
+  };
+
+  const syncFromStripe = async () => {
+    if (!tenantId) return;
+    setSyncingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-seats", {
+        body: { action: "sync_from_stripe", tenant_id: tenantId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Sincronizado: extra_users=${data.extra_users}, max_users=${data.max_users}`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao sincronizar");
+    } finally {
+      setSyncingStripe(false);
+    }
+  };
+
+  const updateStripeQuantity = async () => {
+    if (!tenantId) return;
+    setUpdatingStripe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("manage-seats", {
+        body: { action: "update_stripe_quantity", tenant_id: tenantId, extra_users: extraUsers },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`Stripe atualizado: extra_users=${data.extra_users}, max_users=${data.max_users}`);
+      loadData();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao atualizar Stripe");
+    } finally {
+      setUpdatingStripe(false);
+    }
   };
 
   const handleStatusChange = async (newStatus: string) => {
@@ -344,27 +382,81 @@ const TenantDetailSheet = ({ tenantId, tenantName, open, onOpenChange }: TenantD
                     </Button>
                   </div>
                 </div>
-                {extraUsers !== (tenant.extra_users || 0) && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button size="sm" className="bg-[#FFFF00] text-black hover:bg-[#e6e600] text-xs mt-2" disabled={savingSeats}>
-                        <Save className="w-3 h-3 mr-1" />Atualizar Seats ({tenant.included_users} + {extraUsers} = {tenant.included_users + extraUsers})
+
+                <Separator className="bg-[#2a2a2e] my-2" />
+
+                {/* Stripe Actions */}
+                <div className="space-y-2">
+                  {tenant.stripe_subscription_id && (
+                    <>
+                      <Button
+                        size="sm" variant="outline"
+                        onClick={syncFromStripe}
+                        disabled={syncingStripe}
+                        className="w-full border-[#2a2a2e] text-slate-300 hover:text-white text-xs justify-start"
+                      >
+                        <RefreshCw className={`w-3 h-3 mr-2 ${syncingStripe ? "animate-spin" : ""}`} />
+                        Sincronizar com Stripe (ler quantity atual)
                       </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="bg-[#1e1e22] border-[#2a2a2e] text-white">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Confirmar alteração de seats?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-slate-400">
-                          max_users passará de {maxUsers} para {tenant.included_users + extraUsers}. Lembre-se de sincronizar com o Stripe manualmente se necessário.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel className="border-[#2a2a2e] text-slate-300">Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={updateExtraUsers} className="bg-[#FFFF00] text-black hover:bg-[#e6e600]">Confirmar</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
+
+                      {extraUsers !== (tenant.extra_users || 0) && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="w-full bg-purple-600 hover:bg-purple-700 text-white text-xs justify-start"
+                              disabled={updatingStripe}
+                            >
+                              <CreditCard className="w-3 h-3 mr-2" />
+                              Atualizar quantity no Stripe ({tenant.extra_users || 0} → {extraUsers})
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent className="bg-[#1e1e22] border-[#2a2a2e] text-white">
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Atualizar assentos no Stripe?</AlertDialogTitle>
+                              <AlertDialogDescription className="text-slate-400">
+                                Isso vai alterar a quantity do item extra_user na subscription de {tenant.extra_users || 0} para {extraUsers}.
+                                O Stripe criará proration automaticamente. max_users passará para {tenant.included_users + extraUsers}.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel className="border-[#2a2a2e] text-slate-300">Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={updateStripeQuantity} className="bg-purple-600 hover:bg-purple-700">Confirmar</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </>
+                  )}
+
+                  {/* Manual update (cortesia) */}
+                  {extraUsers !== (tenant.extra_users || 0) && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button size="sm" className="w-full bg-[#FFFF00] text-black hover:bg-[#e6e600] text-xs justify-start" disabled={savingSeats}>
+                          <Save className="w-3 h-3 mr-2" />
+                          Atualizar manualmente (cortesia) → max_users = {tenant.included_users + extraUsers}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent className="bg-[#1e1e22] border-[#2a2a2e] text-white">
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Atualização manual de seats?</AlertDialogTitle>
+                          <AlertDialogDescription className="text-slate-400">
+                            <span className="flex items-center gap-1 text-orange-400">
+                              <AlertTriangle className="w-4 h-4" />
+                              Isso NÃO altera o Stripe. Use apenas para cortesia/teste.
+                            </span>
+                            max_users passará de {maxUsers} para {tenant.included_users + extraUsers}.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel className="border-[#2a2a2e] text-slate-300">Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={updateExtraUsers} className="bg-[#FFFF00] text-black hover:bg-[#e6e600]">Confirmar</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </Section>
 
               {/* 6) Notas */}
