@@ -14,6 +14,7 @@ import Auth from "./pages/Auth";
 import Pricing from "./pages/Pricing";
 import Onboarding from "./pages/Onboarding";
 import Admin from "./pages/Admin";
+import AcceptInvite from "./pages/AcceptInvite";
 
 import BrokerAdmin from "./pages/BrokerAdmin";
 import BrokerProjects from "./pages/BrokerProjects";
@@ -54,6 +55,9 @@ const App = () => (
             <AppHead />
             <Routes>
             <Route path="/" element={<Home />} />
+            
+            {/* Public invite acceptance */}
+            <Route path="/aceitar-convite" element={<AcceptInvite />} />
             
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />

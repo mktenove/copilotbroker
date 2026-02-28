@@ -42,8 +42,11 @@ Deno.serve(async (req) => {
     const tenantId = membership.tenant_id;
 
     // Parse body
-    const { email, name, whatsapp } = await req.json();
+    const { email, name, whatsapp, role: inviteRole, message: inviteMessage } = await req.json();
     if (!email || !name) throw new Error("Email e nome são obrigatórios");
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const finalRole = inviteRole || "broker";
 
     // Check entitlements (max_users)
     const { data: entitlements } = await supabase
@@ -62,19 +65,15 @@ Deno.serve(async (req) => {
       throw new Error(`Limite de ${entitlements.max_users} usuários atingido. Faça upgrade do plano.`);
     }
 
-    // Check if user already exists by email
+    // Check if user already exists and is already a member
     const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    let targetUserId: string | null = null;
-    const existing = existingUsers?.users?.find((u: any) => u.email === email);
+    const existing = existingUsers?.users?.find((u: any) => u.email === normalizedEmail);
 
     if (existing) {
-      targetUserId = existing.id;
-
-      // Check if already a member of this tenant
       const { data: existingMembership } = await supabase
         .from("tenant_memberships")
         .select("id")
-        .eq("user_id", targetUserId)
+        .eq("user_id", existing.id)
         .eq("tenant_id", tenantId)
         .eq("is_active", true)
         .maybeSingle();
@@ -82,52 +81,88 @@ Deno.serve(async (req) => {
       if (existingMembership) {
         throw new Error("Este usuário já é membro da organização");
       }
-    } else {
-      // Create user with a temporary password (they'll reset)
-      const tempPassword = crypto.randomUUID().slice(0, 16) + "Aa1!";
-      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
-        email,
-        password: tempPassword,
-        email_confirm: true,
-      });
-      if (createErr) throw new Error(`Erro ao criar usuário: ${createErr.message}`);
-      targetUserId = newUser.user.id;
     }
 
-    // Create tenant membership
+    // Cancel any existing "sent" invite for same email+tenant
     await supabase
-      .from("tenant_memberships")
-      .insert({
-        user_id: targetUserId,
-        tenant_id: tenantId,
-        role: "member",
-      });
+      .from("invites")
+      .update({ status: "cancelled" })
+      .eq("tenant_id", tenantId)
+      .eq("email", normalizedEmail)
+      .eq("status", "sent");
 
-    // Create broker record
-    const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-    const { error: brokerErr } = await supabase
-      .from("brokers")
+    // Create invite record
+    const { data: invite, error: inviteErr } = await supabase
+      .from("invites")
       .insert({
-        user_id: targetUserId,
-        name,
-        email,
-        slug: `${slug}-${Date.now().toString(36)}`,
-        whatsapp: whatsapp || null,
         tenant_id: tenantId,
-        is_active: true,
-      });
+        email: normalizedEmail,
+        role: finalRole,
+        invited_by: callerId,
+        message: inviteMessage || null,
+        status: "sent",
+      })
+      .select("id, token")
+      .single();
 
-    if (brokerErr) {
-      console.error("Broker insert error:", brokerErr);
-      // Don't throw — membership was created, broker might already exist
+    if (inviteErr) throw new Error(`Erro ao criar convite: ${inviteErr.message}`);
+
+    // If user already exists, auto-accept the invite immediately
+    if (existing) {
+      const targetUserId = existing.id;
+
+      // Create tenant membership
+      await supabase
+        .from("tenant_memberships")
+        .insert({
+          user_id: targetUserId,
+          tenant_id: tenantId,
+          role: "member",
+        });
+
+      // Create broker record
+      const slug = name.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
+      await supabase
+        .from("brokers")
+        .insert({
+          user_id: targetUserId,
+          name,
+          email: normalizedEmail,
+          slug: `${slug}-${Date.now().toString(36)}`,
+          whatsapp: whatsapp || null,
+          tenant_id: tenantId,
+          is_active: true,
+        });
+
+      // Assign broker role
+      await supabase
+        .from("user_roles")
+        .upsert({ user_id: targetUserId, role: "broker" }, { onConflict: "user_id,role" });
+
+      // Mark invite as accepted
+      await supabase
+        .from("invites")
+        .update({ status: "accepted", accepted_at: new Date().toISOString() })
+        .eq("id", invite.id);
+
+      return new Response(JSON.stringify({ 
+        success: true, 
+        user_id: targetUserId, 
+        auto_accepted: true,
+        message: "Usuário existente adicionado diretamente à equipe" 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Assign broker role
-    await supabase
-      .from("user_roles")
-      .upsert({ user_id: targetUserId, role: "broker" }, { onConflict: "user_id,role" });
-
-    return new Response(JSON.stringify({ success: true, user_id: targetUserId }), {
+    // User doesn't exist yet — invite stays as "sent", they'll accept via token
+    return new Response(JSON.stringify({ 
+      success: true, 
+      invite_id: invite.id,
+      token: invite.token,
+      auto_accepted: false,
+      message: "Convite criado. O usuário precisará aceitar o convite para criar sua conta." 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
