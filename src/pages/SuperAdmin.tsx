@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Shield, Building2, Users, DollarSign, AlertTriangle, RefreshCw } from "lucide-react";
 import AddBrokerModal from "@/components/super-admin/AddBrokerModal";
 import AddProjectModal from "@/components/super-admin/AddProjectModal";
+import TenantDetailSheet from "@/components/super-admin/TenantDetailSheet";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,6 +36,7 @@ const SuperAdmin = () => {
   const [stats, setStats] = useState<Record<string, TenantStats>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [selectedTenant, setSelectedTenant] = useState<{ id: string; name: string } | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -242,7 +244,7 @@ const SuperAdmin = () => {
                       {tenants.map((tenant) => {
                         const tenantStats = stats[tenant.id];
                         return (
-                          <tr key={tenant.id} className="border-b border-[#2a2a2e]/50 hover:bg-[#2a2a2e]/30 transition-colors">
+                          <tr key={tenant.id} className="border-b border-[#2a2a2e]/50 hover:bg-[#2a2a2e]/30 transition-colors cursor-pointer" onClick={() => setSelectedTenant({ id: tenant.id, name: tenant.name })}>
                             <td className="py-3 px-2 font-medium text-white">{tenant.name}</td>
                             <td className="py-3 px-2 text-slate-400 font-mono text-xs">{tenant.slug}</td>
                             <td className="py-3 px-2">
@@ -277,6 +279,13 @@ const SuperAdmin = () => {
             </CardContent>
           </Card>
         </div>
+
+        <TenantDetailSheet
+          tenantId={selectedTenant?.id || null}
+          tenantName={selectedTenant?.name || ""}
+          open={!!selectedTenant}
+          onOpenChange={(open) => !open && setSelectedTenant(null)}
+        />
       </div>
     </>
   );
