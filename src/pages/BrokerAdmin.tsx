@@ -159,7 +159,7 @@ const BrokerAdmin = () => {
   return (
     <>
       <Helmet>
-        <title>CRM | Enove</title>
+        <title>CRM | Copilot Broker</title>
       </Helmet>
       <BrokerLayout
         brokerName={broker?.name}

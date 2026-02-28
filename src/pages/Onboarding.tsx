@@ -4,7 +4,7 @@ import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Building2, Check } from "lucide-react";
-import logoEnove from "@/assets/logo-enove.png";
+import logoCopilot from "@/assets/copilot-logo-dark.png";
 
 const Onboarding = () => {
   const [searchParams] = useSearchParams();
@@ -139,12 +139,12 @@ const Onboarding = () => {
   return (
     <>
       <Helmet>
-        <title>Configurar Conta | Enove</title>
+        <title>Configurar Conta | Copilot Broker</title>
       </Helmet>
       <div className="min-h-screen bg-background flex items-center justify-center px-6">
         <div className="w-full max-w-md">
           <div className="text-center mb-8">
-            <img src={logoEnove} alt="Enove" className="h-10 mx-auto mb-6" />
+            <img src={logoCopilot} alt="Copilot Broker" className="h-10 mx-auto mb-6" />
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
               <Check className="w-6 h-6 text-primary" />
             </div>

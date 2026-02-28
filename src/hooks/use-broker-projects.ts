@@ -69,11 +69,7 @@ export function useBrokerProjects(brokerId?: string | null) {
         .map((bp: any) => ({
           id: bp.id,
           project: bp.project as Project,
-          url: bp.project.slug === "estanciavelha"
-            ? `/estanciavelha/${broker.slug}`
-            : bp.project.slug === "prontos"
-              ? `/prontos/${broker.slug}`
-              : `/${bp.project.city_slug}/${bp.project.slug}/${broker.slug}`,
+          url: `/${bp.project.city_slug}/${bp.project.slug}/${broker.slug}`,
         }));
 
       setBrokerProjects(projects);
@@ -208,11 +204,7 @@ export function useBrokerProjects(brokerId?: string | null) {
       setBrokerProjects((prev) =>
         prev.map((bp) => ({
           ...bp,
-          url: bp.project.slug === "estanciavelha"
-            ? `/estanciavelha/${newSlug}`
-            : bp.project.slug === "prontos"
-              ? `/prontos/${newSlug}`
-              : `/${bp.project.city_slug}/${bp.project.slug}/${newSlug}`,
+          url: `/${bp.project.city_slug}/${bp.project.slug}/${newSlug}`,
         }))
       );
 
@@ -244,12 +236,6 @@ export function useBrokerProjects(brokerId?: string | null) {
   // Generate URL for a project
   const getProjectUrl = (project: Project) => {
     if (!broker) return "";
-    if (project.slug === "estanciavelha") {
-      return `/estanciavelha/${broker.slug}`;
-    }
-    if (project.slug === "prontos") {
-      return `/prontos/${broker.slug}`;
-    }
     return `/${project.city_slug}/${project.slug}/${broker.slug}`;
   };
 

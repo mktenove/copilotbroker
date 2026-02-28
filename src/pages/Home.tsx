@@ -23,7 +23,7 @@ const Home = () => {
           content="CRM com inteligência artificial para corretores e imobiliárias. Automatize atendimento, gerencie leads e venda mais."
         />
         <meta property="og:type" content="website" />
-        <link rel="canonical" href="https://onovocondominio.com.br/" />
+        <link rel="canonical" href="https://copilotbroker.lovable.app/" />
       </Helmet>
 
       <div className="min-h-screen bg-background flex flex-col">

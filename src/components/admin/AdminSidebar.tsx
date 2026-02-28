@@ -12,7 +12,7 @@ import {
   Bot,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import logoEnove from "@/assets/logo-enove-mini.png";
+import copilotIcon from "@/assets/copilot-icon.png";
 import { useInboxUnread } from "@/hooks/use-inbox-unread";
 import {
   Tooltip,
@@ -65,8 +65,8 @@ export function AdminSidebar({ activeTab, onTabChange, onLogout, onAddLead }: Ad
         {/* Logo area - aligned with header breadcrumb row */}
         <div className="flex items-center justify-center pt-4 pb-3">
           <img 
-            src={logoEnove} 
-            alt="Enove" 
+            src={copilotIcon} 
+            alt="Copilot Broker" 
             className="h-6 w-6 object-contain"
           />
         </div>

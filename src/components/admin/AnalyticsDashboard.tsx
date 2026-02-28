@@ -250,7 +250,7 @@ const AnalyticsDashboard = () => {
   const sourceStats: SourceStats[] = useMemo(() => {
     const sourceMap = new Map<string, number>();
     leads.forEach((lead) => {
-      const source = lead.source === "enove" ? "Enove" : lead.source;
+      const source = lead.source === "enove" ? "Direto" : lead.source;
       sourceMap.set(source, (sourceMap.get(source) || 0) + 1);
     });
     return Array.from(sourceMap.entries())
@@ -258,10 +258,10 @@ const AnalyticsDashboard = () => {
       .sort((a, b) => b.leads - a.leads);
   }, [leads]);
 
-  const enoveLeads = sourceStats.find(s => s.name === "Enove")?.leads || 0;
-  const brokerLeads = leads.length - enoveLeads - inactivatedLeads;
+  const directLeads = sourceStats.find(s => s.name === "Direto")?.leads || 0;
+  const brokerLeads = leads.length - directLeads - inactivatedLeads;
   const distributionData = [
-    { name: "Enove", value: enoveLeads },
+    { name: "Direto", value: directLeads },
     { name: "Corretores", value: brokerLeads },
   ].filter(d => d.value > 0);
 
