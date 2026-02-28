@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Plane } from "lucide-react";
 import copilotLogo from "@/assets/copilot-logo-dark.png";
+import neuralBg from "@/assets/neural-network-bg.webp";
 
 const CopilotHero = () => {
   const [isVisible, setIsVisible] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+  const sectionRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
@@ -14,17 +17,29 @@ const CopilotHero = () => {
     document.getElementById("planos")?.scrollIntoView({ behavior: "smooth" });
   };
 
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
-    <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
-      {/* Grid pattern background */}
-      <div className="absolute inset-0 opacity-[0.03]" aria-hidden="true">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `linear-gradient(hsl(var(--primary)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--primary)) 1px, transparent 1px)`,
-          backgroundSize: '60px 60px'
-        }} />
+    <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
+      {/* Neural network background with parallax */}
+      <div
+        className="absolute inset-0 -top-20 -bottom-20"
+        aria-hidden="true"
+        style={{ transform: `translateY(${scrollY * 0.15}px)` }}
+      >
+        <img
+          src={neuralBg}
+          alt=""
+          className="w-full h-full object-cover opacity-[0.18]"
+        />
       </div>
 
-      {/* Radial glow */}
+      {/* Dark overlay + radial glow center */}
+      <div className="absolute inset-0 bg-background/70" aria-hidden="true" />
       <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/8 blur-[150px]" aria-hidden="true" />
 
       <div className={`relative z-10 max-w-5xl mx-auto text-center transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
