@@ -11,133 +11,142 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  const supabase = createClient(
-    Deno.env.get("SUPABASE_URL")!,
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
-    { auth: { persistSession: false } }
-  );
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
   try {
-    const { token, name, password } = await req.json();
+    const { token } = await req.json();
     if (!token) throw new Error("Token é obrigatório");
-    if (!password || password.length < 6) throw new Error("Senha deve ter pelo menos 6 caracteres");
 
-    // Find invite by token
-    const { data: invite, error: inviteErr } = await supabase
+    // 1) Authenticate caller via Authorization header
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("Usuário não autenticado. Faça login primeiro.");
+
+    const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } },
+    });
+
+    const { data: { user }, error: authError } = await userClient.auth.getUser();
+    if (authError || !user) throw new Error("Sessão inválida. Faça login novamente.");
+
+    const userEmail = (user.email || "").toLowerCase();
+    const userId = user.id;
+
+    // 2) Service role client for admin operations
+    const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+
+    // 3) Fetch invite by token
+    const { data: invite, error: inviteErr } = await adminClient
       .from("invites")
-      .select("*")
+      .select("id, tenant_id, email, role, status, expires_at")
       .eq("token", token)
-      .eq("status", "sent")
       .single();
 
-    if (inviteErr || !invite) throw new Error("Convite inválido ou já utilizado");
+    if (inviteErr || !invite) throw new Error("Convite não encontrado ou token inválido");
 
-    // Check expiration
+    // 4) Validate status
+    if (!["sent", "opened"].includes(invite.status)) {
+      throw new Error(`Este convite já foi ${invite.status === "accepted" ? "aceito" : invite.status === "expired" ? "expirado" : "cancelado"}`);
+    }
+
+    // 5) Validate expiration
     if (new Date(invite.expires_at) < new Date()) {
-      await supabase
-        .from("invites")
-        .update({ status: "expired" })
-        .eq("id", invite.id);
+      await adminClient.from("invites").update({ status: "expired" }).eq("id", invite.id);
       throw new Error("Este convite expirou. Solicite um novo convite ao administrador.");
     }
 
-    const inviteEmail = invite.email;
-    const tenantId = invite.tenant_id;
-    const displayName = name || inviteEmail.split("@")[0];
-
-    // Check if user already exists
-    const { data: existingUsers } = await supabase.auth.admin.listUsers();
-    const existing = existingUsers?.users?.find((u: any) => u.email === inviteEmail);
-    let targetUserId: string;
-
-    if (existing) {
-      targetUserId = existing.id;
-
-      // Check not already a member
-      const { data: existingMembership } = await supabase
-        .from("tenant_memberships")
-        .select("id")
-        .eq("user_id", targetUserId)
-        .eq("tenant_id", tenantId)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (existingMembership) {
-        // Mark invite as accepted anyway
-        await supabase
-          .from("invites")
-          .update({ status: "accepted", accepted_at: new Date().toISOString() })
-          .eq("id", invite.id);
-        throw new Error("Você já é membro desta organização");
-      }
-    } else {
-      // Create user
-      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
-        email: inviteEmail,
-        password,
-        email_confirm: true,
-      });
-      if (createErr) throw new Error(`Erro ao criar conta: ${createErr.message}`);
-      targetUserId = newUser.user.id;
+    // 6) Mark as opened if still sent
+    if (invite.status === "sent") {
+      await adminClient.from("invites").update({ status: "opened" }).eq("id", invite.id);
     }
 
-    // Check entitlements
-    const { data: entitlements } = await supabase
+    // 7) Validate email match (case-insensitive)
+    if (userEmail !== invite.email.toLowerCase()) {
+      throw new Error(
+        `Este convite foi enviado para ${invite.email}. Você está logado como ${userEmail}. Faça login com o email correto.`
+      );
+    }
+
+    // 8) Check entitlements
+    const { data: entitlements } = await adminClient
       .from("tenant_entitlements")
       .select("max_users")
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", invite.tenant_id)
       .single();
 
-    const { count: currentMembers } = await supabase
+    const { count: currentMembers } = await adminClient
       .from("tenant_memberships")
       .select("*", { count: "exact", head: true })
-      .eq("tenant_id", tenantId)
+      .eq("tenant_id", invite.tenant_id)
       .eq("is_active", true);
 
     if (entitlements && currentMembers !== null && currentMembers >= entitlements.max_users) {
       throw new Error("A organização atingiu o limite de usuários. Entre em contato com o administrador.");
     }
 
-    // Create tenant membership
-    await supabase
+    // 9) Create/ensure membership (idempotent via upsert)
+    const { error: membershipErr } = await adminClient
       .from("tenant_memberships")
-      .insert({
-        user_id: targetUserId,
-        tenant_id: tenantId,
-        role: "member",
-      });
+      .upsert(
+        {
+          tenant_id: invite.tenant_id,
+          user_id: userId,
+          role: invite.role || "member",
+          is_active: true,
+        },
+        { onConflict: "tenant_id,user_id" }
+      );
 
-    // Create broker record
-    const slug = displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
-    await supabase
+    if (membershipErr) {
+      console.error("Membership error:", membershipErr);
+      throw new Error("Erro ao criar vínculo com a organização");
+    }
+
+    // 10) Create/ensure broker record (idempotent)
+    const { data: existingBroker } = await adminClient
       .from("brokers")
-      .insert({
-        user_id: targetUserId,
+      .select("id")
+      .eq("user_id", userId)
+      .eq("tenant_id", invite.tenant_id)
+      .maybeSingle();
+
+    if (!existingBroker) {
+      const displayName = user.user_metadata?.name || user.user_metadata?.full_name || userEmail.split("@")[0];
+      const slug = displayName.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "") + "-" + Date.now().toString(36);
+
+      await adminClient.from("brokers").insert({
+        user_id: userId,
         name: displayName,
-        email: inviteEmail,
-        slug: `${slug}-${Date.now().toString(36)}`,
-        tenant_id: tenantId,
+        email: userEmail,
+        slug,
+        tenant_id: invite.tenant_id,
         is_active: true,
       });
+    }
 
-    // Assign broker role
-    await supabase
+    // 11) Assign broker role (idempotent)
+    await adminClient
       .from("user_roles")
-      .upsert({ user_id: targetUserId, role: "broker" }, { onConflict: "user_id,role" });
+      .upsert({ user_id: userId, role: "broker" }, { onConflict: "user_id,role" });
 
-    // Mark invite as accepted
-    await supabase
+    // 12) Mark invite as accepted
+    await adminClient
       .from("invites")
       .update({ status: "accepted", accepted_at: new Date().toISOString() })
       .eq("id", invite.id);
 
-    return new Response(JSON.stringify({ 
-      success: true, 
-      user_id: targetUserId,
-      message: "Conta criada e acesso liberado!" 
-    }), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: true,
+        tenant_id: invite.tenant_id,
+        redirect: "/corretor",
+        message: "Convite aceito com sucesso! Bem-vindo à equipe.",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error("accept-invite error:", msg);
