@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { HelmetProvider } from "react-helmet-async";
+import { TenantProvider } from "@/contexts/TenantContext";
 import AppHead from "@/components/AppHead";
 import Home from "./pages/Home";
 // Backup: landing pages completas de Estância Velha (reativar trocando as rotas abaixo)
@@ -45,6 +46,7 @@ const App = () => (
   <HelmetProvider>
     <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark">
       <QueryClientProvider client={queryClient}>
+        <TenantProvider>
         <TooltipProvider>
           {/* Toasters removed per user request */}
           <BrowserRouter>
@@ -103,6 +105,7 @@ const App = () => (
           </Routes>
           </BrowserRouter>
         </TooltipProvider>
+        </TenantProvider>
       </QueryClientProvider>
     </ThemeProvider>
   </HelmetProvider>
