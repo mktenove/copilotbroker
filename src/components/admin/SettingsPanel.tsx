@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { SubscriptionPanel } from "@/components/admin/SubscriptionPanel";
 import {
   Sheet,
   SheetContent,
@@ -269,6 +270,11 @@ export function SettingsPanel({ isOpen, onClose }: SettingsPanelProps) {
                 </div>
               </div>
             </div>
+
+            <Separator className="bg-[#2a2a2e]" />
+
+            {/* Subscription */}
+            <SubscriptionPanel />
 
             <Separator className="bg-[#2a2a2e]" />
 
