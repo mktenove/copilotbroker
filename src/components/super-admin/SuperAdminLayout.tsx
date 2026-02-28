@@ -18,6 +18,7 @@ const NAV_ITEMS = [
   { id: "brokers", label: "Brokers", icon: Users, path: "/super-admin/brokers" },
   { id: "affiliates", label: "Afiliados", icon: Handshake, path: "/super-admin/affiliates" },
   { id: "billing", label: "Billing / Webhooks", icon: Receipt, path: "/super-admin/billing" },
+  { id: "billing-events", label: "Billing Events", icon: ScrollText, path: "/super-admin/billing-events" },
   { id: "audit", label: "Auditoria", icon: ScrollText, path: "/super-admin/audit" },
 ];
 
