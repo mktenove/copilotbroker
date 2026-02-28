@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -9,6 +8,7 @@ import {
 } from "lucide-react";
 import AddTenantModal from "@/components/super-admin/AddTenantModal";
 import TenantDetailSheet from "@/components/super-admin/TenantDetailSheet";
+import SuperAdminLogin from "@/pages/SuperAdminLogin";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,10 +43,10 @@ const SuperAdmin = () => {
   const [stats, setStats] = useState<Record<string, TenantStats>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [selectedTenant, setSelectedTenant] = useState<{ id: string; name: string } | null>(null);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const navigate = useNavigate();
 
   useEffect(() => {
     checkAccess();
@@ -54,7 +54,10 @@ const SuperAdmin = () => {
 
   const checkAccess = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) { navigate("/auth"); return; }
+    if (!session) {
+      setIsCheckingAuth(false);
+      return;
+    }
 
     const { data: roles } = await (supabase
       .from("user_roles" as any)
@@ -63,12 +66,13 @@ const SuperAdmin = () => {
 
     const isAdmin = (roles || []).some((r: any) => r.role === "admin");
     if (!isAdmin) {
-      toast.error("Acesso negado. Apenas super admins.");
-      navigate("/auth");
+      await supabase.auth.signOut();
+      setIsCheckingAuth(false);
       return;
     }
 
     setIsSuperAdmin(true);
+    setIsCheckingAuth(false);
     loadData();
   };
 
@@ -143,12 +147,16 @@ const SuperAdmin = () => {
     }
   };
 
-  if (!isSuperAdmin) {
+  if (isCheckingAuth) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
         <div className="w-12 h-12 border-2 border-[#FFFF00] border-t-transparent rounded-full animate-spin" />
       </div>
     );
+  }
+
+  if (!isSuperAdmin) {
+    return <SuperAdminLogin onAuthenticated={checkAccess} />;
   }
 
   return (
@@ -183,10 +191,10 @@ const SuperAdmin = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => navigate("/admin")}
+                onClick={() => { supabase.auth.signOut(); setIsSuperAdmin(false); }}
                 className="border-[#2a2a2e] text-slate-400 hover:text-white"
               >
-                Voltar
+                Sair
               </Button>
             </div>
           </div>

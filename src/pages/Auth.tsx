@@ -40,10 +40,6 @@ const Auth = () => {
     try {
       // If user was trying to access a specific page, go back there
       const from = (routeLocation.state as any)?.from;
-      if (from && from.startsWith("/super-admin")) {
-        navigate(from, { replace: true });
-        return;
-      }
 
       const { data: rolesData, error } = await (supabase
         .from("user_roles" as any)
