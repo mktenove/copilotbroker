@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useLocation, Outlet, Navigate } from "react-router-dom";
+import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -11,6 +11,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import SuperAdminLogin from "@/pages/SuperAdminLogin";
 
 const NAV_ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, path: "/super-admin" },
@@ -38,16 +39,28 @@ const BREADCRUMB_MAP: Record<string, { title: string; subtitle?: string }> = {
 
 export default function SuperAdminLayout() {
   const { role, isLoading } = useUserRole();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [authChecked, setAuthChecked] = useState(false);
   const [userInitial, setUserInitial] = useState("S");
   const navigate = useNavigate();
   const location = useLocation();
 
   useEffect(() => {
-    const fetchInitial = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) setUserInitial(user.email.charAt(0).toUpperCase());
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      setIsAuthenticated(!!session?.user);
+      if (session?.user?.email) setUserInitial(session.user.email.charAt(0).toUpperCase());
+      setAuthChecked(true);
     };
-    fetchInitial();
+    checkSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session?.user);
+      if (session?.user?.email) setUserInitial(session.user.email.charAt(0).toUpperCase());
+      setAuthChecked(true);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const isActive = (path: string) => {
@@ -57,7 +70,12 @@ export default function SuperAdminLayout() {
 
   const currentBreadcrumb = BREADCRUMB_MAP[location.pathname] || { title: "Super Admin" };
 
-  if (isLoading) {
+  const handleAuthenticated = () => {
+    setIsAuthenticated(true);
+    setAuthChecked(true);
+  };
+
+  if (!authChecked || isLoading) {
     return (
       <div className="min-h-screen bg-[#0a0a0c] flex items-center justify-center">
         <RefreshCw className="w-12 h-12 animate-spin text-[#FFFF00]" />
@@ -65,13 +83,13 @@ export default function SuperAdminLayout() {
     );
   }
 
-  if (role !== "admin") {
-    return <Navigate to="/auth" replace />;
+  if (!isAuthenticated || role !== "admin") {
+    return <SuperAdminLogin onAuthenticated={handleAuthenticated} />;
   }
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    navigate("/auth");
+    setIsAuthenticated(false);
   };
 
   return (
