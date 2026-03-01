@@ -34,13 +34,19 @@ const CopilotHero = () => {
         <img
           src={neuralBg}
           alt=""
-          className="w-full h-full object-cover opacity-[0.18]"
+          className="w-full h-full object-cover opacity-[0.45]"
+          style={{ objectPosition: "center 60%" }}
         />
       </div>
 
-      {/* Dark overlay + radial glow center */}
-      <div className="absolute inset-0 bg-background/70" aria-hidden="true" />
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/8 blur-[150px]" aria-hidden="true" />
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-background/40" aria-hidden="true" />
+
+      {/* Golden horizontal light streak */}
+      <div className="absolute top-1/2 left-0 right-0 h-[300px] -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/15 to-transparent blur-[80px]" aria-hidden="true" />
+
+      {/* Radial glow center */}
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/10 blur-[150px]" aria-hidden="true" />
 
       <div className={`relative z-10 max-w-5xl mx-auto text-center transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
         {/* Logo */}
