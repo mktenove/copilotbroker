@@ -27,7 +27,7 @@ const CopilotHero = () => {
     <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden" style={{ backgroundColor: '#1A1A1A' }}>
       {/* Neural network background with parallax */}
       <div
-        className="absolute inset-0 -top-20 -bottom-20"
+        className="absolute inset-0"
         aria-hidden="true"
         style={{ transform: `translateY(${scrollY * 0.15}px)` }}
       >
@@ -35,12 +35,12 @@ const CopilotHero = () => {
           src={neuralBg}
           alt=""
           className="w-full h-full object-cover"
-          style={{ opacity: 0.6, filter: 'brightness(0.8) contrast(1.2)' }}
+          style={{ opacity: 0.6, filter: 'brightness(0.8) contrast(1.2)', objectPosition: 'center 60%' }}
         />
       </div>
 
       {/* Vignette overlay - transparent center fading to #1A1A1A at edges */}
-      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 45%, transparent 0%, rgba(26,26,26,0.4) 50%, #1A1A1A 100%)' }} aria-hidden="true" />
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse at center, transparent 20%, #1A1A1A 100%)' }} aria-hidden="true" />
 
       <div className={`relative z-10 max-w-5xl mx-auto text-center transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
         {/* Logo */}
