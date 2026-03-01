@@ -10,7 +10,7 @@ const features = [
   {
     icon: LayoutGrid,
     title: "CRM Kanban Inteligente",
-    description: "Visualize todos seus leads em um painel intuitivo. Arraste e solte para gerenciar cada oportunidade do primeiro contato à venda.",
+    description: "Visualize todos os seus leads em um painel intuitivo. O Copiloto organiza e move automaticamente cada lead no kanban, do primeiro contato até a venda.",
   },
   {
     icon: Zap,
