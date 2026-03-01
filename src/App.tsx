@@ -84,7 +84,7 @@ const App = () => (
             <Route path="/termos" element={<Termos />} />
 
             {/* Super Admin with layout — requires auth */}
-            <Route path="/super-admin" element={<ProtectedRoute><SuperAdminLayout /></ProtectedRoute>}>
+            <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<SuperAdminDashboard />} />
               <Route path="brokers" element={<SuperAdminBrokers />} />
               <Route path="brokers/new" element={<SuperAdminAddBroker />} />
