@@ -32,7 +32,7 @@ const CopilotHero = () => {
         <img
           src={copilotLogo}
           alt="Copilot Broker"
-          className="h-60 w-auto mx-auto mb-10"
+          className="h-96 w-auto mx-auto mb-10"
           loading="eager"
         />
 
