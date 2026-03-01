@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Plane } from "lucide-react";
 import copilotLogo from "@/assets/copilot-logo-dark.png";
-import neuralBg from "@/assets/neural-network-bg.webp";
+import neuralBg from "@/assets/neural-network-yellow.png";
 
 const CopilotHero = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -24,7 +24,7 @@ const CopilotHero = () => {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
+    <section ref={sectionRef} className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden" style={{ backgroundColor: '#1A1A1A' }}>
       {/* Neural network background with parallax */}
       <div
         className="absolute inset-0 -top-20 -bottom-20"
@@ -34,19 +34,13 @@ const CopilotHero = () => {
         <img
           src={neuralBg}
           alt=""
-          className="w-full h-full object-cover opacity-[0.55]"
-          style={{ objectPosition: "center 40%" }}
+          className="w-full h-full object-cover"
+          style={{ opacity: 0.6, filter: 'brightness(0.8) contrast(1.2)' }}
         />
       </div>
 
-      {/* Light dark overlay */}
-      <div className="absolute inset-0 bg-background/30" aria-hidden="true" />
-
-      {/* Inverted vignette - dark center behind logo, edges reveal the network */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_35%,rgba(0,0,0,0.75)_0%,rgba(0,0,0,0.3)_60%,transparent_100%)]" aria-hidden="true" />
-
-      {/* Subtle edge darkening */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_50%,rgba(0,0,0,0.5)_100%)]" aria-hidden="true" />
+      {/* Vignette overlay - transparent center fading to #1A1A1A at edges */}
+      <div className="absolute inset-0" style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 45%, transparent 0%, rgba(26,26,26,0.4) 50%, #1A1A1A 100%)' }} aria-hidden="true" />
 
       <div className={`relative z-10 max-w-5xl mx-auto text-center transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
         {/* Logo */}
