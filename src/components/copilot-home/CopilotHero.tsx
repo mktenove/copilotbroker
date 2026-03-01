@@ -34,19 +34,25 @@ const CopilotHero = () => {
         <img
           src={neuralBg}
           alt=""
-          className="w-full h-full object-cover opacity-[0.45]"
+          className="w-full h-full object-cover opacity-[0.25]"
           style={{ objectPosition: "center 60%" }}
         />
       </div>
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-background/40" aria-hidden="true" />
+      <div className="absolute inset-0 bg-background/65" aria-hidden="true" />
+
+      {/* Vignette effect */}
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_20%,rgba(0,0,0,0.7)_100%)]" aria-hidden="true" />
 
       {/* Golden horizontal light streak */}
-      <div className="absolute top-1/2 left-0 right-0 h-[300px] -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/15 to-transparent blur-[80px]" aria-hidden="true" />
+      <div className="absolute top-1/2 left-0 right-0 h-[200px] -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/25 to-transparent blur-[100px]" aria-hidden="true" />
+
+      {/* Thinner bright flare */}
+      <div className="absolute top-[45%] left-0 right-0 h-[80px] -translate-y-1/2 bg-gradient-to-r from-transparent via-primary/15 to-transparent blur-[40px]" aria-hidden="true" />
 
       {/* Radial glow center */}
-      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/10 blur-[150px]" aria-hidden="true" />
+      <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] rounded-full bg-primary/6 blur-[150px]" aria-hidden="true" />
 
       <div className={`relative z-10 max-w-5xl mx-auto text-center transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
         {/* Logo */}
