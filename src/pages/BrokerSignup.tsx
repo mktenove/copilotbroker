@@ -56,7 +56,7 @@ const BrokerSignup = () => {
       const { data, error } = await supabase.auth.signUp({
         email: authData.email,
         password: authData.password,
-        options: { emailRedirectTo: window.location.origin },
+        options: { data: { full_name: authData.email.split("@")[0] } },
       });
       if (error) throw error;
       if (data.user) {
