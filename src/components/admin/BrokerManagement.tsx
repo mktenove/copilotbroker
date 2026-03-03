@@ -323,7 +323,7 @@ const BrokerManagement = () => {
           email: formData.email.trim(),
           password: formData.password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth`,
+            data: { full_name: formData.name },
           },
         });
 
