@@ -45,13 +45,19 @@ const Onboarding = () => {
       } else if (sessionId) {
         // Webhook may not have fired yet — use fallback to confirm the checkout
         try {
-          const { error } = await supabase.functions.invoke("confirm-checkout", {
+          const { error, data } = await supabase.functions.invoke("confirm-checkout", {
             body: { session_id: sessionId },
           });
-          if (error) console.error("Fallback confirm-checkout error:", error);
-        } catch (err) {
-          console.error("Fallback confirm-checkout failed:", err);
+          if (error) {
+            toast.error(`Erro ao ativar assinatura: ${error.message}`);
+          } else if (data?.error) {
+            toast.error(`Erro ao ativar assinatura: ${data.error}`);
+          }
+        } catch (err: any) {
+          toast.error(`Erro ao processar pagamento: ${err.message || "Tente novamente."}`);
         }
+      } else {
+        toast.error("Sessão de pagamento não encontrada. Contate o suporte.");
       }
 
       setIsVerifying(false);

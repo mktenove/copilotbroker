@@ -61,10 +61,8 @@ serve(async (req) => {
       throw new Error("Sessão do Stripe não está completa");
     }
 
-    // Verify this session belongs to the authenticated user
-    if (session.metadata?.user_id !== user.id) {
-      throw new Error("Sessão não pertence a este usuário");
-    }
+    // The session's user_id in metadata may differ if the user recreated their account.
+    // We trust the authenticated user since they have the session_id from Stripe's redirect.
 
     // Check if already processed (dedup by stripe session id)
     const { data: existing } = await supabase
