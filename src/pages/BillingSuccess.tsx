@@ -7,20 +7,21 @@ import copilotLogo from "@/assets/copilot-logo-dark.png";
 const BillingSuccess = () => {
   const navigate = useNavigate();
   const [countdown, setCountdown] = useState(5);
+  const sessionId = new URLSearchParams(window.location.search).get("session_id");
 
   useEffect(() => {
     const timer = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(timer);
-          navigate("/onboarding");
+          navigate(sessionId ? `/onboarding?session_id=${sessionId}` : "/onboarding");
           return 0;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [navigate]);
+  }, [navigate, sessionId]);
 
   return (
     <>
