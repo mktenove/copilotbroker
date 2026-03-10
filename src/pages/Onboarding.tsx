@@ -132,8 +132,17 @@ const Onboarding = () => {
       }
 
       toast.success("Conta configurada com sucesso!");
+
+      // Check user role to navigate to correct dashboard
+      const { data: roleData } = await (supabase
+        .from("user_roles" as any)
+        .select("role")
+        .eq("user_id", session.user.id)
+        .maybeSingle() as any);
+
+      const destination = roleData?.role === "admin" ? "/admin" : "/corretor/admin";
       // Force full reload so TenantContext reinitializes with the new tenant
-      window.location.replace("/admin");
+      window.location.replace(destination);
     } catch (err: any) {
       toast.error(err.message || "Erro ao configurar conta");
     } finally {
