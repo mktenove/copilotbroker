@@ -113,6 +113,11 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
 
   log("Checkout completed", { userId, planType, includedUsers, extraUsers });
 
+  // Map frontend plan type to DB enum value ('imobiliaria' → 'real_estate')
+  const dbPlanType = planType === "imobiliaria" ? "real_estate" : planType;
+  // Owners of 'imobiliaria' plan get 'admin' role; 'broker' plan gets 'broker' role
+  const userRole = planType === "imobiliaria" ? "admin" : "broker";
+
   // Check if user already has a tenant
   const { data: existingMembership } = await supabase
     .from("tenant_memberships")
@@ -126,7 +131,7 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
     await supabase
       .from("tenants")
       .update({
-        plan_type: planType,
+        plan_type: dbPlanType,
         stripe_customer_id: session.customer,
         stripe_subscription_id: session.subscription,
         status: "active",
@@ -150,7 +155,7 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
       .insert({
         name: "Minha Empresa",
         slug,
-        plan_type: planType,
+        plan_type: dbPlanType,
         stripe_customer_id: session.customer,
         stripe_subscription_id: session.subscription,
         status: "active",
@@ -182,6 +187,17 @@ async function handleCheckoutCompleted(supabase: any, session: Stripe.Checkout.S
     });
 
     log("Created new tenant", { tenantId: tenant.id });
+  }
+
+  // Assign user role so they can access the correct area of the app
+  const { error: roleError } = await supabase
+    .from("user_roles")
+    .upsert({ user_id: userId, role: userRole }, { onConflict: "user_id,role" });
+
+  if (roleError) {
+    log("Warning: could not assign user role", { userId, role: userRole, error: roleError.message });
+  } else {
+    log("User role assigned", { userId, role: userRole });
   }
 }
 
