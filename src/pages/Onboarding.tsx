@@ -126,7 +126,8 @@ const Onboarding = () => {
       }
 
       toast.success("Conta configurada com sucesso!");
-      navigate("/admin");
+      // Force full reload so TenantContext reinitializes with the new tenant
+      window.location.replace("/admin");
     } catch (err: any) {
       toast.error(err.message || "Erro ao configurar conta");
     } finally {
