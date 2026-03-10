@@ -39,9 +39,18 @@ const Onboarding = () => {
           .single() as any);
 
         if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
-          // Already onboarded
           navigate("/admin");
           return;
+        }
+      } else if (sessionId) {
+        // Webhook may not have fired yet — use fallback to confirm the checkout
+        try {
+          const { error } = await supabase.functions.invoke("confirm-checkout", {
+            body: { session_id: sessionId },
+          });
+          if (error) console.error("Fallback confirm-checkout error:", error);
+        } catch (err) {
+          console.error("Fallback confirm-checkout failed:", err);
         }
       }
 
@@ -49,7 +58,7 @@ const Onboarding = () => {
     };
 
     verify();
-  }, [navigate]);
+  }, [navigate, sessionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
