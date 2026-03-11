@@ -90,6 +90,15 @@ const Signup = () => {
         throw error;
       }
 
+      // Supabase silently returns user=null when email already exists (email confirmation enabled)
+      if (!data.user && !data.session) {
+        toast.error(
+          "Este email já está cadastrado. Faça login.",
+          { action: { label: "Ir para login", onClick: () => navigate("/auth") } }
+        );
+        return;
+      }
+
       if (data.session) {
         toast.success("Conta criada! Redirecionando para pagamento...");
         await startCheckout();
