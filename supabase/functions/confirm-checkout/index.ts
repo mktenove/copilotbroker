@@ -34,7 +34,9 @@ serve(async (req) => {
     const { session_id } = await req.json();
     if (!session_id) throw new Error("session_id obrigatório");
 
-    // Check if user already has a tenant (webhook may have already processed)
+    log("Start", { userId: user.id, session_id });
+
+    // Check if user already has an active membership
     const { data: membership } = await supabase
       .from("tenant_memberships")
       .select("tenant_id")
@@ -43,7 +45,7 @@ serve(async (req) => {
       .maybeSingle();
 
     if (membership) {
-      log("Membership already exists, no action needed", { userId: user.id });
+      log("Membership already exists", { userId: user.id });
       return new Response(JSON.stringify({ ok: true, alreadyExists: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -55,89 +57,90 @@ serve(async (req) => {
     });
 
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    log("Session retrieved", { status: session.status, userId: session.metadata?.user_id });
+    log("Session retrieved", { status: session.status, customer: session.customer });
 
     if (session.status !== "complete") {
-      throw new Error("Sessão do Stripe não está completa");
-    }
-
-    // The session's user_id in metadata may differ if the user recreated their account.
-    // We trust the authenticated user since they have the session_id from Stripe's redirect.
-
-    // Check if already processed (dedup by stripe session id)
-    const { data: existing } = await supabase
-      .from("billing_events")
-      .select("id")
-      .eq("stripe_event_id", `session_${session_id}`)
-      .maybeSingle();
-
-    if (existing) {
-      log("Already processed via fallback", { sessionId: session_id });
-      return new Response(JSON.stringify({ ok: true }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      throw new Error(`Sessão do Stripe não está completa (status: ${session.status})`);
     }
 
     const planType = session.metadata?.plan_type;
     const includedUsers = parseInt(session.metadata?.included_users || "1");
     const extraUsers = parseInt(session.metadata?.extra_users || "0");
 
-    if (!planType) throw new Error("Metadados da sessão incompletos");
+    if (!planType) throw new Error("Metadados da sessão incompletos (plan_type ausente)");
 
     const dbPlanType = planType === "imobiliaria" ? "real_estate" : planType;
     const userRole = planType === "imobiliaria" ? "admin" : "broker";
 
-    // Create tenant
-    const slug = `tenant-${Date.now()}`;
-    const { data: tenant, error: tenantError } = await supabase
+    // Look up existing tenant by stripe subscription (handles partial webhook runs)
+    let tenantId: string;
+    const { data: existingTenant } = await supabase
       .from("tenants")
-      .insert({
-        name: "Minha Empresa",
-        slug,
-        plan_type: dbPlanType,
-        stripe_customer_id: session.customer,
-        stripe_subscription_id: session.subscription,
-        status: "active",
-        owner_user_id: user.id,
-        included_users: includedUsers,
-        extra_users: extraUsers,
-      })
       .select("id")
-      .single();
+      .eq("stripe_subscription_id", session.subscription as string)
+      .maybeSingle();
 
-    if (tenantError) throw new Error(`Erro ao criar tenant: ${tenantError.message}`);
+    if (existingTenant) {
+      log("Reusing existing tenant", { tenantId: existingTenant.id });
+      tenantId = existingTenant.id;
+    } else {
+      // Create new tenant
+      const slug = `tenant-${Date.now()}`;
+      const { data: tenant, error: tenantError } = await supabase
+        .from("tenants")
+        .insert({
+          name: "Minha Empresa",
+          slug,
+          plan_type: dbPlanType,
+          stripe_customer_id: session.customer,
+          stripe_subscription_id: session.subscription,
+          status: "active",
+          owner_user_id: user.id,
+          included_users: includedUsers,
+          extra_users: extraUsers,
+        })
+        .select("id")
+        .single();
 
-    log("Tenant created", { tenantId: tenant.id });
+      if (tenantError) throw new Error(`Erro ao criar tenant: ${tenantError.message}`);
+      log("Tenant created", { tenantId: tenant.id });
+      tenantId = tenant.id;
+    }
 
-    // Create membership
-    await supabase.from("tenant_memberships").insert({
-      tenant_id: tenant.id,
-      user_id: user.id,
-      role: "owner",
-      is_active: true,
-    });
+    // Create membership (upsert to handle partial failures)
+    const { error: membershipError } = await supabase
+      .from("tenant_memberships")
+      .upsert(
+        { tenant_id: tenantId, user_id: user.id, role: "owner", is_active: true },
+        { onConflict: "tenant_id,user_id" }
+      );
+    if (membershipError) throw new Error(`Erro ao criar membership: ${membershipError.message}`);
 
-    // Create entitlements
-    await supabase.from("tenant_entitlements").insert({
-      tenant_id: tenant.id,
-      max_users: includedUsers + extraUsers,
-      features: { copilot: true, roletas: true, whatsapp: true, campaigns: true },
-    });
+    // Create entitlements (upsert)
+    await supabase
+      .from("tenant_entitlements")
+      .upsert(
+        { tenant_id: tenantId, max_users: includedUsers + extraUsers, features: { copilot: true, roletas: true, whatsapp: true, campaigns: true } },
+        { onConflict: "tenant_id" }
+      );
 
-    // Assign user role
+    // Assign user role (upsert)
     await supabase
       .from("user_roles")
       .upsert({ user_id: user.id, role: userRole }, { onConflict: "user_id,role" });
 
-    // Mark as processed
-    await supabase.from("billing_events").insert({
-      stripe_event_id: `session_${session_id}`,
-      type: "checkout.session.completed.fallback",
-      payload: session as any,
-      processed: true,
-    });
+    // Mark as processed (ignore if already exists)
+    await supabase.from("billing_events").upsert(
+      {
+        stripe_event_id: `session_${session_id}`,
+        type: "checkout.session.completed.fallback",
+        payload: session as any,
+        processed: true,
+      },
+      { onConflict: "stripe_event_id" }
+    );
 
-    log("Fallback completed successfully", { userId: user.id, tenantId: tenant.id });
+    log("Completed successfully", { userId: user.id, tenantId });
 
     return new Response(JSON.stringify({ ok: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

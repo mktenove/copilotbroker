@@ -53,14 +53,20 @@ const Onboarding = () => {
         } else if (sessionId) {
           try {
             const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("Tempo esgotado (20s). A assinatura pode estar sendo processada — tente novamente em instantes.")), 20000)
+              setTimeout(() => reject(new Error("Tempo esgotado (20s). Tente novamente em instantes.")), 20000)
             );
             const { error, data } = await Promise.race([
               supabase.functions.invoke("confirm-checkout", { body: { session_id: sessionId } }),
               timeoutPromise,
             ]);
             if (error) {
-              setVerifyError(`Erro ao ativar assinatura: ${error.message}`);
+              // Extract real error message from the response body
+              let realMsg = error.message;
+              try {
+                const body = await (error as any).context?.json?.();
+                if (body?.error) realMsg = body.error;
+              } catch {}
+              setVerifyError(`Erro ao ativar assinatura: ${realMsg}`);
             } else if (data?.error) {
               setVerifyError(`Erro ao ativar assinatura: ${data.error}`);
             }
