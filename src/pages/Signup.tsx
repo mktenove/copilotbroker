@@ -60,6 +60,8 @@ const Signup = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("[SIGNUP] handleSubmit called", { name, email, agreedTerms });
+
     if (!name.trim() || !email.trim() || !password.trim()) {
       toast.error("Preencha todos os campos obrigatórios.");
       return;
@@ -68,9 +70,14 @@ const Signup = () => {
       toast.error("A senha deve ter pelo menos 6 caracteres.");
       return;
     }
+    if (!agreedTerms) {
+      toast.error("Aceite os Termos de Uso para continuar.");
+      return;
+    }
 
     setIsLoading(true);
     try {
+      console.log("[SIGNUP] calling supabase.auth.signUp...");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -79,7 +86,10 @@ const Signup = () => {
         },
       });
 
+      console.log("[SIGNUP] signUp result", { user: data?.user?.id, identities: data?.user?.identities?.length, session: !!data?.session, error: error?.message });
+
       if (error) {
+        console.error("[SIGNUP] error from signUp:", error.message);
         if (error.message?.includes("already registered") || error.message?.includes("already been registered")) {
           toast.error(
             "Este email já está cadastrado. Faça login.",
@@ -93,6 +103,7 @@ const Signup = () => {
       // Supabase silently handles duplicate emails when email confirmation is enabled.
       // It returns a fake user with empty identities array instead of an error.
       if (!data.session && (!data.user || data.user.identities?.length === 0)) {
+        console.log("[SIGNUP] duplicate email detected via empty identities");
         toast.error(
           "Este email já está cadastrado. Faça login.",
           { action: { label: "Ir para login", onClick: () => navigate("/auth") } }
@@ -108,6 +119,7 @@ const Signup = () => {
         navigate("/auth");
       }
     } catch (err: any) {
+      console.error("[SIGNUP] catch:", err);
       toast.error(err.message || "Erro ao criar conta.");
     } finally {
       setIsLoading(false);
