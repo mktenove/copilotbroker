@@ -17,50 +17,58 @@ const Onboarding = () => {
 
   useEffect(() => {
     const verify = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        navigate("/auth");
-        return;
-      }
-
-      // Check if user already has a tenant with a proper name
-      const { data: membership } = await (supabase
-        .from("tenant_memberships" as any)
-        .select("tenant_id")
-        .eq("user_id", session.user.id)
-        .eq("is_active", true)
-        .maybeSingle() as any);
-
-      if (membership) {
-        const { data: tenant } = await (supabase
-          .from("tenants" as any)
-          .select("name, status")
-          .eq("id", membership.tenant_id)
-          .single() as any);
-
-        if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
-          navigate("/admin");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          navigate("/auth");
           return;
         }
-      } else if (sessionId) {
-        // Webhook may not have fired yet — use fallback to confirm the checkout
-        try {
-          const { error, data } = await supabase.functions.invoke("confirm-checkout", {
-            body: { session_id: sessionId },
-          });
-          if (error) {
-            toast.error(`Erro ao ativar assinatura: ${error.message}`);
-          } else if (data?.error) {
-            toast.error(`Erro ao ativar assinatura: ${data.error}`);
-          }
-        } catch (err: any) {
-          toast.error(`Erro ao processar pagamento: ${err.message || "Tente novamente."}`);
-        }
-      } else {
-        toast.error("Sessão de pagamento não encontrada. Contate o suporte.");
-      }
 
-      setIsVerifying(false);
+        // Check if user already has a tenant with a proper name
+        const { data: membership } = await (supabase
+          .from("tenant_memberships" as any)
+          .select("tenant_id")
+          .eq("user_id", session.user.id)
+          .eq("is_active", true)
+          .maybeSingle() as any);
+
+        if (membership) {
+          const { data: tenant } = await (supabase
+            .from("tenants" as any)
+            .select("name, status")
+            .eq("id", membership.tenant_id)
+            .single() as any);
+
+          if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
+            navigate("/admin");
+            return;
+          }
+        } else if (sessionId) {
+          // Webhook may not have fired yet — use fallback to confirm the checkout
+          try {
+            const timeoutPromise = new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error("Tempo esgotado ao ativar assinatura")), 20000)
+            );
+            const { error, data } = await Promise.race([
+              supabase.functions.invoke("confirm-checkout", { body: { session_id: sessionId } }),
+              timeoutPromise,
+            ]);
+            if (error) {
+              toast.error(`Erro ao ativar assinatura: ${error.message}`);
+            } else if (data?.error) {
+              toast.error(`Erro ao ativar assinatura: ${data.error}`);
+            }
+          } catch (err: any) {
+            toast.error(`Erro ao processar pagamento: ${err.message || "Tente novamente."}`);
+          }
+        } else {
+          toast.error("Sessão de pagamento não encontrada. Contate o suporte.");
+        }
+      } catch (err: any) {
+        toast.error(err.message || "Erro ao verificar conta.");
+      } finally {
+        setIsVerifying(false);
+      }
     };
 
     verify();
