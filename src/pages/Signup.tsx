@@ -30,34 +30,31 @@ const Signup = () => {
 
   // If already logged in, redirect to dashboard instead of starting checkout again
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (event === "TOKEN_REFRESHED") return;
-        if (session) {
-          // User already has an account — check their role and redirect to dashboard
-          try {
-            const { data: rolesData } = await (supabase
-              .from("user_roles" as any)
-              .select("role")
-              .eq("user_id", session.user.id) as any);
-            const roles = (rolesData || []).map((r: { role: string }) => r.role);
-            if (roles.includes("broker") || roles.includes("leader")) {
-              navigate("/corretor/admin", { replace: true });
-            } else if (roles.includes("admin")) {
-              navigate("/admin", { replace: true });
-            } else {
-              // No role yet (just signed up, waiting for checkout) — let them proceed
-              setIsCheckingAuth(false);
-            }
-          } catch {
-            setIsCheckingAuth(false);
-          }
+    const checkSession = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          setIsCheckingAuth(false);
+          return;
+        }
+        const { data: rolesData } = await (supabase
+          .from("user_roles" as any)
+          .select("role")
+          .eq("user_id", session.user.id) as any);
+        const roles = (rolesData || []).map((r: { role: string }) => r.role);
+        if (roles.includes("broker") || roles.includes("leader")) {
+          navigate("/corretor/admin", { replace: true });
+        } else if (roles.includes("admin")) {
+          navigate("/admin", { replace: true });
         } else {
+          // No role yet — show form so they can sign up and go to checkout
           setIsCheckingAuth(false);
         }
+      } catch {
+        setIsCheckingAuth(false);
       }
-    );
-    return () => subscription.unsubscribe();
+    };
+    checkSession();
   }, [navigate]);
 
   const startCheckout = async () => {
