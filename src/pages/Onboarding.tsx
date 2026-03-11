@@ -18,7 +18,9 @@ const Onboarding = () => {
   useEffect(() => {
     const verify = async () => {
       try {
+        console.log("[ONBOARDING] verify start, sessionId:", sessionId);
         const { data: { session } } = await supabase.auth.getSession();
+        console.log("[ONBOARDING] session:", session?.user?.id ?? "none");
         if (!session) {
           navigate("/auth");
           return;
@@ -32,12 +34,16 @@ const Onboarding = () => {
           .eq("is_active", true)
           .maybeSingle() as any);
 
+        console.log("[ONBOARDING] membership:", membership?.tenant_id ?? "none");
+
         if (membership) {
           const { data: tenant } = await (supabase
             .from("tenants" as any)
             .select("name, status")
             .eq("id", membership.tenant_id)
             .single() as any);
+
+          console.log("[ONBOARDING] tenant:", tenant?.name, tenant?.status);
 
           if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
             navigate("/admin");
@@ -83,7 +89,9 @@ const Onboarding = () => {
 
     setIsLoading(true);
     try {
+      console.log("[ONBOARDING] handleSubmit start, orgName:", orgName);
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("[ONBOARDING] handleSubmit session:", session?.user?.id ?? "none");
       if (!session) throw new Error("Não autenticado");
 
       // Get user's tenant
@@ -93,6 +101,8 @@ const Onboarding = () => {
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .maybeSingle() as any);
+
+      console.log("[ONBOARDING] handleSubmit membership:", membership?.tenant_id ?? "none");
 
       if (!membership) {
         toast.error("Assinatura não encontrada. Tente novamente em alguns segundos.");
@@ -107,10 +117,12 @@ const Onboarding = () => {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
-      await (supabase
+      console.log("[ONBOARDING] updating tenant name...");
+      const { error: updateError } = await (supabase
         .from("tenants" as any)
         .update({ name: orgName.trim(), slug: slug || `org-${Date.now()}` })
         .eq("id", membership.tenant_id) as any);
+      console.log("[ONBOARDING] tenant update done, error:", updateError?.message ?? "none");
 
       // Create broker record for the owner if not exists
       const { data: existingBroker } = await (supabase
@@ -142,11 +154,13 @@ const Onboarding = () => {
       toast.success("Conta configurada com sucesso!");
 
       // Check user role to navigate to correct dashboard
-      const { data: roleData } = await (supabase
+      console.log("[ONBOARDING] fetching user role...");
+      const { data: roleData, error: roleError } = await (supabase
         .from("user_roles" as any)
         .select("role")
         .eq("user_id", session.user.id)
         .maybeSingle() as any);
+      console.log("[ONBOARDING] role:", roleData?.role ?? "none", "error:", roleError?.message ?? "none");
 
       const destination = roleData?.role === "admin" ? "/admin" : "/corretor/admin";
       // Force full reload so TenantContext reinitializes with the new tenant
