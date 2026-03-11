@@ -16,6 +16,16 @@ const CopilotHero = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center px-4 py-20 overflow-hidden">
+      {/* Top navigation bar */}
+      <div className="absolute top-0 left-0 right-0 z-20 flex justify-end px-6 py-4">
+        <a
+          href="/auth"
+          className="text-sm text-muted-foreground hover:text-foreground transition-colors font-mono"
+        >
+          Já tem uma conta? <span className="text-primary font-semibold">Fazer login</span>
+        </a>
+      </div>
+
       {/* Grid pattern background */}
       <div className="absolute inset-0 opacity-[0.03]" aria-hidden="true">
         <div className="absolute inset-0" style={{
