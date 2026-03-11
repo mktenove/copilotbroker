@@ -72,13 +72,21 @@ serve(async (req) => {
     const dbPlanType = planType === "imobiliaria" ? "real_estate" : planType;
     const userRole = planType === "imobiliaria" ? "admin" : "broker";
 
-    // Look up existing tenant by stripe subscription (handles partial webhook runs)
+    // Look up existing tenant by subscription OR customer (handles partial webhook runs)
     let tenantId: string;
-    const { data: existingTenant } = await supabase
+    const { data: bySubscription } = await supabase
       .from("tenants")
       .select("id")
       .eq("stripe_subscription_id", session.subscription as string)
       .maybeSingle();
+
+    const { data: byCustomer } = !bySubscription ? await supabase
+      .from("tenants")
+      .select("id")
+      .eq("stripe_customer_id", session.customer as string)
+      .maybeSingle() : { data: null };
+
+    const existingTenant = bySubscription || byCustomer;
 
     if (existingTenant) {
       log("Reusing existing tenant", { tenantId: existingTenant.id });
