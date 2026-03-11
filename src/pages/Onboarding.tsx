@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { Building2, Check } from "lucide-react";
+import { Building2, Check, AlertTriangle } from "lucide-react";
 import logoCopilot from "@/assets/copilot-logo-dark.png";
 
 const Onboarding = () => {
@@ -11,6 +10,9 @@ const Onboarding = () => {
   const [orgName, setOrgName] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isVerifying, setIsVerifying] = useState(true);
+  const [verifyError, setVerifyError] = useState("");
+  const [submitStatus, setSubmitStatus] = useState("");
+  const [submitError, setSubmitError] = useState("");
   const navigate = useNavigate();
 
   const sessionId = searchParams.get("session_id");
@@ -18,23 +20,18 @@ const Onboarding = () => {
   useEffect(() => {
     const verify = async () => {
       try {
-        console.log("[ONBOARDING] verify start, sessionId:", sessionId);
         const { data: { session } } = await supabase.auth.getSession();
-        console.log("[ONBOARDING] session:", session?.user?.id ?? "none");
         if (!session) {
           navigate("/auth");
           return;
         }
 
-        // Check if user already has a tenant with a proper name
         const { data: membership } = await (supabase
           .from("tenant_memberships" as any)
           .select("tenant_id")
           .eq("user_id", session.user.id)
           .eq("is_active", true)
           .maybeSingle() as any);
-
-        console.log("[ONBOARDING] membership:", membership?.tenant_id ?? "none");
 
         if (membership) {
           const { data: tenant } = await (supabase
@@ -43,10 +40,7 @@ const Onboarding = () => {
             .eq("id", membership.tenant_id)
             .single() as any);
 
-          console.log("[ONBOARDING] tenant:", tenant?.name, tenant?.status);
-
           if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
-            // Already configured — redirect to role-appropriate dashboard
             const { data: roleData } = await (supabase
               .from("user_roles" as any)
               .select("role")
@@ -57,28 +51,27 @@ const Onboarding = () => {
             return;
           }
         } else if (sessionId) {
-          // Webhook may not have fired yet — use fallback to confirm the checkout
           try {
             const timeoutPromise = new Promise<never>((_, reject) =>
-              setTimeout(() => reject(new Error("Tempo esgotado ao ativar assinatura")), 20000)
+              setTimeout(() => reject(new Error("Tempo esgotado (20s). A assinatura pode estar sendo processada — tente novamente em instantes.")), 20000)
             );
             const { error, data } = await Promise.race([
               supabase.functions.invoke("confirm-checkout", { body: { session_id: sessionId } }),
               timeoutPromise,
             ]);
             if (error) {
-              toast.error(`Erro ao ativar assinatura: ${error.message}`);
+              setVerifyError(`Erro ao ativar assinatura: ${error.message}`);
             } else if (data?.error) {
-              toast.error(`Erro ao ativar assinatura: ${data.error}`);
+              setVerifyError(`Erro ao ativar assinatura: ${data.error}`);
             }
           } catch (err: any) {
-            toast.error(`Erro ao processar pagamento: ${err.message || "Tente novamente."}`);
+            setVerifyError(err.message || "Erro ao processar pagamento. Tente novamente.");
           }
         } else {
-          toast.error("Sessão de pagamento não encontrada. Contate o suporte.");
+          setVerifyError("Sessão de pagamento não encontrada. Contate o suporte em suporte@copilotbroker.com.br");
         }
       } catch (err: any) {
-        toast.error(err.message || "Erro ao verificar conta.");
+        setVerifyError(err.message || "Erro ao verificar conta.");
       } finally {
         setIsVerifying(false);
       }
@@ -90,18 +83,19 @@ const Onboarding = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!orgName.trim()) {
-      toast.error("Digite o nome da sua empresa.");
+      setSubmitError("Digite o nome da sua empresa.");
       return;
     }
 
     setIsLoading(true);
-    try {
-      console.log("[ONBOARDING] handleSubmit start, orgName:", orgName);
-      const { data: { session } } = await supabase.auth.getSession();
-      console.log("[ONBOARDING] handleSubmit session:", session?.user?.id ?? "none");
-      if (!session) throw new Error("Não autenticado");
+    setSubmitError("");
+    setSubmitStatus("Verificando sessão...");
 
-      // Get user's tenant
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+
+      setSubmitStatus("Buscando assinatura...");
       const { data: membership } = await (supabase
         .from("tenant_memberships" as any)
         .select("tenant_id")
@@ -109,14 +103,12 @@ const Onboarding = () => {
         .eq("is_active", true)
         .maybeSingle() as any);
 
-      console.log("[ONBOARDING] handleSubmit membership:", membership?.tenant_id ?? "none");
-
       if (!membership) {
-        toast.error("Assinatura não encontrada. Tente novamente em alguns segundos.");
+        setSubmitError("Assinatura não encontrada. Aguarde alguns segundos e tente novamente. Se o problema persistir, contate o suporte.");
         return;
       }
 
-      // Update tenant name and slug
+      setSubmitStatus("Salvando nome da empresa...");
       const slug = orgName
         .toLowerCase()
         .normalize("NFD")
@@ -124,14 +116,17 @@ const Onboarding = () => {
         .replace(/[^a-z0-9]+/g, "-")
         .replace(/(^-|-$)/g, "");
 
-      console.log("[ONBOARDING] updating tenant name...");
       const { error: updateError } = await (supabase
         .from("tenants" as any)
         .update({ name: orgName.trim(), slug: slug || `org-${Date.now()}` })
         .eq("id", membership.tenant_id) as any);
-      console.log("[ONBOARDING] tenant update done, error:", updateError?.message ?? "none");
 
-      // Create broker record for the owner if not exists
+      if (updateError) {
+        setSubmitError(`Erro ao salvar nome: ${updateError.message}`);
+        return;
+      }
+
+      setSubmitStatus("Configurando perfil...");
       const { data: existingBroker } = await (supabase
         .from("brokers" as any)
         .select("id")
@@ -148,7 +143,7 @@ const Onboarding = () => {
           .replace(/[^a-z0-9]+/g, "-")
           .replace(/(^-|-$)/g, "");
 
-        await (supabase.from("brokers" as any).insert({
+        const { error: brokerError } = await (supabase.from("brokers" as any).insert({
           user_id: session.user.id,
           name: userName,
           email: userEmail,
@@ -156,26 +151,33 @@ const Onboarding = () => {
           tenant_id: membership.tenant_id,
           is_active: true,
         }) as any);
+
+        if (brokerError) {
+          setSubmitError(`Erro ao criar perfil: ${brokerError.message}`);
+          return;
+        }
       }
 
-      toast.success("Conta configurada com sucesso!");
-
-      // Check user role to navigate to correct dashboard
-      console.log("[ONBOARDING] fetching user role...");
+      setSubmitStatus("Verificando permissões...");
       const { data: roleData, error: roleError } = await (supabase
         .from("user_roles" as any)
         .select("role")
         .eq("user_id", session.user.id)
         .maybeSingle() as any);
-      console.log("[ONBOARDING] role:", roleData?.role ?? "none", "error:", roleError?.message ?? "none");
 
+      if (roleError) {
+        setSubmitError(`Erro ao verificar permissões: ${roleError.message}`);
+        return;
+      }
+
+      setSubmitStatus("Acessando painel...");
       const destination = roleData?.role === "admin" ? "/admin" : "/corretor/admin";
-      // Force full reload so TenantContext reinitializes with the new tenant
       window.location.replace(destination);
     } catch (err: any) {
-      toast.error(err.message || "Erro ao configurar conta");
+      setSubmitError(err.message || "Erro ao configurar conta. Tente novamente.");
     } finally {
       setIsLoading(false);
+      setSubmitStatus("");
     }
   };
 
@@ -184,7 +186,7 @@ const Onboarding = () => {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="w-12 h-12 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Verificando sua conta...</p>
+          <p className="text-muted-foreground">Ativando sua assinatura...</p>
         </div>
       </div>
     );
@@ -210,6 +212,13 @@ const Onboarding = () => {
             </p>
           </div>
 
+          {verifyError && (
+            <div className="mb-6 p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex gap-3">
+              <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+              <p className="text-sm text-destructive">{verifyError}</p>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
@@ -228,6 +237,17 @@ const Onboarding = () => {
               </div>
             </div>
 
+            {submitError && (
+              <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/30 flex gap-3">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
+                <p className="text-sm text-destructive">{submitError}</p>
+              </div>
+            )}
+
+            {isLoading && submitStatus && (
+              <p className="text-center text-sm text-muted-foreground">{submitStatus}</p>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -236,7 +256,7 @@ const Onboarding = () => {
               {isLoading ? (
                 <span className="flex items-center justify-center gap-2">
                   <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                  Configurando...
+                  {submitStatus || "Configurando..."}
                 </span>
               ) : (
                 "Começar a usar"
