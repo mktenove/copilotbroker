@@ -90,8 +90,9 @@ const Signup = () => {
         throw error;
       }
 
-      // Supabase silently returns user=null when email already exists (email confirmation enabled)
-      if (!data.user && !data.session) {
+      // Supabase silently handles duplicate emails when email confirmation is enabled.
+      // It returns a fake user with empty identities array instead of an error.
+      if (!data.session && (!data.user || data.user.identities?.length === 0)) {
         toast.error(
           "Este email já está cadastrado. Faça login.",
           { action: { label: "Ir para login", onClick: () => navigate("/auth") } }
