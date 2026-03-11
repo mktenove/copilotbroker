@@ -70,8 +70,18 @@ export function TenantProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Initialize from current session immediately (avoids TOKEN_REFRESHED trap)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchTenant(session.user.id);
+      } else {
+        setTenant({ tenantId: null, tenantName: null, planType: null, status: null, isLoading: false });
+      }
+    });
+
+    // Listen for subsequent sign-in / sign-out events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "TOKEN_REFRESHED") return;
+      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
       if (!session?.user) {
         setTenant({ tenantId: null, tenantName: null, planType: null, status: null, isLoading: false });
         return;

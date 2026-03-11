@@ -46,7 +46,14 @@ const Onboarding = () => {
           console.log("[ONBOARDING] tenant:", tenant?.name, tenant?.status);
 
           if (tenant && tenant.name !== "Minha Empresa" && tenant.status === "active") {
-            navigate("/admin");
+            // Already configured — redirect to role-appropriate dashboard
+            const { data: roleData } = await (supabase
+              .from("user_roles" as any)
+              .select("role")
+              .eq("user_id", session.user.id)
+              .maybeSingle() as any);
+            const dest = roleData?.role === "admin" ? "/admin" : "/corretor/admin";
+            navigate(dest, { replace: true });
             return;
           }
         } else if (sessionId) {

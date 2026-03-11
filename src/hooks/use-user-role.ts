@@ -81,9 +81,18 @@ export const useUserRole = () => {
       }
     };
 
+    // Initialize from current session immediately (avoids TOKEN_REFRESHED trap)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        fetchUserRole(session.user.id);
+      } else {
+        setState({ role: null, isLoading: false, brokerId: null, isLeader: false, tenantId: null });
+      }
+    });
+
+    // Listen for subsequent sign-in / sign-out events
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      // Only react to meaningful auth events
-      if (event === "TOKEN_REFRESHED") return;
+      if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
 
       if (!session?.user) {
         cachedUserIdRef.current = null;
