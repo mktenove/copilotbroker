@@ -226,7 +226,7 @@ const Signup = () => {
                     const Icon = key === "broker" ? Zap : Building2;
                     const bullets = key === "broker"
                       ? ["1 licença", "CRM de lançamentos", "Copiloto IA para WhatsApp", "Sem fidelidade"]
-                      : ["3 usuários inclusos (1 admin + 2 corretores)", "+ R$ 4,90 por usuário adicional", "Roletas de distribuição", "Campanhas de WhatsApp", "Sem fidelidade"];
+                      : [`3 usuários inclusos (1 admin + 2 corretores)`, `+ R$ ${EXTRA_USER_PRICE.price.toFixed(2).replace(".", ",")} por usuário adicional`, "Roletas de distribuição", "Campanhas de WhatsApp", "Sem fidelidade"];
 
                     return (
                       <button
