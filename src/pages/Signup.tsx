@@ -8,7 +8,7 @@ import { Check, Minus, Plus, Mail, Lock, User, Shield, Zap, Building2, ArrowRigh
 import copilotLogo from "@/assets/copilot-logo-dark.png";
 
 const Signup = () => {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
   const planParam = searchParams.get("plan");
@@ -232,7 +232,7 @@ const Signup = () => {
                       <button
                         key={key}
                         type="button"
-                        onClick={() => setSelectedPlan(key)}
+                        onClick={() => { setSelectedPlan(key); setSearchParams({ plan: key }); }}
                         className={`relative w-full text-left rounded-2xl border-2 p-5 transition-all duration-300 ${
                           isSelected
                             ? "border-primary bg-primary/5 shadow-[0_0_30px_hsl(var(--primary)/0.08)]"
