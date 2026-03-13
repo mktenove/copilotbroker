@@ -190,22 +190,32 @@ export function useBrokerProjects(brokerId?: string | null) {
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
-      const newProject = res.data?.project;
-      if (newProject && broker) {
-        // Optimistically add to state so it appears immediately
+      // Build project from what we sent (reliable, doesn't depend on res.data parsing)
+      const createdProject: Project = {
+        id: res.data?.project?.id || crypto.randomUUID(),
+        name: projectData.name,
+        slug: projectData.slug,
+        city: projectData.city,
+        city_slug: projectData.city_slug,
+      };
+
+      if (broker) {
         setBrokerProjects((prev) => [
           ...prev,
           {
-            id: res.data.broker_project_id || crypto.randomUUID(),
-            project: newProject as Project,
-            url: `/${newProject.city_slug}/${newProject.slug}/${broker.slug}`,
+            id: res.data?.broker_project_id || crypto.randomUUID(),
+            project: createdProject,
+            url: `/${createdProject.city_slug}/${createdProject.slug}/${broker.slug}`,
           },
         ]);
-        setAvailableProjects((prev) => [...prev, newProject as Project]);
-      } else {
-        await fetchBrokerProjects();
-        await fetchAvailableProjects();
+        setAvailableProjects((prev) => [...prev, createdProject]);
       }
+
+      // Also schedule a background refetch to sync any DB-side data
+      setTimeout(() => {
+        fetchBrokerProjects();
+        fetchAvailableProjects();
+      }, 1500);
 
       toast.success("Empreendimento criado e adicionado!");
       return true;
