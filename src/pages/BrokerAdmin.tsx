@@ -41,7 +41,9 @@ const BrokerAdmin = () => {
   const [viewMode, setViewMode] = useState<"kanban" | "list">(() =>
     (location.state as any)?.view === "list" ? "list" : "kanban"
   );
-  const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
+  const [isAddLeadOpen, setIsAddLeadOpen] = useState<boolean>(
+    () => !!(location.state as any)?.openAddLead
+  );
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
 

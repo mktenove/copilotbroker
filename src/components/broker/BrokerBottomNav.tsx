@@ -66,7 +66,11 @@ export function BrokerBottomNav({
         onViewChange("kanban");
       }
     } else if (id === "add") {
-      onAddLead?.();
+      if (location.pathname !== "/corretor/admin") {
+        navigate("/corretor/admin", { state: { view: "kanban", openAddLead: true } });
+      } else {
+        onAddLead?.();
+      }
     } else if (id === "inbox") {
       navigate("/corretor/inbox");
     } else if (id === "copilot") {

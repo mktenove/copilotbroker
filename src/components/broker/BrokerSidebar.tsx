@@ -44,7 +44,13 @@ export function BrokerSidebar({
       {/* Add Lead FAB */}
       <div className="flex items-center justify-center py-3">
         <button
-          onClick={onAddLead}
+          onClick={() => {
+            if (location.pathname !== "/corretor/admin") {
+              navigate("/corretor/admin", { state: { view: "kanban", openAddLead: true } });
+            } else {
+              onAddLead?.();
+            }
+          }}
           className="w-10 h-10 rounded-full flex items-center justify-center bg-[#FFFF00] hover:brightness-110 text-black shadow-lg shadow-[hsl(60_100%_50%/0.3)] transition-all duration-200 active:scale-95"
           title="Adicionar Lead"
         >
