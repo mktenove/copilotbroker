@@ -75,7 +75,6 @@ export function useBrokerProjects(brokerId?: string | null) {
         .eq("is_active", true);
 
       if (bpError) throw bpError;
-      console.log("[fetchBrokerProjects] brokerId:", brokerId, "bpRows:", bpRows);
       if (!bpRows || bpRows.length === 0) {
         setBrokerProjects([]);
         return;
@@ -88,7 +87,6 @@ export function useBrokerProjects(brokerId?: string | null) {
         .select("id, name, slug, city, city_slug")
         .in("id", projectIds);
 
-      console.log("[fetchBrokerProjects] projectsData:", projectsData, "projError:", projError);
       if (projError) throw projError;
 
       const projectMap = new Map((projectsData || []).map((p: any) => [p.id, p]));
@@ -209,7 +207,6 @@ export function useBrokerProjects(brokerId?: string | null) {
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
-      console.log("[createAndAddProject] res.data:", res.data, "frontend brokerId:", brokerId);
 
       // Build project from what we sent (reliable, doesn't depend on res.data parsing)
       const createdProject: Project = {
