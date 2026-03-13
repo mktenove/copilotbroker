@@ -229,7 +229,6 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Nome completo"
                 className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500"
-                autoFocus
               />
             </div>
 
