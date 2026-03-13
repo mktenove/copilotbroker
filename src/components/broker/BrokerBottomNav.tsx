@@ -61,7 +61,7 @@ export function BrokerBottomNav({
   const handleClick = (id: string) => {
     if (id === "kanban") {
       if (location.pathname !== "/corretor/admin") {
-        navigate("/corretor/admin?view=kanban");
+        navigate("/corretor/admin", { state: { view: "kanban" } });
       } else {
         onViewChange("kanban");
       }
@@ -80,7 +80,7 @@ export function BrokerBottomNav({
     setIsMoreOpen(false);
     if (action === "list") {
       if (location.pathname !== "/corretor/admin") {
-        navigate("/corretor/admin?view=list");
+        navigate("/corretor/admin", { state: { view: "list" } });
       } else {
         onViewChange("list");
       }

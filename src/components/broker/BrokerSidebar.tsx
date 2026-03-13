@@ -63,7 +63,7 @@ export function BrokerSidebar({
               key={item.id}
               onClick={() => {
                 if (location.pathname !== "/corretor/admin") {
-                  navigate(`/corretor/admin?view=${item.id}`);
+                  navigate("/corretor/admin", { state: { view: item.id } });
                 } else {
                   onViewChange(item.id);
                 }
