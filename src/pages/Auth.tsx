@@ -67,9 +67,18 @@ const Auth = () => {
   };
 
   useEffect(() => {
+    // Check current session immediately (avoids hanging on onAuthStateChange delay)
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        checkUserRoleAndRedirect(session.user.id);
+      } else {
+        setIsCheckingAuth(false);
+      }
+    });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === "TOKEN_REFRESHED") return;
+        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
         if (session) {
           await checkUserRoleAndRedirect(session.user.id);
         } else {
