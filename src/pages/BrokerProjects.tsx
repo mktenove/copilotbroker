@@ -298,7 +298,7 @@ const BrokerProjects = () => {
             <Button 
               size="sm"
               onClick={() => setIsAddDialogOpen(true)}
-              className="bg-yellow-500 hover:bg-yellow-600 text-black shrink-0 text-xs"
+              className="bg-[#FFFF00] hover:brightness-110 text-black shrink-0 text-xs"
             >
               <Plus className="w-4 h-4 mr-1" />
               Adicionar agora
