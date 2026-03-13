@@ -207,16 +207,23 @@ const resolveUazapiBase = async (): Promise<string> => {
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
-// Helper to create authenticated Supabase client
+// Service role client for all DB operations
 // deno-lint-ignore no-explicit-any
-const getSupabaseClient = (authHeader?: string): SupabaseClient<any, any, any> => {
-  if (authHeader) {
-    const token = authHeader.replace("Bearer ", "");
-    return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
-      global: { headers: { Authorization: `Bearer ${token}` } },
-    });
-  }
-  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const getSupabaseClient = (_authHeader?: string): SupabaseClient<any, any, any> => {
+  return createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+};
+
+// Verify the caller's JWT and return the user (pass token explicitly — required in Edge Functions)
+const getAuthUser = async (authHeader?: string) => {
+  if (!authHeader) return { user: null, error: new Error("No auth header") };
+  const token = authHeader.replace("Bearer ", "");
+  const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+  const { data, error } = await admin.auth.getUser(token);
+  return { user: data?.user ?? null, error };
 };
 
 // Normalize broker name for UAZAPI instance naming
@@ -279,7 +286,7 @@ app.post("/init", async (c) => {
     const supabase = getSupabaseClient(authHeader);
 
     // Get current user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -505,7 +512,7 @@ app.get("/status", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -692,7 +699,7 @@ app.get("/qrcode", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -965,7 +972,7 @@ app.post("/logout", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1058,7 +1065,7 @@ app.post("/restart", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1149,7 +1156,7 @@ app.delete("/delete", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1243,7 +1250,7 @@ app.post("/pause", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1295,7 +1302,7 @@ app.post("/settings", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1343,7 +1350,7 @@ app.post("/sync", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
@@ -1424,7 +1431,7 @@ app.get("/debug/instances", async (c) => {
     const authHeader = c.req.header("Authorization");
     const supabase = getSupabaseClient(authHeader);
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const { user, error: authError } = await getAuthUser(authHeader);
     if (authError || !user) {
       return c.json({ error: "Unauthorized" }, 401, corsHeaders);
     }
