@@ -2,7 +2,9 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { InviteMemberModal } from "./InviteMemberModal";
 import { toast } from "sonner";
-import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail, Crown, Users } from "lucide-react";
+import { Plus, Edit2, Trash2, RefreshCw, Copy, Check, Clock, Mail, Crown, Users, ShoppingCart, AlertCircle } from "lucide-react";
+import { useTenant } from "@/contexts/TenantContext";
+import { useSeatLimit } from "@/hooks/use-seat-limit";
 import {
   Dialog,
   DialogContent,
@@ -79,6 +81,8 @@ interface BrokerFormData {
 }
 
 const BrokerManagement = () => {
+  const { tenantId } = useTenant();
+  const { maxUsers, usedSeats, remainingSeats, isAtLimit, refetch: refetchSeats } = useSeatLimit();
   const [brokers, setBrokers] = useState<Broker[]>([]);
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [roletas, setRoletas] = useState<Roleta[]>([]);
@@ -99,8 +103,26 @@ const BrokerManagement = () => {
   const [copiedSlug, setCopiedSlug] = useState<string | null>(null);
   const [selectedBrokerForHistory, setSelectedBrokerForHistory] = useState<Broker | null>(null);
   const [isInviteOpen, setIsInviteOpen] = useState(false);
-  
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false);
+
   const { lastAccessMap, leadsCountMap, fetchLastAccess } = useBrokersLastAccess();
+
+  const openCustomerPortal = async () => {
+    setIsOpeningPortal(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+      const res = await supabase.functions.invoke("customer-portal", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (res.error) throw res.error;
+      window.open(res.data.url, "_blank");
+    } catch (err) {
+      toast.error("Erro ao abrir portal de assinatura.");
+    } finally {
+      setIsOpeningPortal(false);
+    }
+  };
 
   useEffect(() => {
     fetchAll();
@@ -365,6 +387,18 @@ const BrokerManagement = () => {
           await syncBrokerProjects(newBroker.id, selectedProjects);
         }
 
+        // Add to tenant memberships (enables seat limit enforcement)
+        if (tenantId) {
+          await (supabase
+            .from("tenant_memberships" as any)
+            .insert({
+              tenant_id: tenantId,
+              user_id: userId,
+              role: "member",
+              is_active: true,
+            }) as any);
+        }
+
         toast.success(`Corretor criado com sucesso!`);
       }
 
@@ -373,9 +407,12 @@ const BrokerManagement = () => {
       setFormData({ name: "", email: "", whatsapp: "", password: "", lider_id: "" });
       setSelectedProjects([]);
       fetchAll();
+      refetchSeats();
     } catch (error: any) {
       console.error("Erro ao salvar corretor:", error);
-      if (error.message?.includes("duplicate key")) {
+      if (error.message?.includes("USER_LIMIT_EXCEEDED")) {
+        toast.error("Limite de usuários atingido. Contrate mais usuários no portal de assinatura.");
+      } else if (error.message?.includes("duplicate key")) {
         toast.error("Email ou slug já está em uso.");
       } else {
         toast.error(error.message || "Erro ao salvar corretor.");
@@ -483,7 +520,33 @@ const BrokerManagement = () => {
             {activeCount} ativo{activeCount !== 1 ? 's' : ''} · {leaders.length} líder{leaders.length !== 1 ? 'es' : ''} · {brokers.length} total
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {/* Seat usage indicator */}
+          {maxUsers !== null && (
+            <div className={cn(
+              "flex items-center gap-2 px-3 py-2 rounded-xl border text-sm",
+              isAtLimit
+                ? "bg-red-500/10 border-red-500/30 text-red-400"
+                : "bg-[#1e1e22] border-[#2a2a2e] text-muted-foreground"
+            )}>
+              {isAtLimit && <AlertCircle className="w-4 h-4 shrink-0" />}
+              <span className="font-medium">{usedSeats}/{maxUsers}</span>
+              <span className="hidden sm:inline">usuários</span>
+            </div>
+          )}
+
+          {/* Buy more seats */}
+          {isAtLimit && (
+            <button
+              onClick={openCustomerPortal}
+              disabled={isOpeningPortal}
+              className="flex items-center gap-2 px-4 py-2.5 bg-[#FFFF00] text-black font-semibold rounded-xl hover:brightness-110 transition-all text-sm disabled:opacity-60"
+            >
+              <ShoppingCart className="w-4 h-4" />
+              {isOpeningPortal ? "Abrindo..." : "Contratar mais"}
+            </button>
+          )}
+
           <button
             onClick={() => setIsInviteOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-accent text-accent-foreground font-semibold rounded-xl hover:brightness-110 transition-all border border-border"
@@ -494,8 +557,10 @@ const BrokerManagement = () => {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <button
-                onClick={() => handleOpenDialog()}
-                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20"
+                onClick={() => !isAtLimit && handleOpenDialog()}
+                disabled={isAtLimit}
+                className="flex items-center gap-2 px-5 py-2.5 bg-primary text-primary-foreground font-semibold rounded-xl hover:brightness-110 transition-all shadow-lg shadow-primary/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                title={isAtLimit ? "Limite de usuários atingido" : undefined}
               >
                 <Plus className="w-5 h-5" />
                 Novo Corretor
