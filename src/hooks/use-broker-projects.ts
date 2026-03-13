@@ -254,36 +254,37 @@ export function useBrokerProjects(brokerId?: string | null) {
   const removeProject = async (brokerProjectId: string, projectId?: string) => {
     setIsSaving(true);
     try {
+      console.log("[removeProject] start", { brokerProjectId, projectId });
       if (projectId) {
-        // Delete the project entirely (RLS policy allows it for standalone brokers)
-        // broker_projects row will be removed by cascade or after
         const { error: delErr } = await supabase
           .from("projects")
           .delete()
           .eq("id", projectId);
 
+        console.log("[removeProject] delete result:", delErr);
+
         if (delErr) {
-          // Fallback: deactivate both the association and the project itself
-          await Promise.all([
+          const [bpRes, projRes] = await Promise.all([
             supabase.from("broker_projects").update({ is_active: false }).eq("id", brokerProjectId),
             supabase.from("projects").update({ is_active: false }).eq("id", projectId),
           ]);
+          console.log("[removeProject] fallback results:", bpRes.error, projRes.error);
         }
       } else {
-        await supabase
+        const { error: bpErr } = await supabase
           .from("broker_projects")
           .update({ is_active: false })
           .eq("id", brokerProjectId);
+        console.log("[removeProject] bp update result:", bpErr);
       }
 
-      // Optimistic update
       setBrokerProjects(prev => prev.filter(bp => bp.id !== brokerProjectId));
       setAvailableProjects(prev => prev.filter(p => p.id !== projectId));
 
       toast.success("Empreendimento removido!");
       return true;
     } catch (error) {
-      console.error("Error removing project:", error);
+      console.error("[removeProject] caught error:", error);
       toast.error("Erro ao remover empreendimento.");
       return false;
     } finally {
