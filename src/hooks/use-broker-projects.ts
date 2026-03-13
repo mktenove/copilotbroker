@@ -204,6 +204,7 @@ export function useBrokerProjects(brokerId?: string | null) {
         },
       });
 
+      console.error("[create-broker-project] raw response:", JSON.stringify(res));
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
