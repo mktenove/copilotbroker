@@ -95,7 +95,15 @@ Deno.serve(async (req) => {
 
     if (assocErr) throw new Error(`Erro ao associar empreendimento: ${assocErr.message}`);
 
-    return new Response(JSON.stringify({ success: true, project: newProject }), {
+    // Fetch the broker_project id for optimistic UI update
+    const { data: bpRow } = await supabase
+      .from("broker_projects")
+      .select("id")
+      .eq("broker_id", brokerRow.id)
+      .eq("project_id", newProject.id)
+      .single();
+
+    return new Response(JSON.stringify({ success: true, project: newProject, broker_project_id: bpRow?.id ?? null }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

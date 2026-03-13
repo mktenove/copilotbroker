@@ -190,9 +190,24 @@ export function useBrokerProjects(brokerId?: string | null) {
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
+      const newProject = res.data?.project;
+      if (newProject && broker) {
+        // Optimistically add to state so it appears immediately
+        setBrokerProjects((prev) => [
+          ...prev,
+          {
+            id: res.data.broker_project_id || crypto.randomUUID(),
+            project: newProject as Project,
+            url: `/${newProject.city_slug}/${newProject.slug}/${broker.slug}`,
+          },
+        ]);
+        setAvailableProjects((prev) => [...prev, newProject as Project]);
+      } else {
+        await fetchBrokerProjects();
+        await fetchAvailableProjects();
+      }
+
       toast.success("Empreendimento criado e adicionado!");
-      await fetchBrokerProjects();
-      await fetchAvailableProjects();
       return true;
     } catch (error: any) {
       console.error("Error creating project:", error);
