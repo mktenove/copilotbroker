@@ -13,7 +13,7 @@ interface CreateProjectData {
   hero_title?: string | null;
   hero_subtitle?: string | null;
   webhook_url?: string | null;
-  tenant_id: string;
+  tenant_id?: string | null;
 }
 
 interface Project {
@@ -168,6 +168,13 @@ export function useBrokerProjects(brokerId?: string | null) {
 
     setIsSaving(true);
     try {
+      // Resolve tenant_id — use provided value or fall back to DB function
+      let tenantId = projectData.tenant_id || null;
+      if (!tenantId) {
+        const { data } = await (supabase.rpc("get_my_tenant_id" as any) as any);
+        tenantId = data || null;
+      }
+
       // Create the project
       const { data: newProject, error: createError } = await supabase
         .from("projects")
@@ -181,7 +188,7 @@ export function useBrokerProjects(brokerId?: string | null) {
           hero_title: projectData.hero_title || null,
           hero_subtitle: projectData.hero_subtitle || null,
           webhook_url: projectData.webhook_url || null,
-          tenant_id: projectData.tenant_id,
+          tenant_id: tenantId,
           is_active: true,
         })
         .select("id, name, slug, city, city_slug")
@@ -196,7 +203,7 @@ export function useBrokerProjects(brokerId?: string | null) {
           broker_id: brokerId,
           project_id: newProject.id,
           is_active: true,
-          tenant_id: projectData.tenant_id,
+          tenant_id: tenantId,
         });
 
       if (assocError) throw assocError;

@@ -29,18 +29,12 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   });
 
   useEffect(() => {
-    const fetchTenant = async (userId: string) => {
+    const fetchTenant = async (_userId: string) => {
       try {
-        // Get user's tenant membership
-        const { data: membership, error: mError } = await supabase
-          .from("tenant_memberships" as any)
-          .select("tenant_id")
-          .eq("user_id", userId)
-          .eq("is_active", true)
-          .limit(1)
-          .maybeSingle() as any;
+        // Use SECURITY DEFINER RPC to get tenant_id (bypasses RLS on tenant_memberships)
+        const { data: tenantIdFromRpc } = await (supabase.rpc("get_my_tenant_id" as any) as any);
 
-        if (mError || !membership) {
+        if (!tenantIdFromRpc) {
           setTenant({ tenantId: null, tenantName: null, planType: null, status: null, isLoading: false });
           return;
         }
@@ -49,11 +43,11 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         const { data: tenantData, error: tError } = await supabase
           .from("tenants" as any)
           .select("id, name, plan_type, status")
-          .eq("id", membership.tenant_id)
+          .eq("id", tenantIdFromRpc)
           .single() as any;
 
         if (tError || !tenantData) {
-          setTenant({ tenantId: membership.tenant_id, tenantName: null, planType: null, status: null, isLoading: false });
+          setTenant({ tenantId: tenantIdFromRpc, tenantName: null, planType: null, status: null, isLoading: false });
           return;
         }
 
