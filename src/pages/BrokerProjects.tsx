@@ -169,9 +169,20 @@ const BrokerProjects = () => {
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name || !formData.slug || !formData.city || !formData.city_slug) return;
+
+    // Validation debug
+    const missing = [];
+    if (!formData.name) missing.push("name");
+    if (!formData.slug) missing.push("slug");
+    if (!formData.city) missing.push("city");
+    if (!formData.city_slug) missing.push("city_slug");
+    if (missing.length > 0) {
+      toast.error(`Campos faltando: ${missing.join(", ")}`);
+      return;
+    }
+
     if (!tenantId) {
-      toast.error("Tenant não identificado.");
+      toast.error("Erro: tenantId é null. Tente fazer logout e login novamente.");
       return;
     }
 

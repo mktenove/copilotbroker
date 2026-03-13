@@ -214,10 +214,12 @@ export function useBrokerProjects(brokerId?: string | null) {
       return true;
     } catch (error: any) {
       console.error("Error creating project:", error);
+      const code = error?.code || "sem-código";
+      const msg = error?.message || error?.details || String(error);
       if (error?.code === "23505") {
-        toast.error("Já existe um empreendimento com este slug.");
+        toast.error("Já existe um empreendimento com este slug. Tente outro nome.");
       } else {
-        toast.error("Erro ao criar empreendimento.");
+        toast.error(`Erro ao criar empreendimento [${code}]: ${msg}`, { duration: 8000 });
       }
       return false;
     } finally {
