@@ -62,6 +62,16 @@ interface ProjectFormData {
   webhook_url: string;
 }
 
+const toSlug = (value: string) =>
+  value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim();
+
 const initialFormData: ProjectFormData = {
   name: "",
   slug: "",
@@ -167,9 +177,9 @@ const BrokerProjects = () => {
 
     const projectData = {
       name: formData.name.trim(),
-      slug: formData.slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      slug: toSlug(formData.slug),
       city: formData.city.trim(),
-      city_slug: formData.city_slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      city_slug: toSlug(formData.city_slug),
       description: formData.description.trim() || null,
       status: formData.status,
       hero_title: formData.hero_title.trim() || null,
@@ -444,7 +454,11 @@ const BrokerProjects = () => {
               <Input
                 id="proj-name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(e) => {
+                  const name = e.target.value;
+                  const slug = toSlug(name);
+                  setFormData(prev => ({ ...prev, name, slug }));
+                }}
                 placeholder="Ex: Residencial Alto da Serra"
                 className="bg-[#141417] border-[#2a2a2e]"
                 required
@@ -457,33 +471,12 @@ const BrokerProjects = () => {
                 <Input
                   id="proj-city"
                   value={formData.city}
-                  onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                  onChange={(e) => {
+                    const city = e.target.value;
+                    const city_slug = toSlug(city);
+                    setFormData(prev => ({ ...prev, city, city_slug }));
+                  }}
                   placeholder="Portão"
-                  className="bg-[#141417] border-[#2a2a2e]"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="proj-city-slug">Slug da Cidade *</Label>
-                <Input
-                  id="proj-city-slug"
-                  value={formData.city_slug}
-                  onChange={(e) => setFormData(prev => ({ ...prev, city_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
-                  placeholder="portao"
-                  className="bg-[#141417] border-[#2a2a2e]"
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="proj-slug">Slug do Projeto *</Label>
-                <Input
-                  id="proj-slug"
-                  value={formData.slug}
-                  onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
-                  placeholder="goldenview"
                   className="bg-[#141417] border-[#2a2a2e]"
                   required
                 />
@@ -507,7 +500,7 @@ const BrokerProjects = () => {
             </div>
 
             <p className="text-xs text-muted-foreground">
-              URL: /{formData.city_slug || "cidade"}/{formData.slug || "projeto"}/{broker?.slug || "seu-slug"}
+              URL: /{formData.city_slug || "cidade"}/{formData.slug || "empreendimento"}/{broker?.slug || "seu-slug"}
             </p>
 
             <div className="space-y-2">
