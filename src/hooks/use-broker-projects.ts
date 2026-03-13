@@ -75,6 +75,7 @@ export function useBrokerProjects(brokerId?: string | null) {
         .eq("is_active", true);
 
       if (bpError) throw bpError;
+      console.log("[fetchBrokerProjects] brokerId:", brokerId, "bpRows:", bpRows);
       if (!bpRows || bpRows.length === 0) {
         setBrokerProjects([]);
         return;
@@ -87,6 +88,7 @@ export function useBrokerProjects(brokerId?: string | null) {
         .select("id, name, slug, city, city_slug")
         .in("id", projectIds);
 
+      console.log("[fetchBrokerProjects] projectsData:", projectsData, "projError:", projError);
       if (projError) throw projError;
 
       const projectMap = new Map((projectsData || []).map((p: any) => [p.id, p]));
