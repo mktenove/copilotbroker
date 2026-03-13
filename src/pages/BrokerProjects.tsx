@@ -96,7 +96,7 @@ const BrokerProjects = () => {
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [editingSlug, setEditingSlug] = useState("");
   const [isSlugEditing, setIsSlugEditing] = useState(false);
-  const [projectToRemove, setProjectToRemove] = useState<string | null>(null);
+  const [projectToRemove, setProjectToRemove] = useState<{ bpId: string; projectId: string } | null>(null);
 
   const {
     broker,
@@ -219,7 +219,7 @@ const BrokerProjects = () => {
 
   const handleRemoveProject = async () => {
     if (!projectToRemove) return;
-    await removeProject(projectToRemove);
+    await removeProject(projectToRemove.bpId, projectToRemove.projectId);
     setProjectToRemove(null);
   };
 
@@ -409,7 +409,7 @@ const BrokerProjects = () => {
                     <ExternalLink className="w-3.5 h-3.5" />
                   </button>
                   <button
-                    onClick={() => setProjectToRemove(bp.id)}
+                    onClick={() => setProjectToRemove({ bpId: bp.id, projectId: bp.project.id })}
                     disabled={isSaving}
                     className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
                     title="Remover empreendimento"
@@ -640,7 +640,7 @@ const BrokerProjects = () => {
           <AlertDialogHeader>
             <AlertDialogTitle className="text-foreground">Remover Empreendimento</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover este empreendimento? Você poderá adicioná-lo novamente depois.
+              Tem certeza que deseja remover este empreendimento? Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

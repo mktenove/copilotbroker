@@ -250,19 +250,37 @@ export function useBrokerProjects(brokerId?: string | null) {
     }
   };
 
-  // Remove project from broker
-  const removeProject = async (brokerProjectId: string) => {
+  // Remove project from broker — deletes the project row to free the slug
+  const removeProject = async (brokerProjectId: string, projectId?: string) => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from("broker_projects")
-        .update({ is_active: false })
-        .eq("id", brokerProjectId);
+      if (projectId) {
+        // Delete the project entirely (RLS policy allows it for standalone brokers)
+        // broker_projects row will be removed by cascade or after
+        const { error: delErr } = await supabase
+          .from("projects")
+          .delete()
+          .eq("id", projectId);
 
-      if (error) throw error;
+        if (delErr) {
+          // Fallback: just deactivate if delete is not allowed (e.g. tenant project)
+          await supabase
+            .from("broker_projects")
+            .update({ is_active: false })
+            .eq("id", brokerProjectId);
+        }
+      } else {
+        await supabase
+          .from("broker_projects")
+          .update({ is_active: false })
+          .eq("id", brokerProjectId);
+      }
+
+      // Optimistic update
+      setBrokerProjects(prev => prev.filter(bp => bp.id !== brokerProjectId));
+      setAvailableProjects(prev => prev.filter(p => p.id !== projectId));
 
       toast.success("Empreendimento removido!");
-      await fetchBrokerProjects();
       return true;
     } catch (error) {
       console.error("Error removing project:", error);
