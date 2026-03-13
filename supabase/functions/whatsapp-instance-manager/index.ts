@@ -217,12 +217,17 @@ const getSupabaseClient = (_authHeader?: string): SupabaseClient<any, any, any> 
 
 // Verify the caller's JWT and return the user (pass token explicitly — required in Edge Functions)
 const getAuthUser = async (authHeader?: string) => {
-  if (!authHeader) return { user: null, error: new Error("No auth header") };
+  if (!authHeader) {
+    console.error("[getAuthUser] No auth header provided");
+    return { user: null, error: new Error("No auth header") };
+  }
   const token = authHeader.replace("Bearer ", "");
+  console.log("[getAuthUser] token preview:", token.substring(0, 20), "SUPABASE_URL:", SUPABASE_URL ? "set" : "MISSING", "SERVICE_KEY:", SUPABASE_SERVICE_ROLE_KEY ? "set" : "MISSING");
   const admin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
     auth: { persistSession: false },
   });
   const { data, error } = await admin.auth.getUser(token);
+  console.log("[getAuthUser] result user:", data?.user?.id ?? "null", "error:", error?.message ?? "none");
   return { user: data?.user ?? null, error };
 };
 
