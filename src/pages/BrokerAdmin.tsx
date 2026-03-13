@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -36,10 +36,21 @@ const BrokerAdmin = () => {
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState<"kanban" | "list">(() =>
+    searchParams.get("view") === "list" ? "list" : "kanban"
+  );
   const [isAddLeadOpen, setIsAddLeadOpen] = useState(false);
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const navigate = useNavigate();
+
+  // Clear the ?view param from the URL after reading it on mount
+  useEffect(() => {
+    if (searchParams.has("view")) {
+      setSearchParams({}, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
 
   useEffect(() => {

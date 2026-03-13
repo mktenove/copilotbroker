@@ -60,7 +60,11 @@ export function BrokerBottomNav({
 
   const handleClick = (id: string) => {
     if (id === "kanban") {
-      onViewChange("kanban");
+      if (location.pathname !== "/corretor/admin") {
+        navigate("/corretor/admin?view=kanban");
+      } else {
+        onViewChange("kanban");
+      }
     } else if (id === "add") {
       onAddLead?.();
     } else if (id === "inbox") {
@@ -75,7 +79,11 @@ export function BrokerBottomNav({
   const handleMoreAction = (action: string) => {
     setIsMoreOpen(false);
     if (action === "list") {
-      onViewChange("list");
+      if (location.pathname !== "/corretor/admin") {
+        navigate("/corretor/admin?view=list");
+      } else {
+        onViewChange("list");
+      }
     } else if (action === "projects") {
       navigate("/corretor/empreendimentos");
     } else if (action === "roletas") {
