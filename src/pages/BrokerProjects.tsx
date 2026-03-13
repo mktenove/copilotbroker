@@ -87,7 +87,7 @@ const initialFormData: ProjectFormData = {
 const BrokerProjects = () => {
   const navigate = useNavigate();
   const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
-  const { tenantId } = useTenant();
+  const { tenantId, planType, isLoading: isTenantLoading } = useTenant();
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -241,7 +241,7 @@ const BrokerProjects = () => {
 
   const brokerInitial = broker?.name?.charAt(0).toUpperCase() || "C";
 
-  if (isRoleLoading || isLoading) {
+  if (isRoleLoading || isLoading || isTenantLoading) {
     return (
     <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-primary" />
