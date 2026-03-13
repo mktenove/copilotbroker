@@ -67,24 +67,41 @@ export function useBrokerProjects(brokerId?: string | null) {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
+      // Step 1: get broker_project rows (avoid JOIN+RLS interaction issues)
+      const { data: bpRows, error: bpError } = await supabase
         .from("broker_projects")
-        .select(`
-          id,
-          project:projects(id, name, slug, city, city_slug)
-        `)
+        .select("id, project_id")
         .eq("broker_id", brokerId)
         .eq("is_active", true);
 
-      if (error) throw error;
+      if (bpError) throw bpError;
+      if (!bpRows || bpRows.length === 0) {
+        setBrokerProjects([]);
+        return;
+      }
 
-      const projects = (data || [])
-        .filter((bp: any) => bp.project)
-        .map((bp: any) => ({
-          id: bp.id,
-          project: bp.project as Project,
-          url: `/${bp.project.city_slug}/${bp.project.slug}/${broker.slug}`,
-        }));
+      // Step 2: get project details separately
+      const projectIds = bpRows.map((bp: any) => bp.project_id);
+      const { data: projectsData, error: projError } = await supabase
+        .from("projects")
+        .select("id, name, slug, city, city_slug")
+        .in("id", projectIds);
+
+      if (projError) throw projError;
+
+      const projectMap = new Map((projectsData || []).map((p: any) => [p.id, p]));
+
+      const projects = bpRows
+        .map((bp: any) => {
+          const project = projectMap.get(bp.project_id);
+          if (!project) return null;
+          return {
+            id: bp.id,
+            project: project as Project,
+            url: `/${project.city_slug}/${project.slug}/${broker.slug}`,
+          };
+        })
+        .filter(Boolean) as BrokerProject[];
 
       setBrokerProjects(projects);
     } catch (error) {
@@ -211,11 +228,8 @@ export function useBrokerProjects(brokerId?: string | null) {
         setAvailableProjects((prev) => [...prev, createdProject]);
       }
 
-      // Also schedule a background refetch to sync any DB-side data
-      setTimeout(() => {
-        fetchBrokerProjects();
-        fetchAvailableProjects();
-      }, 1500);
+      // Sync with DB after a short delay (wait for replication)
+      setTimeout(() => { fetchBrokerProjects(); }, 2000);
 
       toast.success("Empreendimento criado e adicionado!");
       return true;
