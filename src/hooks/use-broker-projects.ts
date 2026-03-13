@@ -168,7 +168,11 @@ export function useBrokerProjects(brokerId?: string | null) {
 
     setIsSaving(true);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
+
       const res = await supabase.functions.invoke("create-broker-project", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
         body: {
           name: projectData.name,
           slug: projectData.slug,
