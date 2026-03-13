@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
+import { useTenant } from "@/contexts/TenantContext";
+import { ProjectStatus, PROJECT_STATUS_CONFIG } from "@/types/project";
 import { toast } from "sonner";
 import {
   Building2,
@@ -24,7 +26,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -40,13 +41,48 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+interface ProjectFormData {
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string;
+  description: string;
+  status: ProjectStatus;
+  hero_title: string;
+  hero_subtitle: string;
+  webhook_url: string;
+}
+
+const initialFormData: ProjectFormData = {
+  name: "",
+  slug: "",
+  city: "",
+  city_slug: "",
+  description: "",
+  status: "pre_launch",
+  hero_title: "",
+  hero_subtitle: "",
+  webhook_url: "",
+};
 
 const BrokerProjects = () => {
   const navigate = useNavigate();
   const { role, brokerId, isLoading: isRoleLoading } = useUserRole();
+  const { tenantId } = useTenant();
   const [viewMode, setViewMode] = useState<"kanban" | "list">("kanban");
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
-  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isAssociateDialogOpen, setIsAssociateDialogOpen] = useState(false);
+  const [formData, setFormData] = useState<ProjectFormData>(initialFormData);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [editingSlug, setEditingSlug] = useState("");
   const [isSlugEditing, setIsSlugEditing] = useState(false);
@@ -59,6 +95,7 @@ const BrokerProjects = () => {
     isLoading,
     isSaving,
     addProject,
+    createAndAddProject,
     removeProject,
     updateSlug,
     pendingCount,
@@ -120,12 +157,40 @@ const BrokerProjects = () => {
     window.open(url, "_blank");
   };
 
+  const handleCreateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name || !formData.slug || !formData.city || !formData.city_slug) return;
+    if (!tenantId) {
+      toast.error("Tenant não identificado.");
+      return;
+    }
+
+    const projectData = {
+      name: formData.name.trim(),
+      slug: formData.slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      city: formData.city.trim(),
+      city_slug: formData.city_slug.toLowerCase().replace(/[^a-z0-9-]/g, ""),
+      description: formData.description.trim() || null,
+      status: formData.status,
+      hero_title: formData.hero_title.trim() || null,
+      hero_subtitle: formData.hero_subtitle.trim() || null,
+      webhook_url: formData.webhook_url.trim() || null,
+      tenant_id: tenantId,
+    };
+
+    const success = await createAndAddProject(projectData);
+    if (success) {
+      setIsCreateDialogOpen(false);
+      setFormData(initialFormData);
+    }
+  };
+
   const handleAddProjects = async () => {
     for (const projectId of selectedProjectIds) {
       await addProject(projectId);
     }
     setSelectedProjectIds([]);
-    setIsAddDialogOpen(false);
+    setIsAssociateDialogOpen(false);
   };
 
   const toggleProjectSelection = (projectId: string) => {
@@ -215,64 +280,11 @@ const BrokerProjects = () => {
               Copiar todos
             </Button>
           )}
-          
-          {unassociatedProjects.length > 0 && (
-            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="text-xs">
-                  <Plus className="w-4 h-4 mr-1" />
-                  Adicionar
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                <DialogHeader>
-                  <DialogTitle className="text-foreground">
-                    Adicionar Empreendimentos
-                  </DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 mt-4">
-                  <p className="text-sm text-muted-foreground">
-                    Selecione os empreendimentos que deseja trabalhar:
-                  </p>
-                  <div className="space-y-3 max-h-[300px] overflow-y-auto">
-                    {unassociatedProjects.map((project) => (
-                      <label
-                        key={project.id}
-                        className="flex items-center gap-3 p-3 rounded-lg bg-[#141417] border border-[#2a2a2e] cursor-pointer hover:border-primary/30 transition-colors"
-                      >
-                        <Checkbox
-                          checked={selectedProjectIds.includes(project.id)}
-                          onCheckedChange={() => toggleProjectSelection(project.id)}
-                        />
-                        <div>
-                          <p className="font-medium text-foreground">{project.name}</p>
-                          <p className="text-xs text-muted-foreground">{project.city}</p>
-                        </div>
-                      </label>
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setSelectedProjectIds([]);
-                        setIsAddDialogOpen(false);
-                      }}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={handleAddProjects}
-                      disabled={selectedProjectIds.length === 0 || isSaving}
-                      className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
-                    >
-                      {isSaving ? "Adicionando..." : "Adicionar"}
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          )}
+
+          <Button size="sm" className="text-xs bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
+            <Plus className="w-4 h-4 mr-1" />
+            Novo Empreendimento
+          </Button>
         </div>
       </div>
 
@@ -295,9 +307,9 @@ const BrokerProjects = () => {
                 </p>
               </div>
             </div>
-            <Button 
+            <Button
               size="sm"
-              onClick={() => setIsAddDialogOpen(true)}
+              onClick={() => setIsAssociateDialogOpen(true)}
               className="bg-[#FFFF00] hover:brightness-110 text-black shrink-0 text-xs"
             >
               <Plus className="w-4 h-4 mr-1" />
@@ -315,12 +327,10 @@ const BrokerProjects = () => {
             <p className="text-muted-foreground mb-4">
               Você ainda não está associado a nenhum empreendimento.
             </p>
-            {unassociatedProjects.length > 0 && (
-              <Button onClick={() => setIsAddDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Empreendimento
-              </Button>
-            )}
+            <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Empreendimento
+            </Button>
           </div>
         ) : (
           brokerProjects.map((bp) => (
@@ -421,6 +431,191 @@ const BrokerProjects = () => {
           </p>
         </div>
       </div>
+
+      {/* Create New Project Dialog */}
+      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) setFormData(initialFormData); }}>
+        <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Novo Empreendimento</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreateProject} className="space-y-4 mt-2">
+            <div className="space-y-2">
+              <Label htmlFor="proj-name">Nome do Empreendimento *</Label>
+              <Input
+                id="proj-name"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Ex: Residencial Alto da Serra"
+                className="bg-[#141417] border-[#2a2a2e]"
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="proj-city">Cidade *</Label>
+                <Input
+                  id="proj-city"
+                  value={formData.city}
+                  onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                  placeholder="Portão"
+                  className="bg-[#141417] border-[#2a2a2e]"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proj-city-slug">Slug da Cidade *</Label>
+                <Input
+                  id="proj-city-slug"
+                  value={formData.city_slug}
+                  onChange={(e) => setFormData(prev => ({ ...prev, city_slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                  placeholder="portao"
+                  className="bg-[#141417] border-[#2a2a2e]"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="proj-slug">Slug do Projeto *</Label>
+                <Input
+                  id="proj-slug"
+                  value={formData.slug}
+                  onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") }))}
+                  placeholder="goldenview"
+                  className="bg-[#141417] border-[#2a2a2e]"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="proj-status">Status</Label>
+                <Select
+                  value={formData.status}
+                  onValueChange={(value: ProjectStatus) => setFormData(prev => ({ ...prev, status: value }))}
+                >
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PROJECT_STATUS_CONFIG).map(([key, config]) => (
+                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              URL: /{formData.city_slug || "cidade"}/{formData.slug || "projeto"}/{broker?.slug || "seu-slug"}
+            </p>
+
+            <div className="space-y-2">
+              <Label htmlFor="proj-description">Descrição</Label>
+              <Textarea
+                id="proj-description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Descrição curta do empreendimento..."
+                rows={2}
+                className="bg-[#141417] border-[#2a2a2e]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="proj-hero-title">Título do Hero</Label>
+              <Input
+                id="proj-hero-title"
+                value={formData.hero_title}
+                onChange={(e) => setFormData(prev => ({ ...prev, hero_title: e.target.value }))}
+                placeholder="Seu Futuro Endereço de Alto Padrão"
+                className="bg-[#141417] border-[#2a2a2e]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="proj-hero-subtitle">Subtítulo do Hero</Label>
+              <Input
+                id="proj-hero-subtitle"
+                value={formData.hero_subtitle}
+                onChange={(e) => setFormData(prev => ({ ...prev, hero_subtitle: e.target.value }))}
+                placeholder="Terrenos a partir de 500m²"
+                className="bg-[#141417] border-[#2a2a2e]"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="proj-webhook">Webhook URL (opcional)</Label>
+              <Input
+                id="proj-webhook"
+                type="url"
+                value={formData.webhook_url}
+                onChange={(e) => setFormData(prev => ({ ...prev, webhook_url: e.target.value }))}
+                placeholder="https://webhook.example.com/..."
+                className="bg-[#141417] border-[#2a2a2e]"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="ghost" onClick={() => { setIsCreateDialogOpen(false); setFormData(initialFormData); }}>
+                Cancelar
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSaving || !formData.name || !formData.slug || !formData.city || !formData.city_slug}
+                className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
+              >
+                {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Criar Empreendimento"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Associate Existing Projects Dialog */}
+      {unassociatedProjects.length > 0 && (
+        <Dialog open={isAssociateDialogOpen} onOpenChange={setIsAssociateDialogOpen}>
+          <DialogContent className="bg-[#1e1e22] border-[#2a2a2e]">
+            <DialogHeader>
+              <DialogTitle className="text-foreground">Adicionar Empreendimentos</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 mt-2">
+              <p className="text-sm text-muted-foreground">
+                Selecione os empreendimentos que deseja trabalhar:
+              </p>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto">
+                {unassociatedProjects.map((project) => (
+                  <label
+                    key={project.id}
+                    className="flex items-center gap-3 p-3 rounded-lg bg-[#141417] border border-[#2a2a2e] cursor-pointer hover:border-primary/30 transition-colors"
+                  >
+                    <Checkbox
+                      checked={selectedProjectIds.includes(project.id)}
+                      onCheckedChange={() => toggleProjectSelection(project.id)}
+                    />
+                    <div>
+                      <p className="font-medium text-foreground">{project.name}</p>
+                      <p className="text-xs text-muted-foreground">{project.city}</p>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="ghost" onClick={() => { setSelectedProjectIds([]); setIsAssociateDialogOpen(false); }}>
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleAddProjects}
+                  disabled={selectedProjectIds.length === 0 || isSaving}
+                  className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
+                >
+                  {isSaving ? "Adicionando..." : "Adicionar"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Remove Confirmation Dialog */}
       <AlertDialog open={!!projectToRemove} onOpenChange={() => setProjectToRemove(null)}>

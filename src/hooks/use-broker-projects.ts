@@ -1,6 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { ProjectStatus } from "@/types/project";
+
+interface CreateProjectData {
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string;
+  description?: string | null;
+  status: ProjectStatus;
+  hero_title?: string | null;
+  hero_subtitle?: string | null;
+  webhook_url?: string | null;
+  tenant_id: string;
+}
 
 interface Project {
   id: string;
@@ -148,6 +162,62 @@ export function useBrokerProjects(brokerId?: string | null) {
     }
   };
 
+  // Create a new project and auto-associate with this broker
+  const createAndAddProject = async (projectData: CreateProjectData) => {
+    if (!brokerId) return false;
+
+    setIsSaving(true);
+    try {
+      // Create the project
+      const { data: newProject, error: createError } = await supabase
+        .from("projects")
+        .insert({
+          name: projectData.name,
+          slug: projectData.slug,
+          city: projectData.city,
+          city_slug: projectData.city_slug,
+          description: projectData.description || null,
+          status: projectData.status,
+          hero_title: projectData.hero_title || null,
+          hero_subtitle: projectData.hero_subtitle || null,
+          webhook_url: projectData.webhook_url || null,
+          tenant_id: projectData.tenant_id,
+          is_active: true,
+        })
+        .select("id, name, slug, city, city_slug")
+        .single();
+
+      if (createError) throw createError;
+
+      // Auto-associate with broker
+      const { error: assocError } = await supabase
+        .from("broker_projects")
+        .insert({
+          broker_id: brokerId,
+          project_id: newProject.id,
+          is_active: true,
+          tenant_id: projectData.tenant_id,
+        });
+
+      if (assocError) throw assocError;
+
+      toast.success("Empreendimento criado e adicionado!");
+      await fetchBrokerProjects();
+      await fetchAvailableProjects();
+      return true;
+    } catch (error: any) {
+      console.error("Error creating project:", error);
+      if (error?.code === "23505") {
+        toast.error("Já existe um empreendimento com este slug.");
+      } else {
+        toast.error("Erro ao criar empreendimento.");
+      }
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // Remove project from broker
   const removeProject = async (brokerProjectId: string) => {
     setIsSaving(true);
@@ -263,6 +333,7 @@ export function useBrokerProjects(brokerId?: string | null) {
     isLoading,
     isSaving,
     addProject,
+    createAndAddProject,
     removeProject,
     updateSlug,
     checkSlugAvailability,
