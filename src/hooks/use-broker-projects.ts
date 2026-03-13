@@ -204,8 +204,17 @@ export function useBrokerProjects(brokerId?: string | null) {
         },
       });
 
-      console.error("[create-broker-project] raw response:", JSON.stringify(res));
-      if (res.error) throw new Error(res.error.message);
+      if (res.error) {
+        let errMsg = res.error.message;
+        try {
+          const body = await (res.error as any).context?.json?.();
+          console.error("[create-broker-project] error body:", body);
+          errMsg = body?.error || errMsg;
+        } catch {
+          console.error("[create-broker-project] raw error:", res.error);
+        }
+        throw new Error(errMsg);
+      }
       if (res.data?.error) throw new Error(res.data.error);
 
 
