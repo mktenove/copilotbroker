@@ -58,8 +58,7 @@ const TAB_GROUPS = [
     label: "WhatsApp",
     tabs: [
       { id: "overview", label: "Visão Global", icon: Eye },
-      { id: "global-connection", label: "Conexão Global", icon: Globe },
-      { id: "connection", label: "Conexão", icon: Wifi },
+      { id: "global-connection", label: "Conexão", icon: Globe },
       { id: "campaigns", label: "Campanhas", icon: Megaphone },
       { id: "queue", label: "Fila", icon: Send },
       { id: "automation", label: "Automação", icon: Bot },
@@ -281,10 +280,6 @@ export default function AdminCopilotConfig() {
 
             <TabsContent value="global-connection" className="mt-4">
               <GlobalConnectionTab />
-            </TabsContent>
-
-            <TabsContent value="connection" className="mt-4">
-              <ConnectionTab />
             </TabsContent>
 
             <TabsContent value="campaigns" className="mt-4">

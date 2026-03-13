@@ -197,10 +197,6 @@ const AdminWhatsApp = () => {
               </TabsTrigger>
               <TabsTrigger value="global-connection" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
                 <Globe className="w-4 h-4" />
-                <span className="hidden sm:inline">Conexão Global</span>
-              </TabsTrigger>
-              <TabsTrigger value="connection" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
-                <Wifi className="w-4 h-4" />
                 <span className="hidden sm:inline">Conexão</span>
               </TabsTrigger>
               <TabsTrigger value="campaigns" className="gap-2 text-slate-400 data-[state=active]:bg-[#2a2a2e] data-[state=active]:text-white hover:text-white">
@@ -237,10 +233,6 @@ const AdminWhatsApp = () => {
 
             <TabsContent value="global-connection" className="mt-6">
               <GlobalConnectionTab />
-            </TabsContent>
-
-            <TabsContent value="connection" className="mt-6">
-              <ConnectionTab />
             </TabsContent>
 
             <TabsContent value="campaigns" className="mt-6">
