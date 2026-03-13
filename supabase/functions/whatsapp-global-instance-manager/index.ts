@@ -25,7 +25,7 @@ function getHonoCors(c: { req: { header: (name: string) => string | undefined } 
 // Default corsHeaders for routes that don't have access to `c` easily.
 // The preflight handler uses getHonoCors(c) for dynamic origin.
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://onovocondominio.com.br",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
 };
