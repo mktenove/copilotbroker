@@ -10,9 +10,8 @@ function getHonoCors(c: { req: { header: (name: string) => string | undefined } 
   return getCorsHeaders(new Request("https://dummy", { headers: { origin } }));
 }
 
-// Default corsHeaders for routes — restricted to primary domain (no wildcard).
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://onovocondominio.com.br",
+  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
