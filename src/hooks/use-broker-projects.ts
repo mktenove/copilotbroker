@@ -263,11 +263,11 @@ export function useBrokerProjects(brokerId?: string | null) {
           .eq("id", projectId);
 
         if (delErr) {
-          // Fallback: just deactivate if delete is not allowed (e.g. tenant project)
-          await supabase
-            .from("broker_projects")
-            .update({ is_active: false })
-            .eq("id", brokerProjectId);
+          // Fallback: deactivate both the association and the project itself
+          await Promise.all([
+            supabase.from("broker_projects").update({ is_active: false }).eq("id", brokerProjectId),
+            supabase.from("projects").update({ is_active: false }).eq("id", projectId),
+          ]);
         }
       } else {
         await supabase
