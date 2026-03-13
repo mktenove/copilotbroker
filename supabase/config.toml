@@ -1,5 +1,11 @@
 project_id = "rsbkcuyvnzpqqcbbaoqc"
 
+[functions.whatsapp-instance-manager]
+verify_jwt = false
+
+[functions.whatsapp-global-instance-manager]
+verify_jwt = false
+
 [functions.create-broker-project]
 verify_jwt = false
 
