@@ -208,11 +208,8 @@ export function useBrokerProjects(brokerId?: string | null) {
         let errMsg = res.error.message;
         try {
           const body = await (res.error as any).context?.json?.();
-          console.error("[create-broker-project] error body:", body);
           errMsg = body?.error || errMsg;
-        } catch {
-          console.error("[create-broker-project] raw error:", res.error);
-        }
+        } catch { /* ignore */ }
         throw new Error(errMsg);
       }
       if (res.data?.error) throw new Error(res.data.error);

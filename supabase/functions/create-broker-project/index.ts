@@ -57,30 +57,43 @@ Deno.serve(async (req) => {
       throw new Error("Campos obrigatórios: name, slug, city, city_slug");
     }
 
-    // Create project (service role bypasses RLS)
-    const { data: newProject, error: projErr } = await supabase
-      .from("projects")
-      .insert({
-        name,
-        slug,
-        city,
-        city_slug,
-        description: description || null,
-        status: status || "pre_launch",
-        hero_title: hero_title || null,
-        hero_subtitle: hero_subtitle || null,
-        webhook_url: webhook_url || null,
-        tenant_id: tenant_id || null,
-        is_active: true,
-      })
-      .select("id, name, slug, city, city_slug")
-      .single();
+    // Create project — retry with suffix if slug conflicts
+    let newProject: { id: string; name: string; slug: string; city: string; city_slug: string } | null = null;
+    let finalSlug = slug;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const { data, error: projErr } = await supabase
+        .from("projects")
+        .insert({
+          name,
+          slug: finalSlug,
+          city,
+          city_slug,
+          description: description || null,
+          status: status || "pre_launch",
+          hero_title: hero_title || null,
+          hero_subtitle: hero_subtitle || null,
+          webhook_url: webhook_url || null,
+          tenant_id: tenant_id || null,
+          is_active: true,
+        })
+        .select("id, name, slug, city, city_slug")
+        .single();
 
-    if (projErr) {
+      if (!projErr) {
+        newProject = data;
+        break;
+      }
       if (projErr.code === "23505") {
-        throw new Error("Já existe um empreendimento com este slug. Tente outro nome.");
+        // Slug conflict — append random 4-char suffix and retry
+        const suffix = Math.random().toString(36).slice(2, 6);
+        finalSlug = `${slug}-${suffix}`;
+        continue;
       }
       throw new Error(`Erro ao criar empreendimento: ${projErr.message}`);
+    }
+
+    if (!newProject) {
+      throw new Error("Não foi possível criar o empreendimento. Tente um nome diferente.");
     }
 
     // Associate with broker
