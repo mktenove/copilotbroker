@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
       .eq("project_id", newProject.id)
       .single();
 
-    return new Response(JSON.stringify({ success: true, project: newProject, broker_project_id: bpRow?.id ?? null }), {
+    return new Response(JSON.stringify({ success: true, project: newProject, broker_project_id: bpRow?.id ?? null, debug_broker_id: brokerRow.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

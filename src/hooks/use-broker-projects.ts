@@ -209,6 +209,8 @@ export function useBrokerProjects(brokerId?: string | null) {
       if (res.error) throw new Error(res.error.message);
       if (res.data?.error) throw new Error(res.data.error);
 
+      console.log("[createAndAddProject] res.data:", res.data, "frontend brokerId:", brokerId);
+
       // Build project from what we sent (reliable, doesn't depend on res.data parsing)
       const createdProject: Project = {
         id: res.data?.project?.id || crypto.randomUUID(),
