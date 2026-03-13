@@ -291,15 +291,24 @@ const BrokerProjects = () => {
             </Button>
           )}
 
-          <Button size="sm" className="text-xs bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
-            <Plus className="w-4 h-4 mr-1" />
-            Novo Empreendimento
-          </Button>
+          {planType === 'broker' ? (
+            <Button size="sm" className="text-xs bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-1" />
+              Novo Empreendimento
+            </Button>
+          ) : (
+            unassociatedProjects.length > 0 && (
+              <Button size="sm" className="text-xs bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsAssociateDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-1" />
+                Adicionar
+              </Button>
+            )
+          )}
         </div>
       </div>
 
-      {/* Pending Projects Banner */}
-      {pendingCount > 0 && (
+      {/* Pending Projects Banner — only for imobiliária brokers */}
+      {planType === 'real_estate' && pendingCount > 0 && (
         <div className="bg-[#1e1e22] border border-yellow-500/30 rounded-lg p-3 mb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
@@ -337,10 +346,19 @@ const BrokerProjects = () => {
             <p className="text-muted-foreground mb-4">
               Você ainda não está associado a nenhum empreendimento.
             </p>
-            <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Novo Empreendimento
-            </Button>
+            {planType === 'broker' ? (
+              <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Novo Empreendimento
+              </Button>
+            ) : unassociatedProjects.length > 0 ? (
+              <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsAssociateDialogOpen(true)}>
+                <Plus className="w-4 h-4 mr-2" />
+                Adicionar Empreendimento
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground">Aguarde a imobiliária adicionar empreendimentos.</p>
+            )}
           </div>
         ) : (
           brokerProjects.map((bp) => (
@@ -442,8 +460,8 @@ const BrokerProjects = () => {
         </div>
       </div>
 
-      {/* Create New Project Dialog */}
-      <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) setFormData(initialFormData); }}>
+      {/* Create New Project Dialog — standalone brokers only */}
+      {planType === 'broker' && <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) setFormData(initialFormData); }}>
         <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-foreground">Novo Empreendimento</DialogTitle>
@@ -563,7 +581,7 @@ const BrokerProjects = () => {
             </div>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog>}
 
       {/* Associate Existing Projects Dialog */}
       {unassociatedProjects.length > 0 && (
