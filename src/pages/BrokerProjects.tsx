@@ -181,11 +181,6 @@ const BrokerProjects = () => {
       return;
     }
 
-    if (!tenantId) {
-      toast.error("Erro: tenantId é null. Tente fazer logout e login novamente.");
-      return;
-    }
-
     const projectData = {
       name: formData.name.trim(),
       slug: toSlug(formData.slug),
@@ -196,7 +191,7 @@ const BrokerProjects = () => {
       hero_title: formData.hero_title.trim() || null,
       hero_subtitle: formData.hero_subtitle.trim() || null,
       webhook_url: formData.webhook_url.trim() || null,
-      tenant_id: tenantId,
+      tenant_id: tenantId ?? null,
     };
 
     const success = await createAndAddProject(projectData);
