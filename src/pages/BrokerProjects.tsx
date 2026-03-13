@@ -4,7 +4,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useBrokerProjects } from "@/hooks/use-broker-projects";
 import { useTenant } from "@/contexts/TenantContext";
-import { ProjectStatus, PROJECT_STATUS_CONFIG } from "@/types/project";
 import { toast } from "sonner";
 import {
   Building2,
@@ -19,6 +18,7 @@ import {
   Save,
   ClipboardList,
   Sparkles,
+  Pencil,
 } from "lucide-react";
 import { BrokerLayout } from "@/components/broker";
 import {
@@ -41,48 +41,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CreateProjectWizard } from "@/components/projects/CreateProjectWizard";
 
-interface ProjectFormData {
-  name: string;
-  slug: string;
-  city: string;
-  city_slug: string;
-  description: string;
-  status: ProjectStatus;
-  hero_title: string;
-  hero_subtitle: string;
-  webhook_url: string;
-}
-
-const toSlug = (value: string) =>
-  value
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-")
-    .replace(/-+/g, "-")
-    .trim();
-
-const initialFormData: ProjectFormData = {
-  name: "",
-  slug: "",
-  city: "",
-  city_slug: "",
-  description: "",
-  status: "pre_launch",
-  hero_title: "",
-  hero_subtitle: "",
-  webhook_url: "",
-};
 
 const BrokerProjects = () => {
   const navigate = useNavigate();
@@ -92,7 +52,6 @@ const BrokerProjects = () => {
   const [copiedUrl, setCopiedUrl] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAssociateDialogOpen, setIsAssociateDialogOpen] = useState(false);
-  const [formData, setFormData] = useState<ProjectFormData>(initialFormData);
   const [selectedProjectIds, setSelectedProjectIds] = useState<string[]>([]);
   const [editingSlug, setEditingSlug] = useState("");
   const [isSlugEditing, setIsSlugEditing] = useState(false);
@@ -105,7 +64,6 @@ const BrokerProjects = () => {
     isLoading,
     isSaving,
     addProject,
-    createAndAddProject,
     removeProject,
     updateSlug,
     pendingCount,
@@ -167,39 +125,6 @@ const BrokerProjects = () => {
     window.open(url, "_blank");
   };
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Validation debug
-    const missing = [];
-    if (!formData.name) missing.push("name");
-    if (!formData.slug) missing.push("slug");
-    if (!formData.city) missing.push("city");
-    if (!formData.city_slug) missing.push("city_slug");
-    if (missing.length > 0) {
-      toast.error(`Campos faltando: ${missing.join(", ")}`);
-      return;
-    }
-
-    const projectData = {
-      name: formData.name.trim(),
-      slug: toSlug(formData.slug),
-      city: formData.city.trim(),
-      city_slug: toSlug(formData.city_slug),
-      description: formData.description.trim() || null,
-      status: formData.status,
-      hero_title: formData.hero_title.trim() || null,
-      hero_subtitle: formData.hero_subtitle.trim() || null,
-      webhook_url: formData.webhook_url.trim() || null,
-      tenant_id: tenantId ?? null,
-    };
-
-    const success = await createAndAddProject(projectData);
-    if (success) {
-      setIsCreateDialogOpen(false);
-      setFormData(initialFormData);
-    }
-  };
 
   const handleAddProjects = async () => {
     for (const projectId of selectedProjectIds) {
@@ -391,6 +316,13 @@ const BrokerProjects = () => {
 
                 <div className="flex items-center gap-1 shrink-0">
                   <button
+                    onClick={() => navigate(`/corretor/empreendimentos/${bp.project.id}/editor`)}
+                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
+                    title="Editar landing page"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={() => copyUrl(bp.url)}
                     className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
                     title="Copiar link"
@@ -466,128 +398,16 @@ const BrokerProjects = () => {
         </div>
       </div>
 
-      {/* Create New Project Dialog — standalone brokers only */}
-      {planType === 'broker' && <Dialog open={isCreateDialogOpen} onOpenChange={(open) => { setIsCreateDialogOpen(open); if (!open) setFormData(initialFormData); }}>
-        <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Novo Empreendimento</DialogTitle>
-          </DialogHeader>
-          <form onSubmit={handleCreateProject} className="space-y-4 mt-2">
-            <div className="space-y-2">
-              <Label htmlFor="proj-name">Nome do Empreendimento *</Label>
-              <Input
-                id="proj-name"
-                value={formData.name}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  const slug = toSlug(name);
-                  setFormData(prev => ({ ...prev, name, slug }));
-                }}
-                placeholder="Ex: Residencial Alto da Serra"
-                className="bg-[#141417] border-[#2a2a2e]"
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="proj-city">Cidade *</Label>
-                <Input
-                  id="proj-city"
-                  value={formData.city}
-                  onChange={(e) => {
-                    const city = e.target.value;
-                    const city_slug = toSlug(city);
-                    setFormData(prev => ({ ...prev, city, city_slug }));
-                  }}
-                  placeholder="Portão"
-                  className="bg-[#141417] border-[#2a2a2e]"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="proj-status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: ProjectStatus) => setFormData(prev => ({ ...prev, status: value }))}
-                >
-                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(PROJECT_STATUS_CONFIG).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <p className="text-xs text-muted-foreground">
-              URL: /{formData.city_slug || "cidade"}/{formData.slug || "empreendimento"}/{broker?.slug || "seu-slug"}
-            </p>
-
-            <div className="space-y-2">
-              <Label htmlFor="proj-description">Descrição</Label>
-              <Textarea
-                id="proj-description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Descrição curta do empreendimento..."
-                rows={2}
-                className="bg-[#141417] border-[#2a2a2e]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="proj-hero-title">Título do Hero</Label>
-              <Input
-                id="proj-hero-title"
-                value={formData.hero_title}
-                onChange={(e) => setFormData(prev => ({ ...prev, hero_title: e.target.value }))}
-                placeholder="Seu Futuro Endereço de Alto Padrão"
-                className="bg-[#141417] border-[#2a2a2e]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="proj-hero-subtitle">Subtítulo do Hero</Label>
-              <Input
-                id="proj-hero-subtitle"
-                value={formData.hero_subtitle}
-                onChange={(e) => setFormData(prev => ({ ...prev, hero_subtitle: e.target.value }))}
-                placeholder="Terrenos a partir de 500m²"
-                className="bg-[#141417] border-[#2a2a2e]"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="proj-webhook">Webhook URL (opcional)</Label>
-              <Input
-                id="proj-webhook"
-                type="url"
-                value={formData.webhook_url}
-                onChange={(e) => setFormData(prev => ({ ...prev, webhook_url: e.target.value }))}
-                placeholder="https://webhook.example.com/..."
-                className="bg-[#141417] border-[#2a2a2e]"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="ghost" onClick={() => { setIsCreateDialogOpen(false); setFormData(initialFormData); }}>
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSaving || !formData.name || !formData.slug || !formData.city || !formData.city_slug}
-                className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
-              >
-                {isSaving ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Criar Empreendimento"}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>}
+      {/* Create New Project Wizard — standalone brokers only */}
+      {planType === 'broker' && (
+        <CreateProjectWizard
+          open={isCreateDialogOpen}
+          onOpenChange={setIsCreateDialogOpen}
+          tenantId={tenantId}
+          brokerId={brokerId}
+          navigateToEditor={true}
+        />
+      )}
 
       {/* Associate Existing Projects Dialog */}
       {unassociatedProjects.length > 0 && (

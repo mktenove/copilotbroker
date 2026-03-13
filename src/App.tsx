@@ -27,6 +27,8 @@ import AdminInbox from "./pages/AdminInbox";
 import AdminCopilotConfig from "./pages/AdminCopilotConfig";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
+import LandingPage from "./pages/LandingPage";
+import ProjectEditor from "./pages/ProjectEditor";
 import Signup from "./pages/Signup";
 import BillingSuccess from "./pages/BillingSuccess";
 import BillingCancel from "./pages/BillingCancel";
@@ -77,6 +79,7 @@ const App = () => (
             <Route element={<ProtectedRoute><SubscriptionGuard><Outlet /></SubscriptionGuard></ProtectedRoute>}>
               <Route path="/corretor/admin" element={<BrokerAdmin />} />
               <Route path="/corretor/empreendimentos" element={<BrokerProjects />} />
+              <Route path="/corretor/empreendimentos/:projectId/editor" element={<ProjectEditor />} />
               <Route path="/corretor/roletas" element={<BrokerRoletasPage />} />
               <Route path="/corretor/inbox" element={<BrokerInbox />} />
               <Route path="/corretor/copiloto" element={<BrokerCopilotConfig />} />
@@ -106,6 +109,9 @@ const App = () => (
               <Route path="affiliates" element={<SuperAdminAffiliates />} />
             </Route>
             
+            {/* Public landing pages — :citySlug/:projectSlug/:brokerSlug */}
+            <Route path="/:citySlug/:projectSlug/:brokerSlug" element={<LandingPage />} />
+
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFound />} />
           </Routes>
