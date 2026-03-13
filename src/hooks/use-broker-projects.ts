@@ -250,42 +250,36 @@ export function useBrokerProjects(brokerId?: string | null) {
     }
   };
 
-  // Remove project from broker — deletes the project row to free the slug
+  // Remove project from broker — uses Edge Function (service role) to bypass RLS
   const removeProject = async (brokerProjectId: string, projectId?: string) => {
     setIsSaving(true);
     try {
-      console.log("[removeProject] start", { brokerProjectId, projectId });
-      if (projectId) {
-        const { error: delErr } = await supabase
-          .from("projects")
-          .delete()
-          .eq("id", projectId);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Sessão expirada. Faça login novamente.");
 
-        console.log("[removeProject] delete result:", delErr);
+      const res = await supabase.functions.invoke("remove-broker-project", {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { broker_project_id: brokerProjectId, project_id: projectId },
+      });
 
-        if (delErr) {
-          const [bpRes, projRes] = await Promise.all([
-            supabase.from("broker_projects").update({ is_active: false }).eq("id", brokerProjectId),
-            supabase.from("projects").update({ is_active: false }).eq("id", projectId),
-          ]);
-          console.log("[removeProject] fallback results:", bpRes.error, projRes.error);
-        }
-      } else {
-        const { error: bpErr } = await supabase
-          .from("broker_projects")
-          .update({ is_active: false })
-          .eq("id", brokerProjectId);
-        console.log("[removeProject] bp update result:", bpErr);
+      if (res.error) {
+        let errMsg = res.error.message;
+        try {
+          const body = await (res.error as any).context?.json?.();
+          errMsg = body?.error || errMsg;
+        } catch { /* ignore */ }
+        throw new Error(errMsg);
       }
+      if (res.data?.error) throw new Error(res.data.error);
 
       setBrokerProjects(prev => prev.filter(bp => bp.id !== brokerProjectId));
       setAvailableProjects(prev => prev.filter(p => p.id !== projectId));
 
       toast.success("Empreendimento removido!");
       return true;
-    } catch (error) {
-      console.error("[removeProject] caught error:", error);
-      toast.error("Erro ao remover empreendimento.");
+    } catch (error: any) {
+      console.error("Error removing project:", error);
+      toast.error(error?.message || "Erro ao remover empreendimento.");
       return false;
     } finally {
       setIsSaving(false);
