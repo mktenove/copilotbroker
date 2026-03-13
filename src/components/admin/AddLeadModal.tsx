@@ -72,31 +72,47 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     if (isOpen) {
       fetchData();
     }
-  }, [isOpen]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, defaultBrokerId]);
 
   const fetchData = async () => {
     setIsLoadingData(true);
     try {
-      const [brokersRes, projectsRes] = await Promise.all([
-        supabase
-          .from("brokers")
-          .select("id, name, slug")
-          .eq("is_active", true)
-          .order("name"),
-        supabase
-          .from("projects")
-          .select("id, name, slug")
-          .eq("is_active", true)
-          .order("name"),
-      ]);
+      let fetchedProjects: Project[] = [];
 
-      if (brokersRes.data) setBrokers(brokersRes.data);
-      if (projectsRes.data) {
-        setProjects(projectsRes.data);
-        // Set default project if only one exists
-        if (projectsRes.data.length === 1) {
-          setProjectId(projectsRes.data[0].id);
+      if (defaultBrokerId) {
+        // Broker context: only show this broker's active projects (two-step to avoid JOIN+RLS issues)
+        const { data: bpRows } = await supabase
+          .from("broker_projects" as any)
+          .select("project_id")
+          .eq("broker_id", defaultBrokerId)
+          .eq("is_active", true) as any;
+        const projectIds = (bpRows || []).map((r: { project_id: string }) => r.project_id);
+        if (projectIds.length > 0) {
+          const { data: projData } = await supabase
+            .from("projects" as any)
+            .select("id, name, slug")
+            .in("id", projectIds)
+            .order("name") as any;
+          fetchedProjects = projData || [];
         }
+        const [brokersRes] = await Promise.all([
+          supabase.from("brokers").select("id, name, slug").eq("is_active", true).order("name"),
+        ]);
+        if (brokersRes.data) setBrokers(brokersRes.data);
+      } else {
+        // Admin context: show all active projects and all brokers
+        const [brokersRes, projectsRes] = await Promise.all([
+          supabase.from("brokers").select("id, name, slug").eq("is_active", true).order("name"),
+          supabase.from("projects").select("id, name, slug").eq("is_active", true).order("name"),
+        ]);
+        if (brokersRes.data) setBrokers(brokersRes.data);
+        fetchedProjects = projectsRes.data || [];
+      }
+
+      setProjects(fetchedProjects);
+      if (fetchedProjects.length === 1) {
+        setProjectId(fetchedProjects[0].id);
       }
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
