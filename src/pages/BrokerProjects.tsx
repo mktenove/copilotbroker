@@ -264,6 +264,7 @@ const BrokerProjects = () => {
                     <Button
                       onClick={handleAddProjects}
                       disabled={selectedProjectIds.length === 0 || isSaving}
+                      className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
                     >
                       {isSaving ? "Adicionando..." : "Adicionar"}
                     </Button>
