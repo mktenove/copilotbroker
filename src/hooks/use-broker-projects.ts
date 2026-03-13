@@ -162,23 +162,14 @@ export function useBrokerProjects(brokerId?: string | null) {
     }
   };
 
-  // Create a new project and auto-associate with this broker
+  // Create a new project and auto-associate with this broker (uses Edge Function to bypass RLS)
   const createAndAddProject = async (projectData: CreateProjectData) => {
     if (!brokerId) return false;
 
     setIsSaving(true);
     try {
-      // Resolve tenant_id — use provided value or fall back to DB function
-      let tenantId = projectData.tenant_id || null;
-      if (!tenantId) {
-        const { data } = await (supabase.rpc("get_my_tenant_id" as any) as any);
-        tenantId = data || null;
-      }
-
-      // Create the project
-      const { data: newProject, error: createError } = await supabase
-        .from("projects")
-        .insert({
+      const res = await supabase.functions.invoke("create-broker-project", {
+        body: {
           name: projectData.name,
           slug: projectData.slug,
           city: projectData.city,
@@ -188,25 +179,12 @@ export function useBrokerProjects(brokerId?: string | null) {
           hero_title: projectData.hero_title || null,
           hero_subtitle: projectData.hero_subtitle || null,
           webhook_url: projectData.webhook_url || null,
-          tenant_id: tenantId,
-          is_active: true,
-        })
-        .select("id, name, slug, city, city_slug")
-        .single();
+          tenant_id: projectData.tenant_id || null,
+        },
+      });
 
-      if (createError) throw createError;
-
-      // Auto-associate with broker
-      const { error: assocError } = await supabase
-        .from("broker_projects")
-        .insert({
-          broker_id: brokerId,
-          project_id: newProject.id,
-          is_active: true,
-          tenant_id: tenantId,
-        });
-
-      if (assocError) throw assocError;
+      if (res.error) throw new Error(res.error.message);
+      if (res.data?.error) throw new Error(res.data.error);
 
       toast.success("Empreendimento criado e adicionado!");
       await fetchBrokerProjects();
@@ -214,13 +192,7 @@ export function useBrokerProjects(brokerId?: string | null) {
       return true;
     } catch (error: any) {
       console.error("Error creating project:", error);
-      const code = error?.code || "sem-código";
-      const msg = error?.message || error?.details || String(error);
-      if (error?.code === "23505") {
-        toast.error("Já existe um empreendimento com este slug. Tente outro nome.");
-      } else {
-        toast.error(`Erro ao criar empreendimento [${code}]: ${msg}`, { duration: 8000 });
-      }
+      toast.error(error?.message || String(error), { duration: 8000 });
       return false;
     } finally {
       setIsSaving(false);
