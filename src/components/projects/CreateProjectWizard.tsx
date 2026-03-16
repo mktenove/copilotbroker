@@ -140,9 +140,50 @@ export function CreateProjectWizard({
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importStep, setImportStep] = useState(-1);
+  const [importRequestDone, setImportRequestDone] = useState(false);
   const importTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const importResultRef = useRef<any>(null);
+  const importErrorRef = useRef<string | null>(null);
 
   useEffect(() => () => importTimers.current.forEach(clearTimeout), []);
+
+  // Transition only after animation completes AND request is done
+  useEffect(() => {
+    if (!importing || importStep < 3 || !importRequestDone) return;
+    const timer = setTimeout(() => {
+      if (importErrorRef.current) {
+        toast.error("Erro ao importar: " + importErrorRef.current);
+      } else if (importResultRef.current) {
+        const s = importResultRef.current;
+        setForm((prev) => ({
+          ...prev,
+          name: s.name || prev.name,
+          slug: s.name ? toSlug(s.name) : prev.slug,
+          city: s.city || prev.city,
+          city_slug: s.city ? toSlug(s.city) : prev.city_slug,
+          description: s.page_content || s.description || prev.description,
+          bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
+          suites: s.suites != null ? String(s.suites) : prev.suites,
+          parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
+          area_m2: s.area_m2 != null ? String(s.area_m2) : prev.area_m2,
+          price_range: s.price_range || prev.price_range,
+          amenities: s.amenities?.length ? s.amenities : prev.amenities,
+          main_image_url: s.main_image_url || prev.main_image_url,
+          _scraped_images: s.images || [],
+          _source_url: s._sourceUrl || prev._source_url,
+        }));
+        setMode("manual");
+        toast.success("Dados importados! Revise e complete as informações.");
+      }
+      importResultRef.current = null;
+      importErrorRef.current = null;
+      setImportRequestDone(false);
+      setImporting(false);
+      setImportStep(-1);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [importing, importStep, importRequestDone]);
+
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -152,6 +193,12 @@ export function CreateProjectWizard({
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleClose = () => {
+    importTimers.current.forEach(clearTimeout);
+    importResultRef.current = null;
+    importErrorRef.current = null;
+    setImportRequestDone(false);
+    setImporting(false);
+    setImportStep(-1);
     setMode("choose");
     setImportUrl("");
     setStep(1);
@@ -167,6 +214,9 @@ export function CreateProjectWizard({
     }
     setImporting(true);
     setImportStep(0);
+    setImportRequestDone(false);
+    importResultRef.current = null;
+    importErrorRef.current = null;
     importTimers.current.forEach(clearTimeout);
     importTimers.current = [
       setTimeout(() => setImportStep(1), 1500),
@@ -180,33 +230,11 @@ export function CreateProjectWizard({
         body: { url },
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
-
-      const s = res.data.data;
-      setForm((prev) => ({
-        ...prev,
-        name: s.name || prev.name,
-        slug: s.name ? toSlug(s.name) : prev.slug,
-        city: s.city || prev.city,
-        city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-        description: s.page_content || s.description || prev.description,
-        bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
-        suites: s.suites != null ? String(s.suites) : prev.suites,
-        parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
-        area_m2: s.area_m2 != null ? String(s.area_m2) : prev.area_m2,
-        price_range: s.price_range || prev.price_range,
-        amenities: s.amenities?.length ? s.amenities : prev.amenities,
-        main_image_url: s.main_image_url || prev.main_image_url,
-        _scraped_images: s.images || [],
-        _source_url: url,
-      }));
-      setMode("manual");
-      toast.success("Dados importados! Revise e complete as informações.");
+      importResultRef.current = { ...res.data.data, _sourceUrl: url };
     } catch (err) {
-      toast.error("Erro ao importar: " + (err instanceof Error ? err.message : String(err)));
+      importErrorRef.current = err instanceof Error ? err.message : String(err);
     } finally {
-      importTimers.current.forEach(clearTimeout);
-      setImporting(false);
-      setImportStep(-1);
+      setImportRequestDone(true);
     }
   };
 
@@ -313,6 +341,12 @@ export function CreateProjectWizard({
       setIsGenerating(false);
     }
   };
+
+  const isImported = !!form._source_url;
+  const maxStep = isImported ? 2 : 3;
+  const activeSteps = isImported
+    ? [{ id: 1, label: "Informações Básicas" }, { id: 2, label: "Conteúdo do Imóvel" }]
+    : STEPS;
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
@@ -461,7 +495,7 @@ export function CreateProjectWizard({
 
             {/* Step indicator */}
             <div className="flex items-center gap-2 my-1">
-              {STEPS.map((s, i) => (
+              {activeSteps.map((s, i) => (
                 <div key={s.id} className="flex items-center gap-2">
                   <div
                     className={cn(
@@ -481,7 +515,7 @@ export function CreateProjectWizard({
                   >
                     {s.label}
                   </span>
-                  {i < STEPS.length - 1 && (
+                  {i < activeSteps.length - 1 && (
                     <div className={cn("h-px flex-1 w-4", step > s.id ? "bg-primary" : "bg-[#2a2a2e]")} />
                   )}
                 </div>
@@ -579,8 +613,32 @@ export function CreateProjectWizard({
             </>
           )}
 
-          {/* ───── STEP 2 ───── */}
-          {step === 2 && (
+          {/* ───── STEP 2 — imported: content textarea ───── */}
+          {step === 2 && isImported && (
+            <div className="space-y-4">
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <p className="text-xs text-muted-foreground">
+                  Cole aqui todas as informações do imóvel. A IA usará este conteúdo para criar a landing page.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <Label>Conteúdo Completo do Imóvel</Label>
+                <p className="text-xs text-muted-foreground/70">
+                  Inclua: descrição, diferenciais, infraestrutura, tipologias, faixa de preço, público-alvo e qualquer informação relevante.
+                </p>
+                <Textarea
+                  value={form.description}
+                  onChange={(e) => set("description", e.target.value)}
+                  rows={10}
+                  className="bg-[#141417] border-[#2a2a2e] text-sm"
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ───── STEP 2 — manual: details ───── */}
+          {step === 2 && !isImported && (
             <>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
@@ -702,8 +760,8 @@ export function CreateProjectWizard({
             </>
           )}
 
-          {/* ───── STEP 3 ───── */}
-          {step === 3 && (
+          {/* ───── STEP 3 — manual only ───── */}
+          {step === 3 && !isImported && (
             <>
               <div className="space-y-2">
                 <Label>URL da Imagem Principal</Label>
@@ -844,7 +902,7 @@ export function CreateProjectWizard({
               Cancelar
             </Button>
 
-            {step < 3 ? (
+            {step < maxStep ? (
               <Button
                 type="button"
                 onClick={() => setStep((s) => s + 1)}
