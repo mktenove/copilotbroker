@@ -23,6 +23,15 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
   const { role, isLoading: isRoleLoading } = useUserRole();
   const [openingPortal, setOpeningPortal] = useState(false);
 
+  // Grace period: after a fresh navigation (e.g. right after login), TenantContext and
+  // useUserRole may still be fetching even though isLoading briefly shows false.
+  // Wait 600ms before acting on null tenantId to avoid premature redirect to /planos.
+  const [graceExpired, setGraceExpired] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setGraceExpired(true), 600);
+    return () => clearTimeout(t);
+  }, []);
+
   const handleOpenPortal = async () => {
     setOpeningPortal(true);
     try {
@@ -41,7 +50,7 @@ export function SubscriptionGuard({ children }: SubscriptionGuardProps) {
     }
   };
 
-  if (isLoading || isRoleLoading) {
+  if (isLoading || isRoleLoading || !graceExpired) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-primary" />
