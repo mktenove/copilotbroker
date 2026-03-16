@@ -18,6 +18,10 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Upload,
+  X,
+  Video,
+  Image as ImageIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -130,15 +134,159 @@ function EditableText({
   );
 }
 
+// ─── Image upload field ───────────────────────────────────────────────────────
+function ImageUploadField({
+  label,
+  value,
+  onChange,
+  projectId,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  projectId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "jpg";
+      const path = `projects/${projectId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("project-media")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from("project-media")
+        .getPublicUrl(path);
+      onChange(publicUrl);
+    } catch (err) {
+      toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {value && (
+        <div className="relative rounded-lg overflow-hidden h-24 bg-[#0f0f12] border border-[#2a2a2e]">
+          <img src={value} className="w-full h-full object-cover" alt="" />
+          <button
+            onClick={() => onChange("")}
+            className="absolute top-1 right-1 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="w-full text-xs border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1 h-8"
+      >
+        {uploading ? (
+          <RefreshCw className="w-3 h-3 animate-spin" />
+        ) : (
+          <ImageIcon className="w-3 h-3" />
+        )}
+        {value ? "Trocar imagem" : "Enviar imagem"}
+      </Button>
+    </div>
+  );
+}
+
+// ─── Video upload field ───────────────────────────────────────────────────────
+function VideoUploadField({
+  label,
+  value,
+  onChange,
+  projectId,
+}: {
+  label: string;
+  value: string;
+  onChange: (url: string) => void;
+  projectId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop() || "mp4";
+      const path = `projects/${projectId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("project-media")
+        .upload(path, file, { upsert: true });
+      if (error) throw error;
+      const { data: { publicUrl } } = supabase.storage
+        .from("project-media")
+        .getPublicUrl(path);
+      onChange(publicUrl);
+    } catch (err) {
+      toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      {value && (
+        <div className="relative rounded-lg overflow-hidden bg-[#0f0f12] border border-[#2a2a2e] p-2">
+          <video src={value} className="w-full max-h-32 rounded" controls />
+          <button
+            onClick={() => onChange("")}
+            className="absolute top-2 right-2 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      )}
+      <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={handleFile} />
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={uploading}
+        onClick={() => fileRef.current?.click()}
+        className="w-full text-xs border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1 h-8"
+      >
+        {uploading ? (
+          <RefreshCw className="w-3 h-3 animate-spin" />
+        ) : (
+          <Video className="w-3 h-3" />
+        )}
+        {value ? "Trocar vídeo" : "Enviar vídeo"}
+      </Button>
+    </div>
+  );
+}
+
 // ─── Section panel ─────────────────────────────────────────────────────────────
 function SectionPanel({
   section,
   data,
   onUpdate,
+  projectId,
 }: {
   section: SectionConfig;
   data: LandingPageData;
   onUpdate: (updated: LandingPageData) => void;
+  projectId: string;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -166,7 +314,7 @@ function SectionPanel({
             <EditableField label="Destaque no título (opcional)" value={h.titleHighlight} onChange={(v) => set("hero.titleHighlight", v)} />
             <EditableField label="Subtítulo" value={h.subtitle} onChange={(v) => set("hero.subtitle", v)} multiline />
             <EditableField label="Texto do botão CTA" value={h.ctaText} onChange={(v) => set("hero.ctaText", v)} />
-            <EditableField label="Imagem de fundo (URL)" value={h.bgImage || ""} onChange={(v) => set("hero.bgImage", v)} />
+            <ImageUploadField label="Imagem de fundo" value={h.bgImage || ""} onChange={(v) => set("hero.bgImage", v)} projectId={projectId} />
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Opacidade do overlay ({Math.round((h.bgOpacity ?? 0.65) * 100)}%)</Label>
               <input type="range" min="0" max="100" value={Math.round((h.bgOpacity ?? 0.65) * 100)}
@@ -268,7 +416,7 @@ function SectionPanel({
             <EditableField label="Título" value={c.title} onChange={(v) => set("cta.title", v)} />
             <EditableField label="Subtítulo" value={c.subtitle} onChange={(v) => set("cta.subtitle", v)} multiline />
             <EditableField label="Texto do botão" value={c.buttonText} onChange={(v) => set("cta.buttonText", v)} />
-            <EditableField label="Imagem de fundo (URL)" value={c.bgImage || ""} onChange={(v) => set("cta.bgImage", v)} />
+            <ImageUploadField label="Imagem de fundo" value={c.bgImage || ""} onChange={(v) => set("cta.bgImage", v)} projectId={projectId} />
           </div>
         );
       }
@@ -624,6 +772,31 @@ export default function ProjectEditor() {
                         Regenerar tudo com IA
                       </Button>
 
+                      {/* Project media */}
+                      <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
+                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                          Mídia do Projeto
+                        </p>
+                        <ImageUploadField
+                          label="Imagem principal"
+                          value={project.main_image_url || ""}
+                          projectId={project.id}
+                          onChange={async (url) => {
+                            setProject(prev => prev ? { ...prev, main_image_url: url } : prev);
+                            await supabase.from("projects").update({ main_image_url: url }).eq("id", project.id);
+                          }}
+                        />
+                        <VideoUploadField
+                          label="Vídeo do empreendimento"
+                          value={project.video_url || ""}
+                          projectId={project.id}
+                          onChange={async (url) => {
+                            setProject(prev => prev ? { ...prev, video_url: url } : prev);
+                            await supabase.from("projects").update({ video_url: url }).eq("id", project.id);
+                          }}
+                        />
+                      </div>
+
                       {/* Theme colors */}
                       <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
                         <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -667,6 +840,7 @@ export default function ProjectEditor() {
                           section={s}
                           data={lpData}
                           onUpdate={setLpData}
+                          projectId={project.id}
                         />
                       ))}
 
