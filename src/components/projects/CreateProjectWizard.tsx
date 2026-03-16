@@ -435,14 +435,16 @@ export function CreateProjectWizard({
               </>
             )}
 
-            {!importing && <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
-              <Button variant="ghost" onClick={() => setMode("choose")} className="hover:bg-[#2a2a2e]">
-                <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
-              <Button variant="ghost" onClick={() => setMode("manual")} className="hover:bg-[#2a2a2e] text-xs text-muted-foreground">
-                Pular e cadastrar manualmente
-              </Button>
-            </div>
+            {!importing && (
+              <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
+                <Button variant="ghost" onClick={() => setMode("choose")} className="hover:bg-[#2a2a2e]">
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                </Button>
+                <Button variant="ghost" onClick={() => setMode("manual")} className="hover:bg-[#2a2a2e] text-xs text-muted-foreground">
+                  Pular e cadastrar manualmente
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
