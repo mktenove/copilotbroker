@@ -97,7 +97,8 @@ const Auth = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION") return;
+        // SIGNED_IN is handled by handleSubmit directly — skip to avoid double navigation
+        if (event === "TOKEN_REFRESHED" || event === "INITIAL_SESSION" || event === "SIGNED_IN") return;
         if (session) {
           await checkUserRoleAndRedirect(session.user.id);
         } else {
