@@ -638,8 +638,8 @@ export default function ProjectEditor() {
     if (!lpData || !project) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("projects")
+      const { error } = await (supabase
+        .from("projects") as any)
         .update({ landing_page_data: lpData, landing_page_status: targetStatus })
         .eq("id", project.id);
       if (error) throw error;
