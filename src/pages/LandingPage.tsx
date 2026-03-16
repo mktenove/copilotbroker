@@ -121,7 +121,7 @@ export default function LandingPage() {
     brokerSlug: string;
   }>();
 
-  const [project, setProject] = useState<ProjectWithLP | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [lp, setLp] = useState<LandingPageData | null>(null);
   const [loading, setLoading] = useState(true);
