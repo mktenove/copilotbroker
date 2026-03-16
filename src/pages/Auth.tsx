@@ -67,11 +67,30 @@ const Auth = () => {
   };
 
   useEffect(() => {
-    // Check current session immediately (avoids hanging on onAuthStateChange delay)
+    let resolved = false;
+
+    // Safety net: if getSession() hangs (expired token refresh, network lag),
+    // show the login form after 3s instead of staying stuck on the loading screen.
+    const fallback = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        setIsCheckingAuth(false);
+      }
+    }, 3000);
+
     supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(fallback);
+      if (resolved) return;
+      resolved = true;
       if (session?.user) {
         checkUserRoleAndRedirect(session.user.id);
       } else {
+        setIsCheckingAuth(false);
+      }
+    }).catch(() => {
+      clearTimeout(fallback);
+      if (!resolved) {
+        resolved = true;
         setIsCheckingAuth(false);
       }
     });
@@ -86,7 +105,10 @@ const Auth = () => {
         }
       }
     );
-    return () => subscription.unsubscribe();
+    return () => {
+      clearTimeout(fallback);
+      subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {

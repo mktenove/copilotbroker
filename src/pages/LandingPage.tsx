@@ -306,7 +306,7 @@ export default function LandingPage() {
         .lp-section-alt { background-color: color-mix(in srgb, ${theme.bgColor} 85%, white 15%); }
       `}</style>
 
-      <div className="lp-root min-h-screen">
+      <div className="lp-root min-h-screen pb-20 md:pb-0">
         {/* ─── HERO ─────────────────────────────────────────────────────── */}
         <section
           className="relative min-h-screen flex flex-col items-center justify-center text-center px-4"
@@ -339,7 +339,7 @@ export default function LandingPage() {
 
             {/* Title */}
             <h1
-              className="text-4xl md:text-6xl font-extrabold leading-tight"
+              className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight"
               style={{ color: theme.heroStyle === "light-overlay" ? theme.bgColor : "#fff" }}
             >
               {lp.hero.titleHighlight ? (
@@ -354,7 +354,7 @@ export default function LandingPage() {
 
             {/* Subtitle */}
             <p
-              className="text-lg md:text-xl max-w-xl mx-auto"
+              className="text-base sm:text-lg md:text-xl max-w-xl mx-auto"
               style={{
                 color: theme.heroStyle === "light-overlay" ? "#374151" : "rgba(255,255,255,0.85)",
               }}
@@ -365,7 +365,7 @@ export default function LandingPage() {
             {/* CTA */}
             <button
               onClick={scrollToForm}
-              className="lp-btn inline-block px-8 py-4 rounded-xl text-lg font-bold shadow-lg transition-all hover:scale-105"
+              className="lp-btn inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold shadow-lg transition-all hover:scale-105"
             >
               {lp.hero.ctaText}
             </button>
@@ -400,13 +400,37 @@ export default function LandingPage() {
                   className="flex items-center gap-2 p-3 rounded-xl border"
                   style={{ borderColor: `${theme.primaryColor}40` }}
                 >
-                  <Check className="w-5 h-5 lp-accent shrink-0" />
-                  <span className="text-sm font-medium">{h}</span>
+                  <Check className="w-4 h-4 lp-accent shrink-0" />
+                  <span className="text-xs sm:text-sm font-medium">{h}</span>
                 </div>
               ))}
             </div>
           </div>
         </section>
+
+        {/* ─── MAP ──────────────────────────────────────────────────────── */}
+        {project.map_embed_url && (
+          <section className="py-12 px-4">
+            <div className="max-w-4xl mx-auto">
+              <div className="flex items-center gap-3 mb-4">
+                <MapPin className="w-5 h-5 lp-accent" />
+                <h2 className="text-lg md:text-xl font-semibold opacity-80">Localização no mapa</h2>
+              </div>
+              <div className="rounded-2xl overflow-hidden border" style={{ borderColor: `${theme.primaryColor}30` }}>
+                <iframe
+                  src={project.map_embed_url}
+                  width="100%"
+                  height="320"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title="Localização do empreendimento"
+                />
+              </div>
+            </div>
+          </section>
+        )}
 
         {/* ─── FEATURES / DIFERENCIAIS ──────────────────────────────────── */}
         {lp.features.length > 0 && (

@@ -177,18 +177,56 @@ ${project.description && project.description.length > 600
     : ""}
 `.trim();
 
-    let systemPrompt = `Você é um especialista em marketing imobiliário e copywriting de alta conversão no Brasil.
-Você cria landing pages persuasivas e profissionais para imóveis e empreendimentos.
+    let systemPrompt = `Você é um diretor criativo sênior + copywriter de conversão + designer de landing pages premium para o mercado imobiliário brasileiro.
+
+MISSÃO
+Criar landing pages altamente persuasivas, elegantes e com forte apelo comercial — sem visual genérico, sem "cara de template" e sem estética SaaS comum.
+
+OBJETIVO PRINCIPAL
+Fazer o visitante sentir simultaneamente:
+1. Desejo real pelo imóvel ou empreendimento
+2. Confiança total na oferta
+3. Urgência legítima para agir agora
+4. Clareza absoluta sobre o próximo passo
+
+REGRAS DE COPY — INVIOLÁVEIS
+- Nunca escrever como catálogo técnico
+- Nunca usar copy vazia: "realize seu sonho", "oportunidade imperdível", "qualidade incomparável"
+- Cada seção tem função psicológica: atrair, provar, qualificar, reduzir objeção ou converter
+- O texto deve parecer de marca premium/comercial forte, não gerado por IA
+- Sempre em português do Brasil, com densidade comercial
+- Frases curtas, seguras, específicas — com percepção de valor, não só atributos
+- Transformar atributo em impacto: não "157 m²", mas "157 m² para viver com amplitude real, receber bem e não se sentir limitado no dia a dia"
+- O visitante deve sentir que perder essa oportunidade custa algo
+- Evitar repetição de termos e subtítulos genéricos
+
+REGRAS VISUAIS / TEMA — PADRÃO
+- Estética padrão: dark luxury corporate / editorial premium
+- Fundo escuro com contraste elegante (ex: #0c0c10, #0f0e16, #12111a)
+- Cor de destaque usada com disciplina: apenas para CTA e pontos de atenção
+- Tipografia com hierarquia forte: títulos expressivos, corpo limpo
+- Proibido: visual "fofinho", gradiente roxo aleatório, blobs, "UI genérica de IA", "cara de dashboard"
+- Para imóveis de alto padrão/luxo: "Cormorant Garamond" ou "Playfair Display"
+- Para modernos/urbanos/corporativos: "Plus Jakarta Sans" ou "DM Sans"
+- Para executivos/premium: "Montserrat" ou "Raleway"
+- Para família/conforto/médio padrão: "Nunito" ou "Poppins"
+- heroStyle: sempre "dark-overlay" quando há imagem; "gradient" apenas para layout editorial puro
+- primaryColor deve ter alto contraste sobre bgColor e comunicar o posicionamento do produto (dourado, cobre, branco pérola, azul noite, terracota, verde selva — escolher com intenção)
+
+ESTRUTURA NARRATIVA OBRIGATÓRIA
+1. HERO — headline forte, específica e comercial; subheadline com contexto e benefício real; CTA claro; selo/prova inicial
+2. LOCALIZAÇÃO/POSICIONAMENTO — por que esse imóvel merece atenção; contexto, proposta e perfil ideal
+3. BENEFÍCIOS REAIS — características traduzidas em valor prático e emocional; menos lista, mais impacto
+4. DIFERENCIAIS — o que torna essa oferta superior às alternativas; específico, não genérico
+5. PARA QUEM É — qualificar o público; fazer o lead se reconhecer na descrição
+6. REDUÇÃO DE OBJEÇÃO — segurança, praticidade, liquidez, exclusividade; responder silenciosamente "por que eu deixaria meus dados?"
+7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; motivo real e concreto para agir agora
+8. CTA FINAL — forte, simples, orientado à ação; pedir o próximo passo com clareza
+
+REGRAS DE CONTEÚDO DE FONTE
+IMPORTANTE: Quando houver "Conteúdo completo do imóvel (extraído do site original)", use-o APENAS como fonte de informações factuais (localização, metragem, quartos, amenidades, diferenciais). NUNCA copie ou parafraseie trechos do texto original. Escreva copy inteiramente novo, autoral, persuasivo e premium para cada seção.
 
 O frontend que renderiza seu JSON usa React + Tailwind CSS com fontes Google Fonts.
-Ao escolher o tema visual, siga estas diretrizes:
-- primaryColor e accentColor devem ter bom contraste entre si e funcionar sobre o bgColor
-- bgColor escuro (ex: #0f0f1a, #12121e) transmite luxo/sofisticação; claro (ex: #f8f7f4, #ffffff) transmite clareza/modernidade
-- Para empreendimentos de alto padrão: fontFamily "Playfair Display" ou "Cormorant Garamond"
-- Para empreendimentos modernos/urbanos: fontFamily "Inter" ou "Plus Jakarta Sans"
-- Para empreendimentos familiares/aconchegantes: fontFamily "Nunito" ou "Poppins"
-- Para empreendimentos premium executivos: fontFamily "Montserrat" ou "Raleway"
-- heroStyle: prefira "dark-overlay" quando há imagem de fundo; "gradient" para layouts clean
 
 Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
 
@@ -209,35 +247,52 @@ Aplique as alterações solicitadas e retorne o JSON completo da landing page co
 Retorne APENAS o JSON, sem explicações.`;
     } else {
       userPrompt = `
-Crie uma landing page completa para o seguinte empreendimento imobiliário:
+Crie a landing page para o seguinte empreendimento imobiliário. Aplique toda a sua expertise de diretor criativo + copywriter de conversão + designer premium.
 
+DADOS DO EMPREENDIMENTO:
 ${projectContext}
+
+ORIENTAÇÃO CRIATIVA:
+- Escolha o posicionamento correto (luxo, premium, médio-alto, família, investimento) com base nos dados acima
+- O theme deve refletir o posicionamento com cores, tipografia e estilo coerentes
+- O hero.title deve ser uma headline comercial forte, específica e memorável — não o nome do empreendimento simplesmente
+- hero.titleHighlight deve destacar a palavra-chave mais impactante do título (pode ser vazia se não aplicável)
+- hero.subtitle deve contextualizar localização e proposta de valor com uma frase densa e persuasiva
+- location.description deve valorizar a localização de forma específica, não genérica
+- location.highlights devem ser pontos reais e concretos sobre a localização (ex: "A 500m do metrô Butantã", não só "Bem localizado")
+- features: traduzir cada atributo em valor percebido (área, dormitórios, vagas, amenidades)
+- audience: descrever perfis de comprador com especificidade — fazer o lead se reconhecer
+- urgency: inserir com elegância, baseada no status real do imóvel, sem parecer spam
+- benefits: focar em por que deixar o contato, não nos atributos do imóvel
+- cta.title: headline final que fecha a narrativa com força e clareza
+- form.subtitle: criar senso de segurança e facilidade — reduzir última objeção antes do envio
+- form.thankYouMessage: mensagem calorosa, profissional e que define o próximo passo
 
 Gere um JSON com esta estrutura EXATA:
 
 {
   "theme": {
-    "primaryColor": "cor hex adequada para o perfil do imóvel",
-    "accentColor": "cor hex de destaque complementar",
-    "bgColor": "cor hex do fundo",
+    "primaryColor": "cor hex de destaque principal — escolher com intenção (dourado, cobre, terracota, verde, azul noite etc)",
+    "accentColor": "cor hex complementar ao primary",
+    "bgColor": "cor hex do fundo — preferencialmente escuro premium",
     "textColor": "cor hex do texto principal",
-    "fontFamily": "nome da fonte Google adequada ao estilo",
-    "heroStyle": "dark-overlay ou light-overlay ou gradient"
+    "fontFamily": "fonte Google que melhor representa o posicionamento",
+    "heroStyle": "dark-overlay (padrão com imagem) ou gradient (layout editorial)"
   },
   "hero": {
-    "badge": "badge contextual ao status",
-    "title": "título principal forte e conceitual",
-    "titleHighlight": "parte do título para destacar (pode ser vazia)",
-    "subtitle": "subtítulo contextualizando localização ou proposta de valor",
-    "ctaText": "texto do botão CTA principal"
+    "badge": "selo contextual e específico ao status (ex: 'Últimas unidades · Lançamento 2025')",
+    "title": "headline comercial forte, específica e memorável",
+    "titleHighlight": "palavra-chave mais impactante do título, para destacar em cor de acento (ou string vazia)",
+    "subtitle": "frase densa: contextualiza localização + proposta de valor + quem é o imóvel",
+    "ctaText": "verbo de ação + benefício imediato (ex: 'Quero conhecer este imóvel')"
   },
   "location": {
-    "title": "título da seção de localização",
-    "description": "parágrafo valorizando a localização estratégica",
-    "highlights": ["ponto forte 1", "ponto forte 2", "ponto forte 3", "ponto forte 4"]
+    "title": "título editorial sobre a localização — não 'Localização Privilegiada'",
+    "description": "parágrafo de 2-3 frases valorizando a localização com argumentos concretos e específicos",
+    "highlights": ["ponto concreto 1", "ponto concreto 2", "ponto concreto 3", "ponto concreto 4"]
   },
   "features": [
-    {"icon": "emoji", "label": "rótulo do diferencial", "value": "valor/descrição"},
+    {"icon": "emoji", "label": "rótulo do atributo", "value": "atributo traduzido em benefício ou valor real"},
     {"icon": "emoji", "label": "rótulo", "value": "valor"},
     {"icon": "emoji", "label": "rótulo", "value": "valor"},
     {"icon": "emoji", "label": "rótulo", "value": "valor"},
@@ -245,42 +300,42 @@ Gere um JSON com esta estrutura EXATA:
     {"icon": "emoji", "label": "rótulo", "value": "valor"}
   ],
   "audience": [
-    {"title": "perfil de público 1", "description": "descrição breve"},
-    {"title": "perfil de público 2", "description": "descrição breve"},
-    {"title": "perfil de público 3", "description": "descrição breve"},
-    {"title": "perfil de público 4", "description": "descrição breve"}
+    {"title": "perfil específico 1 — fazer o lead se reconhecer", "description": "por que esse imóvel é perfeito para esse perfil"},
+    {"title": "perfil específico 2", "description": "por que esse imóvel é perfeito para esse perfil"},
+    {"title": "perfil específico 3", "description": "por que esse imóvel é perfeito para esse perfil"},
+    {"title": "perfil específico 4", "description": "por que esse imóvel é perfeito para esse perfil"}
   ],
   "urgency": {
     "type": "urgency ou opportunity ou availability",
-    "title": "título da seção de urgência/oportunidade",
-    "description": "texto persuasivo adaptado ao status do imóvel",
-    "highlight": "destaque numérico ou frase de impacto"
+    "title": "título que provoca urgência legítima e elegante",
+    "description": "texto persuasivo que justifica a urgência com argumento concreto, sem tom de spam",
+    "highlight": "frase de impacto curta ou dado numérico (ex: '12 unidades restantes')"
   },
   "benefits": [
-    {"icon": "emoji", "title": "benefício de se cadastrar 1", "description": "descrição breve"},
-    {"icon": "emoji", "title": "benefício 2", "description": "descrição breve"},
-    {"icon": "emoji", "title": "benefício 3", "description": "descrição breve"},
-    {"icon": "emoji", "title": "benefício 4", "description": "descrição breve"}
+    {"icon": "emoji", "title": "motivo concreto para deixar o contato 1", "description": "descrição de 1 frase que reduz objeção"},
+    {"icon": "emoji", "title": "motivo 2", "description": "descrição breve"},
+    {"icon": "emoji", "title": "motivo 3", "description": "descrição breve"},
+    {"icon": "emoji", "title": "motivo 4", "description": "descrição breve"}
   ],
   "cta": {
-    "title": "título do bloco CTA final",
-    "subtitle": "subtítulo convite para ação",
-    "buttonText": "texto do botão"
+    "title": "headline final que fecha a narrativa com força — sem clichê",
+    "subtitle": "frase que define o próximo passo e reduz última objeção",
+    "buttonText": "texto de ação claro e direto"
   },
   "form": {
-    "title": "título do formulário",
-    "subtitle": "subtítulo do formulário",
-    "buttonText": "texto do botão de envio",
-    "thankYouTitle": "título da tela de agradecimento",
-    "thankYouMessage": "mensagem de agradecimento após envio"
+    "title": "título do formulário — curto e orientado ao benefício",
+    "subtitle": "frase que cria segurança e define o que acontece após o envio",
+    "buttonText": "texto do botão — verbo de ação",
+    "thankYouTitle": "título da confirmação — caloroso e profissional",
+    "thankYouMessage": "mensagem que confirma o recebimento, cria expectativa positiva e define próximo passo"
   },
-  "floatingButtonText": "texto do botão flutuante mobile",
+  "floatingButtonText": "texto curto do botão flutuante mobile — ação + benefício",
   "footer": {
-    "disclaimer": "disclaimer legal breve"
+    "disclaimer": "disclaimer legal breve e profissional"
   }
 }
 
-Retorne APENAS o JSON, sem markdown, sem explicações.`;
+Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     }
 
     let jsonText = (await callAi(systemPrompt, userPrompt)).trim();

@@ -73,7 +73,8 @@ function extractImages(html: string): string[] {
   const seen = new Set<string>();
   const push = (url: string) => {
     if (!url || seen.has(url)) return;
-    if (url.startsWith("http") && /\.(jpg|jpeg|png|webp|gif)/i.test(url.split("?")[0])) {
+    const clean = url.split("?")[0].split("#")[0];
+    if (url.startsWith("http") && /\.(jpg|jpeg|png|webp|gif)/i.test(clean)) {
       seen.add(url);
     }
   };
@@ -82,21 +83,44 @@ function extractImages(html: string): string[] {
   for (const m of html.matchAll(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/gi)) push(m[1]);
   for (const m of html.matchAll(/<meta[^>]*content="([^"]+)"[^>]*property="og:image"/gi)) push(m[1]);
 
-  // JSON-LD "image"
+  // JSON-LD "image" as string or object
   for (const m of html.matchAll(/"image"\s*:\s*"(https?:\/\/[^"]+)"/g)) push(m[1]);
   for (const m of html.matchAll(/"url"\s*:\s*"(https?:\/\/[^"]+\.(?:jpg|jpeg|png|webp)[^"]*)"/gi)) push(m[1]);
 
-  // data-src / data-lazy-src on img tags (common in BR real estate sites)
-  for (const m of html.matchAll(/data-(?:src|original|lazy-src|full)="(https?:\/\/[^"]+)"/gi)) {
-    if (seen.size < 20) push(m[1]);
+  // JSON arrays of image URLs in script tags (e.g. window.__STATE__ = {..., fotos: ["https://..."]})
+  for (const m of html.matchAll(/"(https?:\/\/[^"]*\.(?:jpg|jpeg|png|webp)(?:[^"]{0,60})?)"(?:\s*,?\s*"https?)?/gi)) {
+    if (seen.size < 50) push(m[1]);
+  }
+
+  // srcset attributes
+  for (const m of html.matchAll(/srcset="([^"]+)"/gi)) {
+    for (const part of m[1].split(",")) {
+      const src = part.trim().split(/\s+/)[0];
+      if (seen.size < 50) push(src);
+    }
+  }
+
+  // data-src / data-lazy-src / data-original on img tags (common in BR real estate sites)
+  for (const m of html.matchAll(/data-(?:src|original|lazy-src|full|image|bg)="(https?:\/\/[^"]+)"/gi)) {
+    if (seen.size < 50) push(m[1]);
+  }
+
+  // CSS background-image: url(...)
+  for (const m of html.matchAll(/background-image\s*:\s*url\(\s*['"]?(https?:\/\/[^'")\s]+)['"]?\s*\)/gi)) {
+    if (seen.size < 50) push(m[1]);
   }
 
   // Regular src on img tags
   for (const m of html.matchAll(/<img[^>]+src="(https?:\/\/[^"]+)"/gi)) {
-    if (seen.size < 20) push(m[1]);
+    if (seen.size < 50) push(m[1]);
   }
 
-  return [...seen].slice(0, 20);
+  // data-zoom / data-full / data-large on anchor tags
+  for (const m of html.matchAll(/data-(?:zoom|full|large|highres)="(https?:\/\/[^"]+)"/gi)) {
+    if (seen.size < 50) push(m[1]);
+  }
+
+  return [...seen].slice(0, 50);
 }
 
 function extractPageContent(html: string): string {
