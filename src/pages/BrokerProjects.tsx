@@ -308,6 +308,15 @@ const BrokerProjects = () => {
                     <span className="text-[10px] text-muted-foreground bg-[#2a2a2e] px-1.5 py-0.5 rounded shrink-0">
                       {bp.project.city}
                     </span>
+                    {(bp.project as any).landing_page_status === 'published' ? (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/30 shrink-0">
+                        Publicada
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30 shrink-0">
+                        Rascunho
+                      </span>
+                    )}
                   </div>
                   <code className="text-[11px] text-muted-foreground/70 break-all block">
                     {window.location.origin}{bp.url}

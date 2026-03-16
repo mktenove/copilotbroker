@@ -28,6 +28,7 @@ export interface Project {
   map_embed_url: string | null;
   address: string | null;
   landing_page_data: LandingPageData | null;
+  landing_page_status: 'draft' | 'published' | null;
   landing_page_generated_at: string | null;
   created_at: string;
   updated_at: string;

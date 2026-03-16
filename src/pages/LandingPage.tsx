@@ -171,6 +171,12 @@ export default function LandingPage() {
         return;
       }
 
+      // Only show published landing pages
+      if (projectData.landing_page_status && projectData.landing_page_status !== 'published') {
+        setNotFound(true);
+        return;
+      }
+
       // Verify broker has this project
       const { data: bpCheck } = await supabase
         .from("broker_projects")

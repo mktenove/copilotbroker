@@ -84,7 +84,7 @@ export function useBrokerProjects(brokerId?: string | null) {
       const projectIds = bpRows.map((bp: any) => bp.project_id);
       const { data: projectsData, error: projError } = await supabase
         .from("projects")
-        .select("id, name, slug, city, city_slug")
+        .select("id, name, slug, city, city_slug, landing_page_status")
         .in("id", projectIds);
 
       if (projError) throw projError;

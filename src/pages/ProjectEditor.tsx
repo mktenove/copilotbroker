@@ -541,6 +541,7 @@ export default function ProjectEditor() {
   const [hasAiData, setHasAiData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [lpStatus, setLpStatus] = useState<'draft' | 'published'>('draft');
   const [regenerating, setRegenerating] = useState(false);
 
   // Preview
@@ -578,6 +579,7 @@ export default function ProjectEditor() {
         return;
       }
       setProject(projectData as Project);
+      setLpStatus((projectData.landing_page_status as 'draft' | 'published') || 'draft');
       if (projectData.landing_page_data) {
         setLpData(projectData.landing_page_data as LandingPageData);
         setHasAiData(true);
@@ -614,16 +616,17 @@ export default function ProjectEditor() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const save = async () => {
+  const save = async (targetStatus: 'draft' | 'published') => {
     if (!lpData || !project) return;
     setSaving(true);
     try {
       const { error } = await supabase
         .from("projects")
-        .update({ landing_page_data: lpData })
+        .update({ landing_page_data: lpData, landing_page_status: targetStatus })
         .eq("id", project.id);
       if (error) throw error;
-      toast.success("Landing page salva!");
+      setLpStatus(targetStatus);
+      toast.success(targetStatus === 'published' ? "Landing page publicada!" : "Rascunho salvo!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Erro ao salvar: " + msg);
@@ -781,14 +784,35 @@ export default function ProjectEditor() {
             {showPreview ? "Ocultar" : "Preview"}
           </Button>
 
+          {/* Status badge */}
+          <span className={cn(
+            "text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0",
+            lpStatus === 'published'
+              ? "bg-green-500/10 text-green-400 border-green-500/30"
+              : "bg-slate-500/10 text-slate-400 border-slate-500/30"
+          )}>
+            {lpStatus === 'published' ? "Publicada" : "Rascunho"}
+          </span>
+
           <Button
             size="sm"
-            onClick={save}
+            variant="ghost"
+            onClick={() => save('draft')}
+            disabled={saving}
+            className="border border-[#3a3a3e] text-muted-foreground hover:text-foreground hover:bg-[#2a2a2e] text-xs gap-1"
+          >
+            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
+            Rascunho
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={() => save('published')}
             disabled={saving}
             className="bg-[#FFFF00] text-black hover:brightness-110 text-xs gap-1"
           >
-            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-            Salvar
+            {saving ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <ExternalLink className="w-3.5 h-3.5" />}
+            Publicar
           </Button>
         </div>
       </div>
