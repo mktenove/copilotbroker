@@ -107,10 +107,10 @@ export default function SuperAdminSettings() {
 
   const load = async () => {
     try {
-      const { data, error } = await supabase.from("platform_settings").select("key, value");
+      const { data, error } = await (supabase as any).from("platform_settings").select("key, value");
       if (error) throw error;
       const map: Partial<Settings> = {};
-      (data || []).forEach(({ key, value }) => {
+      ((data as Array<{ key: string; value: string | null }>) || []).forEach(({ key, value }) => {
         if (key in DEFAULTS) (map as Record<string, string>)[key] = value ?? "";
       });
       setSettings({ ...DEFAULTS, ...map });
