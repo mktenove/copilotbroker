@@ -99,6 +99,20 @@ function extractImages(html: string): string[] {
   return [...seen].slice(0, 20);
 }
 
+function extractPageContent(html: string): string {
+  // Remove scripts, styles, nav, footer, header elements
+  const stripped = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<nav[\s\S]*?<\/nav>/gi, " ")
+    .replace(/<footer[\s\S]*?<\/footer>/gi, " ")
+    .replace(/<header[\s\S]*?<\/header>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return decodeEntities(stripped).slice(0, 4000);
+}
+
 function extractBRPatterns(html: string) {
   // Strip HTML for text analysis
   const text = decodeEntities(html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " "));
@@ -191,6 +205,7 @@ Deno.serve(async (req) => {
     const jsonLd = parseJsonLd(html);
     const br = extractBRPatterns(html);
     const images = extractImages(html);
+    const page_content = extractPageContent(html);
 
     // Name — prefer og:title, then JSON-LD, then <title>
     let name =
@@ -212,6 +227,7 @@ Deno.serve(async (req) => {
     const result = {
       name,
       description,
+      page_content,
       city: br.city,
       bedrooms: br.bedrooms,
       suites: br.suites,

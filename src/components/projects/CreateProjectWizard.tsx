@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -139,6 +139,10 @@ export function CreateProjectWizard({
   const [mode, setMode] = useState<"choose" | "import" | "manual">("choose");
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
+  const [importStep, setImportStep] = useState(-1);
+  const importTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => importTimers.current.forEach(clearTimeout), []);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -162,6 +166,13 @@ export function CreateProjectWizard({
       return;
     }
     setImporting(true);
+    setImportStep(0);
+    importTimers.current.forEach(clearTimeout);
+    importTimers.current = [
+      setTimeout(() => setImportStep(1), 1500),
+      setTimeout(() => setImportStep(2), 3000),
+      setTimeout(() => setImportStep(3), 4500),
+    ];
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await supabase.functions.invoke("scrape-property", {
@@ -177,7 +188,7 @@ export function CreateProjectWizard({
         slug: s.name ? toSlug(s.name) : prev.slug,
         city: s.city || prev.city,
         city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-        description: s.description || prev.description,
+        description: s.page_content || s.description || prev.description,
         bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
         suites: s.suites != null ? String(s.suites) : prev.suites,
         parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
@@ -193,7 +204,9 @@ export function CreateProjectWizard({
     } catch (err) {
       toast.error("Erro ao importar: " + (err instanceof Error ? err.message : String(err)));
     } finally {
+      importTimers.current.forEach(clearTimeout);
       setImporting(false);
+      setImportStep(-1);
     }
   };
 
@@ -361,43 +374,68 @@ export function CreateProjectWizard({
         {/* ── MODE: import ── */}
         {mode === "import" && (
           <div className="space-y-4 py-2">
-            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <Globe className="w-4 h-4 text-primary shrink-0" />
-              <p className="text-xs text-muted-foreground">
-                Cole o link da página do imóvel. Extraímos título, descrição, imagens e características automaticamente.
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label>URL do imóvel</Label>
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    value={importUrl}
-                    onChange={(e) => setImportUrl(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleImport()}
-                    placeholder="https://www.vivareal.com.br/imovel/..."
-                    className="bg-[#141417] border-[#2a2a2e] pl-9"
-                    disabled={importing}
-                  />
+            {/* Loading screen */}
+            {importing ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-6">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="w-8 h-8 text-primary animate-pulse" />
                 </div>
-                <Button
-                  onClick={handleImport}
-                  disabled={importing || !importUrl.trim()}
-                  className="bg-[#FFFF00] text-black hover:brightness-110 shrink-0"
-                >
-                  {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Importar"}
-                </Button>
+                <div className="space-y-3 w-full max-w-xs">
+                  {[
+                    "Lendo link...",
+                    "Extraindo informações...",
+                    "Organizando fotos...",
+                    "Montando apresentação...",
+                  ].map((label, i) => (
+                    <div key={i} className={cn("flex items-center gap-3 transition-all duration-300", importStep >= i ? "opacity-100" : "opacity-30")}>
+                      {importStep > i ? (
+                        <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
+                      ) : importStep === i ? (
+                        <RefreshCw className="w-4 h-4 text-primary animate-spin shrink-0" />
+                      ) : (
+                        <div className="w-4 h-4 rounded-full border border-[#3a3a3e] shrink-0" />
+                      )}
+                      <span className={cn("text-sm", importStep >= i ? "text-foreground font-medium" : "text-muted-foreground")}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">Isso pode levar alguns segundos...</p>
               </div>
-              {importing && (
-                <p className="text-xs text-muted-foreground animate-pulse">
-                  Lendo o conteúdo do site...
-                </p>
-              )}
-            </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+                  <Globe className="w-4 h-4 text-primary shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    Cole o link da página do imóvel. Extraímos título, descrição, imagens e características automaticamente.
+                  </p>
+                </div>
 
-            <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
+                <div className="space-y-2">
+                  <Label>URL do imóvel</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                      <Input
+                        value={importUrl}
+                        onChange={(e) => setImportUrl(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                        placeholder="https://www.vivareal.com.br/imovel/..."
+                        className="bg-[#141417] border-[#2a2a2e] pl-9"
+                      />
+                    </div>
+                    <Button
+                      onClick={handleImport}
+                      disabled={!importUrl.trim()}
+                      className="bg-[#FFFF00] text-black hover:brightness-110 shrink-0"
+                    >
+                      Importar
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {!importing && <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
               <Button variant="ghost" onClick={() => setMode("choose")} className="hover:bg-[#2a2a2e]">
                 <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
               </Button>

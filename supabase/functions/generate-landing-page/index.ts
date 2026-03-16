@@ -170,7 +170,11 @@ ${project.price_range ? `Faixa de preço: ${project.price_range}` : ""}
 ${project.amenities?.length ? `Área de lazer: ${project.amenities.join(", ")}` : ""}
 ${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
 ${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
-${project.description ? `Descrição adicional: ${project.description}` : ""}
+${project.description && project.description.length > 600
+  ? `Conteúdo completo do imóvel (extraído do site original):\n${project.description}`
+  : project.description
+    ? `Descrição adicional: ${project.description}`
+    : ""}
 `.trim();
 
     let systemPrompt = `Você é um especialista em marketing imobiliário e copywriting de alta conversão no Brasil.
