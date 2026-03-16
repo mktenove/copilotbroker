@@ -292,8 +292,8 @@ export default function LandingPage() {
         <section
           className="relative min-h-screen flex flex-col items-center justify-center text-center px-4"
           style={{
-            backgroundImage: project.main_image_url
-              ? `url(${project.main_image_url})`
+            backgroundImage: (lp.hero.bgImage || project.main_image_url)
+              ? `url(${lp.hero.bgImage || project.main_image_url})`
               : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",

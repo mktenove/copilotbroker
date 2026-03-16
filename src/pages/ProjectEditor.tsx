@@ -91,6 +91,45 @@ function EditableField({
   );
 }
 
+// ─── Inline editable text (click-to-edit in preview) ─────────────────────────
+function EditableText({
+  value,
+  onSave,
+  className,
+  style,
+}: {
+  value: string;
+  onSave: (v: string) => void;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const ref = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (ref.current && document.activeElement !== ref.current) {
+      ref.current.innerText = value;
+    }
+  }, [value]);
+
+  return (
+    <span
+      ref={ref}
+      contentEditable
+      suppressContentEditableWarning
+      onBlur={() => ref.current && onSave(ref.current.innerText.trim())}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ref.current?.blur(); }
+        if (e.key === "Escape") { if (ref.current) ref.current.innerText = value; ref.current?.blur(); }
+      }}
+      className={cn(
+        "outline-none cursor-text hover:ring-1 hover:ring-yellow-400/50 focus:ring-2 focus:ring-yellow-400/80 rounded px-0.5 -mx-0.5 transition-all",
+        className
+      )}
+      style={style}
+    />
+  );
+}
+
 // ─── Section panel ─────────────────────────────────────────────────────────────
 function SectionPanel({
   section,
@@ -127,6 +166,13 @@ function SectionPanel({
             <EditableField label="Destaque no título (opcional)" value={h.titleHighlight} onChange={(v) => set("hero.titleHighlight", v)} />
             <EditableField label="Subtítulo" value={h.subtitle} onChange={(v) => set("hero.subtitle", v)} multiline />
             <EditableField label="Texto do botão CTA" value={h.ctaText} onChange={(v) => set("hero.ctaText", v)} />
+            <EditableField label="Imagem de fundo (URL)" value={h.bgImage || ""} onChange={(v) => set("hero.bgImage", v)} />
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Opacidade do overlay ({Math.round((h.bgOpacity ?? 0.65) * 100)}%)</Label>
+              <input type="range" min="0" max="100" value={Math.round((h.bgOpacity ?? 0.65) * 100)}
+                onChange={(e) => set("hero.bgOpacity", parseInt(e.target.value) / 100)}
+                className="w-full accent-yellow-400" />
+            </div>
           </div>
         );
       }
@@ -222,6 +268,7 @@ function SectionPanel({
             <EditableField label="Título" value={c.title} onChange={(v) => set("cta.title", v)} />
             <EditableField label="Subtítulo" value={c.subtitle} onChange={(v) => set("cta.subtitle", v)} multiline />
             <EditableField label="Texto do botão" value={c.buttonText} onChange={(v) => set("cta.buttonText", v)} />
+            <EditableField label="Imagem de fundo (URL)" value={c.bgImage || ""} onChange={(v) => set("cta.bgImage", v)} />
           </div>
         );
       }
@@ -766,7 +813,7 @@ export default function ProjectEditor() {
               )}
             </div>
             {lpData ? (
-              <LandingPagePreview data={lpData} project={project} broker={broker} />
+              <LandingPagePreview data={lpData} project={project} broker={broker} onUpdate={setLpData} />
             ) : null}
           </div>
         )}
@@ -780,13 +827,17 @@ function LandingPagePreview({
   data,
   project,
   broker,
+  onUpdate,
 }: {
   data: LandingPageData;
   project: Project;
   broker: BrokerInfo | null;
+  onUpdate?: (updated: LandingPageData) => void;
 }) {
   const { theme } = data;
-  const isRenting = project.status === "renting";
+  const upd = (patch: Partial<LandingPageData>) => onUpdate?.({ ...data, ...patch });
+  const heroBg = data.hero.bgImage || project.main_image_url;
+  const heroOpacity = data.hero.bgOpacity ?? 0.65;
 
   return (
     <ScrollArea className="flex-1 h-full">
@@ -802,31 +853,27 @@ function LandingPagePreview({
         <div
           className="relative py-16 px-6 text-center"
           style={{
-            backgroundImage: project.main_image_url ? `url(${project.main_image_url})` : undefined,
+            backgroundImage: heroBg ? `url(${heroBg})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
-          <div
-            className="absolute inset-0"
-            style={{ background: "rgba(0,0,0,0.65)" }}
-          />
+          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${heroOpacity})` }} />
           <div className="relative z-10 space-y-3">
             <span
               className="inline-block px-3 py-1 rounded-full text-xs font-bold"
               style={{ backgroundColor: theme.primaryColor, color: "#000" }}
             >
-              {data.hero.badge}
+              <EditableText value={data.hero.badge} onSave={(v) => upd({ hero: { ...data.hero, badge: v } })} />
             </span>
             <h1 className="text-xl font-extrabold text-white leading-tight">
-              {data.hero.title}
+              <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} />
             </h1>
-            <p className="text-xs text-white/80">{data.hero.subtitle}</p>
-            <button
-              className="px-5 py-2 rounded-lg text-xs font-bold"
-              style={{ backgroundColor: theme.primaryColor, color: "#000" }}
-            >
-              {data.hero.ctaText}
+            <p className="text-xs text-white/80">
+              <EditableText value={data.hero.subtitle} onSave={(v) => upd({ hero: { ...data.hero, subtitle: v } })} />
+            </p>
+            <button className="px-5 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
+              <EditableText value={data.hero.ctaText} onSave={(v) => upd({ hero: { ...data.hero, ctaText: v } })} />
             </button>
           </div>
         </div>
@@ -834,13 +881,19 @@ function LandingPagePreview({
         {/* Location */}
         <div className="py-8 px-6" style={{ backgroundColor: `${theme.bgColor}dd` }}>
           <h2 className="font-bold mb-2" style={{ color: theme.accentColor }}>
-            {data.location.title}
+            <EditableText value={data.location.title} onSave={(v) => upd({ location: { ...data.location, title: v } })} />
           </h2>
-          <p className="text-xs opacity-80 mb-4">{data.location.description}</p>
+          <p className="text-xs opacity-80 mb-4">
+            <EditableText value={data.location.description} onSave={(v) => upd({ location: { ...data.location, description: v } })} />
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {data.location.highlights.map((h, i) => (
               <div key={i} className="flex items-center gap-1.5 text-xs">
-                <span style={{ color: theme.primaryColor }}>✓</span> {h}
+                <span style={{ color: theme.primaryColor }}>✓</span>
+                <EditableText value={h} onSave={(v) => {
+                  const arr = [...data.location.highlights]; arr[i] = v;
+                  upd({ location: { ...data.location, highlights: arr } });
+                }} />
               </div>
             ))}
           </div>
@@ -852,15 +905,24 @@ function LandingPagePreview({
             <h2 className="font-bold text-center mb-4">Diferenciais</h2>
             <div className="grid grid-cols-3 gap-2">
               {data.features.map((f, i) => (
-                <div
-                  key={i}
-                  className="text-center p-3 rounded-xl border"
-                  style={{ borderColor: `${theme.primaryColor}30` }}
-                >
-                  <div className="text-lg mb-1">{f.icon}</div>
-                  <div className="text-xs opacity-60">{f.label}</div>
+                <div key={i} className="text-center p-3 rounded-xl border" style={{ borderColor: `${theme.primaryColor}30` }}>
+                  <div className="text-lg mb-1">
+                    <EditableText value={f.icon} onSave={(v) => {
+                      const arr = [...data.features]; arr[i] = { ...arr[i], icon: v };
+                      upd({ features: arr });
+                    }} />
+                  </div>
+                  <div className="text-xs opacity-60">
+                    <EditableText value={f.label} onSave={(v) => {
+                      const arr = [...data.features]; arr[i] = { ...arr[i], label: v };
+                      upd({ features: arr });
+                    }} />
+                  </div>
                   <div className="text-sm font-bold" style={{ color: theme.accentColor }}>
-                    {f.value}
+                    <EditableText value={f.value} onSave={(v) => {
+                      const arr = [...data.features]; arr[i] = { ...arr[i], value: v };
+                      upd({ features: arr });
+                    }} />
                   </div>
                 </div>
               ))}
@@ -870,46 +932,51 @@ function LandingPagePreview({
 
         {/* CTA */}
         <div
-          className="py-8 px-6 text-center"
-          style={{ background: `linear-gradient(135deg, ${theme.bgColor}, color-mix(in srgb, ${theme.primaryColor} 10%, ${theme.bgColor}))` }}
+          className="relative py-8 px-6 text-center"
+          style={{
+            backgroundImage: data.cta.bgImage ? `url(${data.cta.bgImage})` : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            background: data.cta.bgImage ? undefined : `linear-gradient(135deg, ${theme.bgColor}, color-mix(in srgb, ${theme.primaryColor} 10%, ${theme.bgColor}))`,
+          }}
         >
-          <h2 className="font-extrabold mb-2">{data.cta.title}</h2>
-          <p className="text-xs opacity-70 mb-3">{data.cta.subtitle}</p>
-          <button
-            className="px-6 py-2 rounded-xl text-xs font-bold"
-            style={{ backgroundColor: theme.primaryColor, color: "#000" }}
-          >
-            {data.cta.buttonText}
-          </button>
+          {data.cta.bgImage && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)" }} />}
+          <div className="relative z-10">
+            <h2 className="font-extrabold mb-2">
+              <EditableText value={data.cta.title} onSave={(v) => upd({ cta: { ...data.cta, title: v } })} />
+            </h2>
+            <p className="text-xs opacity-70 mb-3">
+              <EditableText value={data.cta.subtitle} onSave={(v) => upd({ cta: { ...data.cta, subtitle: v } })} />
+            </p>
+            <button className="px-6 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
+              <EditableText value={data.cta.buttonText} onSave={(v) => upd({ cta: { ...data.cta, buttonText: v } })} />
+            </button>
+          </div>
         </div>
 
         {/* Form preview */}
         <div className="py-8 px-6" style={{ backgroundColor: `${theme.bgColor}ee` }}>
-          <h2 className="font-bold text-center mb-1">{data.form.title}</h2>
-          <p className="text-xs text-center opacity-70 mb-4">{data.form.subtitle}</p>
+          <h2 className="font-bold text-center mb-1">
+            <EditableText value={data.form.title} onSave={(v) => upd({ form: { ...data.form, title: v } })} />
+          </h2>
+          <p className="text-xs text-center opacity-70 mb-4">
+            <EditableText value={data.form.subtitle} onSave={(v) => upd({ form: { ...data.form, subtitle: v } })} />
+          </p>
           <div className="space-y-2 max-w-sm mx-auto">
             {["Nome *", "WhatsApp *", "E-mail (opcional)"].map((p) => (
-              <div
-                key={p}
-                className="px-3 py-2 rounded-lg border text-xs opacity-40"
-                style={{ borderColor: `${theme.primaryColor}60` }}
-              >
+              <div key={p} className="px-3 py-2 rounded-lg border text-xs opacity-40" style={{ borderColor: `${theme.primaryColor}60` }}>
                 {p}
               </div>
             ))}
-            <button
-              className="w-full py-2 rounded-lg text-xs font-bold"
-              style={{ backgroundColor: theme.primaryColor, color: "#000" }}
-            >
-              {data.form.buttonText}
+            <button className="w-full py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
+              <EditableText value={data.form.buttonText} onSave={(v) => upd({ form: { ...data.form, buttonText: v } })} />
             </button>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="py-4 px-6 text-center border-t opacity-40 text-xs"
-          style={{ borderColor: `${theme.primaryColor}20` }}>
-          {data.footer.disclaimer}
+        <div className="py-4 px-6 text-center border-t opacity-40 text-xs" style={{ borderColor: `${theme.primaryColor}20` }}>
+          <EditableText value={data.footer.disclaimer} onSave={(v) => upd({ footer: { disclaimer: v } })} />
         </div>
       </div>
     </ScrollArea>

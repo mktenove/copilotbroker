@@ -79,6 +79,8 @@ export interface LandingPageHero {
   titleHighlight: string;
   subtitle: string;
   ctaText: string;
+  bgImage?: string;
+  bgOpacity?: number;
 }
 
 export interface LandingPageLocation {
@@ -115,6 +117,7 @@ export interface LandingPageCta {
   title: string;
   subtitle: string;
   buttonText: string;
+  bgImage?: string;
 }
 
 export interface LandingPageForm {
