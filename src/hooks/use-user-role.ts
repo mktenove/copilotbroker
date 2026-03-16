@@ -100,6 +100,9 @@ export const useUserRole = () => {
         return;
       }
 
+      // Set isLoading: true BEFORE fetching so SubscriptionGuard waits instead of
+      // seeing role=null + tenantId=null and redirecting to /planos prematurely.
+      setState(prev => ({ ...prev, isLoading: true }));
       fetchUserRole(session.user.id);
     });
 
