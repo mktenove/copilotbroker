@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { Navigate } from "react-router-dom";
 import { useTenant } from "@/contexts/TenantContext";
 import { useUserRole } from "@/hooks/use-user-role";
