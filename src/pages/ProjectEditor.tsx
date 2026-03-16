@@ -134,6 +134,39 @@ function EditableText({
   );
 }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const MAX_IMAGES_PER_PROJECT = 50;
+const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
+const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/mpeg,video/x-m4v,video/x-matroska,video/webm,video/*";
+
+async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas context unavailable")); return; }
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => {
+        URL.revokeObjectURL(url);
+        if (blob) resolve(blob);
+        else reject(new Error("Falha ao converter imagem"));
+      }, "image/webp", quality);
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
+    img.src = url;
+  });
+}
+
+async function countProjectImages(projectId: string): Promise<number> {
+  const { data } = await supabase.storage.from("project-media").list(`projects/${projectId}`);
+  if (!data) return 0;
+  return data.filter((f) => f.name.endsWith(".webp")).length;
+}
+
 // ─── Image upload field ───────────────────────────────────────────────────────
 function ImageUploadField({
   label,
@@ -154,11 +187,20 @@ function ImageUploadField({
     if (!file) return;
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop() || "jpg";
-      const path = `projects/${projectId}/${Date.now()}.${ext}`;
+      // Check image count (only when adding new — not replacing)
+      if (!value) {
+        const count = await countProjectImages(projectId);
+        if (count >= MAX_IMAGES_PER_PROJECT) {
+          toast.error(`Limite de ${MAX_IMAGES_PER_PROJECT} imagens por projeto atingido`);
+          return;
+        }
+      }
+      // Convert to WebP
+      const webpBlob = await convertToWebP(file);
+      const path = `projects/${projectId}/${Date.now()}.webp`;
       const { error } = await supabase.storage
         .from("project-media")
-        .upload(path, file, { upsert: true });
+        .upload(path, webpBlob, { upsert: true, contentType: "image/webp" });
       if (error) throw error;
       const { data: { publicUrl } } = supabase.storage
         .from("project-media")
@@ -194,12 +236,8 @@ function ImageUploadField({
         onClick={() => fileRef.current?.click()}
         className="w-full text-xs border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1 h-8"
       >
-        {uploading ? (
-          <RefreshCw className="w-3 h-3 animate-spin" />
-        ) : (
-          <ImageIcon className="w-3 h-3" />
-        )}
-        {value ? "Trocar imagem" : "Enviar imagem"}
+        {uploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
+        {uploading ? "Convertendo para WebP..." : value ? "Trocar imagem" : "Enviar imagem"}
       </Button>
     </div>
   );
@@ -223,6 +261,11 @@ function VideoUploadField({
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (file.size > MAX_VIDEO_SIZE) {
+      toast.error("O vídeo deve ter no máximo 50 MB");
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
     setUploading(true);
     try {
       const ext = file.name.split(".").pop() || "mp4";
@@ -257,7 +300,7 @@ function VideoUploadField({
           </button>
         </div>
       )}
-      <input ref={fileRef} type="file" accept="video/*" className="hidden" onChange={handleFile} />
+      <input ref={fileRef} type="file" accept={VIDEO_ACCEPT} className="hidden" onChange={handleFile} />
       <Button
         size="sm"
         variant="outline"
@@ -265,12 +308,8 @@ function VideoUploadField({
         onClick={() => fileRef.current?.click()}
         className="w-full text-xs border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1 h-8"
       >
-        {uploading ? (
-          <RefreshCw className="w-3 h-3 animate-spin" />
-        ) : (
-          <Video className="w-3 h-3" />
-        )}
-        {value ? "Trocar vídeo" : "Enviar vídeo"}
+        {uploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Video className="w-3 h-3" />}
+        {value ? "Trocar vídeo" : "Enviar vídeo (máx. 50 MB)"}
       </Button>
     </div>
   );
