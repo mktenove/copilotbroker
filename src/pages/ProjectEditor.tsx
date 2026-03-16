@@ -259,6 +259,24 @@ function SectionPanel({
   );
 }
 
+// ─── Default LP data (preview fallback when no AI data) ──────────────────────
+function buildDefaultLp(project: Project): LandingPageData {
+  const isRenting = project.status === "renting";
+  return {
+    theme: { primaryColor: "#FFFF00", accentColor: "#facc15", bgColor: "#0f0f12", textColor: "#ffffff", fontFamily: "Inter", heroStyle: "dark-overlay" },
+    hero: { badge: isRenting ? "Disponível para Locação" : "Novo Empreendimento", title: project.hero_title || project.name, titleHighlight: "", subtitle: project.hero_subtitle || `${project.city} — ${project.description || ""}`, ctaText: isRenting ? "Quero agendar uma visita" : "Quero mais informações" },
+    location: { title: `Localização estratégica em ${project.city}`, description: `${project.name} está localizado em uma região privilegiada de ${project.city}.`, highlights: ["Fácil acesso", "Bem localizado", "Região valorizada", "Infraestrutura completa"] },
+    features: [{ icon: "📍", label: "Cidade", value: project.city }, { icon: "⭐", label: "Status", value: isRenting ? "Para Locação" : "Disponível" }],
+    audience: [{ title: "Quem busca praticidade", description: "Imóvel com localização e estrutura ideais" }, { title: "Famílias em crescimento", description: "Espaço e segurança para viver bem" }, { title: "Investidores inteligentes", description: "Valorização garantida na melhor região" }, { title: "Quem quer conforto", description: "Acabamento e infraestrutura de alto padrão" }],
+    urgency: { type: "opportunity", title: "Aproveite esta oportunidade", description: "Entre em contato agora e garanta as melhores condições.", highlight: "Disponibilidade limitada" },
+    benefits: [{ icon: "📋", title: "Informações completas", description: "Receba todos os detalhes" }, { icon: "🎯", title: "Atendimento prioritário", description: "Fale diretamente com o corretor" }, { icon: "📅", title: "Agende uma visita", description: "Conheça o imóvel pessoalmente" }, { icon: "💬", title: "Tire suas dúvidas", description: "Estamos prontos para te atender" }],
+    cta: { title: "Dê o próximo passo", subtitle: "Entre em contato e receba todas as informações.", buttonText: "Tenho interesse" },
+    form: { title: "Tenho interesse", subtitle: "Preencha seus dados e entraremos em contato.", buttonText: "Enviar", thankYouTitle: "Recebemos seu cadastro!", thankYouMessage: "Em breve um corretor entrará em contato. Fique de olho no WhatsApp!" },
+    floatingButtonText: "Quero mais informações",
+    footer: { disclaimer: "Imagens meramente ilustrativas. Material de divulgação em conformidade com a legislação vigente." },
+  };
+}
+
 // ─── Main editor ──────────────────────────────────────────────────────────────
 export default function ProjectEditor() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -268,6 +286,7 @@ export default function ProjectEditor() {
   const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [lpData, setLpData] = useState<LandingPageData | null>(null);
+  const [hasAiData, setHasAiData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -309,6 +328,9 @@ export default function ProjectEditor() {
       setProject(projectData as Project);
       if (projectData.landing_page_data) {
         setLpData(projectData.landing_page_data as LandingPageData);
+        setHasAiData(true);
+      } else {
+        setLpData(buildDefaultLp(projectData as Project));
       }
 
       // Load broker for URL preview
@@ -372,6 +394,7 @@ export default function ProjectEditor() {
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
       setLpData(res.data.data);
+      setHasAiData(true);
       toast.success("Landing page regenerada com sucesso!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -517,10 +540,10 @@ export default function ProjectEditor() {
             <TabsContent value="edit" className="flex-1 overflow-hidden m-0">
               <ScrollArea className="h-full">
                 <div className="p-3 space-y-2">
-                  {!lpData ? (
-                    <div className="text-center py-10 space-y-4">
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma landing page gerada ainda.
+                  {!hasAiData && (
+                    <div className="text-center py-6 space-y-3 border border-dashed border-[#3a3a3e] rounded-lg">
+                      <p className="text-xs text-muted-foreground">
+                        Gere com IA para personalizar os textos automaticamente.
                       </p>
                       <Button
                         onClick={regenerate}
@@ -535,7 +558,8 @@ export default function ProjectEditor() {
                         Gerar com IA
                       </Button>
                     </div>
-                  ) : (
+                  )}
+                  {lpData && (
                     <>
                       {/* Regenerate button */}
                       <Button
@@ -717,7 +741,7 @@ export default function ProjectEditor() {
                     <Send className="w-3.5 h-3.5" />
                   </Button>
                 </div>
-                {!lpData && (
+                {!hasAiData && (
                   <p className="text-xs text-muted-foreground mt-1">
                     Gere a landing page primeiro para usar o chat.
                   </p>
@@ -743,16 +767,7 @@ export default function ProjectEditor() {
             </div>
             {lpData ? (
               <LandingPagePreview data={lpData} project={project} broker={broker} />
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-center p-8">
-                <div className="space-y-3">
-                  <Sparkles className="w-12 h-12 text-primary mx-auto opacity-50" />
-                  <p className="text-muted-foreground text-sm">
-                    Gere a landing page para ver o preview aqui.
-                  </p>
-                </div>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
       </div>
