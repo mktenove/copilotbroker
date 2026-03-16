@@ -18,7 +18,6 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
-  Upload,
   X,
   Video,
   Image as ImageIcon,
@@ -139,24 +138,30 @@ const MAX_IMAGES_PER_PROJECT = 50;
 const MAX_VIDEO_SIZE = 50 * 1024 * 1024; // 50 MB
 const VIDEO_ACCEPT = "video/mp4,video/quicktime,video/mpeg,video/x-m4v,video/x-matroska,video/webm,video/*";
 
-async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
-  return new Promise((resolve, reject) => {
+/** Convert image to WebP via Canvas. Falls back to the original file if it fails (e.g. HEIC on desktop). */
+async function convertToWebP(file: File, quality = 0.85): Promise<{ blob: Blob; ext: string; contentType: string }> {
+  return new Promise((resolve) => {
     const img = new Image();
     const url = URL.createObjectURL(file);
+    const fallback = () => {
+      URL.revokeObjectURL(url);
+      const ext = file.name.split(".").pop() || "jpg";
+      resolve({ blob: file, ext, contentType: file.type || "image/jpeg" });
+    };
     img.onload = () => {
       const canvas = document.createElement("canvas");
       canvas.width = img.naturalWidth;
       canvas.height = img.naturalHeight;
       const ctx = canvas.getContext("2d");
-      if (!ctx) { URL.revokeObjectURL(url); reject(new Error("Canvas context unavailable")); return; }
+      if (!ctx) { fallback(); return; }
       ctx.drawImage(img, 0, 0);
       canvas.toBlob((blob) => {
         URL.revokeObjectURL(url);
-        if (blob) resolve(blob);
-        else reject(new Error("Falha ao converter imagem"));
+        if (blob) resolve({ blob, ext: "webp", contentType: "image/webp" });
+        else fallback();
       }, "image/webp", quality);
     };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("Falha ao carregar imagem")); };
+    img.onerror = fallback;
     img.src = url;
   });
 }
@@ -164,7 +169,7 @@ async function convertToWebP(file: File, quality = 0.85): Promise<Blob> {
 async function countProjectImages(projectId: string): Promise<number> {
   const { data } = await supabase.storage.from("project-media").list(`projects/${projectId}`);
   if (!data) return 0;
-  return data.filter((f) => f.name.endsWith(".webp")).length;
+  return data.filter((f) => /\.(webp|jpg|jpeg|png|gif|heic|avif)$/i.test(f.name)).length;
 }
 
 // ─── Image upload field ───────────────────────────────────────────────────────
@@ -195,19 +200,26 @@ function ImageUploadField({
           return;
         }
       }
-      // Convert to WebP
-      const webpBlob = await convertToWebP(file);
-      const path = `projects/${projectId}/${Date.now()}.webp`;
+      // Convert to WebP (falls back to original if conversion fails)
+      const { blob, ext, contentType } = await convertToWebP(file);
+      const path = `projects/${projectId}/${Date.now()}.${ext}`;
       const { error } = await supabase.storage
         .from("project-media")
-        .upload(path, webpBlob, { upsert: true, contentType: "image/webp" });
-      if (error) throw error;
+        .upload(path, blob, { upsert: true, contentType });
+      if (error) {
+        console.error("[ImageUpload] storage error:", error);
+        throw new Error(error.message);
+      }
       const { data: { publicUrl } } = supabase.storage
         .from("project-media")
         .getPublicUrl(path);
+      console.log("[ImageUpload] uploaded:", publicUrl);
       onChange(publicUrl);
+      toast.success("Imagem enviada!");
     } catch (err) {
-      toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[ImageUpload] error:", msg);
+      toast.error("Erro no upload: " + msg, { duration: 6000 });
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
