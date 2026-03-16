@@ -712,8 +712,8 @@ export default function ProjectEditor() {
       setLpData(updated);
 
       // Auto-save
-      await supabase
-        .from("projects")
+      await (supabase
+        .from("projects") as any)
         .update({ landing_page_data: updated })
         .eq("id", project.id);
 
