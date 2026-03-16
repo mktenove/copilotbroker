@@ -80,6 +80,9 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         setTenant({ tenantId: null, tenantName: null, planType: null, status: null, isLoading: false });
         return;
       }
+      // Set isLoading: true BEFORE fetching so SubscriptionGuard waits instead of
+      // redirecting to /planos while the async fetch is still in flight.
+      setTenant(prev => ({ ...prev, isLoading: true }));
       fetchTenant(session.user.id);
     });
 
