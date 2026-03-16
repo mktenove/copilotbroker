@@ -906,7 +906,7 @@ export default function ProjectEditor() {
                           projectId={project.id}
                           onChange={async (url) => {
                             setProject(prev => prev ? { ...prev, main_image_url: url } : prev);
-                            await supabase.from("projects").update({ main_image_url: url }).eq("id", project.id);
+                            await (supabase.from("projects") as any).update({ main_image_url: url }).eq("id", project.id);
                           }}
                         />
                         <VideoUploadField
