@@ -48,6 +48,22 @@ interface BrokerInfo {
   slug: string;
 }
 
+type ProjectRecord = Partial<Project> & {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string | null;
+  status: string;
+  is_active: boolean;
+  tenant_id: string | null;
+  webhook_url: string | null;
+  landing_page_status?: 'draft' | 'published' | null;
+  landing_page_data?: LandingPageData | null;
+  main_image_url?: string | null;
+  video_url?: string | null;
+};
+
 // ─── Section edit helpers ─────────────────────────────────────────────────────
 interface SectionConfig {
   key: keyof LandingPageData;
