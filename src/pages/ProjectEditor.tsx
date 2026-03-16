@@ -589,18 +589,20 @@ export default function ProjectEditor() {
         .eq("id", projectId)
         .maybeSingle();
 
-      if (!projectData) {
+      const typedProject = projectData as ProjectRecord | null;
+
+      if (!typedProject) {
         toast.error("Projeto não encontrado");
         navigate(-1);
         return;
       }
-      setProject(projectData as Project);
-      setLpStatus((projectData.landing_page_status as 'draft' | 'published') || 'draft');
-      if (projectData.landing_page_data) {
-        setLpData(projectData.landing_page_data as LandingPageData);
+      setProject(typedProject as Project);
+      setLpStatus(typedProject.landing_page_status || 'draft');
+      if (typedProject.landing_page_data) {
+        setLpData(typedProject.landing_page_data);
         setHasAiData(true);
       } else {
-        setLpData(buildDefaultLp(projectData as Project));
+        setLpData(buildDefaultLp(typedProject as Project));
       }
 
       // Load broker for URL preview
