@@ -176,13 +176,15 @@ export default function LandingPage() {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!projectData) {
+      const typedProject = projectData as ProjectRecord | null;
+
+      if (!typedProject) {
         setNotFound(true);
         return;
       }
 
       // Only show published landing pages
-      if (projectData.landing_page_status && projectData.landing_page_status !== 'published') {
+      if (typedProject.landing_page_status && typedProject.landing_page_status !== 'published') {
         setNotFound(true);
         return;
       }
@@ -192,7 +194,7 @@ export default function LandingPage() {
         .from("broker_projects")
         .select("id")
         .eq("broker_id", brokerData.id)
-        .eq("project_id", projectData.id)
+        .eq("project_id", typedProject.id)
         .eq("is_active", true)
         .maybeSingle();
 
@@ -201,8 +203,9 @@ export default function LandingPage() {
         return;
       }
 
-      setProject(projectData as ProjectWithLP);
-      const lpData = (projectData.landing_page_data as LandingPageData) || buildDefault(projectData as Project);
+      const normalizedProject = typedProject as Project;
+      setProject(normalizedProject);
+      const lpData = typedProject.landing_page_data || buildDefault(normalizedProject);
       setLp(lpData);
     } catch (err) {
       console.error("LandingPage load error:", err);
