@@ -168,7 +168,9 @@ export function CreateProjectWizard({
           area_m2: s.area_m2 != null ? String(s.area_m2) : prev.area_m2,
           price_range: s.price_range || prev.price_range,
           amenities: s.amenities?.length ? s.amenities : prev.amenities,
+          address: s.address || prev.address,
           main_image_url: s.main_image_url || prev.main_image_url,
+          map_embed_url: s.map_embed_url || prev.map_embed_url,
           _scraped_images: s.images || [],
           _source_url: s._sourceUrl || prev._source_url,
         }));

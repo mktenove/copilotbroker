@@ -170,7 +170,60 @@ function extractBRPatterns(html: string) {
     .filter((a) => textLower.includes(a))
     .map((a) => a.charAt(0).toUpperCase() + a.slice(1));
 
-  return { bedrooms, suites, parking, area, price, city, amenities };
+  // Neighborhood/address: "Bairro União", "bairro: União"
+  const neighborhoodMatch =
+    text.match(/bairro[:\s]+([A-ZÀ-Úa-zà-ú][a-zA-ZÀ-ú\s]{2,30?})(?:\s*[,\/\-–|\n]|$)/i) ||
+    text.match(/(?:no bairro|do bairro)\s+([A-ZÀ-Ú][a-zA-ZÀ-ú\s]{2,25?})(?:\s*[,\/\-–|\n]|$)/i);
+  const neighborhood = neighborhoodMatch ? neighborhoodMatch[1].trim().replace(/\s+/g, " ") : "";
+
+  return { bedrooms, suites, parking, area, price, city, amenities, neighborhood };
+}
+
+function extractCoordinates(html: string): { lat: number; lng: number } | null {
+  // JSON-LD geo.latitude / geo.longitude
+  const geoLat = html.match(/"latitude"\s*:\s*"?(-?\d+\.?\d+)"?/i);
+  const geoLng = html.match(/"longitude"\s*:\s*"?(-?\d+\.?\d+)"?/i);
+  if (geoLat && geoLng) {
+    return { lat: parseFloat(geoLat[1]), lng: parseFloat(geoLng[1]) };
+  }
+
+  // Leaflet .setView([lat, lng]) or L.latLng(lat, lng)
+  const leaflet =
+    html.match(/\.setView\(\s*\[(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)\]/) ||
+    html.match(/L\.latLng\(\s*(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)\s*\)/i);
+  if (leaflet) return { lat: parseFloat(leaflet[1]), lng: parseFloat(leaflet[2]) };
+
+  // center: [lat, lng] (Leaflet config object)
+  const center = html.match(/center\s*[:=]\s*\[(-?\d+\.?\d+)\s*,\s*(-?\d+\.?\d+)\]/);
+  if (center) return { lat: parseFloat(center[1]), lng: parseFloat(center[2]) };
+
+  // Generic JS/JSON lat/lng keys
+  const jsLat = html.match(/['":\s]lat(?:itude)?['":\s]+(-?\d{1,3}\.\d{4,})/i);
+  const jsLng = html.match(/['":\s]l(?:ng|on(?:gitude)?)['":\s]+(-?\d{1,3}\.\d{4,})/i);
+  if (jsLat && jsLng) return { lat: parseFloat(jsLat[1]), lng: parseFloat(jsLng[1]) };
+
+  // Meta geo.position: "lat;lng"
+  const metaGeo = html.match(/<meta[^>]*name="geo\.position"[^>]*content="(-?\d+\.?\d+)\s*;\s*(-?\d+\.?\d+)"/i);
+  if (metaGeo) return { lat: parseFloat(metaGeo[1]), lng: parseFloat(metaGeo[2]) };
+
+  return null;
+}
+
+function neighborhoodFromUrl(url: string): string {
+  try {
+    const path = new URL(url).pathname.toLowerCase();
+    // Pattern: bairro-[slug] or -bairro-[slug]- in path
+    const m =
+      path.match(/[/-]bairro-([a-z-]+?)(?:-[a-z]{2,3}(?:-\d|$)|\/|$)/) ||
+      path.match(/\/([a-z-]{3,30})\/[a-z-]+-[a-z]{2}-\d/) || // slug/city-uf-cep
+      null;
+    if (m) {
+      return m[1].replace(/-/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+    }
+  } catch {
+    // ignore
+  }
+  return "";
 }
 
 // ── main handler ─────────────────────────────────────────────────────────────
@@ -206,6 +259,13 @@ Deno.serve(async (req) => {
     const br = extractBRPatterns(html);
     const images = extractImages(html);
     const page_content = extractPageContent(html);
+    const coords = extractCoordinates(html);
+    const map_embed_url = coords
+      ? `https://maps.google.com/maps?q=${coords.lat},${coords.lng}&z=15&output=embed`
+      : "";
+
+    // Neighborhood: text patterns first, fallback to URL slug
+    const address = br.neighborhood || neighborhoodFromUrl(url);
 
     // Name — prefer og:title, then JSON-LD, then <title>
     let name =
@@ -229,6 +289,8 @@ Deno.serve(async (req) => {
       description,
       page_content,
       city: br.city,
+      address,
+      map_embed_url,
       bedrooms: br.bedrooms,
       suites: br.suites,
       parking_spots: br.parking,
