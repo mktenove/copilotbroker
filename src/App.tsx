@@ -47,6 +47,7 @@ import SuperAdminAudit from "./pages/super-admin/SuperAdminAudit";
 import SuperAdminBilling from "./pages/super-admin/SuperAdminBilling";
 import SuperAdminBillingEvents from "./pages/super-admin/SuperAdminBillingEvents";
 import SuperAdminAffiliates from "./pages/super-admin/SuperAdminAffiliates";
+import SuperAdminSettings from "./pages/super-admin/SuperAdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -107,6 +108,7 @@ const App = () => (
               <Route path="billing" element={<SuperAdminBilling />} />
               <Route path="billing-events" element={<SuperAdminBillingEvents />} />
               <Route path="affiliates" element={<SuperAdminAffiliates />} />
+              <Route path="settings" element={<SuperAdminSettings />} />
             </Route>
             
             {/* Public landing pages — :citySlug/:projectSlug/:brokerSlug */}

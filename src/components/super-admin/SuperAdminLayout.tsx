@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Outlet } from "react-router-dom";
 import { useUserRole } from "@/hooks/use-user-role";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, RefreshCw,
+  LayoutDashboard, Building2, Users, Handshake, Receipt, ScrollText, LogOut, RefreshCw, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import copilotIcon from "@/assets/copilot-icon.png";
@@ -21,6 +21,7 @@ const NAV_ITEMS = [
   { id: "billing", label: "Billing / Webhooks", icon: Receipt, path: "/super-admin/billing" },
   { id: "billing-events", label: "Billing Events", icon: ScrollText, path: "/super-admin/billing-events" },
   { id: "audit", label: "Auditoria", icon: ScrollText, path: "/super-admin/audit" },
+  { id: "settings", label: "Configurações", icon: Settings, path: "/super-admin/settings" },
 ];
 
 const BREADCRUMB_MAP: Record<string, { title: string; subtitle?: string }> = {
@@ -35,6 +36,7 @@ const BREADCRUMB_MAP: Record<string, { title: string; subtitle?: string }> = {
   "/super-admin/billing": { title: "Billing / Webhooks", subtitle: "Eventos do Stripe" },
   "/super-admin/billing-events": { title: "Billing Events", subtitle: "Debug de webhooks" },
   "/super-admin/audit": { title: "Auditoria", subtitle: "Logs de ações administrativas" },
+  "/super-admin/settings": { title: "Configurações", subtitle: "Integrações e provedores de IA" },
 };
 
 export default function SuperAdminLayout() {

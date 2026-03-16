@@ -1,4 +1,5 @@
 import Anthropic from "npm:@anthropic-ai/sdk@0.27.3";
+import OpenAI from "npm:openai@4.67.3";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
@@ -9,7 +10,6 @@ const corsHeaders = {
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY")!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
   auth: { persistSession: false },
@@ -24,6 +24,88 @@ async function getAuthUser(authHeader?: string) {
   if (!res.ok) return { user: null, error: new Error(`Auth failed: ${res.status}`) };
   const user = await res.json();
   return { user, error: null };
+}
+
+// Load AI config from platform_settings, falling back to env vars
+async function loadAiConfig() {
+  const { data } = await supabase
+    .from("platform_settings")
+    .select("key, value")
+    .in("key", [
+      "ai_provider",
+      "anthropic_api_key", "anthropic_model",
+      "openai_api_key", "openai_model",
+      "gemini_api_key", "gemini_model",
+    ]);
+
+  const s: Record<string, string> = {};
+  (data || []).forEach(({ key, value }: { key: string; value: string }) => { if (value) s[key] = value; });
+
+  return {
+    provider: (s["ai_provider"] || "anthropic") as "anthropic" | "openai" | "gemini",
+    anthropic: {
+      apiKey: s["anthropic_api_key"] || Deno.env.get("ANTHROPIC_API_KEY") || "",
+      model: s["anthropic_model"] || "claude-sonnet-4-6",
+    },
+    openai: {
+      apiKey: s["openai_api_key"] || "",
+      model: s["openai_model"] || "gpt-4o",
+    },
+    gemini: {
+      apiKey: s["gemini_api_key"] || "",
+      model: s["gemini_model"] || "gemini-2.0-flash",
+    },
+  };
+}
+
+// Call the configured AI provider and return raw text
+async function callAi(systemPrompt: string, userPrompt: string): Promise<string> {
+  const cfg = await loadAiConfig();
+
+  if (cfg.provider === "anthropic") {
+    const client = new Anthropic({ apiKey: cfg.anthropic.apiKey });
+    const message = await client.messages.create({
+      model: cfg.anthropic.model,
+      max_tokens: 4096,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+    });
+    const raw = message.content[0];
+    if (raw.type !== "text") throw new Error("Resposta inválida da IA");
+    return raw.text;
+  }
+
+  if (cfg.provider === "openai") {
+    const client = new OpenAI({ apiKey: cfg.openai.apiKey });
+    const completion = await client.chat.completions.create({
+      model: cfg.openai.model,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+    return completion.choices[0].message.content ?? "";
+  }
+
+  if (cfg.provider === "gemini") {
+    // Gemini exposes an OpenAI-compatible endpoint
+    const client = new OpenAI({
+      apiKey: cfg.gemini.apiKey,
+      baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+    });
+    const completion = await client.chat.completions.create({
+      model: cfg.gemini.model,
+      max_tokens: 4096,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+    });
+    return completion.choices[0].message.content ?? "";
+  }
+
+  throw new Error(`Provedor de IA desconhecido: ${cfg.provider}`);
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -70,8 +152,6 @@ Deno.serve(async (req) => {
       });
     }
 
-    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-
     // Build project context string
     const statusLabel = STATUS_LABELS[project.status] || project.status;
     const typeLabel = PROPERTY_TYPE_LABELS[project.property_type] || project.property_type || "Imóvel";
@@ -100,7 +180,6 @@ Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
     let userPrompt: string;
 
     if (chatMessage && body.existingData) {
-      // AI chat mode — update specific sections
       systemPrompt += `\nO usuário quer ajustar partes da landing page existente. Retorne o JSON completo atualizado.`;
       userPrompt = `
 Dados do empreendimento:
@@ -114,7 +193,6 @@ Pedido do usuário: "${chatMessage}"
 Aplique as alterações solicitadas e retorne o JSON completo da landing page com as mesmas chaves, mantendo o que não foi pedido para alterar.
 Retorne APENAS o JSON, sem explicações.`;
     } else {
-      // Initial generation
       userPrompt = `
 Crie uma landing page completa para o seguinte empreendimento imobiliário:
 
@@ -124,17 +202,17 @@ Gere um JSON com esta estrutura EXATA:
 
 {
   "theme": {
-    "primaryColor": "cor hex adequada para o perfil do imóvel (ex: #1a1a2e para luxo, #2d6a4f para natureza)",
+    "primaryColor": "cor hex adequada para o perfil do imóvel",
     "accentColor": "cor hex de destaque complementar",
-    "bgColor": "cor hex do fundo (geralmente escuro ou claro dependendo do estilo)",
+    "bgColor": "cor hex do fundo",
     "textColor": "cor hex do texto principal",
-    "fontFamily": "nome da fonte Google adequada ao estilo (ex: Playfair Display, Inter, Montserrat)",
+    "fontFamily": "nome da fonte Google adequada ao estilo",
     "heroStyle": "dark-overlay ou light-overlay ou gradient"
   },
   "hero": {
-    "badge": "badge contextual ao status (ex: 'Pré-Lançamento Exclusivo', 'Pronto para Morar', 'Disponível para Locação')",
-    "title": "título principal forte e conceitual (sem mencionar preços)",
-    "titleHighlight": "parte do título para destacar visualmente (pode ser vazia)",
+    "badge": "badge contextual ao status",
+    "title": "título principal forte e conceitual",
+    "titleHighlight": "parte do título para destacar (pode ser vazia)",
     "subtitle": "subtítulo contextualizando localização ou proposta de valor",
     "ctaText": "texto do botão CTA principal"
   },
@@ -158,10 +236,10 @@ Gere um JSON com esta estrutura EXATA:
     {"title": "perfil de público 4", "description": "descrição breve"}
   ],
   "urgency": {
-    "type": "urgency ou opportunity ou availability (escolha o mais adequado ao status)",
+    "type": "urgency ou opportunity ou availability",
     "title": "título da seção de urgência/oportunidade",
     "description": "texto persuasivo adaptado ao status do imóvel",
-    "highlight": "destaque numérico ou frase de impacto (ex: 'Apenas 8 unidades')"
+    "highlight": "destaque numérico ou frase de impacto"
   },
   "benefits": [
     {"icon": "emoji", "title": "benefício de se cadastrar 1", "description": "descrição breve"},
@@ -170,12 +248,12 @@ Gere um JSON com esta estrutura EXATA:
     {"icon": "emoji", "title": "benefício 4", "description": "descrição breve"}
   ],
   "cta": {
-    "title": "título do bloco CTA final (reforço emocional)",
+    "title": "título do bloco CTA final",
     "subtitle": "subtítulo convite para ação",
     "buttonText": "texto do botão"
   },
   "form": {
-    "title": "título do formulário de captação",
+    "title": "título do formulário",
     "subtitle": "subtítulo do formulário",
     "buttonText": "texto do botão de envio",
     "thankYouTitle": "título da tela de agradecimento",
@@ -183,41 +261,20 @@ Gere um JSON com esta estrutura EXATA:
   },
   "floatingButtonText": "texto do botão flutuante mobile",
   "footer": {
-    "disclaimer": "disclaimer legal breve (ex: 'Imagens meramente ilustrativas. Material em conformidade com a legislação vigente.')"
+    "disclaimer": "disclaimer legal breve"
   }
 }
-
-Adapte o tom e visual ao contexto:
-- Pré-lançamento: exclusividade, acesso antecipado, escolha estratégica
-- Lançamento: novidade, oportunidade atual, momento ideal
-- Em obras: visão de futuro, valorização, planejamento
-- Pronto para venda: disponibilidade imediata, pronto para morar
-- Para locação: praticidade, agilidade, disponibilidade
 
 Retorne APENAS o JSON, sem markdown, sem explicações.`;
     }
 
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: 4096,
-      messages: [{ role: "user", content: userPrompt }],
-      system: systemPrompt,
-    });
-
-    const rawContent = message.content[0];
-    if (rawContent.type !== "text") {
-      throw new Error("Resposta inválida da IA");
-    }
-
-    // Strip any markdown fences if present
-    let jsonText = rawContent.text.trim();
+    let jsonText = (await callAi(systemPrompt, userPrompt)).trim();
     if (jsonText.startsWith("```")) {
       jsonText = jsonText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "");
     }
 
     const landingPageData = JSON.parse(jsonText);
 
-    // If this is a full generation (not chat edit), save to DB
     if (!chatMessage && project.id) {
       await supabase
         .from("projects")
