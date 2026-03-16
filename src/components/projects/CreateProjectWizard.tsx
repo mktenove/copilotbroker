@@ -34,6 +34,10 @@ import {
   RefreshCw,
   X,
   Plus,
+  Globe,
+  Link2,
+  ArrowRight,
+  CheckCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +76,9 @@ interface WizardFormData {
   map_embed_url: string;
   description: string;
   webhook_url: string;
+  // Internal — scraped images for picker
+  _scraped_images: string[];
+  _source_url: string;
 }
 
 const initialForm: WizardFormData = {
@@ -96,6 +103,8 @@ const initialForm: WizardFormData = {
   map_embed_url: "",
   description: "",
   webhook_url: "",
+  _scraped_images: [],
+  _source_url: "",
 };
 
 interface CreateProjectWizardProps {
@@ -127,6 +136,9 @@ export function CreateProjectWizard({
   navigateToEditor = true,
 }: CreateProjectWizardProps) {
   const navigate = useNavigate();
+  const [mode, setMode] = useState<"choose" | "import" | "manual">("choose");
+  const [importUrl, setImportUrl] = useState("");
+  const [importing, setImporting] = useState(false);
   const [step, setStep] = useState(1);
   const [form, setForm] = useState<WizardFormData>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
@@ -136,9 +148,53 @@ export function CreateProjectWizard({
     setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleClose = () => {
+    setMode("choose");
+    setImportUrl("");
     setStep(1);
     setForm(initialForm);
     onOpenChange(false);
+  };
+
+  const handleImport = async () => {
+    const url = importUrl.trim();
+    if (!url.startsWith("http")) {
+      toast.error("Digite uma URL válida começando com https://");
+      return;
+    }
+    setImporting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await supabase.functions.invoke("scrape-property", {
+        headers: { Authorization: `Bearer ${session?.access_token}` },
+        body: { url },
+      });
+      if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
+
+      const s = res.data.data;
+      setForm((prev) => ({
+        ...prev,
+        name: s.name || prev.name,
+        slug: s.name ? toSlug(s.name) : prev.slug,
+        city: s.city || prev.city,
+        city_slug: s.city ? toSlug(s.city) : prev.city_slug,
+        description: s.description || prev.description,
+        bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
+        suites: s.suites != null ? String(s.suites) : prev.suites,
+        parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
+        area_m2: s.area_m2 != null ? String(s.area_m2) : prev.area_m2,
+        price_range: s.price_range || prev.price_range,
+        amenities: s.amenities?.length ? s.amenities : prev.amenities,
+        main_image_url: s.main_image_url || prev.main_image_url,
+        _scraped_images: s.images || [],
+        _source_url: url,
+      }));
+      setMode("manual");
+      toast.success("Dados importados! Revise e complete as informações.");
+    } catch (err) {
+      toast.error("Erro ao importar: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setImporting(false);
+    }
   };
 
   const addAmenity = () => {
@@ -255,36 +311,144 @@ export function CreateProjectWizard({
           </DialogTitle>
         </DialogHeader>
 
-        {/* Step indicator */}
-        <div className="flex items-center gap-2 my-1">
-          {STEPS.map((s, i) => (
-            <div key={s.id} className="flex items-center gap-2">
-              <div
-                className={cn(
-                  "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-                  step >= s.id
-                    ? "bg-primary text-black"
-                    : "bg-[#2a2a2e] text-muted-foreground"
-                )}
+        {/* ── MODE: choose ── */}
+        {mode === "choose" && (
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">Como deseja criar o empreendimento?</p>
+            <div className="grid grid-cols-1 gap-3">
+              <button
+                onClick={() => setMode("manual")}
+                className="group flex items-start gap-4 p-4 rounded-xl border border-[#2a2a2e] hover:border-primary/50 hover:bg-[#2a2a2e] transition-all text-left"
               >
-                {s.id}
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                  <Building2 className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Cadastrar manualmente</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Preencha os dados do imóvel passo a passo e gere a landing page com IA.
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto mt-1 shrink-0 group-hover:text-primary transition-colors" />
+              </button>
+
+              <button
+                onClick={() => setMode("import")}
+                className="group flex items-start gap-4 p-4 rounded-xl border border-[#2a2a2e] hover:border-primary/50 hover:bg-[#2a2a2e] transition-all text-left"
+              >
+                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
+                  <Globe className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Importar de site</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Cole o link do imóvel em qualquer site (imobiliária, VivaReal, ZAP...) e extraímos
+                    o conteúdo, imagens e dados automaticamente.
+                  </p>
+                </div>
+                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto mt-1 shrink-0 group-hover:text-primary transition-colors" />
+              </button>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-[#2a2a2e]">
+              <Button variant="ghost" onClick={handleClose} className="hover:bg-[#2a2a2e]">
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODE: import ── */}
+        {mode === "import" && (
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <Globe className="w-4 h-4 text-primary shrink-0" />
+              <p className="text-xs text-muted-foreground">
+                Cole o link da página do imóvel. Extraímos título, descrição, imagens e características automaticamente.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>URL do imóvel</Label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    value={importUrl}
+                    onChange={(e) => setImportUrl(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                    placeholder="https://www.vivareal.com.br/imovel/..."
+                    className="bg-[#141417] border-[#2a2a2e] pl-9"
+                    disabled={importing}
+                  />
+                </div>
+                <Button
+                  onClick={handleImport}
+                  disabled={importing || !importUrl.trim()}
+                  className="bg-[#FFFF00] text-black hover:brightness-110 shrink-0"
+                >
+                  {importing ? <RefreshCw className="w-4 h-4 animate-spin" /> : "Importar"}
+                </Button>
               </div>
-              <span
-                className={cn(
-                  "text-xs hidden sm:block",
-                  step === s.id ? "text-foreground font-medium" : "text-muted-foreground"
-                )}
-              >
-                {s.label}
-              </span>
-              {i < STEPS.length - 1 && (
-                <div className={cn("h-px flex-1 w-4", step > s.id ? "bg-primary" : "bg-[#2a2a2e]")} />
+              {importing && (
+                <p className="text-xs text-muted-foreground animate-pulse">
+                  Lendo o conteúdo do site...
+                </p>
               )}
             </div>
-          ))}
-        </div>
 
-        <div className="space-y-4 mt-2">
+            <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
+              <Button variant="ghost" onClick={() => setMode("choose")} className="hover:bg-[#2a2a2e]">
+                <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+              </Button>
+              <Button variant="ghost" onClick={() => setMode("manual")} className="hover:bg-[#2a2a2e] text-xs text-muted-foreground">
+                Pular e cadastrar manualmente
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── MODE: manual (regular wizard) ── */}
+        {mode === "manual" && (
+          <>
+            {/* Source URL banner */}
+            {form._source_url && (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
+                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                <span className="truncate">Importado de: {form._source_url}</span>
+              </div>
+            )}
+
+            {/* Step indicator */}
+            <div className="flex items-center gap-2 my-1">
+              {STEPS.map((s, i) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <div
+                    className={cn(
+                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                      step >= s.id
+                        ? "bg-primary text-black"
+                        : "bg-[#2a2a2e] text-muted-foreground"
+                    )}
+                  >
+                    {s.id}
+                  </div>
+                  <span
+                    className={cn(
+                      "text-xs hidden sm:block",
+                      step === s.id ? "text-foreground font-medium" : "text-muted-foreground"
+                    )}
+                  >
+                    {s.label}
+                  </span>
+                  {i < STEPS.length - 1 && (
+                    <div className={cn("h-px flex-1 w-4", step > s.id ? "bg-primary" : "bg-[#2a2a2e]")} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-4 mt-2">
           {/* ───── STEP 1 ───── */}
           {step === 1 && (
             <>
@@ -561,6 +725,38 @@ export function CreateProjectWizard({
                 </p>
               </div>
 
+              {/* Scraped images picker */}
+              {form._scraped_images.length > 0 && (
+                <div className="space-y-2">
+                  <Label>Imagens encontradas no site</Label>
+                  <p className="text-xs text-muted-foreground/70">
+                    Clique em uma imagem para usá-la como imagem principal.
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto rounded-lg border border-[#2a2a2e] p-2">
+                    {form._scraped_images.map((img, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => set("main_image_url", img)}
+                        className={cn(
+                          "relative rounded-lg overflow-hidden h-20 border-2 transition-all",
+                          form.main_image_url === img
+                            ? "border-primary ring-1 ring-primary"
+                            : "border-transparent hover:border-[#2a2a2e]"
+                        )}
+                      >
+                        <img src={img} className="w-full h-full object-cover" alt="" />
+                        {form.main_image_url === img && (
+                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                            <CheckCircle className="w-5 h-5 text-primary" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Generation preview */}
               <div className="bg-[#141417] border border-primary/20 rounded-lg p-4 mt-2">
                 <div className="flex items-center gap-2 mb-2">
@@ -579,7 +775,7 @@ export function CreateProjectWizard({
         {/* Navigation */}
         <div className="flex justify-between gap-2 pt-4 border-t border-[#2a2a2e]">
           <div>
-            {step > 1 && (
+            {step > 1 ? (
               <Button
                 type="button"
                 variant="ghost"
@@ -588,6 +784,16 @@ export function CreateProjectWizard({
                 className="hover:bg-[#2a2a2e]"
               >
                 <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setMode("choose")}
+                disabled={isSaving}
+                className="hover:bg-[#2a2a2e] text-muted-foreground"
+              >
+                <ChevronLeft className="w-4 h-4 mr-1" /> Início
               </Button>
             )}
           </div>
@@ -638,6 +844,8 @@ export function CreateProjectWizard({
             )}
           </div>
         </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );
