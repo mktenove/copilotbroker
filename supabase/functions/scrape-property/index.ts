@@ -198,7 +198,9 @@ Deno.serve(async (req) => {
       String(jsonLd["name"] ?? "") ||
       metaName(html, "title") ||
       rex(html, /<title[^>]*>([^<]*)<\/title>/i);
-    name = decodeEntities(name).replace(/\s*[|\-–—].*$/, "").trim().slice(0, 120);
+    // Split by separators and take the longest segment (property name is usually longer than site name)
+    const nameParts = decodeEntities(name).split(/\s*[|\-–—]\s*/).map((p) => p.trim()).filter(Boolean);
+    name = (nameParts.sort((a, b) => b.length - a.length)[0] ?? "").slice(0, 120);
 
     // Description
     let description =
