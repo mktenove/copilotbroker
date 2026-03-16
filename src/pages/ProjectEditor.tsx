@@ -48,6 +48,22 @@ interface BrokerInfo {
   slug: string;
 }
 
+type ProjectRecord = Partial<Project> & {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string | null;
+  status: string;
+  is_active: boolean;
+  tenant_id: string | null;
+  webhook_url: string | null;
+  landing_page_status?: 'draft' | 'published' | null;
+  landing_page_data?: LandingPageData | null;
+  main_image_url?: string | null;
+  video_url?: string | null;
+};
+
 // ─── Section edit helpers ─────────────────────────────────────────────────────
 interface SectionConfig {
   key: keyof LandingPageData;
@@ -573,18 +589,20 @@ export default function ProjectEditor() {
         .eq("id", projectId)
         .maybeSingle();
 
-      if (!projectData) {
+      const typedProject = projectData as ProjectRecord | null;
+
+      if (!typedProject) {
         toast.error("Projeto não encontrado");
         navigate(-1);
         return;
       }
-      setProject(projectData as Project);
-      setLpStatus((projectData.landing_page_status as 'draft' | 'published') || 'draft');
-      if (projectData.landing_page_data) {
-        setLpData(projectData.landing_page_data as LandingPageData);
+      setProject(typedProject as Project);
+      setLpStatus(typedProject.landing_page_status || 'draft');
+      if (typedProject.landing_page_data) {
+        setLpData(typedProject.landing_page_data);
         setHasAiData(true);
       } else {
-        setLpData(buildDefaultLp(projectData as Project));
+        setLpData(buildDefaultLp(typedProject as Project));
       }
 
       // Load broker for URL preview
@@ -620,8 +638,8 @@ export default function ProjectEditor() {
     if (!lpData || !project) return;
     setSaving(true);
     try {
-      const { error } = await supabase
-        .from("projects")
+      const { error } = await (supabase
+        .from("projects") as any)
         .update({ landing_page_data: lpData, landing_page_status: targetStatus })
         .eq("id", project.id);
       if (error) throw error;
@@ -694,8 +712,8 @@ export default function ProjectEditor() {
       setLpData(updated);
 
       // Auto-save
-      await supabase
-        .from("projects")
+      await (supabase
+        .from("projects") as any)
         .update({ landing_page_data: updated })
         .eq("id", project.id);
 
@@ -888,7 +906,7 @@ export default function ProjectEditor() {
                           projectId={project.id}
                           onChange={async (url) => {
                             setProject(prev => prev ? { ...prev, main_image_url: url } : prev);
-                            await supabase.from("projects").update({ main_image_url: url }).eq("id", project.id);
+                            await (supabase.from("projects") as any).update({ main_image_url: url }).eq("id", project.id);
                           }}
                         />
                         <VideoUploadField
@@ -897,7 +915,7 @@ export default function ProjectEditor() {
                           projectId={project.id}
                           onChange={async (url) => {
                             setProject(prev => prev ? { ...prev, video_url: url } : prev);
-                            await supabase.from("projects").update({ video_url: url }).eq("id", project.id);
+                            await (supabase.from("projects") as any).update({ video_url: url }).eq("id", project.id);
                           }}
                         />
                       </div>

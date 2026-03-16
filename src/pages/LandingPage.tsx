@@ -24,9 +24,19 @@ interface BrokerInfo {
   whatsapp: string | null;
 }
 
-interface ProjectWithLP extends Project {
-  landing_page_data: LandingPageData | null;
-}
+type ProjectRecord = Partial<Project> & {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string | null;
+  status: string;
+  is_active: boolean;
+  tenant_id: string | null;
+  webhook_url: string | null;
+  landing_page_status?: 'draft' | 'published' | null;
+  landing_page_data?: LandingPageData | null;
+};
 
 function getFontStyle(font: string) {
   const clean = font?.replace(/\s/g, "+") || "Inter";
@@ -111,7 +121,7 @@ export default function LandingPage() {
     brokerSlug: string;
   }>();
 
-  const [project, setProject] = useState<ProjectWithLP | null>(null);
+  const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [lp, setLp] = useState<LandingPageData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -166,13 +176,15 @@ export default function LandingPage() {
         .eq("is_active", true)
         .maybeSingle();
 
-      if (!projectData) {
+      const typedProject = projectData as ProjectRecord | null;
+
+      if (!typedProject) {
         setNotFound(true);
         return;
       }
 
       // Only show published landing pages
-      if (projectData.landing_page_status && projectData.landing_page_status !== 'published') {
+      if (typedProject.landing_page_status && typedProject.landing_page_status !== 'published') {
         setNotFound(true);
         return;
       }
@@ -182,7 +194,7 @@ export default function LandingPage() {
         .from("broker_projects")
         .select("id")
         .eq("broker_id", brokerData.id)
-        .eq("project_id", projectData.id)
+        .eq("project_id", typedProject.id)
         .eq("is_active", true)
         .maybeSingle();
 
@@ -191,8 +203,9 @@ export default function LandingPage() {
         return;
       }
 
-      setProject(projectData as ProjectWithLP);
-      const lpData = (projectData.landing_page_data as LandingPageData) || buildDefault(projectData as Project);
+      const normalizedProject = typedProject as Project;
+      setProject(normalizedProject);
+      const lpData = typedProject.landing_page_data || buildDefault(normalizedProject);
       setLp(lpData);
     } catch (err) {
       console.error("LandingPage load error:", err);
