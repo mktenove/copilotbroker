@@ -24,9 +24,19 @@ interface BrokerInfo {
   whatsapp: string | null;
 }
 
-interface ProjectWithLP extends Project {
-  landing_page_data: LandingPageData | null;
-}
+type ProjectRecord = Partial<Project> & {
+  id: string;
+  name: string;
+  slug: string;
+  city: string;
+  city_slug: string | null;
+  status: string;
+  is_active: boolean;
+  tenant_id: string | null;
+  webhook_url: string | null;
+  landing_page_status?: 'draft' | 'published' | null;
+  landing_page_data?: LandingPageData | null;
+};
 
 function getFontStyle(font: string) {
   const clean = font?.replace(/\s/g, "+") || "Inter";
