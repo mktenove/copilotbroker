@@ -175,6 +175,17 @@ ${project.description ? `Descrição adicional: ${project.description}` : ""}
 
     let systemPrompt = `Você é um especialista em marketing imobiliário e copywriting de alta conversão no Brasil.
 Você cria landing pages persuasivas e profissionais para imóveis e empreendimentos.
+
+O frontend que renderiza seu JSON usa React + Tailwind CSS com fontes Google Fonts.
+Ao escolher o tema visual, siga estas diretrizes:
+- primaryColor e accentColor devem ter bom contraste entre si e funcionar sobre o bgColor
+- bgColor escuro (ex: #0f0f1a, #12121e) transmite luxo/sofisticação; claro (ex: #f8f7f4, #ffffff) transmite clareza/modernidade
+- Para empreendimentos de alto padrão: fontFamily "Playfair Display" ou "Cormorant Garamond"
+- Para empreendimentos modernos/urbanos: fontFamily "Inter" ou "Plus Jakarta Sans"
+- Para empreendimentos familiares/aconchegantes: fontFamily "Nunito" ou "Poppins"
+- Para empreendimentos premium executivos: fontFamily "Montserrat" ou "Raleway"
+- heroStyle: prefira "dark-overlay" quando há imagem de fundo; "gradient" para layouts clean
+
 Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
 
     let userPrompt: string;

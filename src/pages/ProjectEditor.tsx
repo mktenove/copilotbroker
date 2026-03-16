@@ -21,6 +21,11 @@ import {
   X,
   Video,
   Image as ImageIcon,
+  RotateCcw,
+  MapPin,
+  CheckCircle2,
+  Zap,
+  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -532,6 +537,7 @@ export default function ProjectEditor() {
   const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
   const [lpData, setLpData] = useState<LandingPageData | null>(null);
+  const [lpHistory, setLpHistory] = useState<LandingPageData[]>([]);
   const [hasAiData, setHasAiData] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -626,6 +632,16 @@ export default function ProjectEditor() {
     }
   };
 
+  const pushToHistory = (data: LandingPageData) =>
+    setLpHistory((prev) => [data, ...prev].slice(0, 10));
+
+  const handleUndo = () => {
+    if (lpHistory.length === 0) return;
+    setLpData(lpHistory[0]);
+    setLpHistory((prev) => prev.slice(1));
+    toast.success("Versão anterior restaurada");
+  };
+
   const regenerate = async () => {
     if (!project) return;
     setRegenerating(true);
@@ -639,6 +655,7 @@ export default function ProjectEditor() {
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
+      if (lpData) pushToHistory(lpData);
       setLpData(res.data.data);
       setHasAiData(true);
       toast.success("Landing page regenerada com sucesso!");
@@ -670,6 +687,7 @@ export default function ProjectEditor() {
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
       const updated = res.data.data as LandingPageData;
+      if (lpData) pushToHistory(lpData);
       setLpData(updated);
 
       // Auto-save
@@ -718,6 +736,18 @@ export default function ProjectEditor() {
         </div>
 
         <div className="flex items-center gap-2">
+          {lpHistory.length > 0 && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleUndo}
+              title={`Voltar versão anterior (${lpHistory.length} versão${lpHistory.length > 1 ? "ões" : ""})`}
+              className="text-xs hover:bg-[#2a2a2e] gap-1 text-amber-400 hover:text-amber-300"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span className="tabular-nums">{lpHistory.length}</span>
+            </Button>
+          )}
           {publicUrl && (
             <>
               <Button
@@ -1063,144 +1093,302 @@ function LandingPagePreview({
   const upd = (patch: Partial<LandingPageData>) => onUpdate?.({ ...data, ...patch });
   const heroBg = data.hero.bgImage || project.main_image_url;
   const heroOpacity = data.hero.bgOpacity ?? 0.65;
+  const primary = theme.primaryColor;
+  const accent = theme.accentColor;
+  const bg = theme.bgColor;
+  const text = theme.textColor;
 
   return (
     <ScrollArea className="flex-1 h-full">
-      <div
-        style={{
-          fontFamily: `'${theme.fontFamily}', sans-serif`,
-          backgroundColor: theme.bgColor,
-          color: theme.textColor,
-          fontSize: "12px",
-        }}
-      >
-        {/* Hero */}
+      <div style={{ fontFamily: `'${theme.fontFamily}', sans-serif`, backgroundColor: bg, color: text }}>
+
+        {/* ── Hero ── */}
         <div
-          className="relative py-16 px-6 text-center"
+          className="relative flex flex-col items-center justify-center min-h-[320px] py-20 px-6 text-center overflow-hidden"
           style={{
-            backgroundImage: heroBg ? `url(${heroBg})` : undefined,
+            backgroundImage: heroBg ? `url(${heroBg})` : `linear-gradient(135deg, ${bg} 0%, ${accent}22 100%)`,
             backgroundSize: "cover",
             backgroundPosition: "center",
           }}
         >
-          <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${heroOpacity})` }} />
-          <div className="relative z-10 space-y-3">
+          {heroBg && <div className="absolute inset-0" style={{ background: `rgba(0,0,0,${heroOpacity})` }} />}
+          {!heroBg && (
+            <div className="absolute inset-0" style={{ background: `linear-gradient(160deg, ${bg} 40%, ${primary}18 100%)` }} />
+          )}
+          <div className="relative z-10 space-y-4 max-w-sm mx-auto">
             <span
-              className="inline-block px-3 py-1 rounded-full text-xs font-bold"
-              style={{ backgroundColor: theme.primaryColor, color: "#000" }}
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg"
+              style={{ backgroundColor: primary, color: "#000" }}
             >
+              <Zap className="w-3 h-3" />
               <EditableText value={data.hero.badge} onSave={(v) => upd({ hero: { ...data.hero, badge: v } })} />
             </span>
-            <h1 className="text-xl font-extrabold text-white leading-tight">
-              <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} />
+            <h1 className="text-2xl font-black leading-tight" style={{ color: heroBg ? "#fff" : text }}>
+              {data.hero.titleHighlight ? (
+                <>
+                  <EditableText
+                    value={data.hero.title}
+                    onSave={(v) => upd({ hero: { ...data.hero, title: v } })}
+                    style={{ color: heroBg ? "#fff" : text }}
+                  />
+                  {" "}
+                  <EditableText
+                    value={data.hero.titleHighlight}
+                    onSave={(v) => upd({ hero: { ...data.hero, titleHighlight: v } })}
+                    style={{ color: primary }}
+                  />
+                </>
+              ) : (
+                <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} />
+              )}
             </h1>
-            <p className="text-xs text-white/80">
+            <p className="text-sm leading-relaxed" style={{ color: heroBg ? "rgba(255,255,255,0.8)" : `${text}99` }}>
               <EditableText value={data.hero.subtitle} onSave={(v) => upd({ hero: { ...data.hero, subtitle: v } })} />
             </p>
-            <button className="px-5 py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
+            <button
+              className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold shadow-lg hover:brightness-110 transition-all"
+              style={{ backgroundColor: primary, color: "#000" }}
+            >
               <EditableText value={data.hero.ctaText} onSave={(v) => upd({ hero: { ...data.hero, ctaText: v } })} />
             </button>
           </div>
         </div>
 
-        {/* Location */}
-        <div className="py-8 px-6" style={{ backgroundColor: `${theme.bgColor}dd` }}>
-          <h2 className="font-bold mb-2" style={{ color: theme.accentColor }}>
-            <EditableText value={data.location.title} onSave={(v) => upd({ location: { ...data.location, title: v } })} />
-          </h2>
-          <p className="text-xs opacity-80 mb-4">
-            <EditableText value={data.location.description} onSave={(v) => upd({ location: { ...data.location, description: v } })} />
-          </p>
-          <div className="grid grid-cols-2 gap-2">
-            {data.location.highlights.map((h, i) => (
-              <div key={i} className="flex items-center gap-1.5 text-xs">
-                <span style={{ color: theme.primaryColor }}>✓</span>
-                <EditableText value={h} onSave={(v) => {
-                  const arr = [...data.location.highlights]; arr[i] = v;
-                  upd({ location: { ...data.location, highlights: arr } });
-                }} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Features */}
-        {data.features.length > 0 && (
-          <div className="py-8 px-6">
-            <h2 className="font-bold text-center mb-4">Diferenciais</h2>
-            <div className="grid grid-cols-3 gap-2">
-              {data.features.map((f, i) => (
-                <div key={i} className="text-center p-3 rounded-xl border" style={{ borderColor: `${theme.primaryColor}30` }}>
-                  <div className="text-lg mb-1">
-                    <EditableText value={f.icon} onSave={(v) => {
-                      const arr = [...data.features]; arr[i] = { ...arr[i], icon: v };
-                      upd({ features: arr });
-                    }} />
-                  </div>
-                  <div className="text-xs opacity-60">
-                    <EditableText value={f.label} onSave={(v) => {
-                      const arr = [...data.features]; arr[i] = { ...arr[i], label: v };
-                      upd({ features: arr });
-                    }} />
-                  </div>
-                  <div className="text-sm font-bold" style={{ color: theme.accentColor }}>
-                    <EditableText value={f.value} onSave={(v) => {
-                      const arr = [...data.features]; arr[i] = { ...arr[i], value: v };
-                      upd({ features: arr });
-                    }} />
-                  </div>
+        {/* ── Location ── */}
+        <div className="py-12 px-6" style={{ backgroundColor: `${bg}` }}>
+          <div className="max-w-sm mx-auto">
+            <div className="flex items-center gap-2 mb-3">
+              <MapPin className="w-4 h-4 shrink-0" style={{ color: primary }} />
+              <h2 className="text-base font-bold" style={{ color: accent }}>
+                <EditableText value={data.location.title} onSave={(v) => upd({ location: { ...data.location, title: v } })} />
+              </h2>
+            </div>
+            <p className="text-xs leading-relaxed mb-6 opacity-70">
+              <EditableText value={data.location.description} onSave={(v) => upd({ location: { ...data.location, description: v } })} />
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {data.location.highlights.map((h, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-medium"
+                  style={{ backgroundColor: `${primary}12`, border: `1px solid ${primary}25` }}
+                >
+                  <CheckCircle2 className="w-3.5 h-3.5 shrink-0" style={{ color: primary }} />
+                  <EditableText value={h} onSave={(v) => {
+                    const arr = [...data.location.highlights]; arr[i] = v;
+                    upd({ location: { ...data.location, highlights: arr } });
+                  }} />
                 </div>
               ))}
             </div>
           </div>
+        </div>
+
+        {/* ── Features (Diferenciais) ── */}
+        {data.features.length > 0 && (
+          <div className="py-12 px-6" style={{ backgroundColor: `${accent}0a` }}>
+            <div className="max-w-sm mx-auto">
+              <h2 className="text-base font-bold text-center mb-6" style={{ color: text }}>
+                Diferenciais
+              </h2>
+              <div className="grid grid-cols-3 gap-2">
+                {data.features.map((f, i) => (
+                  <div
+                    key={i}
+                    className="flex flex-col items-center text-center gap-2 p-3 rounded-2xl transition-all"
+                    style={{ backgroundColor: `${bg}`, border: `1px solid ${primary}22`, boxShadow: `0 2px 12px ${primary}10` }}
+                  >
+                    <div className="text-2xl leading-none">
+                      <EditableText value={f.icon} onSave={(v) => {
+                        const arr = [...data.features]; arr[i] = { ...arr[i], icon: v };
+                        upd({ features: arr });
+                      }} />
+                    </div>
+                    <div className="text-[10px] opacity-55 leading-tight">
+                      <EditableText value={f.label} onSave={(v) => {
+                        const arr = [...data.features]; arr[i] = { ...arr[i], label: v };
+                        upd({ features: arr });
+                      }} />
+                    </div>
+                    <div className="text-xs font-bold leading-tight" style={{ color: accent }}>
+                      <EditableText value={f.value} onSave={(v) => {
+                        const arr = [...data.features]; arr[i] = { ...arr[i], value: v };
+                        upd({ features: arr });
+                      }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* CTA */}
+        {/* ── Audience ── */}
+        {data.audience?.length > 0 && (
+          <div className="py-12 px-6" style={{ backgroundColor: bg }}>
+            <div className="max-w-sm mx-auto">
+              <div className="flex items-center gap-2 mb-6 justify-center">
+                <Users className="w-4 h-4" style={{ color: primary }} />
+                <h2 className="text-base font-bold text-center">Esse imóvel é ideal para você se...</h2>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                {data.audience.map((a, i) => (
+                  <div
+                    key={i}
+                    className="p-4 rounded-2xl"
+                    style={{
+                      background: `linear-gradient(135deg, ${primary}10 0%, ${accent}08 100%)`,
+                      border: `1px solid ${primary}20`,
+                    }}
+                  >
+                    <p className="text-xs font-bold mb-1" style={{ color: accent }}>
+                      <EditableText value={a.title} onSave={(v) => {
+                        const arr = [...data.audience]; arr[i] = { ...arr[i], title: v };
+                        upd({ audience: arr });
+                      }} />
+                    </p>
+                    <p className="text-[10px] opacity-60 leading-relaxed">
+                      <EditableText value={a.description} onSave={(v) => {
+                        const arr = [...data.audience]; arr[i] = { ...arr[i], description: v };
+                        upd({ audience: arr });
+                      }} />
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Urgency ── */}
+        {data.urgency && (
+          <div
+            className="py-12 px-6 text-center"
+            style={{ background: `linear-gradient(135deg, ${primary}22 0%, ${accent}18 100%)` }}
+          >
+            <div className="max-w-sm mx-auto space-y-4">
+              <div
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider"
+                style={{ backgroundColor: `${primary}30`, color: text, border: `1px solid ${primary}40` }}
+              >
+                <Zap className="w-3 h-3" style={{ color: primary }} />
+                {data.urgency.type === "urgency" ? "Atenção" : data.urgency.type === "availability" ? "Disponibilidade" : "Oportunidade"}
+              </div>
+              <h2 className="text-lg font-black leading-tight">
+                <EditableText value={data.urgency.title} onSave={(v) => upd({ urgency: { ...data.urgency, title: v } })} />
+              </h2>
+              <p className="text-xs opacity-70 leading-relaxed">
+                <EditableText value={data.urgency.description} onSave={(v) => upd({ urgency: { ...data.urgency, description: v } })} />
+              </p>
+              <div
+                className="inline-block px-8 py-3 rounded-2xl text-base font-black shadow-lg"
+                style={{ backgroundColor: primary, color: "#000" }}
+              >
+                <EditableText value={data.urgency.highlight} onSave={(v) => upd({ urgency: { ...data.urgency, highlight: v } })} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Benefits ── */}
+        {data.benefits?.length > 0 && (
+          <div className="py-12 px-6" style={{ backgroundColor: bg }}>
+            <div className="max-w-sm mx-auto">
+              <h2 className="text-base font-bold text-center mb-6">
+                Ao se cadastrar, você recebe:
+              </h2>
+              <div className="grid grid-cols-2 gap-3">
+                {data.benefits.map((b, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 p-4 rounded-2xl"
+                    style={{ backgroundColor: `${primary}08`, border: `1px solid ${primary}18` }}
+                  >
+                    <span className="text-xl leading-none shrink-0">{b.icon}</span>
+                    <div>
+                      <p className="text-xs font-bold mb-0.5">
+                        <EditableText value={b.title} onSave={(v) => {
+                          const arr = [...data.benefits]; arr[i] = { ...arr[i], title: v };
+                          upd({ benefits: arr });
+                        }} />
+                      </p>
+                      <p className="text-[10px] opacity-55 leading-relaxed">
+                        <EditableText value={b.description} onSave={(v) => {
+                          const arr = [...data.benefits]; arr[i] = { ...arr[i], description: v };
+                          upd({ benefits: arr });
+                        }} />
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── CTA ── */}
         <div
-          className="relative py-8 px-6 text-center"
+          className="relative py-14 px-6 text-center overflow-hidden"
           style={{
             backgroundImage: data.cta.bgImage ? `url(${data.cta.bgImage})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            background: data.cta.bgImage ? undefined : `linear-gradient(135deg, ${theme.bgColor}, color-mix(in srgb, ${theme.primaryColor} 10%, ${theme.bgColor}))`,
+            background: data.cta.bgImage
+              ? undefined
+              : `linear-gradient(135deg, ${bg} 0%, ${primary}20 50%, ${accent}15 100%)`,
           }}
         >
-          {data.cta.bgImage && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.6)" }} />}
-          <div className="relative z-10">
-            <h2 className="font-extrabold mb-2">
+          {data.cta.bgImage && <div className="absolute inset-0" style={{ background: "rgba(0,0,0,0.62)" }} />}
+          <div className="relative z-10 max-w-sm mx-auto space-y-4">
+            <h2 className="text-xl font-black leading-tight" style={{ color: data.cta.bgImage ? "#fff" : text }}>
               <EditableText value={data.cta.title} onSave={(v) => upd({ cta: { ...data.cta, title: v } })} />
             </h2>
-            <p className="text-xs opacity-70 mb-3">
+            <p className="text-xs leading-relaxed" style={{ color: data.cta.bgImage ? "rgba(255,255,255,0.75)" : `${text}99` }}>
               <EditableText value={data.cta.subtitle} onSave={(v) => upd({ cta: { ...data.cta, subtitle: v } })} />
             </p>
-            <button className="px-6 py-2 rounded-xl text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
+            <button
+              className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold shadow-xl hover:brightness-110 transition-all"
+              style={{ backgroundColor: primary, color: "#000" }}
+            >
               <EditableText value={data.cta.buttonText} onSave={(v) => upd({ cta: { ...data.cta, buttonText: v } })} />
             </button>
           </div>
         </div>
 
-        {/* Form preview */}
-        <div className="py-8 px-6" style={{ backgroundColor: `${theme.bgColor}ee` }}>
-          <h2 className="font-bold text-center mb-1">
-            <EditableText value={data.form.title} onSave={(v) => upd({ form: { ...data.form, title: v } })} />
-          </h2>
-          <p className="text-xs text-center opacity-70 mb-4">
-            <EditableText value={data.form.subtitle} onSave={(v) => upd({ form: { ...data.form, subtitle: v } })} />
-          </p>
-          <div className="space-y-2 max-w-sm mx-auto">
-            {["Nome *", "WhatsApp *", "E-mail (opcional)"].map((p) => (
-              <div key={p} className="px-3 py-2 rounded-lg border text-xs opacity-40" style={{ borderColor: `${theme.primaryColor}60` }}>
-                {p}
-              </div>
-            ))}
-            <button className="w-full py-2 rounded-lg text-xs font-bold" style={{ backgroundColor: theme.primaryColor, color: "#000" }}>
-              <EditableText value={data.form.buttonText} onSave={(v) => upd({ form: { ...data.form, buttonText: v } })} />
-            </button>
+        {/* ── Form preview ── */}
+        <div className="py-12 px-6" style={{ backgroundColor: `${accent}08` }}>
+          <div className="max-w-xs mx-auto space-y-4">
+            <h2 className="text-base font-bold text-center">
+              <EditableText value={data.form.title} onSave={(v) => upd({ form: { ...data.form, title: v } })} />
+            </h2>
+            <p className="text-xs text-center opacity-60">
+              <EditableText value={data.form.subtitle} onSave={(v) => upd({ form: { ...data.form, subtitle: v } })} />
+            </p>
+            <div className="space-y-2">
+              {["Nome *", "WhatsApp *", "E-mail (opcional)"].map((p) => (
+                <div
+                  key={p}
+                  className="px-4 py-2.5 rounded-xl text-xs opacity-40"
+                  style={{ border: `1px solid ${primary}50`, backgroundColor: `${bg}` }}
+                >
+                  {p}
+                </div>
+              ))}
+              <button
+                className="w-full py-3 rounded-xl text-xs font-bold shadow-md hover:brightness-110 transition-all"
+                style={{ backgroundColor: primary, color: "#000" }}
+              >
+                <EditableText value={data.form.buttonText} onSave={(v) => upd({ form: { ...data.form, buttonText: v } })} />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="py-4 px-6 text-center border-t opacity-40 text-xs" style={{ borderColor: `${theme.primaryColor}20` }}>
+        {/* ── Footer ── */}
+        <div
+          className="py-5 px-6 text-center text-[10px] opacity-40"
+          style={{ borderTop: `1px solid ${primary}20` }}
+        >
           <EditableText value={data.footer.disclaimer} onSave={(v) => upd({ footer: { disclaimer: v } })} />
         </div>
       </div>
