@@ -36,8 +36,9 @@ import {
   Plus,
   Globe,
   Link2,
-  ArrowRight,
   CheckCircle,
+  MapPin,
+  Home,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -52,7 +53,6 @@ const toSlug = (value: string) =>
     .trim();
 
 interface WizardFormData {
-  // Step 1 — Basic Info
   name: string;
   slug: string;
   city: string;
@@ -60,7 +60,6 @@ interface WizardFormData {
   status: ProjectStatus;
   property_type: PropertyType | "";
   address: string;
-  // Step 2 — Property Details
   bedrooms: string;
   suites: string;
   parking_spots: string;
@@ -70,13 +69,11 @@ interface WizardFormData {
   differentials: string;
   amenity_input: string;
   amenities: string[];
-  // Step 3 — Media + Config
   main_image_url: string;
   video_url: string;
   map_embed_url: string;
   description: string;
   webhook_url: string;
-  // Internal — scraped images for picker
   _scraped_images: string[];
   _source_url: string;
 }
@@ -112,19 +109,18 @@ interface CreateProjectWizardProps {
   onOpenChange: (open: boolean) => void;
   tenantId: string | null;
   brokerId?: string | null;
-  /** Called with the newly created project id after AI generation */
   onCreated?: (projectId: string) => void;
-  /** Called with the newly created project id WITHOUT going to editor (admin flow) */
   onCreatedSimple?: (projectId: string) => void;
-  /** If true, after creation navigates to editor automatically */
   navigateToEditor?: boolean;
 }
 
-const STEPS = [
+const MANUAL_STEPS = [
   { id: 1, label: "Informações Básicas" },
   { id: 2, label: "Detalhes do Imóvel" },
   { id: 3, label: "Mídias e Configurações" },
 ];
+
+const IMPORT_PROGRESS = ["Dados", "Conteúdo", "Config", "IA + Preview"];
 
 export function CreateProjectWizard({
   open,
@@ -136,18 +132,26 @@ export function CreateProjectWizard({
   navigateToEditor = true,
 }: CreateProjectWizardProps) {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<"choose" | "import" | "manual">("choose");
+
+  type WizardMode = "choose" | "import" | "review" | "content" | "manual";
+  const [mode, setMode] = useState<WizardMode>("choose");
   const [importUrl, setImportUrl] = useState("");
   const [importing, setImporting] = useState(false);
   const [importStep, setImportStep] = useState(-1);
   const [importRequestDone, setImportRequestDone] = useState(false);
+  const [imgFailCount, setImgFailCount] = useState(0);
   const importTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const importResultRef = useRef<any>(null);
   const importErrorRef = useRef<string | null>(null);
 
+  const [step, setStep] = useState(1);
+  const [form, setForm] = useState<WizardFormData>(initialForm);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+
   useEffect(() => () => importTimers.current.forEach(clearTimeout), []);
 
-  // Transition only after animation completes AND request is done
+  // Transition to review only after animation AND request are both complete
   useEffect(() => {
     if (!importing || importStep < 3 || !importRequestDone) return;
     const timer = setTimeout(() => {
@@ -155,6 +159,7 @@ export function CreateProjectWizard({
         toast.error("Erro ao importar: " + importErrorRef.current);
       } else if (importResultRef.current) {
         const s = importResultRef.current;
+        setImgFailCount(0);
         setForm((prev) => ({
           ...prev,
           name: s.name || prev.name,
@@ -174,8 +179,7 @@ export function CreateProjectWizard({
           _scraped_images: s.images || [],
           _source_url: s._sourceUrl || prev._source_url,
         }));
-        setMode("manual");
-        toast.success("Dados importados! Revise e complete as informações.");
+        setMode("review");
       }
       importResultRef.current = null;
       importErrorRef.current = null;
@@ -185,11 +189,6 @@ export function CreateProjectWizard({
     }, 500);
     return () => clearTimeout(timer);
   }, [importing, importStep, importRequestDone]);
-
-  const [step, setStep] = useState(1);
-  const [form, setForm] = useState<WizardFormData>(initialForm);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const set = (field: keyof WizardFormData, value: string | string[]) =>
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -201,6 +200,7 @@ export function CreateProjectWizard({
     setImportRequestDone(false);
     setImporting(false);
     setImportStep(-1);
+    setImgFailCount(0);
     setMode("choose");
     setImportUrl("");
     setStep(1);
@@ -243,34 +243,32 @@ export function CreateProjectWizard({
   const addAmenity = () => {
     const val = form.amenity_input.trim();
     if (!val || form.amenities.includes(val)) return;
-    setForm((prev) => ({
-      ...prev,
-      amenities: [...prev.amenities, val],
-      amenity_input: "",
-    }));
+    setForm((prev) => ({ ...prev, amenities: [...prev.amenities, val], amenity_input: "" }));
   };
 
   const removeAmenity = (a: string) =>
     setForm((prev) => ({ ...prev, amenities: prev.amenities.filter((x) => x !== a) }));
 
   const step1Valid =
-    form.name.trim() &&
-    form.slug.trim() &&
-    form.city.trim() &&
-    form.city_slug.trim();
+    form.name.trim() && form.slug.trim() && form.city.trim() && form.city_slug.trim();
+
+  const textBlockCount = form.description
+    ? Math.max(
+        form.description.split(/\n\n+/).filter((p) => p.trim().length > 20).length,
+        Math.ceil(form.description.length / 400)
+      )
+    : 0;
 
   const handleSubmit = async (withAI: boolean) => {
     if (!step1Valid) {
       toast.error("Preencha os campos obrigatórios.");
       return;
     }
-
     setIsSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
-      // 1. Create project via edge function (handles slug conflicts)
       const projectPayload = {
         name: form.name.trim(),
         slug: form.slug,
@@ -313,7 +311,6 @@ export function CreateProjectWizard({
         return;
       }
 
-      // 2. Generate landing page with AI
       setIsGenerating(true);
       toast.info("Gerando landing page com IA...");
 
@@ -323,7 +320,6 @@ export function CreateProjectWizard({
       });
 
       if (genRes.error || genRes.data?.error) {
-        // Non-fatal: project already created, just warn
         toast.warning("Projeto criado, mas houve erro ao gerar a landing page. Você pode gerá-la depois.");
       } else {
         toast.success("Landing page gerada com sucesso!");
@@ -344,86 +340,69 @@ export function CreateProjectWizard({
     }
   };
 
-  const isImported = !!form._source_url;
-  const maxStep = isImported ? 2 : 3;
-  const activeSteps = isImported
-    ? [{ id: 1, label: "Informações Básicas" }, { id: 2, label: "Conteúdo do Imóvel" }]
-    : STEPS;
-
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
-      <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] max-w-xl max-h-[92vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-foreground flex items-center gap-2">
-            <Building2 className="w-5 h-5 text-primary" />
-            Novo Empreendimento
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="bg-[#1e1e22] border-[#2a2a2e] max-w-2xl max-h-[90vh] overflow-y-auto p-0">
 
-        {/* ── MODE: choose ── */}
+        {/* ── CHOOSE ── */}
         {mode === "choose" && (
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">Como deseja criar o empreendimento?</p>
-            <div className="grid grid-cols-1 gap-3">
-              <button
-                onClick={() => setMode("manual")}
-                className="group flex items-start gap-4 p-4 rounded-xl border border-[#2a2a2e] hover:border-primary/50 hover:bg-[#2a2a2e] transition-all text-left"
-              >
-                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
-                  <Building2 className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Cadastrar manualmente</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Preencha os dados do imóvel passo a passo e gere a landing page com IA.
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto mt-1 shrink-0 group-hover:text-primary transition-colors" />
-              </button>
-
+          <div className="p-8 space-y-7">
+            <div className="text-center space-y-3">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-primary/30 bg-primary/10 text-xs text-primary font-medium">
+                <Sparkles className="w-3.5 h-3.5" /> Assistente de Criação
+              </div>
+              <h2 className="text-2xl font-bold text-foreground">Como deseja criar seu imóvel?</h2>
+              <p className="text-sm text-muted-foreground">Escolha a forma mais prática para você. A IA cuida do resto.</p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => setMode("import")}
-                className="group flex items-start gap-4 p-4 rounded-xl border border-[#2a2a2e] hover:border-primary/50 hover:bg-[#2a2a2e] transition-all text-left"
+                className="group flex flex-col items-start p-6 rounded-xl border border-primary/40 bg-primary/5 hover:bg-primary/10 hover:border-primary/70 transition-all text-left"
               >
-                <div className="p-2 rounded-lg bg-primary/10 group-hover:bg-primary/20 transition-colors shrink-0">
-                  <Globe className="w-5 h-5 text-primary" />
+                <div className="w-12 h-12 rounded-xl bg-primary/15 flex items-center justify-center mb-4">
+                  <Link2 className="w-6 h-6 text-primary" />
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Importar de site</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Cole o link do imóvel em qualquer site (imobiliária, VivaReal, ZAP...) e extraímos
-                    o conteúdo, imagens e dados automaticamente.
-                  </p>
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground ml-auto mt-1 shrink-0 group-hover:text-primary transition-colors" />
+                <p className="text-sm font-bold text-foreground mb-2">Importar de um Link</p>
+                <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
+                  Cole o link de um anúncio e a IA captura automaticamente fotos, dados e informações para criar uma landing page de alta conversão.
+                </p>
+                <span className="text-xs text-primary font-semibold">Começar →</span>
               </button>
-            </div>
 
-            <div className="flex justify-end pt-2 border-t border-[#2a2a2e]">
-              <Button variant="ghost" onClick={handleClose} className="hover:bg-[#2a2a2e]">
-                Cancelar
-              </Button>
+              <button
+                onClick={() => setMode("manual")}
+                className="group flex flex-col items-start p-6 rounded-xl border border-[#2a2a2e] hover:border-[#3a3a3e] hover:bg-[#2a2a2e] transition-all text-left"
+              >
+                <div className="w-12 h-12 rounded-xl bg-[#2a2a2e] flex items-center justify-center mb-4 group-hover:bg-[#3a3a3e]">
+                  <Building2 className="w-6 h-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-bold text-foreground mb-2">Adicionar Imóvel ou Empreendimento</p>
+                <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
+                  Preencha os dados manualmente, envie fotos e vídeos, e a IA gera a landing page a partir do conteúdo fornecido.
+                </p>
+                <span className="text-xs text-muted-foreground font-semibold group-hover:text-foreground">Começar →</span>
+              </button>
             </div>
           </div>
         )}
 
-        {/* ── MODE: import ── */}
+        {/* ── IMPORT: URL input + loading animation ── */}
         {mode === "import" && (
-          <div className="space-y-4 py-2">
-            {/* Loading screen */}
+          <div className="p-8">
             {importing ? (
-              <div className="flex flex-col items-center justify-center py-10 gap-6">
+              <div className="flex flex-col items-center justify-center py-12 gap-6">
                 <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
                   <Sparkles className="w-8 h-8 text-primary animate-pulse" />
                 </div>
                 <div className="space-y-3 w-full max-w-xs">
-                  {[
-                    "Lendo link...",
-                    "Extraindo informações...",
-                    "Organizando fotos...",
-                    "Montando apresentação...",
-                  ].map((label, i) => (
-                    <div key={i} className={cn("flex items-center gap-3 transition-all duration-300", importStep >= i ? "opacity-100" : "opacity-30")}>
+                  {["Lendo link...", "Extraindo informações...", "Organizando fotos...", "Montando apresentação..."].map((label, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "flex items-center gap-3 transition-all duration-300",
+                        importStep >= i ? "opacity-100" : "opacity-30"
+                      )}
+                    >
                       {importStep > i ? (
                         <CheckCircle className="w-4 h-4 text-green-400 shrink-0" />
                       ) : importStep === i ? (
@@ -431,519 +410,504 @@ export function CreateProjectWizard({
                       ) : (
                         <div className="w-4 h-4 rounded-full border border-[#3a3a3e] shrink-0" />
                       )}
-                      <span className={cn("text-sm", importStep >= i ? "text-foreground font-medium" : "text-muted-foreground")}>{label}</span>
+                      <span className={cn("text-sm", importStep >= i ? "text-foreground font-medium" : "text-muted-foreground")}>
+                        {label}
+                      </span>
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">Isso pode levar alguns segundos...</p>
               </div>
             ) : (
-              <>
-                <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                  <Globe className="w-4 h-4 text-primary shrink-0" />
-                  <p className="text-xs text-muted-foreground">
-                    Cole o link da página do imóvel. Extraímos título, descrição, imagens e características automaticamente.
+              <div className="flex flex-col items-center text-center gap-6 py-4">
+                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Link2 className="w-8 h-8 text-primary" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-xl font-bold text-foreground">Cole o link do anúncio</h2>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    A IA vai capturar automaticamente fotos, dados e informações disponíveis na página para criar uma landing page de alta conversão.
                   </p>
                 </div>
-
-                <div className="space-y-2">
-                  <Label>URL do imóvel</Label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-1">
-                      <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                      <Input
-                        value={importUrl}
-                        onChange={(e) => setImportUrl(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleImport()}
-                        placeholder="https://www.vivareal.com.br/imovel/..."
-                        className="bg-[#141417] border-[#2a2a2e] pl-9"
-                      />
-                    </div>
-                    <Button
-                      onClick={handleImport}
-                      disabled={!importUrl.trim()}
-                      className="bg-[#FFFF00] text-black hover:brightness-110 shrink-0"
-                    >
-                      Importar
-                    </Button>
+                <div className="w-full max-w-md space-y-1.5">
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      value={importUrl}
+                      onChange={(e) => setImportUrl(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleImport()}
+                      placeholder="https://www.exemplo.com/imovel/..."
+                      className="bg-[#141417] border-[#2a2a2e] pl-9"
+                    />
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Funciona com sites de imobiliárias, portais de imóveis, OLX, Viva Real, ZAP e outros.
+                  </p>
                 </div>
-              </>
-            )}
-
-            {!importing && (
-              <div className="flex justify-between pt-2 border-t border-[#2a2a2e]">
-                <Button variant="ghost" onClick={() => setMode("choose")} className="hover:bg-[#2a2a2e]">
-                  <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-                </Button>
-                <Button variant="ghost" onClick={() => setMode("manual")} className="hover:bg-[#2a2a2e] text-xs text-muted-foreground">
-                  Pular e cadastrar manualmente
-                </Button>
+                <div className="flex gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={() => setMode("choose")}
+                    className="border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" /> Voltar
+                  </Button>
+                  <Button
+                    onClick={handleImport}
+                    disabled={!importUrl.trim()}
+                    className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40 gap-1.5"
+                  >
+                    <Sparkles className="w-4 h-4" /> Analisar com IA
+                  </Button>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ── MODE: manual (regular wizard) ── */}
-        {mode === "manual" && (
-          <>
-            {/* Source URL banner */}
-            {form._source_url && (
-              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs text-green-400">
-                <CheckCircle className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate">Importado de: {form._source_url}</span>
+        {/* ── REVIEW: extracted content + photo grid ── */}
+        {mode === "review" && (
+          <div className="p-6 space-y-5">
+            <div className="text-center space-y-2">
+              <div className="w-14 h-14 rounded-full bg-green-500/15 flex items-center justify-center mx-auto">
+                <CheckCircle className="w-7 h-7 text-green-400" />
               </div>
-            )}
-
-            {/* Step indicator */}
-            <div className="flex items-center gap-2 my-1">
-              {activeSteps.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-2">
-                  <div
-                    className={cn(
-                      "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
-                      step >= s.id
-                        ? "bg-primary text-black"
-                        : "bg-[#2a2a2e] text-muted-foreground"
-                    )}
-                  >
-                    {s.id}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-xs hidden sm:block",
-                      step === s.id ? "text-foreground font-medium" : "text-muted-foreground"
-                    )}
-                  >
-                    {s.label}
-                  </span>
-                  {i < activeSteps.length - 1 && (
-                    <div className={cn("h-px flex-1 w-4", step > s.id ? "bg-primary" : "bg-[#2a2a2e]")} />
-                  )}
-                </div>
-              ))}
+              <h2 className="text-lg font-bold text-foreground">Conteúdo extraído!</h2>
+              <p className="text-sm text-muted-foreground">Revise as informações, organize as fotos e continue.</p>
             </div>
 
-            <div className="space-y-4 mt-2">
-          {/* ───── STEP 1 ───── */}
-          {step === 1 && (
-            <>
-              <div className="space-y-2">
-                <Label>Nome do Empreendimento *</Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-xs">
+                  <Home className="w-3.5 h-3.5" /> Nome do Imóvel *
+                </Label>
                 <Input
                   value={form.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    set("name", name);
-                    set("slug", toSlug(name));
-                  }}
-                  placeholder="Ex: Residencial Alto da Serra"
-                  className="bg-[#141417] border-[#2a2a2e]"
-                  required
+                  onChange={(e) => { set("name", e.target.value); set("slug", toSlug(e.target.value)); }}
+                  placeholder="Ex: Casa à venda em União"
+                  className="bg-[#141417] border-[#2a2a2e] text-sm"
                 />
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Cidade *</Label>
-                  <Input
-                    value={form.city}
-                    onChange={(e) => {
-                      const city = e.target.value;
-                      set("city", city);
-                      set("city_slug", toSlug(city));
-                    }}
-                    placeholder="Porto Alegre"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Imóvel</Label>
-                  <Select
-                    value={form.property_type}
-                    onValueChange={(v) => set("property_type", v)}
-                  >
-                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
-                      <SelectValue placeholder="Selecionar..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROPERTY_TYPE_CONFIG).map(([key, cfg]) => (
-                        <SelectItem key={key} value={key}>
-                          {cfg.icon} {cfg.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={form.status}
-                    onValueChange={(v) => set("status", v as ProjectStatus)}
-                  >
-                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(PROJECT_STATUS_CONFIG).map(([key, cfg]) => (
-                        <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Bairro / Endereço</Label>
-                  <Input
-                    value={form.address}
-                    onChange={(e) => set("address", e.target.value)}
-                    placeholder="Bairro Jardim Europa"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
-              </div>
-
-              <p className="text-xs text-muted-foreground/70">
-                URL:{" "}
-                <span className="text-muted-foreground">
-                  /{form.city_slug || "cidade"}/{form.slug || "empreendimento"}/seu-slug
-                </span>
-              </p>
-            </>
-          )}
-
-          {/* ───── STEP 2 — imported: content textarea ───── */}
-          {step === 2 && isImported && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
-                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                <p className="text-xs text-muted-foreground">
-                  Cole aqui todas as informações do imóvel. A IA usará este conteúdo para criar a landing page.
-                </p>
-              </div>
-              <div className="space-y-1">
-                <Label>Conteúdo Completo do Imóvel</Label>
-                <p className="text-xs text-muted-foreground/70">
-                  Inclua: descrição, diferenciais, infraestrutura, tipologias, faixa de preço, público-alvo e qualquer informação relevante.
-                </p>
-                <Textarea
-                  value={form.description}
-                  onChange={(e) => set("description", e.target.value)}
-                  rows={10}
+              <div className="space-y-1.5">
+                <Label className="flex items-center gap-1.5 text-xs">
+                  <MapPin className="w-3.5 h-3.5" /> Cidade *
+                </Label>
+                <Input
+                  value={form.city}
+                  onChange={(e) => { set("city", e.target.value); set("city_slug", toSlug(e.target.value)); }}
+                  placeholder="Ex: Estância Velha"
                   className="bg-[#141417] border-[#2a2a2e] text-sm"
                 />
               </div>
             </div>
-          )}
 
-          {/* ───── STEP 2 — manual: details ───── */}
-          {step === 2 && !isImported && (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Dormitórios</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.bedrooms}
-                    onChange={(e) => set("bedrooms", e.target.value)}
-                    placeholder="3"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Suítes</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.suites}
-                    onChange={(e) => set("suites", e.target.value)}
-                    placeholder="1"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-[#141417] rounded-lg p-3 text-center border border-[#2a2a2e]">
+                <div className="text-2xl font-bold text-primary">{form._scraped_images.length}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Fotos</div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Vagas de Garagem</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.parking_spots}
-                    onChange={(e) => set("parking_spots", e.target.value)}
-                    placeholder="2"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Metragem (m²)</Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    value={form.area_m2}
-                    onChange={(e) => set("area_m2", e.target.value)}
-                    placeholder="85"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
+              <div className="bg-[#141417] rounded-lg p-3 text-center border border-[#2a2a2e]">
+                <div className="text-2xl font-bold text-foreground">0</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Vídeos</div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Faixa de Preço</Label>
-                  <Input
-                    value={form.price_range}
-                    onChange={(e) => set("price_range", e.target.value)}
-                    placeholder="R$ 350.000 - R$ 480.000"
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Perfil do Comprador Ideal</Label>
-                  <Input
-                    value={form.ideal_buyer}
-                    onChange={(e) => set("ideal_buyer", e.target.value)}
-                    placeholder="Famílias, investidores..."
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                </div>
+              <div className="bg-[#141417] rounded-lg p-3 text-center border border-[#2a2a2e]">
+                <div className="text-2xl font-bold text-foreground">{textBlockCount}</div>
+                <div className="text-xs text-muted-foreground uppercase tracking-wide mt-0.5">Blocos Texto</div>
               </div>
+            </div>
 
+            {form._scraped_images.length > 0 && (
               <div className="space-y-2">
-                <Label>Diferenciais Principais</Label>
-                <Textarea
-                  value={form.differentials}
-                  onChange={(e) => set("differentials", e.target.value)}
-                  placeholder="Vista panorâmica, acabamento premium, segurança 24h..."
-                  rows={2}
-                  className="bg-[#141417] border-[#2a2a2e]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Área de Lazer</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={form.amenity_input}
-                    onChange={(e) => set("amenity_input", e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addAmenity();
-                      }
-                    }}
-                    placeholder="Ex: Piscina, Academia..."
-                    className="bg-[#141417] border-[#2a2a2e]"
-                  />
-                  <Button type="button" size="sm" variant="outline" onClick={addAmenity}
-                    className="border-[#2a2a2e] hover:bg-[#2a2a2e]">
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Fotos ({form._scraped_images.length}) — Clique para definir capa
+                  </p>
+                  {imgFailCount > 0 && (
+                    <span className="text-xs text-yellow-400">{imgFailCount} não carregaram</span>
+                  )}
                 </div>
-                {form.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {form.amenities.map((a) => (
-                      <Badge
-                        key={a}
-                        variant="secondary"
-                        className="text-xs cursor-pointer bg-[#2a2a2e] hover:bg-destructive/20"
-                        onClick={() => removeAmenity(a)}
-                      >
-                        {a} <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                    ))}
-                  </div>
-                )}
+                <div className="grid grid-cols-5 gap-1.5 max-h-64 overflow-y-auto pr-1">
+                  {form._scraped_images.map((img, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => set("main_image_url", img)}
+                      className={cn(
+                        "relative rounded-lg overflow-hidden h-20 border-2 transition-all",
+                        form.main_image_url === img
+                          ? "border-primary ring-1 ring-primary"
+                          : "border-transparent hover:border-[#3a3a3e]"
+                      )}
+                    >
+                      <img
+                        src={img}
+                        className="w-full h-full object-cover"
+                        alt=""
+                        onError={() => setImgFailCount((c) => c + 1)}
+                      />
+                      {form.main_image_url === img && (
+                        <div className="absolute top-1 left-1 bg-primary text-black text-[10px] font-bold px-1.5 py-0.5 rounded">
+                          CAPA
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </>
-          )}
+            )}
 
-          {/* ───── STEP 3 — manual only ───── */}
-          {step === 3 && !isImported && (
-            <>
-              <div className="space-y-2">
-                <Label>URL da Imagem Principal</Label>
-                <Input
-                  type="url"
-                  value={form.main_image_url}
-                  onChange={(e) => set("main_image_url", e.target.value)}
-                  placeholder="https://..."
-                  className="bg-[#141417] border-[#2a2a2e]"
-                />
-                <p className="text-xs text-muted-foreground/70">
-                  Usada como fundo do hero da landing page.
+            <div className="flex items-center justify-between pt-3 border-t border-[#2a2a2e]">
+              <Button
+                variant="outline"
+                onClick={() => setMode("import")}
+                className="border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1"
+              >
+                <ChevronLeft className="w-4 h-4" /> Voltar
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!form.name.trim() || !form.city.trim()) {
+                    toast.error("Preencha o nome e a cidade.");
+                    return;
+                  }
+                  setForm((prev) => ({
+                    ...prev,
+                    slug: prev.slug || toSlug(prev.name),
+                    city_slug: prev.city_slug || toSlug(prev.city),
+                  }));
+                  setMode("content");
+                }}
+                className="bg-[#FFFF00] text-black hover:brightness-110 gap-1"
+              >
+                Próximo <ChevronRight className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* ── CONTENT: landing page textarea ── */}
+        {mode === "content" && (
+          <div>
+            <div className="flex border-b border-[#2a2a2e]">
+              {IMPORT_PROGRESS.map((label, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "flex-1 py-3 text-xs text-center font-medium transition-colors",
+                    i === 1
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground"
+                  )}
+                >
+                  {label}
+                </div>
+              ))}
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-foreground">Conteúdo da Landing Page</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cole aqui todas as informações do imóvel. A IA usará este conteúdo para criar a página.
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <Label>URL do Vídeo (opcional)</Label>
-                <Input
-                  type="url"
-                  value={form.video_url}
-                  onChange={(e) => set("video_url", e.target.value)}
-                  placeholder="https://youtube.com/..."
-                  className="bg-[#141417] border-[#2a2a2e]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Embed do Mapa (opcional)</Label>
-                <Input
-                  value={form.map_embed_url}
-                  onChange={(e) => set("map_embed_url", e.target.value)}
-                  placeholder="URL do Google Maps embed..."
-                  className="bg-[#141417] border-[#2a2a2e]"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Descrição Adicional</Label>
+              <div className="space-y-1.5">
+                <Label>Conteúdo Completo do Imóvel *</Label>
+                <p className="text-xs text-muted-foreground/70">
+                  Inclua: descrição, diferenciais, infraestrutura, tipologias, faixa de preço, público-alvo, argumentos de venda, links de mapas interativos, vídeos do YouTube, e qualquer informação relevante.
+                </p>
                 <Textarea
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
-                  placeholder="Informações complementares para a IA..."
-                  rows={2}
-                  className="bg-[#141417] border-[#2a2a2e]"
+                  rows={11}
+                  className="bg-[#141417] border-[#2a2a2e] text-sm"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label>Webhook URL (opcional)</Label>
-                <Input
-                  type="url"
-                  value={form.webhook_url}
-                  onChange={(e) => set("webhook_url", e.target.value)}
-                  placeholder="https://webhook.example.com/..."
-                  className="bg-[#141417] border-[#2a2a2e]"
-                />
-                <p className="text-xs text-muted-foreground/70">
-                  Receba notificações de novos leads neste endpoint.
-                </p>
-              </div>
-
-              {/* Scraped images picker */}
-              {form._scraped_images.length > 0 && (
-                <div className="space-y-2">
-                  <Label>Imagens encontradas no site</Label>
-                  <p className="text-xs text-muted-foreground/70">
-                    Clique em uma imagem para usá-la como imagem principal.
-                  </p>
-                  <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto rounded-lg border border-[#2a2a2e] p-2">
-                    {form._scraped_images.map((img, i) => (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => set("main_image_url", img)}
-                        className={cn(
-                          "relative rounded-lg overflow-hidden h-20 border-2 transition-all",
-                          form.main_image_url === img
-                            ? "border-primary ring-1 ring-primary"
-                            : "border-transparent hover:border-[#2a2a2e]"
-                        )}
-                      >
-                        <img src={img} className="w-full h-full object-cover" alt="" />
-                        {form.main_image_url === img && (
-                          <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
-                            <CheckCircle className="w-5 h-5 text-primary" />
-                          </div>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Generation preview */}
-              <div className="bg-[#141417] border border-primary/20 rounded-lg p-4 mt-2">
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-primary" />
-                  <p className="text-sm font-medium text-foreground">Geração com IA</p>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  A IA irá criar automaticamente toda a estrutura da landing page: hero, seção de localização,
-                  diferenciais, público-alvo, CTA e formulário — adaptados ao contexto do seu imóvel.
-                </p>
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Navigation */}
-        <div className="flex justify-between gap-2 pt-4 border-t border-[#2a2a2e]">
-          <div>
-            {step > 1 ? (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setStep((s) => s - 1)}
-                disabled={isSaving}
-                className="hover:bg-[#2a2a2e]"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setMode("choose")}
-                disabled={isSaving}
-                className="hover:bg-[#2a2a2e] text-muted-foreground"
-              >
-                <ChevronLeft className="w-4 h-4 mr-1" /> Início
-              </Button>
-            )}
-          </div>
-
-          <div className="flex gap-2">
-            <Button type="button" variant="ghost" onClick={handleClose} disabled={isSaving}
-              className="hover:bg-[#2a2a2e]">
-              Cancelar
-            </Button>
-
-            {step < maxStep ? (
-              <Button
-                type="button"
-                onClick={() => setStep((s) => s + 1)}
-                disabled={step === 1 && !step1Valid}
-                className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
-              >
-                Próximo <ChevronRight className="w-4 h-4 ml-1" />
-              </Button>
-            ) : (
-              <>
+              <div className="flex items-center justify-between pt-2 border-t border-[#2a2a2e]">
                 <Button
-                  type="button"
                   variant="outline"
-                  onClick={() => handleSubmit(false)}
-                  disabled={isSaving || isGenerating}
-                  className="border-[#2a2a2e] hover:bg-[#2a2a2e] text-sm"
+                  onClick={() => setMode("review")}
+                  className="border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1"
                 >
-                  {isSaving && !isGenerating ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-                  ) : null}
-                  Salvar sem IA
+                  <ChevronLeft className="w-4 h-4" /> Voltar
                 </Button>
                 <Button
-                  type="button"
                   onClick={() => handleSubmit(true)}
                   disabled={isSaving || isGenerating}
-                  className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40 text-sm"
+                  className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40 gap-1.5"
                 >
                   {isGenerating ? (
-                    <RefreshCw className="w-4 h-4 animate-spin mr-2" />
+                    <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Sparkles className="w-4 h-4 mr-2" />
+                    <Sparkles className="w-4 h-4" />
                   )}
-                  {isGenerating ? "Gerando..." : "Gerar Landing Page com IA"}
+                  {isGenerating ? "Gerando..." : "Próximo"}
+                  {!isGenerating && <ChevronRight className="w-4 h-4" />}
                 </Button>
-              </>
-            )}
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* ── MANUAL: traditional 3-step wizard ── */}
+        {mode === "manual" && (
+          <>
+            <DialogHeader className="px-6 pt-6 pb-0">
+              <DialogTitle className="text-foreground flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-primary" />
+                Novo Empreendimento
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="px-6 pb-6 space-y-4 mt-4">
+              <div className="flex items-center gap-2">
+                {MANUAL_STEPS.map((s, i) => (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <div
+                      className={cn(
+                        "w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors",
+                        step >= s.id ? "bg-primary text-black" : "bg-[#2a2a2e] text-muted-foreground"
+                      )}
+                    >
+                      {s.id}
+                    </div>
+                    <span
+                      className={cn(
+                        "text-xs hidden sm:block",
+                        step === s.id ? "text-foreground font-medium" : "text-muted-foreground"
+                      )}
+                    >
+                      {s.label}
+                    </span>
+                    {i < MANUAL_STEPS.length - 1 && (
+                      <div className={cn("h-px flex-1 w-4", step > s.id ? "bg-primary" : "bg-[#2a2a2e]")} />
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {/* STEP 1 */}
+                {step === 1 && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Nome do Empreendimento *</Label>
+                      <Input
+                        value={form.name}
+                        onChange={(e) => { set("name", e.target.value); set("slug", toSlug(e.target.value)); }}
+                        placeholder="Ex: Residencial Alto da Serra"
+                        className="bg-[#141417] border-[#2a2a2e]"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Cidade *</Label>
+                        <Input
+                          value={form.city}
+                          onChange={(e) => { set("city", e.target.value); set("city_slug", toSlug(e.target.value)); }}
+                          placeholder="Porto Alegre"
+                          className="bg-[#141417] border-[#2a2a2e]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Tipo de Imóvel</Label>
+                        <Select value={form.property_type} onValueChange={(v) => set("property_type", v)}>
+                          <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
+                            <SelectValue placeholder="Selecionar..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PROPERTY_TYPE_CONFIG).map(([key, cfg]) => (
+                              <SelectItem key={key} value={key}>{cfg.icon} {cfg.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Status</Label>
+                        <Select value={form.status} onValueChange={(v) => set("status", v as ProjectStatus)}>
+                          <SelectTrigger className="bg-[#141417] border-[#2a2a2e]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(PROJECT_STATUS_CONFIG).map(([key, cfg]) => (
+                              <SelectItem key={key} value={key}>{cfg.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Bairro / Endereço</Label>
+                        <Input
+                          value={form.address}
+                          onChange={(e) => set("address", e.target.value)}
+                          placeholder="Bairro Jardim Europa"
+                          className="bg-[#141417] border-[#2a2a2e]"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground/70">
+                      URL: <span className="text-muted-foreground">/{form.city_slug || "cidade"}/{form.slug || "empreendimento"}/seu-slug</span>
+                    </p>
+                  </>
+                )}
+
+                {/* STEP 2 */}
+                {step === 2 && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Dormitórios</Label>
+                        <Input type="number" min="0" value={form.bedrooms} onChange={(e) => set("bedrooms", e.target.value)} placeholder="3" className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Suítes</Label>
+                        <Input type="number" min="0" value={form.suites} onChange={(e) => set("suites", e.target.value)} placeholder="1" className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Vagas de Garagem</Label>
+                        <Input type="number" min="0" value={form.parking_spots} onChange={(e) => set("parking_spots", e.target.value)} placeholder="2" className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Metragem (m²)</Label>
+                        <Input type="number" min="0" value={form.area_m2} onChange={(e) => set("area_m2", e.target.value)} placeholder="85" className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label>Faixa de Preço</Label>
+                        <Input value={form.price_range} onChange={(e) => set("price_range", e.target.value)} placeholder="R$ 350.000 - R$ 480.000" className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Perfil do Comprador Ideal</Label>
+                        <Input value={form.ideal_buyer} onChange={(e) => set("ideal_buyer", e.target.value)} placeholder="Famílias, investidores..." className="bg-[#141417] border-[#2a2a2e]" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Diferenciais Principais</Label>
+                      <Textarea value={form.differentials} onChange={(e) => set("differentials", e.target.value)} placeholder="Vista panorâmica, acabamento premium..." rows={2} className="bg-[#141417] border-[#2a2a2e]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Área de Lazer</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={form.amenity_input}
+                          onChange={(e) => set("amenity_input", e.target.value)}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addAmenity(); } }}
+                          placeholder="Ex: Piscina, Academia..."
+                          className="bg-[#141417] border-[#2a2a2e]"
+                        />
+                        <Button type="button" size="sm" variant="outline" onClick={addAmenity} className="border-[#2a2a2e] hover:bg-[#2a2a2e]">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      {form.amenities.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {form.amenities.map((a) => (
+                            <Badge key={a} variant="secondary" className="text-xs cursor-pointer bg-[#2a2a2e] hover:bg-destructive/20" onClick={() => removeAmenity(a)}>
+                              {a} <X className="w-3 h-3 ml-1" />
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* STEP 3 */}
+                {step === 3 && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>URL da Imagem Principal</Label>
+                      <Input type="url" value={form.main_image_url} onChange={(e) => set("main_image_url", e.target.value)} placeholder="https://..." className="bg-[#141417] border-[#2a2a2e]" />
+                      <p className="text-xs text-muted-foreground/70">Usada como fundo do hero da landing page.</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>URL do Vídeo (opcional)</Label>
+                      <Input type="url" value={form.video_url} onChange={(e) => set("video_url", e.target.value)} placeholder="https://youtube.com/..." className="bg-[#141417] border-[#2a2a2e]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Embed do Mapa (opcional)</Label>
+                      <Input value={form.map_embed_url} onChange={(e) => set("map_embed_url", e.target.value)} placeholder="URL do Google Maps embed..." className="bg-[#141417] border-[#2a2a2e]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Descrição Adicional</Label>
+                      <Textarea value={form.description} onChange={(e) => set("description", e.target.value)} placeholder="Informações complementares para a IA..." rows={2} className="bg-[#141417] border-[#2a2a2e]" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Webhook URL (opcional)</Label>
+                      <Input type="url" value={form.webhook_url} onChange={(e) => set("webhook_url", e.target.value)} placeholder="https://webhook.example.com/..." className="bg-[#141417] border-[#2a2a2e]" />
+                    </div>
+                    <div className="bg-[#141417] border border-primary/20 rounded-lg p-4">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Sparkles className="w-4 h-4 text-primary" />
+                        <p className="text-sm font-medium text-foreground">Geração com IA</p>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        A IA irá criar toda a estrutura da landing page: hero, localização, diferenciais, público-alvo, CTA e formulário.
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Navigation */}
+              <div className="flex justify-between gap-2 pt-4 border-t border-[#2a2a2e]">
+                <div>
+                  {step > 1 ? (
+                    <Button type="button" variant="ghost" onClick={() => setStep((s) => s - 1)} disabled={isSaving} className="hover:bg-[#2a2a2e]">
+                      <ChevronLeft className="w-4 h-4 mr-1" /> Voltar
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="ghost" onClick={() => setMode("choose")} disabled={isSaving} className="hover:bg-[#2a2a2e] text-muted-foreground">
+                      <ChevronLeft className="w-4 h-4 mr-1" /> Início
+                    </Button>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" onClick={handleClose} disabled={isSaving} className="hover:bg-[#2a2a2e]">
+                    Cancelar
+                  </Button>
+                  {step < 3 ? (
+                    <Button
+                      type="button"
+                      onClick={() => setStep((s) => s + 1)}
+                      disabled={step === 1 && !step1Valid}
+                      className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40"
+                    >
+                      Próximo <ChevronRight className="w-4 h-4 ml-1" />
+                    </Button>
+                  ) : (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSubmit(false)}
+                        disabled={isSaving || isGenerating}
+                        className="border-[#2a2a2e] hover:bg-[#2a2a2e] text-sm"
+                      >
+                        {isSaving && !isGenerating ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : null}
+                        Salvar sem IA
+                      </Button>
+                      <Button
+                        type="button"
+                        onClick={() => handleSubmit(true)}
+                        disabled={isSaving || isGenerating}
+                        className="bg-[#FFFF00] text-black hover:brightness-110 disabled:opacity-40 text-sm"
+                      >
+                        {isGenerating ? <RefreshCw className="w-4 h-4 animate-spin mr-2" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                        {isGenerating ? "Gerando..." : "Gerar Landing Page com IA"}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
           </>
         )}
       </DialogContent>
