@@ -21,7 +21,7 @@ interface BrokerInfo {
   id: string;
   name: string;
   slug: string;
-  phone: string | null;
+  whatsapp: string | null;
 }
 
 interface ProjectWithLP extends Project {
@@ -139,7 +139,7 @@ export default function LandingPage() {
       // Load broker
       const { data: brokerData } = await supabase
         .from("brokers")
-        .select("id, name, slug, phone")
+        .select("id, name, slug, whatsapp")
         .eq("slug", brokerSlug)
         .maybeSingle();
 
