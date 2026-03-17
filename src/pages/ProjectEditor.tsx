@@ -396,7 +396,7 @@ function FloatingTextEditor({
 
   const bgTransparent = elementStyle?.backgroundTransparent ?? false;
   const opacityPct = Math.round((elementStyle?.backgroundOpacity ?? 1) * 100);
-  const strokeWidth = elementStyle?.strokeWidth ?? computedStrokeWidth ?? 0;
+  const strokeWidth = elementStyle?.strokeWidth ?? 0;
 
   return createPortal(
     <>
