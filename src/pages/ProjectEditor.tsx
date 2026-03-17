@@ -360,6 +360,8 @@ function FloatingTextEditor({
   value,
   rect,
   elementStyle,
+  computedColor,
+  computedBg,
   onSave,
   onStyleChange,
   onClose,
@@ -368,6 +370,8 @@ function FloatingTextEditor({
   value: string;
   rect: DOMRect;
   elementStyle?: ElementStyle;
+  computedColor?: string;
+  computedBg?: string;
   onSave: (path: string, value: string) => void;
   onStyleChange: (path: string, style: ElementStyle) => void;
   onClose: () => void;
@@ -411,7 +415,7 @@ function FloatingTextEditor({
           <span className="text-[10px] text-gray-500 w-10 shrink-0">Texto</span>
           <input
             type="color"
-            value={elementStyle?.color || '#ffffff'}
+            value={elementStyle?.color || computedColor || '#ffffff'}
             onChange={(e) => onStyleChange(path, { ...elementStyle, color: e.target.value })}
             className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
             title="Cor do texto"
@@ -434,7 +438,7 @@ function FloatingTextEditor({
           <span className="text-[10px] text-gray-500 w-10 shrink-0">Fundo</span>
           <input
             type="color"
-            value={elementStyle?.background || '#000000'}
+            value={elementStyle?.background || computedBg || '#000000'}
             onChange={(e) => onStyleChange(path, { ...elementStyle, background: e.target.value })}
             className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
             title="Cor de fundo"
@@ -792,6 +796,8 @@ export default function ProjectEditor() {
     value: string;
     rect: DOMRect;
     type: 'text' | 'image';
+    computedColor?: string;
+    computedBg?: string;
   } | null>(null);
 
   // Persist data directly to DB (fire-and-forget)
@@ -871,6 +877,12 @@ export default function ProjectEditor() {
     persistNow(clone);
   };
 
+  const rgbToHex = (rgb: string): string => {
+    const m = rgb.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+    if (!m) return '#000000';
+    return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
+  };
+
   const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
     let target = e.target as HTMLElement | null;
     while (target) {
@@ -881,7 +893,12 @@ export default function ProjectEditor() {
         const value = type === 'image'
           ? (target.tagName === 'IMG' ? (target as HTMLImageElement).src : '')
           : target.textContent?.trim() || '';
-        setActiveEdit({ path, value, rect, type });
+        const cs = window.getComputedStyle(target);
+        const computedColor = rgbToHex(cs.color);
+        const computedBg = cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)'
+          ? rgbToHex(cs.backgroundColor)
+          : '#000000';
+        setActiveEdit({ path, value, rect, type, computedColor, computedBg });
         return;
       }
       target = target.parentElement;
@@ -1561,6 +1578,8 @@ export default function ProjectEditor() {
                     value={activeEdit.value}
                     rect={activeEdit.rect}
                     elementStyle={(lpData as any).elementStyles?.[activeEdit.path]}
+                    computedColor={activeEdit.computedColor}
+                    computedBg={activeEdit.computedBg}
                     onSave={handleLpUpdate}
                     onStyleChange={handleStyleUpdate}
                     onClose={() => setActiveEdit(null)}
