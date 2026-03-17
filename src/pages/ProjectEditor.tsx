@@ -1296,6 +1296,32 @@ function LandingPagePreview({
           </div>
         )}
 
+        {/* ── Gallery ── */}
+        {data.gallery && data.gallery.length > 0 && (
+          <div className="py-10 px-4" style={{ backgroundColor: bg }}>
+            <div className="max-w-sm mx-auto">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] uppercase tracking-widest font-bold opacity-40 flex items-center gap-1.5">
+                  <GalleryHorizontal className="w-3 h-3" /> Galeria de fotos
+                </p>
+                <span className="text-[10px] opacity-30">{data.gallery.length} fotos</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {data.gallery.slice(0, 6).map((img, i) => (
+                  <div key={i} className="relative rounded-lg overflow-hidden aspect-square">
+                    <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                    {i === 5 && data.gallery!.length > 6 && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">+{data.gallery!.length - 6}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Audience ── */}
         {data.audience?.length > 0 && (
           <div className="py-12 px-6" style={{ backgroundColor: bg }}>
