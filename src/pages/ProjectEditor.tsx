@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
-import { LANDING_THEMES, resolveTheme, DynamicIcon, LandingPageRenderer } from "@/pages/LandingPage";
+import { LANDING_THEMES, resolveTheme, DynamicIcon } from "@/pages/LandingPage";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -565,6 +565,8 @@ export default function ProjectEditor() {
 
   // Preview
   const [showPreview, setShowPreview] = useState(true);
+  const [iframeLoaded, setIframeLoaded] = useState(false);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1143,11 +1145,26 @@ export default function ProjectEditor() {
                 </button>
               )}
             </div>
-            {lpData && project ? (
-              <div className="flex-1 overflow-y-auto">
-                <LandingPageRenderer lp={lpData} project={project} broker={broker} />
+            {publicUrl ? (
+              <div className="flex-1 relative">
+                {!iframeLoaded && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f12] z-10">
+                    <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                )}
+                <iframe
+                  ref={iframeRef}
+                  src={publicUrl}
+                  className="w-full h-full border-0"
+                  title="Preview"
+                  onLoad={() => setIframeLoaded(true)}
+                />
               </div>
-            ) : null}
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
+                <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Carregando preview...
+              </div>
+            )}
           </div>
         )}
       </div>
