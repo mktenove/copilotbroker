@@ -357,13 +357,23 @@ function SectionPanel({
   data,
   onUpdate,
   projectId,
+  isActive,
 }: {
   section: SectionConfig;
   data: LandingPageData;
   onUpdate: (updated: LandingPageData) => void;
   projectId: string;
+  isActive?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isActive) {
+      setOpen(true);
+      setTimeout(() => panelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+    }
+  }, [isActive]);
 
   const set = (path: string, value: unknown) => {
     // Deep clone and set by path (dot notation)
@@ -513,7 +523,7 @@ function SectionPanel({
   };
 
   return (
-    <div className="border border-[#2a2a2e] rounded-lg overflow-hidden">
+    <div ref={panelRef} className={cn("border rounded-lg overflow-hidden", isActive ? "border-yellow-400/60" : "border-[#2a2a2e]")}>
       <button
         className="w-full flex items-center justify-between p-3 text-sm font-medium hover:bg-[#2a2a2e] transition-colors"
         onClick={() => setOpen(!open)}
@@ -565,6 +575,15 @@ export default function ProjectEditor() {
 
   // Preview
   const [showPreview, setShowPreview] = useState(true);
+
+  // WYSIWYG section editing
+  const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"edit" | "chat">("edit");
+
+  const handleSectionClick = (key: string) => {
+    setActiveSectionKey(key);
+    setActiveTab("edit");
+  };
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -869,7 +888,7 @@ export default function ProjectEditor() {
             showPreview ? "w-80" : "w-full max-w-xl"
           )}
         >
-          <Tabs defaultValue="edit" className="flex flex-col flex-1 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "chat")} className="flex flex-col flex-1 overflow-hidden">
             <TabsList className="mx-3 mt-3 shrink-0 bg-[#2a2a2e]">
               <TabsTrigger value="edit" className="flex-1 text-xs gap-1">
                 <Pencil className="w-3.5 h-3.5" /> Editar
@@ -904,6 +923,23 @@ export default function ProjectEditor() {
                   )}
                   {lpData && (
                     <>
+                      {/* Section panels — one per landing page section */}
+                      {SECTIONS.map((sec) => (
+                        <SectionPanel
+                          key={sec.key}
+                          section={sec}
+                          data={lpData}
+                          onUpdate={(updated) => {
+                            pushToHistory(lpData);
+                            setLpData(updated);
+                            // Clear active highlight after edit
+                            setActiveSectionKey(null);
+                          }}
+                          projectId={project.id}
+                          isActive={activeSectionKey === sec.key}
+                        />
+                      ))}
+
                       {/* Gallery images */}
                       {lpData.gallery && lpData.gallery.length > 0 && (
                         <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
@@ -1149,7 +1185,7 @@ export default function ProjectEditor() {
             </div>
             {lpData && project ? (
               <div className="flex-1 overflow-y-auto">
-                <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
+                <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview onSectionClick={handleSectionClick} />
               </div>
             ) : null}
           </div>
