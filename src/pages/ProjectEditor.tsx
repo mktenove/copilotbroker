@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
-import { LANDING_THEMES, resolveTheme, DynamicIcon } from "@/pages/LandingPage";
+import { LANDING_THEMES, resolveTheme, DynamicIcon, LandingPageRenderer } from "@/pages/LandingPage";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -1147,8 +1147,10 @@ export default function ProjectEditor() {
                 </button>
               )}
             </div>
-            {lpData ? (
-              <LandingPagePreview data={lpData} project={project} broker={broker} onUpdate={setLpData} />
+            {lpData && project ? (
+              <div className="flex-1 overflow-y-auto" style={{ pointerEvents: "none" }}>
+                <LandingPageRenderer lp={lpData} project={project} broker={broker} />
+              </div>
             ) : null}
           </div>
         )}
