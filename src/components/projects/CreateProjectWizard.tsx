@@ -186,8 +186,8 @@ export function CreateProjectWizard({
           slug: s.name ? toSlug(s.name) : prev.slug,
           city: s.city || prev.city,
           city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-          description: (s.description && s.description.length > 60 && !isSpecsOnlyDescription(s.description) ? s.description : null)
-            || (s.page_content && s.page_content.length > 120 ? s.page_content : null)
+          description: (s.page_content && s.page_content.length > 120 ? s.page_content : null)
+            || (s.description && s.description.length > 60 && !isSpecsOnlyDescription(s.description) ? s.description : null)
             || prev.description,
           bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
           suites: s.suites != null ? String(s.suites) : prev.suites,

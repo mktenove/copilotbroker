@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
       ogTag(html, "description") ||
       String(jsonLd["description"] ?? "") ||
       metaName(html, "description");
-    description = decodeEntities(description).trim().slice(0, 3000);
+    description = decodeEntities(description).trim();
 
     const result = {
       name,
