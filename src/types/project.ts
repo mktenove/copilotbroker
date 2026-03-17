@@ -143,6 +143,9 @@ export interface LandingPageData {
   location: LandingPageLocation;
   gallery?: string[];
   layout?: 'flow-A' | 'flow-B' | 'flow-C';
+  heroLayout?: 'fullscreen' | 'split' | 'minimal';
+  sectionOrder?: string[];
+  featuresLayout?: 'strip' | 'grid';
   features: LandingPageFeatureItem[];
   audience: LandingPageAudienceCard[];
   urgency: LandingPageUrgency;

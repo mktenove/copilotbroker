@@ -220,6 +220,9 @@ COPY RULES:
 // ─── Full LP JSON schema example ─────────────────────────────────────────────
 const LP_SCHEMA = `{
   "theme": { "preset": "nome-do-preset", "fontFamily": "Fonte Google", "heroStyle": "dark-overlay|light-overlay|gradient" },
+  "heroLayout": "fullscreen|split|minimal",
+  "sectionOrder": ["photostrip","features","location","showcase","photogrid","carousel","map","audience","video","urgency","benefits","cta","form"],
+  "featuresLayout": "strip|grid",
   "hero": { "badge": "...", "title": "...", "titleHighlight": "...", "subtitle": "...", "ctaText": "..." },
   "location": { "title": "...", "description": "...", "highlights": ["...", "...", "...", "..."] },
   "features": [{ "icon": "NomeLucide", "label": "...", "value": "..." }],
@@ -293,6 +296,7 @@ ${project.description && project.description.length > 200
 
       const currentPreset = existingData?.theme?.preset || "desconhecido";
       const currentHeroStyle = existingData?.theme?.heroStyle || "desconhecido";
+      const currentHeroLayout = existingData?.heroLayout || "fullscreen";
 
       systemPrompt = `${LP_EXPERTISE}
 
@@ -335,6 +339,9 @@ SE "full" — REGRAS OBRIGATÓRIAS DE REDIAGRAMAÇÃO COMPLETA:
   ❹ NARRATIVA: mude o posicionamento de vendas — outro perfil de comprador como protagonista, outra promessa central
   ❺ COPY TONE: se o atual é direto/objetivo, seja mais emocional; se é emocional, seja mais editorial/frio
   ❻ BADGE e URGENCY: ângulo diferente do atual
+  ❼ heroLayout: deve ser diferente do atual ("${currentHeroLayout}") — escolha outro
+  ❽ sectionOrder: reorganize a ordem das seções para criar ritmo narrativo diferente — pode mover urgency para antes de location, colocar audience logo após hero, etc
+  ❾ featuresLayout: se atual é "strip", use "grid"; se atual é "grid", use "strip"
   NÃO é aceitável entregar apenas mudança de cor com o mesmo texto/estrutura narrativa.
 
   {
@@ -385,6 +392,9 @@ ${projectContext}
 ORIENTAÇÃO CRIATIVA:
 - Escolha o posicionamento correto (luxo, premium, médio-alto, família, investimento) com base nos dados
 - O theme deve refletir o posicionamento com cores, tipografia e estilo coerentes
+- heroLayout: escolha com base no posicionamento — "fullscreen" para imóveis com fotos dramáticas, "split" para apresentação equilibrada imagem+texto, "minimal" para posicionamento editorial/tipográfico
+- sectionOrder: ordene as seções de forma que a narrativa flua naturalmente — não precisa ser a ordem padrão
+- featuresLayout: "strip" para muitos itens (5-6), "grid" para poucos itens com mais detalhe (3-4)
 - hero.title: headline comercial forte, específica e memorável — NÃO o nome do empreendimento
 - hero.titleHighlight: palavra-chave mais impactante do título (ou string vazia)
 - hero.subtitle: frase densa — localização + proposta de valor + quem é o imóvel

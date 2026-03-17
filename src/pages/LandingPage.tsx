@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
@@ -448,6 +448,12 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
     <VideoSection url={project.video_url} bg={bg} primary={primary} text={text} />
   ) : null;
 
+  const DEFAULT_SECTION_ORDER = [
+    'photostrip', 'features', 'location', 'showcase', 'photogrid',
+    'carousel', 'map', 'audience', 'video', 'urgency', 'benefits', 'cta', 'form',
+  ];
+  const sectionOrder: string[] = (lp as any).sectionOrder || DEFAULT_SECTION_ORDER;
+
   return (
     <>
       <link rel="stylesheet" href={fontUrl} />
@@ -468,485 +474,680 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       <div className="lp-root min-h-screen pb-20 md:pb-0 overflow-x-hidden">
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
-        <section
-          className="relative min-h-screen flex flex-col justify-end overflow-hidden"
-          data-lp-path={isPreview ? "hero.bgImage" : undefined}
-          data-lp-type={isPreview ? "image" : undefined}
-          style={{
-            backgroundImage: heroBgImg ? `url(${heroBgImg})` : undefined,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            backgroundColor: heroBgImg ? undefined : bg,
-          }}
-        >
-          {/* Overlay */}
-          <div className="absolute inset-0" style={{
-            background: isLight
-              ? heroBgImg
-                ? "linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.05) 100%)"
-                : `linear-gradient(135deg, ${bg} 0%, ${primary}15 100%)`
-              : heroBgImg
-                ? "linear-gradient(to top, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.48) 55%, rgba(0,0,0,0.05) 100%)"
-                : `linear-gradient(135deg, ${bg} 0%, ${primary}18 100%)`,
-          }} />
-
-          {/* Content */}
-          <div className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-10 pb-16 md:pb-24 pt-28">
-            <FadeUp>
-              <span
-                data-lp-path="hero.badge"
-                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-7 border"
-                style={es('hero.badge', { color: primary, borderColor: `${primary}50`, background: `${primary}12` })}
-              >
-                <Zap className="w-3 h-3" />
-                {lp.hero.badge}
-              </span>
-            </FadeUp>
-
-            <FadeUp delay={110}>
-              <h1
-                data-lp-path="hero.title"
-                className="text-[2.8rem] sm:text-[3.8rem] md:text-[5rem] lg:text-[5.8rem] font-black leading-[0.88] tracking-tight mb-7 max-w-5xl"
-                style={es('hero.title', { color: heroText })}
-              >
-                {lp.hero.titleHighlight ? (() => {
-                  const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
-                  if (idx === -1) return (
-                    <>{lp.hero.title}{" "}<span style={{ color: primary }}>{lp.hero.titleHighlight}</span></>
-                  );
-                  return (
-                    <>
-                      <span style={{ color: heroText }}>{lp.hero.title.slice(0, idx)}</span>
-                      <span style={{ color: primary }}>{lp.hero.titleHighlight}</span>
-                      <span style={{ color: heroText }}>{lp.hero.title.slice(idx + lp.hero.titleHighlight.length)}</span>
-                    </>
-                  );
-                })() : lp.hero.title}
-              </h1>
-            </FadeUp>
-
-            <FadeUp delay={220}>
-              <p data-lp-path="hero.subtitle" className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={es('hero.subtitle', { color: heroSub })}>
-                {lp.hero.subtitle}
-              </p>
-            </FadeUp>
-
-            <FadeUp delay={330}>
-              <button
-                data-lp-path="hero.ctaText"
-                onClick={scrollToForm}
-                className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base sm:text-lg font-bold shadow-2xl"
-                style={es('hero.ctaText')}
-              >
-                {lp.hero.ctaText}
-                <span className="opacity-60">→</span>
-              </button>
-            </FadeUp>
-          </div>
-
-          {/* Scroll hint */}
-          <div className="absolute bottom-7 right-8 hidden md:flex items-center gap-2" style={{ color: heroBgImg ? (isLight ? `${text}60` : "rgba(255,255,255,0.35)") : `${text}40` }}>
-            <span className="text-[10px] uppercase tracking-widest font-semibold">scroll</span>
-            <ChevronDown className="w-4 h-4 animate-bounce" />
-          </div>
-        </section>
-
-        {/* ── PHOTO STRIP — right after hero ────────────────────────────── */}
-        {stripImgs.length > 0 && (
-          <div className="flex overflow-hidden" style={{ height: "clamp(180px, 30vw, 380px)" }}>
-            {stripImgs.map((img, i) => (
-              <div key={i} className="flex-1 overflow-hidden relative">
-                <img
-                  src={img}
-                  alt=""
-                  className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-700"
-                  loading="lazy"
-                  referrerPolicy="no-referrer"
-                  data-lp-path={isPreview ? imgEditPath(img) : undefined}
-                  data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
-                />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── FEATURES STRIP ────────────────────────────────────────────── */}
-        {lp.features.length > 0 && (
-          <section style={{ borderTop: `1px solid ${primary}18`, borderBottom: `1px solid ${primary}18`, backgroundColor: bg }}>
-            <div className="max-w-6xl mx-auto overflow-x-auto" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
-              <div
-                className="flex md:grid"
-                style={{ gridTemplateColumns: `repeat(${Math.min(lp.features.length, 6)}, 1fr)`, minWidth: "fit-content" }}
-              >
-                {lp.features.map((f, i) => (
-                  <FadeUp key={i} delay={i * 55}>
-                    <div
-                      className="relative flex flex-col items-center text-center px-8 py-8 gap-3 min-w-[140px] group/feat"
-                      style={{ borderRight: i < lp.features.length - 1 ? `1px solid ${primary}12` : undefined }}
-                    >
-                      {isPreview && onDeleteItem && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onDeleteItem('features', i); }}
-                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity z-10"
-                        >
-                          <XIcon className="w-3 h-3" />
-                        </button>
-                      )}
-                      <DynamicIcon name={f.icon} className="w-5 h-5 opacity-50" style={{ color: primary }} />
-                      <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={es(`features.${i}.value`, { color: primary })}>{f.value}</div>
-                      <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight" style={es(`features.${i}.label`)}>{f.label}</div>
-                    </div>
-                  </FadeUp>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* ── LOCATION ──────────────────────────────────────────────────── */}
-        <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
-          <div className="max-w-6xl mx-auto">
-            <FadeUp>
-              <SectionLabel color={primary}>Localização</SectionLabel>
-              <h2 data-lp-path="location.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={es('location.title', { color: text })}>
-                {lp.location.title}
-              </h2>
-              <p data-lp-path="location.description" className="text-base md:text-lg leading-relaxed mb-6" style={es('location.description', { color: `${text}88` })}>
-                {lp.location.description}
-              </p>
-            </FadeUp>
-
-            <div className="grid grid-cols-2 gap-3 md:pt-8">
-              {lp.location.highlights.map((h, i) => (
-                <FadeUp key={i} delay={i * 80 + 100}>
-                  <div
-                    className="relative flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02] group/loc"
-                    style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
-                  >
-                    {isPreview && onDeleteItem && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onDeleteItem('location.highlights', i); }}
-                        className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/loc:opacity-100 transition-opacity z-10"
-                      >
-                        <XIcon className="w-3 h-3" />
-                      </button>
-                    )}
-                    <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ backgroundColor: primary }}
-                    >
-                      <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
-                    </div>
-                    <span data-lp-path={`location.highlights.${i}`} className="text-sm font-medium leading-snug" style={es(`location.highlights.${i}`)}>{h}</span>
-                  </div>
-                </FadeUp>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── SHOWCASE IMAGE — mid page ──────────────────────────────────── */}
-        {showcaseImg && (
-          <section className="relative w-full overflow-hidden" style={{ height: "clamp(260px, 45vw, 600px)" }}>
-            <img
-              src={showcaseImg}
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-              loading="lazy"
-              referrerPolicy="no-referrer"
-              data-lp-path={isPreview ? imgEditPath(showcaseImg) : undefined}
-              data-lp-type={isPreview && imgEditPath(showcaseImg) ? "image" : undefined}
-            />
-            <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 50%, ${bg}cc 100%)` }} />
-          </section>
-        )}
-
-        {/* ── PHOTO GRID ────────────────────────────────────────────────── */}
-        {gridImgs.length > 0 && (
-          <section className="py-16 sm:py-20" style={{ backgroundColor: bg }}>
-            <FadeUp>
-              <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-8">
-                <SectionLabel color={primary}>Fotos do imóvel</SectionLabel>
-                <h2 className="text-3xl sm:text-4xl font-black">Veja cada detalhe</h2>
-              </div>
-            </FadeUp>
-            <div className="max-w-6xl mx-auto px-6 sm:px-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
-              {gridImgs.map((img, i) => (
-                <FadeUp key={i} delay={i * 40}>
-                  <div className="aspect-square rounded-xl overflow-hidden">
-                    <img
-                      src={img}
-                      alt={`Foto ${i + 6}`}
-                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                      referrerPolicy="no-referrer"
-                      data-lp-path={isPreview ? imgEditPath(img) : undefined}
-                      data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
-                    />
-                  </div>
-                </FadeUp>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* ── GALLERY CAROUSEL (all images) ──────────────────────────────── */}
-        {carouselImgs.length > 0 && (
-          <section className="py-16 sm:py-24 overflow-hidden" style={{ backgroundColor: bg }}>
-            <FadeUp>
-              <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
-                <div>
-                  <SectionLabel color={primary}>Galeria completa</SectionLabel>
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Todas as fotos</h2>
-                </div>
-                <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
-                  {carouselImgs.length} {carouselImgs.length === 1 ? "foto" : "fotos"}
-                </span>
-              </div>
-            </FadeUp>
-            <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
-              <GalleryCarousel images={carouselImgs} primary={primary} btnTxt={btnTxt} />
-            </div>
-          </section>
-        )}
-
-        {mapEl}
-
-        {/* ── AUDIENCE ──────────────────────────────────────────────────── */}
-        {lp.audience?.length > 0 && (
-          <section className="py-20 sm:py-28 px-6 sm:px-10" style={{ backgroundColor: bg }}>
-            <div className="max-w-6xl mx-auto">
-              <FadeUp>
-                <SectionLabel color={primary}>Para quem é</SectionLabel>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-12 max-w-xl">
-                  Esse imóvel foi feito pra você se...
-                </h2>
-              </FadeUp>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {lp.audience.map((a, i) => (
-                  <FadeUp key={i} delay={i * 80}>
-                    <div
-                      className="relative flex items-start gap-5 p-6 rounded-2xl overflow-hidden transition hover:scale-[1.015] group/aud"
-                      style={{ background: `${primary}07`, border: `1px solid ${primary}15` }}
-                    >
-                      {/* Big faded number decoration */}
-                      <div
-                        className="absolute top-2 right-4 text-7xl font-black opacity-[0.05] pointer-events-none select-none leading-none"
-                        style={{ color: primary }}
-                      >
-                        0{i + 1}
-                      </div>
-                      {isPreview && onDeleteItem && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onDeleteItem('audience', i); }}
-                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/aud:opacity-100 transition-opacity z-10"
-                        >
-                          <XIcon className="w-3 h-3" />
-                        </button>
-                      )}
-                      <div
-                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
-                        style={{ backgroundColor: primary, color: btnTxt }}
-                      >
-                        {i + 1}
-                      </div>
-                      <div>
-                        <h3 data-lp-path={`audience.${i}.title`} className="font-bold text-base mb-1.5" style={es(`audience.${i}.title`)}>{a.title}</h3>
-                        <p data-lp-path={`audience.${i}.description`} className="text-sm leading-relaxed" style={es(`audience.${i}.description`, { color: `${text}70` })}>{a.description}</p>
-                      </div>
-                    </div>
-                  </FadeUp>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
-
-        {videoEl}
-
-        {/* ── URGENCY ───────────────────────────────────────────────────── */}
-        {lp.urgency && (
+        {lp.heroLayout === 'split' ? (
+          /* ── HERO: SPLIT ──────────────────────────────────────────────── */
           <section
-            className="py-24 sm:py-32 px-6 sm:px-10 text-center relative overflow-hidden"
-            style={{ background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
+            className="relative min-h-screen flex flex-col md:flex-row overflow-hidden"
+            data-lp-path={isPreview ? "hero.bgImage" : undefined}
+            data-lp-type={isPreview ? "image" : undefined}
           >
-            {/* Decorative large text */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-              <span className="text-[16rem] font-black opacity-[0.04] leading-none whitespace-nowrap" style={{ color: btnTxt }}>
-                {lp.urgency.highlight}
-              </span>
+            {/* Left: image panel */}
+            <div
+              className="w-full md:w-1/2 min-h-[45vh] md:min-h-screen relative shrink-0"
+              style={{
+                backgroundImage: heroBgImg ? `url(${heroBgImg})` : `linear-gradient(135deg, ${primary}22 0%, ${primary}44 100%)`,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundColor: heroBgImg ? undefined : bg,
+              }}
+            >
+              {/* subtle fade on right edge for blending */}
+              <div className="absolute inset-0" style={{
+                background: isLight
+                  ? 'linear-gradient(to right, transparent 60%, rgba(255,255,255,0.18) 100%)'
+                  : 'linear-gradient(to right, transparent 60%, rgba(0,0,0,0.18) 100%)',
+              }} />
             </div>
-            <div className="relative z-10 max-w-3xl mx-auto space-y-7">
+
+            {/* Right: text panel */}
+            <div
+              className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 md:px-16 py-16 md:py-24"
+              style={{ backgroundColor: bg }}
+            >
               <FadeUp>
                 <span
-                  className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest"
-                  style={{ background: "rgba(0,0,0,0.18)", color: btnTxt, border: "1px solid rgba(255,255,255,0.18)" }}
+                  data-lp-path="hero.badge"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-8 border w-fit"
+                  style={es('hero.badge', { color: primary, borderColor: `${primary}50`, background: `${primary}12` })}
                 >
                   <Zap className="w-3 h-3" />
-                  {lp.urgency.type === "urgency" ? "Atenção" : lp.urgency.type === "availability" ? "Disponibilidade" : "Oportunidade"}
+                  {lp.hero.badge}
                 </span>
               </FadeUp>
-              <FadeUp delay={100}>
-                <h2 data-lp-path="urgency.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('urgency.title', { color: btnTxt })}>
-                  {lp.urgency.title}
-                </h2>
+              <FadeUp delay={110}>
+                <h1
+                  data-lp-path="hero.title"
+                  className="text-[2.2rem] sm:text-[3rem] md:text-[3.5rem] lg:text-[4.2rem] font-black leading-[0.9] tracking-tight mb-6 max-w-xl"
+                  style={es('hero.title', { color: text })}
+                >
+                  {lp.hero.titleHighlight ? (() => {
+                    const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
+                    if (idx === -1) return <>{lp.hero.title}{" "}<span style={{ color: primary }}>{lp.hero.titleHighlight}</span></>;
+                    return (
+                      <>
+                        <span style={{ color: text }}>{lp.hero.title.slice(0, idx)}</span>
+                        <span style={{ color: primary }}>{lp.hero.titleHighlight}</span>
+                        <span style={{ color: text }}>{lp.hero.title.slice(idx + lp.hero.titleHighlight.length)}</span>
+                      </>
+                    );
+                  })() : lp.hero.title}
+                </h1>
               </FadeUp>
-              <FadeUp delay={180}>
-                <p data-lp-path="urgency.description" className="text-base md:text-lg leading-relaxed" style={es('urgency.description', { color: `${btnTxt}cc` })}>
-                  {lp.urgency.description}
+              <FadeUp delay={220}>
+                <p data-lp-path="hero.subtitle" className="text-base md:text-lg max-w-lg mb-10 leading-relaxed" style={es('hero.subtitle', { color: `${text}99` })}>
+                  {lp.hero.subtitle}
                 </p>
               </FadeUp>
-              <FadeUp delay={260}>
-                <div
-                  data-lp-path="urgency.highlight"
-                  className="inline-block px-10 py-4 rounded-2xl text-xl font-black"
-                  style={es('urgency.highlight', { background: "rgba(0,0,0,0.2)", color: btnTxt, border: "1px solid rgba(255,255,255,0.2)" })}
-                >
-                  {lp.urgency.highlight}
-                </div>
-              </FadeUp>
-              <FadeUp delay={340}>
+              <FadeUp delay={330}>
                 <button
+                  data-lp-path="hero.ctaText"
                   onClick={scrollToForm}
-                  className="inline-flex items-center gap-3 px-9 py-4 rounded-full text-base font-bold transition hover:scale-105 active:scale-95"
-                  style={{ background: "rgba(0,0,0,0.22)", color: btnTxt, border: "1px solid rgba(255,255,255,0.28)" }}
+                  className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base font-bold shadow-2xl w-fit"
+                  style={es('hero.ctaText')}
                 >
-                  {lp.cta.buttonText} →
+                  {lp.hero.ctaText}
+                  <span className="opacity-60">→</span>
                 </button>
               </FadeUp>
             </div>
           </section>
-        )}
+        ) : lp.heroLayout === 'minimal' ? (
+          /* ── HERO: MINIMAL ────────────────────────────────────────────── */
+          <section className="relative min-h-[80vh] flex flex-col justify-center overflow-hidden py-24 px-6 sm:px-10" style={{ backgroundColor: bg }}>
+            {/* Decorative accent block */}
+            <div className="absolute top-0 right-0 w-1/3 h-full pointer-events-none" style={{
+              background: `linear-gradient(135deg, transparent 0%, ${primary}08 100%)`,
+            }} />
+            <div className="absolute top-16 left-0 w-2 h-32" style={{ backgroundColor: primary }} />
 
-        {/* ── BENEFITS ──────────────────────────────────────────────────── */}
-        {lp.benefits?.length > 0 && (
-          <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
-            <div className="max-w-6xl mx-auto">
+            <div className="relative z-10 max-w-6xl mx-auto w-full">
               <FadeUp>
-                <SectionLabel color={primary}>Vantagens</SectionLabel>
-                <h2 className="text-3xl sm:text-4xl font-black mb-14">Ao se cadastrar, você recebe:</h2>
+                <span
+                  data-lp-path="hero.badge"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-10 border"
+                  style={es('hero.badge', { color: primary, borderColor: `${primary}50`, background: `${primary}12` })}
+                >
+                  <Zap className="w-3 h-3" />
+                  {lp.hero.badge}
+                </span>
               </FadeUp>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
-                {lp.benefits.map((b, i) => (
-                  <FadeUp key={i} delay={i * 75}>
-                    <div className="relative space-y-4 group/ben">
-                      {isPreview && onDeleteItem && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); onDeleteItem('benefits', i); }}
-                          className="absolute top-0 right-0 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/ben:opacity-100 transition-opacity z-10"
-                        >
-                          <XIcon className="w-3 h-3" />
-                        </button>
-                      )}
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                        style={{ background: `${primary}10`, border: `1px solid ${primary}22` }}
-                      >
-                        <DynamicIcon name={b.icon} className="w-6 h-6" style={{ color: primary }} />
-                      </div>
-                      <div>
-                        <h3 data-lp-path={`benefits.${i}.title`} className="font-bold text-base mb-1.5" style={es(`benefits.${i}.title`)}>{b.title}</h3>
-                        <p data-lp-path={`benefits.${i}.description`} className="text-sm leading-relaxed" style={es(`benefits.${i}.description`, { color: `${text}70` })}>{b.description}</p>
-                      </div>
-                    </div>
-                  </FadeUp>
-                ))}
-              </div>
+              <FadeUp delay={80}>
+                <h1
+                  data-lp-path="hero.title"
+                  className="text-[3rem] sm:text-[4.5rem] md:text-[6rem] lg:text-[7rem] font-black leading-[0.88] tracking-tight mb-8 max-w-5xl"
+                  style={es('hero.title', { color: text })}
+                >
+                  {lp.hero.titleHighlight ? (() => {
+                    const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
+                    if (idx === -1) return <>{lp.hero.title}{" "}<span style={{ color: primary }}>{lp.hero.titleHighlight}</span></>;
+                    return (
+                      <>
+                        <span style={{ color: text }}>{lp.hero.title.slice(0, idx)}</span>
+                        <span style={{ color: primary }}>{lp.hero.titleHighlight}</span>
+                        <span style={{ color: text }}>{lp.hero.title.slice(idx + lp.hero.titleHighlight.length)}</span>
+                      </>
+                    );
+                  })() : lp.hero.title}
+                </h1>
+              </FadeUp>
+              <FadeUp delay={180}>
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 max-w-4xl">
+                  <p data-lp-path="hero.subtitle" className="text-base md:text-xl leading-relaxed flex-1" style={es('hero.subtitle', { color: `${text}80` })}>
+                    {lp.hero.subtitle}
+                  </p>
+                  <button
+                    data-lp-path="hero.ctaText"
+                    onClick={scrollToForm}
+                    className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base font-bold shadow-xl shrink-0"
+                    style={es('hero.ctaText')}
+                  >
+                    {lp.hero.ctaText}
+                    <span className="opacity-60">→</span>
+                  </button>
+                </div>
+              </FadeUp>
+            </div>
+
+            {/* Scroll hint */}
+            <div className="absolute bottom-7 right-8 hidden md:flex items-center gap-2" style={{ color: `${text}40` }}>
+              <span className="text-[10px] uppercase tracking-widest font-semibold">scroll</span>
+              <ChevronDown className="w-4 h-4 animate-bounce" />
+            </div>
+          </section>
+        ) : (
+          /* ── HERO: FULLSCREEN (default) ───────────────────────────────── */
+          <section
+            className="relative min-h-screen flex flex-col justify-end overflow-hidden"
+            data-lp-path={isPreview ? "hero.bgImage" : undefined}
+            data-lp-type={isPreview ? "image" : undefined}
+            style={{
+              backgroundImage: heroBgImg ? `url(${heroBgImg})` : undefined,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundColor: heroBgImg ? undefined : bg,
+            }}
+          >
+            {/* Overlay */}
+            <div className="absolute inset-0" style={{
+              background: isLight
+                ? heroBgImg
+                  ? "linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.05) 100%)"
+                  : `linear-gradient(135deg, ${bg} 0%, ${primary}15 100%)`
+                : heroBgImg
+                  ? "linear-gradient(to top, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.48) 55%, rgba(0,0,0,0.05) 100%)"
+                  : `linear-gradient(135deg, ${bg} 0%, ${primary}18 100%)`,
+            }} />
+
+            {/* Content */}
+            <div className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-10 pb-16 md:pb-24 pt-28">
+              <FadeUp>
+                <span
+                  data-lp-path="hero.badge"
+                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-7 border"
+                  style={es('hero.badge', { color: primary, borderColor: `${primary}50`, background: `${primary}12` })}
+                >
+                  <Zap className="w-3 h-3" />
+                  {lp.hero.badge}
+                </span>
+              </FadeUp>
+
+              <FadeUp delay={110}>
+                <h1
+                  data-lp-path="hero.title"
+                  className="text-[2.8rem] sm:text-[3.8rem] md:text-[5rem] lg:text-[5.8rem] font-black leading-[0.88] tracking-tight mb-7 max-w-5xl"
+                  style={es('hero.title', { color: heroText })}
+                >
+                  {lp.hero.titleHighlight ? (() => {
+                    const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
+                    if (idx === -1) return (
+                      <>{lp.hero.title}{" "}<span style={{ color: primary }}>{lp.hero.titleHighlight}</span></>
+                    );
+                    return (
+                      <>
+                        <span style={{ color: heroText }}>{lp.hero.title.slice(0, idx)}</span>
+                        <span style={{ color: primary }}>{lp.hero.titleHighlight}</span>
+                        <span style={{ color: heroText }}>{lp.hero.title.slice(idx + lp.hero.titleHighlight.length)}</span>
+                      </>
+                    );
+                  })() : lp.hero.title}
+                </h1>
+              </FadeUp>
+
+              <FadeUp delay={220}>
+                <p data-lp-path="hero.subtitle" className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={es('hero.subtitle', { color: heroSub })}>
+                  {lp.hero.subtitle}
+                </p>
+              </FadeUp>
+
+              <FadeUp delay={330}>
+                <button
+                  data-lp-path="hero.ctaText"
+                  onClick={scrollToForm}
+                  className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base sm:text-lg font-bold shadow-2xl"
+                  style={es('hero.ctaText')}
+                >
+                  {lp.hero.ctaText}
+                  <span className="opacity-60">→</span>
+                </button>
+              </FadeUp>
+            </div>
+
+            {/* Scroll hint */}
+            <div className="absolute bottom-7 right-8 hidden md:flex items-center gap-2" style={{ color: heroBgImg ? (isLight ? `${text}60` : "rgba(255,255,255,0.35)") : `${text}40` }}>
+              <span className="text-[10px] uppercase tracking-widest font-semibold">scroll</span>
+              <ChevronDown className="w-4 h-4 animate-bounce" />
             </div>
           </section>
         )}
 
-        {/* ── CTA FINAL ─────────────────────────────────────────────────── */}
-        <section className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>
-          <div className="max-w-3xl mx-auto space-y-7">
-            <FadeUp>
-              <h2 data-lp-path="cta.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('cta.title')}>{lp.cta.title}</h2>
-            </FadeUp>
-            <FadeUp delay={100}>
-              <p data-lp-path="cta.subtitle" className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={es('cta.subtitle', { color: `${text}80` })}>
-                {lp.cta.subtitle}
-              </p>
-            </FadeUp>
-            <FadeUp delay={200}>
-              <button
-                data-lp-path="cta.buttonText"
-                onClick={scrollToForm}
-                className="lp-btn lp-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full text-base sm:text-lg font-bold shadow-2xl"
-                style={es('cta.buttonText')}
-              >
-                {lp.cta.buttonText} →
-              </button>
-            </FadeUp>
-          </div>
-        </section>
+        {/* ── POST-HERO SECTIONS (ordered) ──────────────────────────────── */}
+        {sectionOrder.map((key) => {
+          switch (key) {
 
-        {/* ── FORM ──────────────────────────────────────────────────────── */}
-        <section ref={formRef} className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10" id="form">
-          <div className="max-w-lg mx-auto">
-            <div
-              className="rounded-3xl p-8 sm:p-10 shadow-2xl"
-              style={{ backgroundColor: bg, border: `1px solid ${primary}18` }}
-            >
-              {submitted ? (
-                <div className="text-center space-y-5 py-6">
-                  <div
-                    className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
-                    style={{ backgroundColor: primary }}
-                  >
-                    <Check className="w-10 h-10" style={{ color: btnTxt }} />
-                  </div>
-                  <h3 className="text-2xl font-black">{lp.form.thankYouTitle}</h3>
-                  <p className="text-sm leading-relaxed" style={{ color: `${text}80` }}>{lp.form.thankYouMessage}</p>
+            case 'photostrip':
+              return stripImgs.length > 0 ? (
+                <div key="photostrip" className="flex overflow-hidden" style={{ height: "clamp(180px, 30vw, 380px)" }}>
+                  {stripImgs.map((img, i) => (
+                    <div key={i} className="flex-1 overflow-hidden relative">
+                      <img
+                        src={img}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                        loading="lazy"
+                        referrerPolicy="no-referrer"
+                        data-lp-path={isPreview ? imgEditPath(img) : undefined}
+                        data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
+                      />
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <>
-                  <div className="text-center mb-9">
-                    <h2 data-lp-path="form.title" className="text-2xl sm:text-3xl font-black mb-2" style={es('form.title')}>{lp.form.title}</h2>
-                    <p data-lp-path="form.subtitle" className="text-sm" style={es('form.subtitle', { color: `${text}60` })}>{lp.form.subtitle}</p>
+              ) : null;
+
+            case 'features':
+              return lp.features.length > 0 ? (
+                lp.featuresLayout === 'grid' ? (
+                  /* GRID layout */
+                  <section key="features" className="py-16 sm:py-20 px-6 sm:px-10" style={{ backgroundColor: bg }}>
+                    <div className="max-w-6xl mx-auto">
+                      <FadeUp>
+                        <SectionLabel color={primary}>Especificações</SectionLabel>
+                      </FadeUp>
+                      <div className={`grid gap-4 mt-6 ${lp.features.length <= 3 ? 'grid-cols-1 sm:grid-cols-3' : lp.features.length === 4 ? 'grid-cols-2 sm:grid-cols-4' : 'grid-cols-2 sm:grid-cols-3'}`}>
+                        {lp.features.map((f, i) => (
+                          <FadeUp key={i} delay={i * 55}>
+                            <div
+                              className="relative flex flex-col gap-3 p-6 rounded-2xl group/feat"
+                              style={{ background: `${primary}07`, border: `1px solid ${primary}18` }}
+                            >
+                              {isPreview && onDeleteItem && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onDeleteItem('features', i); }}
+                                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity z-10"
+                                >
+                                  <XIcon className="w-3 h-3" />
+                                </button>
+                              )}
+                              <DynamicIcon name={f.icon} className="w-6 h-6" style={{ color: primary }} />
+                              <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={es(`features.${i}.value`, { color: primary })}>{f.value}</div>
+                              <div data-lp-path={`features.${i}.label`} className="text-[11px] uppercase tracking-widest opacity-50 font-semibold" style={es(`features.${i}.label`)}>{f.label}</div>
+                            </div>
+                          </FadeUp>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                ) : (
+                  /* STRIP layout (default) */
+                  <section key="features" style={{ borderTop: `1px solid ${primary}18`, borderBottom: `1px solid ${primary}18`, backgroundColor: bg }}>
+                    <div className="max-w-6xl mx-auto overflow-x-auto" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
+                      <div
+                        className="flex md:grid"
+                        style={{ gridTemplateColumns: `repeat(${Math.min(lp.features.length, 6)}, 1fr)`, minWidth: "fit-content" }}
+                      >
+                        {lp.features.map((f, i) => (
+                          <FadeUp key={i} delay={i * 55}>
+                            <div
+                              className="relative flex flex-col items-center text-center px-8 py-8 gap-3 min-w-[140px] group/feat"
+                              style={{ borderRight: i < lp.features.length - 1 ? `1px solid ${primary}12` : undefined }}
+                            >
+                              {isPreview && onDeleteItem && (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); onDeleteItem('features', i); }}
+                                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity z-10"
+                                >
+                                  <XIcon className="w-3 h-3" />
+                                </button>
+                              )}
+                              <DynamicIcon name={f.icon} className="w-5 h-5 opacity-50" style={{ color: primary }} />
+                              <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={es(`features.${i}.value`, { color: primary })}>{f.value}</div>
+                              <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight" style={es(`features.${i}.label`)}>{f.label}</div>
+                            </div>
+                          </FadeUp>
+                        ))}
+                      </div>
+                    </div>
+                  </section>
+                )
+              ) : null;
+
+            case 'location':
+              return (
+                <section key="location" className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
+                  <div className="max-w-6xl mx-auto">
+                    <FadeUp>
+                      <SectionLabel color={primary}>Localização</SectionLabel>
+                      <h2 data-lp-path="location.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={es('location.title', { color: text })}>
+                        {lp.location.title}
+                      </h2>
+                      <p data-lp-path="location.description" className="text-base md:text-lg leading-relaxed mb-6" style={es('location.description', { color: `${text}88` })}>
+                        {lp.location.description}
+                      </p>
+                    </FadeUp>
+
+                    <div className="grid grid-cols-2 gap-3 md:pt-8">
+                      {lp.location.highlights.map((h, i) => (
+                        <FadeUp key={i} delay={i * 80 + 100}>
+                          <div
+                            className="relative flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02] group/loc"
+                            style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
+                          >
+                            {isPreview && onDeleteItem && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteItem('location.highlights', i); }}
+                                className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/loc:opacity-100 transition-opacity z-10"
+                              >
+                                <XIcon className="w-3 h-3" />
+                              </button>
+                            )}
+                            <div
+                              className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                              style={{ backgroundColor: primary }}
+                            >
+                              <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
+                            </div>
+                            <span data-lp-path={`location.highlights.${i}`} className="text-sm font-medium leading-snug" style={es(`location.highlights.${i}`)}>{h}</span>
+                          </div>
+                        </FadeUp>
+                      ))}
+                    </div>
                   </div>
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">Nome *</Label>
-                      <Input
-                        value={name} onChange={(e) => setName(e.target.value)}
-                        placeholder="Seu nome completo" required
-                        className="h-12 rounded-xl text-base bg-transparent border-2"
-                        style={{ borderColor: `${primary}35`, color: text }}
-                      />
+                </section>
+              );
+
+            case 'showcase':
+              return showcaseImg ? (
+                <section key="showcase" className="relative w-full overflow-hidden" style={{ height: "clamp(260px, 45vw, 600px)" }}>
+                  <img
+                    src={showcaseImg}
+                    alt=""
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    data-lp-path={isPreview ? imgEditPath(showcaseImg) : undefined}
+                    data-lp-type={isPreview && imgEditPath(showcaseImg) ? "image" : undefined}
+                  />
+                  <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 50%, ${bg}cc 100%)` }} />
+                </section>
+              ) : null;
+
+            case 'photogrid':
+              return gridImgs.length > 0 ? (
+                <section key="photogrid" className="py-16 sm:py-20" style={{ backgroundColor: bg }}>
+                  <FadeUp>
+                    <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-8">
+                      <SectionLabel color={primary}>Fotos do imóvel</SectionLabel>
+                      <h2 className="text-3xl sm:text-4xl font-black">Veja cada detalhe</h2>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">WhatsApp *</Label>
-                      <Input
-                        value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
-                        placeholder="(51) 99999-9999" required
-                        className="h-12 rounded-xl text-base bg-transparent border-2"
-                        style={{ borderColor: `${primary}35`, color: text }}
-                      />
+                  </FadeUp>
+                  <div className="max-w-6xl mx-auto px-6 sm:px-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+                    {gridImgs.map((img, i) => (
+                      <FadeUp key={i} delay={i * 40}>
+                        <div className="aspect-square rounded-xl overflow-hidden">
+                          <img
+                            src={img}
+                            alt={`Foto ${i + 6}`}
+                            className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            data-lp-path={isPreview ? imgEditPath(img) : undefined}
+                            data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
+                          />
+                        </div>
+                      </FadeUp>
+                    ))}
+                  </div>
+                </section>
+              ) : null;
+
+            case 'carousel':
+              return carouselImgs.length > 0 ? (
+                <section key="carousel" className="py-16 sm:py-24 overflow-hidden" style={{ backgroundColor: bg }}>
+                  <FadeUp>
+                    <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
+                      <div>
+                        <SectionLabel color={primary}>Galeria completa</SectionLabel>
+                        <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Todas as fotos</h2>
+                      </div>
+                      <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
+                        {carouselImgs.length} {carouselImgs.length === 1 ? "foto" : "fotos"}
+                      </span>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">
-                        E-mail <span className="opacity-50 normal-case tracking-normal">(opcional)</span>
-                      </Label>
-                      <Input
-                        type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                        placeholder="seu@email.com"
-                        className="h-12 rounded-xl text-base bg-transparent border-2"
-                        style={{ borderColor: `${primary}25`, color: text }}
-                      />
+                  </FadeUp>
+                  <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
+                    <GalleryCarousel images={carouselImgs} primary={primary} btnTxt={btnTxt} />
+                  </div>
+                </section>
+              ) : null;
+
+            case 'map':
+              return mapEl ? <React.Fragment key="map">{mapEl}</React.Fragment> : null;
+
+            case 'audience':
+              return lp.audience?.length > 0 ? (
+                <section key="audience" className="py-20 sm:py-28 px-6 sm:px-10" style={{ backgroundColor: bg }}>
+                  <div className="max-w-6xl mx-auto">
+                    <FadeUp>
+                      <SectionLabel color={primary}>Para quem é</SectionLabel>
+                      <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-12 max-w-xl">
+                        Esse imóvel foi feito pra você se...
+                      </h2>
+                    </FadeUp>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {lp.audience.map((a, i) => (
+                        <FadeUp key={i} delay={i * 80}>
+                          <div
+                            className="relative flex items-start gap-5 p-6 rounded-2xl overflow-hidden transition hover:scale-[1.015] group/aud"
+                            style={{ background: `${primary}07`, border: `1px solid ${primary}15` }}
+                          >
+                            {/* Big faded number decoration */}
+                            <div
+                              className="absolute top-2 right-4 text-7xl font-black opacity-[0.05] pointer-events-none select-none leading-none"
+                              style={{ color: primary }}
+                            >
+                              0{i + 1}
+                            </div>
+                            {isPreview && onDeleteItem && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteItem('audience', i); }}
+                                className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/aud:opacity-100 transition-opacity z-10"
+                              >
+                                <XIcon className="w-3 h-3" />
+                              </button>
+                            )}
+                            <div
+                              className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
+                              style={{ backgroundColor: primary, color: btnTxt }}
+                            >
+                              {i + 1}
+                            </div>
+                            <div>
+                              <h3 data-lp-path={`audience.${i}.title`} className="font-bold text-base mb-1.5" style={es(`audience.${i}.title`)}>{a.title}</h3>
+                              <p data-lp-path={`audience.${i}.description`} className="text-sm leading-relaxed" style={es(`audience.${i}.description`, { color: `${text}70` })}>{a.description}</p>
+                            </div>
+                          </div>
+                        </FadeUp>
+                      ))}
                     </div>
-                    <button
-                      type="submit" disabled={submitting}
-                      className="lp-btn w-full h-14 rounded-xl text-base font-bold flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                  </div>
+                </section>
+              ) : null;
+
+            case 'video':
+              return videoEl ? <React.Fragment key="video">{videoEl}</React.Fragment> : null;
+
+            case 'urgency':
+              return lp.urgency ? (
+                <section
+                  key="urgency"
+                  className="py-24 sm:py-32 px-6 sm:px-10 text-center relative overflow-hidden"
+                  style={{ background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
+                >
+                  {/* Decorative large text */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+                    <span className="text-[16rem] font-black opacity-[0.04] leading-none whitespace-nowrap" style={{ color: btnTxt }}>
+                      {lp.urgency.highlight}
+                    </span>
+                  </div>
+                  <div className="relative z-10 max-w-3xl mx-auto space-y-7">
+                    <FadeUp>
+                      <span
+                        className="inline-flex items-center gap-2 px-5 py-2 rounded-full text-[11px] font-bold uppercase tracking-widest"
+                        style={{ background: "rgba(0,0,0,0.18)", color: btnTxt, border: "1px solid rgba(255,255,255,0.18)" }}
+                      >
+                        <Zap className="w-3 h-3" />
+                        {lp.urgency.type === "urgency" ? "Atenção" : lp.urgency.type === "availability" ? "Disponibilidade" : "Oportunidade"}
+                      </span>
+                    </FadeUp>
+                    <FadeUp delay={100}>
+                      <h2 data-lp-path="urgency.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('urgency.title', { color: btnTxt })}>
+                        {lp.urgency.title}
+                      </h2>
+                    </FadeUp>
+                    <FadeUp delay={180}>
+                      <p data-lp-path="urgency.description" className="text-base md:text-lg leading-relaxed" style={es('urgency.description', { color: `${btnTxt}cc` })}>
+                        {lp.urgency.description}
+                      </p>
+                    </FadeUp>
+                    <FadeUp delay={260}>
+                      <div
+                        data-lp-path="urgency.highlight"
+                        className="inline-block px-10 py-4 rounded-2xl text-xl font-black"
+                        style={es('urgency.highlight', { background: "rgba(0,0,0,0.2)", color: btnTxt, border: "1px solid rgba(255,255,255,0.2)" })}
+                      >
+                        {lp.urgency.highlight}
+                      </div>
+                    </FadeUp>
+                    <FadeUp delay={340}>
+                      <button
+                        onClick={scrollToForm}
+                        className="inline-flex items-center gap-3 px-9 py-4 rounded-full text-base font-bold transition hover:scale-105 active:scale-95"
+                        style={{ background: "rgba(0,0,0,0.22)", color: btnTxt, border: "1px solid rgba(255,255,255,0.28)" }}
+                      >
+                        {lp.cta.buttonText} →
+                      </button>
+                    </FadeUp>
+                  </div>
+                </section>
+              ) : null;
+
+            case 'benefits':
+              return lp.benefits?.length > 0 ? (
+                <section key="benefits" className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
+                  <div className="max-w-6xl mx-auto">
+                    <FadeUp>
+                      <SectionLabel color={primary}>Vantagens</SectionLabel>
+                      <h2 className="text-3xl sm:text-4xl font-black mb-14">Ao se cadastrar, você recebe:</h2>
+                    </FadeUp>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+                      {lp.benefits.map((b, i) => (
+                        <FadeUp key={i} delay={i * 75}>
+                          <div className="relative space-y-4 group/ben">
+                            {isPreview && onDeleteItem && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteItem('benefits', i); }}
+                                className="absolute top-0 right-0 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/ben:opacity-100 transition-opacity z-10"
+                              >
+                                <XIcon className="w-3 h-3" />
+                              </button>
+                            )}
+                            <div
+                              className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                              style={{ background: `${primary}10`, border: `1px solid ${primary}22` }}
+                            >
+                              <DynamicIcon name={b.icon} className="w-6 h-6" style={{ color: primary }} />
+                            </div>
+                            <div>
+                              <h3 data-lp-path={`benefits.${i}.title`} className="font-bold text-base mb-1.5" style={es(`benefits.${i}.title`)}>{b.title}</h3>
+                              <p data-lp-path={`benefits.${i}.description`} className="text-sm leading-relaxed" style={es(`benefits.${i}.description`, { color: `${text}70` })}>{b.description}</p>
+                            </div>
+                          </div>
+                        </FadeUp>
+                      ))}
+                    </div>
+                  </div>
+                </section>
+              ) : null;
+
+            case 'cta':
+              return (
+                <section key="cta" className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>
+                  <div className="max-w-3xl mx-auto space-y-7">
+                    <FadeUp>
+                      <h2 data-lp-path="cta.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('cta.title')}>{lp.cta.title}</h2>
+                    </FadeUp>
+                    <FadeUp delay={100}>
+                      <p data-lp-path="cta.subtitle" className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={es('cta.subtitle', { color: `${text}80` })}>
+                        {lp.cta.subtitle}
+                      </p>
+                    </FadeUp>
+                    <FadeUp delay={200}>
+                      <button
+                        data-lp-path="cta.buttonText"
+                        onClick={scrollToForm}
+                        className="lp-btn lp-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full text-base sm:text-lg font-bold shadow-2xl"
+                        style={es('cta.buttonText')}
+                      >
+                        {lp.cta.buttonText} →
+                      </button>
+                    </FadeUp>
+                  </div>
+                </section>
+              );
+
+            case 'form':
+              return (
+                <section key="form" ref={formRef} className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10" id="form">
+                  <div className="max-w-lg mx-auto">
+                    <div
+                      className="rounded-3xl p-8 sm:p-10 shadow-2xl"
+                      style={{ backgroundColor: bg, border: `1px solid ${primary}18` }}
                     >
-                      {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : null}
-                      {lp.form.buttonText}
-                    </button>
-                  </form>
-                </>
-              )}
-            </div>
-          </div>
-        </section>
+                      {submitted ? (
+                        <div className="text-center space-y-5 py-6">
+                          <div
+                            className="w-20 h-20 rounded-full flex items-center justify-center mx-auto"
+                            style={{ backgroundColor: primary }}
+                          >
+                            <Check className="w-10 h-10" style={{ color: btnTxt }} />
+                          </div>
+                          <h3 className="text-2xl font-black">{lp.form.thankYouTitle}</h3>
+                          <p className="text-sm leading-relaxed" style={{ color: `${text}80` }}>{lp.form.thankYouMessage}</p>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="text-center mb-9">
+                            <h2 data-lp-path="form.title" className="text-2xl sm:text-3xl font-black mb-2" style={es('form.title')}>{lp.form.title}</h2>
+                            <p data-lp-path="form.subtitle" className="text-sm" style={es('form.subtitle', { color: `${text}60` })}>{lp.form.subtitle}</p>
+                          </div>
+                          <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="space-y-1.5">
+                              <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">Nome *</Label>
+                              <Input
+                                value={name} onChange={(e) => setName(e.target.value)}
+                                placeholder="Seu nome completo" required
+                                className="h-12 rounded-xl text-base bg-transparent border-2"
+                                style={{ borderColor: `${primary}35`, color: text }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">WhatsApp *</Label>
+                              <Input
+                                value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)}
+                                placeholder="(51) 99999-9999" required
+                                className="h-12 rounded-xl text-base bg-transparent border-2"
+                                style={{ borderColor: `${primary}35`, color: text }}
+                              />
+                            </div>
+                            <div className="space-y-1.5">
+                              <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">
+                                E-mail <span className="opacity-50 normal-case tracking-normal">(opcional)</span>
+                              </Label>
+                              <Input
+                                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                                placeholder="seu@email.com"
+                                className="h-12 rounded-xl text-base bg-transparent border-2"
+                                style={{ borderColor: `${primary}25`, color: text }}
+                              />
+                            </div>
+                            <button
+                              type="submit" disabled={submitting}
+                              className="lp-btn w-full h-14 rounded-xl text-base font-bold flex items-center justify-center gap-2 mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                            >
+                              {submitting ? <RefreshCw className="w-5 h-5 animate-spin" /> : null}
+                              {lp.form.buttonText}
+                            </button>
+                          </form>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </section>
+              );
+
+            default:
+              return null;
+          }
+        })}
 
         {/* ── FOOTER ────────────────────────────────────────────────────── */}
         <footer className="py-10 px-6 sm:px-10 text-center border-t lp-divider" style={{ backgroundColor: bg }}>
