@@ -500,7 +500,7 @@ function FloatingTextEditor({
             type="range"
             min={0} max={10} step={0.5}
             value={strokeWidth}
-            onChange={(e) => onStyleChange(path, { ...elementStyle, strokeWidth: Number(e.target.value) })}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, strokeWidth: Number(e.target.value), strokeColor: elementStyle?.strokeColor || computedStrokeColor || '#000000' })}
             className="flex-1 h-1 accent-yellow-400"
             title="Espessura do stroke"
           />
