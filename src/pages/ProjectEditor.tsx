@@ -353,7 +353,15 @@ function VideoUploadField({
 }
 
 // ─── Floating inline text/style editor ───────────────────────────────────────
-type ElementStyle = { color?: string; fontSize?: number; background?: string; backgroundOpacity?: number };
+type ElementStyle = {
+  color?: string;
+  fontSize?: number;
+  background?: string;
+  backgroundOpacity?: number;
+  backgroundTransparent?: boolean;
+  strokeColor?: string;
+  strokeWidth?: number;
+};
 
 function FloatingTextEditor({
   path,
@@ -379,10 +387,12 @@ function FloatingTextEditor({
   const [text, setText] = useState(value);
   const isMultiline = value.length > 60 || value.includes('\n');
 
-  const top = Math.min(rect.bottom + 8, window.innerHeight - 220);
+  const top = Math.min(rect.bottom + 8, window.innerHeight - 310);
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - 340));
 
+  const bgTransparent = elementStyle?.backgroundTransparent ?? false;
   const opacityPct = Math.round((elementStyle?.backgroundOpacity ?? 1) * 100);
+  const strokeWidth = elementStyle?.strokeWidth ?? 0;
 
   return createPortal(
     <>
@@ -433,29 +443,73 @@ function FloatingTextEditor({
           >A+</button>
           <span className="text-[10px] text-gray-600 ml-1">{Math.round((elementStyle?.fontSize ?? 1) * 100)}%</span>
         </div>
-        {/* Row 2: background + opacity */}
-        <div className="flex items-center gap-1.5 mb-2">
+        {/* Row 2: background + opacity + transparent toggle */}
+        <div className="flex items-center gap-1.5 mb-1.5">
           <span className="text-[10px] text-gray-500 w-10 shrink-0">Fundo</span>
+          {bgTransparent ? (
+            <div
+              className="w-7 h-7 rounded border border-[#3a3a3e] flex items-center justify-center shrink-0"
+              style={{ background: 'repeating-conic-gradient(#3a3a3e 0% 25%, #1e1e22 0% 50%) 0 0 / 8px 8px' }}
+              title="Transparente"
+            />
+          ) : (
+            <input
+              type="color"
+              value={elementStyle?.background || computedBg || '#000000'}
+              onChange={(e) => onStyleChange(path, { ...elementStyle, background: e.target.value, backgroundTransparent: false })}
+              className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent shrink-0"
+              title="Cor de fundo"
+            />
+          )}
+          <button
+            onClick={() => onStyleChange(path, { ...elementStyle, backgroundTransparent: !bgTransparent })}
+            className={`text-[9px] px-1.5 py-0.5 rounded border shrink-0 ${bgTransparent ? 'border-yellow-400 text-yellow-400' : 'border-[#3a3a3e] text-gray-500 hover:text-white'}`}
+            title="Alternar transparência"
+          >transp.</button>
+          {!bgTransparent && (
+            <>
+              <input
+                type="range"
+                min={0} max={100}
+                value={opacityPct}
+                onChange={(e) => onStyleChange(path, { ...elementStyle, backgroundOpacity: Number(e.target.value) / 100 })}
+                className="flex-1 h-1 accent-yellow-400"
+                title="Opacidade"
+              />
+              <span className="text-[10px] text-gray-600 w-7 text-right">{opacityPct}%</span>
+            </>
+          )}
+        </div>
+        {/* Row 3: stroke */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] text-gray-500 w-10 shrink-0">Stroke</span>
           <input
             type="color"
-            value={elementStyle?.background || computedBg || '#000000'}
-            onChange={(e) => onStyleChange(path, { ...elementStyle, background: e.target.value })}
-            className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
-            title="Cor de fundo"
+            value={elementStyle?.strokeColor || '#000000'}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, strokeColor: e.target.value, strokeWidth: strokeWidth || 1 })}
+            className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent shrink-0"
+            title="Cor do stroke"
           />
-          <div className="w-px h-4 bg-[#3a3a3e]" />
-          <span className="text-[10px] text-gray-500 shrink-0">Opac</span>
+          <div className="w-px h-4 bg-[#3a3a3e] shrink-0" />
+          <span className="text-[10px] text-gray-500 shrink-0">Esp</span>
           <input
             type="range"
-            min={0} max={100}
-            value={opacityPct}
-            onChange={(e) => onStyleChange(path, { ...elementStyle, backgroundOpacity: Number(e.target.value) / 100 })}
+            min={0} max={10} step={0.5}
+            value={strokeWidth}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, strokeWidth: Number(e.target.value) })}
             className="flex-1 h-1 accent-yellow-400"
-            title="Opacidade"
+            title="Espessura do stroke"
           />
-          <span className="text-[10px] text-gray-600 w-7 text-right">{opacityPct}%</span>
+          <span className="text-[10px] text-gray-600 w-8 text-right">{strokeWidth}px</span>
+          {strokeWidth > 0 && (
+            <button
+              onClick={() => onStyleChange(path, { ...elementStyle, strokeWidth: 0, strokeColor: undefined })}
+              className="text-[9px] text-red-400 hover:text-red-300 shrink-0"
+              title="Remover stroke"
+            >✕</button>
+          )}
         </div>
-        {/* Row 3: reset + save */}
+        {/* Row 4: reset + save */}
         <div className="flex items-center gap-1.5">
           {elementStyle && Object.keys(elementStyle).length > 0 && (
             <button

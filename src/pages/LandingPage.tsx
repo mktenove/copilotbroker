@@ -338,7 +338,9 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
     const override = (lp as any).elementStyles?.[path];
     if (!override) return baseStyle ?? {};
     let bgStyle: React.CSSProperties = {};
-    if (override.background) {
+    if (override.backgroundTransparent) {
+      bgStyle = { background: 'transparent' };
+    } else if (override.background) {
       // Combine hex color + backgroundOpacity into rgba so only the bg is transparent
       const hex = override.background as string;
       const alpha = override.backgroundOpacity ?? 1;
@@ -347,11 +349,15 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       const b = parseInt(hex.slice(5, 7), 16);
       bgStyle = { background: `rgba(${r},${g},${b},${alpha})` };
     }
+    const strokeStyle: React.CSSProperties = override.strokeWidth > 0
+      ? { WebkitTextStroke: `${override.strokeWidth}px ${override.strokeColor || '#000000'}` } as React.CSSProperties
+      : {};
     return {
       ...(baseStyle ?? {}),
       ...(override.color ? { color: override.color } : {}),
       ...(override.fontSize ? { fontSize: `${override.fontSize}em` } : {}),
       ...bgStyle,
+      ...strokeStyle,
     };
   };
 
