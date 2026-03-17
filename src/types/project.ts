@@ -151,6 +151,7 @@ export interface LandingPageData {
   form: LandingPageForm;
   floatingButtonText: string;
   footer: LandingPageFooter;
+  elementStyles?: Record<string, { color?: string; fontSize?: number }>;
 }
 
 // ─── Status Config ────────────────────────────────────────────────────────────

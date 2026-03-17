@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
@@ -351,6 +352,95 @@ function VideoUploadField({
   );
 }
 
+// ─── Floating inline text/style editor ───────────────────────────────────────
+function FloatingTextEditor({
+  path,
+  value,
+  rect,
+  elementStyle,
+  onSave,
+  onStyleChange,
+  onClose,
+}: {
+  path: string;
+  value: string;
+  rect: DOMRect;
+  elementStyle?: { color?: string; fontSize?: number };
+  onSave: (path: string, value: string) => void;
+  onStyleChange: (path: string, style: { color?: string; fontSize?: number }) => void;
+  onClose: () => void;
+}) {
+  const [text, setText] = useState(value);
+  const isMultiline = value.length > 60 || value.includes('\n');
+
+  const top = Math.min(rect.bottom + 8, window.innerHeight - 180);
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 328));
+
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 z-[9998]" onClick={onClose} />
+      <div
+        className="fixed z-[9999] bg-[#1e1e22] border border-[#3a3a3e] rounded-xl shadow-2xl p-3 w-80"
+        style={{ top, left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-[10px] text-muted-foreground mb-2 font-mono">{path}</p>
+        {isMultiline ? (
+          <Textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+            rows={3}
+            className="bg-[#0f0f12] border-[#2a2a2e] text-sm w-full mb-2 resize-none"
+          />
+        ) : (
+          <Input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+            className="bg-[#0f0f12] border-[#2a2a2e] text-sm h-8 w-full mb-2"
+          />
+        )}
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-gray-500">Cor</span>
+          <input
+            type="color"
+            value={elementStyle?.color || '#ffffff'}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, color: e.target.value })}
+            className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
+          />
+          <div className="w-px h-4 bg-[#3a3a3e]" />
+          <button
+            onClick={() => onStyleChange(path, { ...elementStyle, fontSize: Math.max(0.5, (elementStyle?.fontSize ?? 1) - 0.1) })}
+            className="w-6 h-6 text-[10px] bg-[#2a2a2e] rounded hover:bg-[#3a3a3e] text-white flex items-center justify-center"
+            title="Diminuir texto"
+          >A-</button>
+          <button
+            onClick={() => onStyleChange(path, { ...elementStyle, fontSize: Math.min(3, (elementStyle?.fontSize ?? 1) + 0.1) })}
+            className="w-6 h-6 text-[12px] bg-[#2a2a2e] rounded hover:bg-[#3a3a3e] text-white flex items-center justify-center font-bold"
+            title="Aumentar texto"
+          >A+</button>
+          {elementStyle && (
+            <button
+              onClick={() => onStyleChange(path, {})}
+              className="text-[10px] text-red-400 hover:text-red-300 px-1"
+              title="Resetar estilo"
+            >↺</button>
+          )}
+          <div className="flex-1" />
+          <button onClick={onClose} className="text-[11px] text-gray-500 hover:text-white px-1">✕</button>
+          <button
+            onClick={() => { onSave(path, text); onClose(); }}
+            className="text-[11px] bg-yellow-400 text-black font-bold px-2.5 py-0.5 rounded"
+          >✓ Salvar</button>
+        </div>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Section panel ─────────────────────────────────────────────────────────────
 function SectionPanel({
   section,
@@ -576,13 +666,51 @@ export default function ProjectEditor() {
   // Preview
   const [showPreview, setShowPreview] = useState(true);
 
-  // WYSIWYG section editing
-  const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"edit" | "chat">("edit");
+  // Inline editing state
+  const [activeEdit, setActiveEdit] = useState<{
+    path: string;
+    value: string;
+    rect: DOMRect;
+  } | null>(null);
 
-  const handleSectionClick = (key: string) => {
-    setActiveSectionKey(key);
-    setActiveTab("edit");
+  const handleLpUpdate = (path: string, value: string) => {
+    setLpData(prev => {
+      if (!prev) return prev;
+      const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
+      const parts = path.split('.');
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let obj: any = clone;
+      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      obj[parts[parts.length - 1]] = value;
+      return clone;
+    });
+  };
+
+  const handleStyleUpdate = (path: string, style: { color?: string; fontSize?: number }) => {
+    setLpData(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        elementStyles: { ...(prev.elementStyles ?? {}), [path]: style },
+      } as LandingPageData;
+    });
+  };
+
+  const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const overlay = e.currentTarget as HTMLElement;
+    overlay.style.pointerEvents = 'none';
+    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+    overlay.style.pointerEvents = 'auto';
+    let target = el;
+    while (target) {
+      const path = target.dataset?.lpPath;
+      if (path) {
+        const rect = target.getBoundingClientRect();
+        setActiveEdit({ path, value: target.textContent?.trim() || '', rect });
+        return;
+      }
+      target = target.parentElement;
+    }
   };
 
   // Chat
@@ -888,7 +1016,7 @@ export default function ProjectEditor() {
             showPreview ? "w-80" : "w-full max-w-xl"
           )}
         >
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "edit" | "chat")} className="flex flex-col flex-1 overflow-hidden">
+          <Tabs defaultValue="edit" className="flex flex-col flex-1 overflow-hidden">
             <TabsList className="mx-3 mt-3 shrink-0 bg-[#2a2a2e]">
               <TabsTrigger value="edit" className="flex-1 text-xs gap-1">
                 <Pencil className="w-3.5 h-3.5" /> Editar
@@ -923,23 +1051,6 @@ export default function ProjectEditor() {
                   )}
                   {lpData && (
                     <>
-                      {/* Section panels — one per landing page section */}
-                      {SECTIONS.map((sec) => (
-                        <SectionPanel
-                          key={sec.key}
-                          section={sec}
-                          data={lpData}
-                          onUpdate={(updated) => {
-                            pushToHistory(lpData);
-                            setLpData(updated);
-                            // Clear active highlight after edit
-                            setActiveSectionKey(null);
-                          }}
-                          projectId={project.id}
-                          isActive={activeSectionKey === sec.key}
-                        />
-                      ))}
-
                       {/* Gallery images */}
                       {lpData.gallery && lpData.gallery.length > 0 && (
                         <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
@@ -1184,8 +1295,29 @@ export default function ProjectEditor() {
               )}
             </div>
             {lpData && project ? (
-              <div className="flex-1 overflow-y-auto">
-                <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview onSectionClick={handleSectionClick} />
+              <div className="relative flex-1 overflow-hidden">
+                {/* Landing page content — pointer-events: none blocks all native interactions */}
+                <div className="absolute inset-0 overflow-y-auto" style={{ pointerEvents: 'none' }}>
+                  <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
+                </div>
+                {/* Transparent click-capture overlay */}
+                <div
+                  className="absolute inset-0 z-10"
+                  style={{ cursor: 'default' }}
+                  onClick={handlePreviewClick}
+                />
+                {/* Floating text editor popup */}
+                {activeEdit && (
+                  <FloatingTextEditor
+                    path={activeEdit.path}
+                    value={activeEdit.value}
+                    rect={activeEdit.rect}
+                    elementStyle={(lpData as any).elementStyles?.[activeEdit.path]}
+                    onSave={handleLpUpdate}
+                    onStyleChange={handleStyleUpdate}
+                    onClose={() => setActiveEdit(null)}
+                  />
+                )}
               </div>
             ) : null}
           </div>

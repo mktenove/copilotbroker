@@ -190,34 +190,6 @@ function SectionLabel({ children, color }: { children: React.ReactNode; color: s
   );
 }
 
-// ─── EditableSection ───────────────────────────────────────────────────────────
-// Wraps a section with a click-to-edit overlay when used in the editor preview.
-function EditableSection({ sectionKey, onSectionClick, children }: {
-  sectionKey: string;
-  onSectionClick?: (key: string) => void;
-  children: React.ReactNode;
-}) {
-  const [hovered, setHovered] = useState(false);
-  if (!onSectionClick) return <>{children}</>;
-  return (
-    <div className="relative">
-      <div style={{ pointerEvents: "none" }}>{children}</div>
-      <div
-        className="absolute inset-0 z-20 cursor-pointer transition-all"
-        style={{ border: hovered ? "2px solid rgba(250,204,21,0.65)" : "2px solid transparent" }}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        onClick={() => onSectionClick(sectionKey)}
-      >
-        {hovered && (
-          <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-yellow-400 text-black text-[11px] font-bold px-3 py-1 rounded-full shadow-lg select-none">
-            ✏️ Editar seção
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
 // ─── VideoSection ─────────────────────────────────────────────────────────────
 function VideoSection({ url, bg, primary, text }: { url: string; bg: string; primary: string; text: string }) {
@@ -350,16 +322,26 @@ export interface LandingPageRendererProps {
   project: Project;
   broker: { id: string; name: string; slug: string; whatsapp?: string | null } | null;
   isPreview?: boolean;
-  onSectionClick?: (section: string) => void;
 }
 
-export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionClick }: LandingPageRendererProps) {
+export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingPageRendererProps) {
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
+
+  // Per-element style override helper (used in editor mode)
+  const es = (path: string, baseStyle?: React.CSSProperties): React.CSSProperties => {
+    const override = (lp as any).elementStyles?.[path];
+    if (!override) return baseStyle ?? {};
+    return {
+      ...(baseStyle ?? {}),
+      ...(override.color ? { color: override.color } : {}),
+      ...(override.fontSize ? { fontSize: `${override.fontSize}em` } : {}),
+    };
+  };
 
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -468,7 +450,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
       <div className="lp-root min-h-screen pb-20 md:pb-0 overflow-x-hidden">
 
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
-        <EditableSection sectionKey="hero" onSectionClick={onSectionClick}>
         <section
           className="relative min-h-screen flex flex-col justify-end overflow-hidden"
           style={{
@@ -493,6 +474,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
           <div className="relative z-10 w-full max-w-6xl mx-auto px-6 sm:px-10 pb-16 md:pb-24 pt-28">
             <FadeUp>
               <span
+                data-lp-path="hero.badge"
                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-7 border"
                 style={{ color: primary, borderColor: `${primary}50`, background: `${primary}12` }}
               >
@@ -503,8 +485,9 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
 
             <FadeUp delay={110}>
               <h1
+                data-lp-path="hero.title"
                 className="text-[2.8rem] sm:text-[3.8rem] md:text-[5rem] lg:text-[5.8rem] font-black leading-[0.88] tracking-tight mb-7 max-w-5xl"
-                style={{ color: heroText }}
+                style={es('hero.title', { color: heroText })}
               >
                 {lp.hero.titleHighlight ? (() => {
                   const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
@@ -523,13 +506,14 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
             </FadeUp>
 
             <FadeUp delay={220}>
-              <p className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={{ color: heroSub }}>
+              <p data-lp-path="hero.subtitle" className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={{ color: heroSub }}>
                 {lp.hero.subtitle}
               </p>
             </FadeUp>
 
             <FadeUp delay={330}>
               <button
+                data-lp-path="hero.ctaText"
                 onClick={scrollToForm}
                 className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base sm:text-lg font-bold shadow-2xl"
               >
@@ -545,7 +529,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
             <ChevronDown className="w-4 h-4 animate-bounce" />
           </div>
         </section>
-        </EditableSection>
 
         {/* ── PHOTO STRIP — right after hero ────────────────────────────── */}
         {stripImgs.length > 0 && (
@@ -566,7 +549,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
 
         {/* ── FEATURES STRIP ────────────────────────────────────────────── */}
         {lp.features.length > 0 && (
-          <EditableSection sectionKey="features" onSectionClick={onSectionClick}>
           <section style={{ borderTop: `1px solid ${primary}18`, borderBottom: `1px solid ${primary}18`, backgroundColor: bg }}>
             <div className="max-w-6xl mx-auto overflow-x-auto" style={{ scrollbarWidth: "none" } as React.CSSProperties}>
               <div
@@ -580,27 +562,25 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
                       style={{ borderRight: i < lp.features.length - 1 ? `1px solid ${primary}12` : undefined }}
                     >
                       <DynamicIcon name={f.icon} className="w-5 h-5 opacity-50" style={{ color: primary }} />
-                      <div className="text-2xl sm:text-3xl font-black" style={{ color: primary }}>{f.value}</div>
-                      <div className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight">{f.label}</div>
+                      <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={{ color: primary }}>{f.value}</div>
+                      <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight">{f.label}</div>
                     </div>
                   </FadeUp>
                 ))}
               </div>
             </div>
           </section>
-          </EditableSection>
         )}
 
         {/* ── LOCATION ──────────────────────────────────────────────────── */}
-        <EditableSection sectionKey="location" onSectionClick={onSectionClick}>
         <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
           <div className="max-w-6xl mx-auto">
             <FadeUp>
               <SectionLabel color={primary}>Localização</SectionLabel>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={{ color: text }}>
+              <h2 data-lp-path="location.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={es('location.title', { color: text })}>
                 {lp.location.title}
               </h2>
-              <p className="text-base md:text-lg leading-relaxed mb-6" style={{ color: `${text}88` }}>
+              <p data-lp-path="location.description" className="text-base md:text-lg leading-relaxed mb-6" style={{ color: `${text}88` }}>
                 {lp.location.description}
               </p>
             </FadeUp>
@@ -618,14 +598,13 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
                     >
                       <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
                     </div>
-                    <span className="text-sm font-medium leading-snug">{h}</span>
+                    <span data-lp-path={`location.highlights.${i}`} className="text-sm font-medium leading-snug">{h}</span>
                   </div>
                 </FadeUp>
               ))}
             </div>
           </div>
         </section>
-        </EditableSection>
 
         {/* ── SHOWCASE IMAGE — mid page ──────────────────────────────────── */}
         {showcaseImg && (
@@ -692,7 +671,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
 
         {/* ── AUDIENCE ──────────────────────────────────────────────────── */}
         {lp.audience?.length > 0 && (
-          <EditableSection sectionKey="audience" onSectionClick={onSectionClick}>
           <section className="py-20 sm:py-28 px-6 sm:px-10" style={{ backgroundColor: bg }}>
             <div className="max-w-6xl mx-auto">
               <FadeUp>
@@ -722,8 +700,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
                         {i + 1}
                       </div>
                       <div>
-                        <h3 className="font-bold text-base mb-1.5">{a.title}</h3>
-                        <p className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{a.description}</p>
+                        <h3 data-lp-path={`audience.${i}.title`} className="font-bold text-base mb-1.5">{a.title}</h3>
+                        <p data-lp-path={`audience.${i}.description`} className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{a.description}</p>
                       </div>
                     </div>
                   </FadeUp>
@@ -731,14 +709,12 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
               </div>
             </div>
           </section>
-          </EditableSection>
         )}
 
         {videoEl}
 
         {/* ── URGENCY ───────────────────────────────────────────────────── */}
         {lp.urgency && (
-          <EditableSection sectionKey="urgency" onSectionClick={onSectionClick}>
           <section
             className="py-24 sm:py-32 px-6 sm:px-10 text-center relative overflow-hidden"
             style={{ background: `linear-gradient(135deg, ${primary} 0%, ${accent} 100%)` }}
@@ -760,17 +736,18 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
                 </span>
               </FadeUp>
               <FadeUp delay={100}>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={{ color: btnTxt }}>
+                <h2 data-lp-path="urgency.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={{ color: btnTxt }}>
                   {lp.urgency.title}
                 </h2>
               </FadeUp>
               <FadeUp delay={180}>
-                <p className="text-base md:text-lg leading-relaxed" style={{ color: `${btnTxt}cc` }}>
+                <p data-lp-path="urgency.description" className="text-base md:text-lg leading-relaxed" style={{ color: `${btnTxt}cc` }}>
                   {lp.urgency.description}
                 </p>
               </FadeUp>
               <FadeUp delay={260}>
                 <div
+                  data-lp-path="urgency.highlight"
                   className="inline-block px-10 py-4 rounded-2xl text-xl font-black"
                   style={{ background: "rgba(0,0,0,0.2)", color: btnTxt, border: "1px solid rgba(255,255,255,0.2)" }}
                 >
@@ -788,12 +765,10 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
               </FadeUp>
             </div>
           </section>
-          </EditableSection>
         )}
 
         {/* ── BENEFITS ──────────────────────────────────────────────────── */}
         {lp.benefits?.length > 0 && (
-          <EditableSection sectionKey="benefits" onSectionClick={onSectionClick}>
           <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
             <div className="max-w-6xl mx-auto">
               <FadeUp>
@@ -811,8 +786,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
                         <DynamicIcon name={b.icon} className="w-6 h-6" style={{ color: primary }} />
                       </div>
                       <div>
-                        <h3 className="font-bold text-base mb-1.5">{b.title}</h3>
-                        <p className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{b.description}</p>
+                        <h3 data-lp-path={`benefits.${i}.title`} className="font-bold text-base mb-1.5">{b.title}</h3>
+                        <p data-lp-path={`benefits.${i}.description`} className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{b.description}</p>
                       </div>
                     </div>
                   </FadeUp>
@@ -820,23 +795,22 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
               </div>
             </div>
           </section>
-          </EditableSection>
         )}
 
         {/* ── CTA FINAL ─────────────────────────────────────────────────── */}
-        <EditableSection sectionKey="cta" onSectionClick={onSectionClick}>
         <section className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>
           <div className="max-w-3xl mx-auto space-y-7">
             <FadeUp>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight">{lp.cta.title}</h2>
+              <h2 data-lp-path="cta.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight">{lp.cta.title}</h2>
             </FadeUp>
             <FadeUp delay={100}>
-              <p className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={{ color: `${text}80` }}>
+              <p data-lp-path="cta.subtitle" className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={{ color: `${text}80` }}>
                 {lp.cta.subtitle}
               </p>
             </FadeUp>
             <FadeUp delay={200}>
               <button
+                data-lp-path="cta.buttonText"
                 onClick={scrollToForm}
                 className="lp-btn lp-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full text-base sm:text-lg font-bold shadow-2xl"
               >
@@ -845,10 +819,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
             </FadeUp>
           </div>
         </section>
-        </EditableSection>
 
         {/* ── FORM ──────────────────────────────────────────────────────── */}
-        <EditableSection sectionKey="form" onSectionClick={onSectionClick}>
         <section ref={formRef} className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10" id="form">
           <div className="max-w-lg mx-auto">
             <div
@@ -869,8 +841,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
               ) : (
                 <>
                   <div className="text-center mb-9">
-                    <h2 className="text-2xl sm:text-3xl font-black mb-2">{lp.form.title}</h2>
-                    <p className="text-sm" style={{ color: `${text}60` }}>{lp.form.subtitle}</p>
+                    <h2 data-lp-path="form.title" className="text-2xl sm:text-3xl font-black mb-2">{lp.form.title}</h2>
+                    <p data-lp-path="form.subtitle" className="text-sm" style={{ color: `${text}60` }}>{lp.form.subtitle}</p>
                   </div>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
@@ -915,7 +887,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onSectionC
             </div>
           </div>
         </section>
-        </EditableSection>
 
         {/* ── FOOTER ────────────────────────────────────────────────────── */}
         <footer className="py-10 px-6 sm:px-10 text-center border-t lp-divider" style={{ backgroundColor: bg }}>
