@@ -89,38 +89,38 @@ function extractImages(html: string): string[] {
 
   // JSON arrays of image URLs in script tags (e.g. window.__STATE__ = {..., fotos: ["https://..."]})
   for (const m of html.matchAll(/"(https?:\/\/[^"]*\.(?:jpg|jpeg|png|webp)(?:[^"]{0,60})?)"(?:\s*,?\s*"https?)?/gi)) {
-    if (seen.size < 50) push(m[1]);
+    if (seen.size < 60) push(m[1]);
   }
 
   // srcset attributes
   for (const m of html.matchAll(/srcset="([^"]+)"/gi)) {
     for (const part of m[1].split(",")) {
       const src = part.trim().split(/\s+/)[0];
-      if (seen.size < 50) push(src);
+      if (seen.size < 60) push(src);
     }
   }
 
   // data-src / data-lazy-src / data-original on img tags (common in BR real estate sites)
   for (const m of html.matchAll(/data-(?:src|original|lazy-src|full|image|bg)="(https?:\/\/[^"]+)"/gi)) {
-    if (seen.size < 50) push(m[1]);
+    if (seen.size < 60) push(m[1]);
   }
 
   // CSS background-image: url(...)
   for (const m of html.matchAll(/background-image\s*:\s*url\(\s*['"]?(https?:\/\/[^'")\s]+)['"]?\s*\)/gi)) {
-    if (seen.size < 50) push(m[1]);
+    if (seen.size < 60) push(m[1]);
   }
 
   // Regular src on img tags
   for (const m of html.matchAll(/<img[^>]+src="(https?:\/\/[^"]+)"/gi)) {
-    if (seen.size < 50) push(m[1]);
+    if (seen.size < 60) push(m[1]);
   }
 
   // data-zoom / data-full / data-large on anchor tags
   for (const m of html.matchAll(/data-(?:zoom|full|large|highres)="(https?:\/\/[^"]+)"/gi)) {
-    if (seen.size < 50) push(m[1]);
+    if (seen.size < 60) push(m[1]);
   }
 
-  return [...seen].slice(0, 50);
+  return [...seen].slice(0, 60);
 }
 
 function extractPageContent(html: string): string {
@@ -134,7 +134,7 @@ function extractPageContent(html: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return decodeEntities(stripped).slice(0, 4000);
+  return decodeEntities(stripped).slice(0, 12000);
 }
 
 function extractBRPatterns(html: string) {
@@ -306,7 +306,7 @@ Deno.serve(async (req) => {
       ogTag(html, "description") ||
       String(jsonLd["description"] ?? "") ||
       metaName(html, "description");
-    description = decodeEntities(description).trim().slice(0, 600);
+    description = decodeEntities(description).trim().slice(0, 3000);
 
     const result = {
       name,

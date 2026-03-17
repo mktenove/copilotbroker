@@ -208,16 +208,6 @@ function SectionLabel({ children, color }: { children: React.ReactNode; color: s
   );
 }
 
-// ─── ShowcaseImage ────────────────────────────────────────────────────────────
-function ShowcaseImage({ src, primary, bg }: { src: string; primary: string; bg: string }) {
-  return (
-    <section className="relative w-full overflow-hidden" style={{ height: "55vh", minHeight: 320, maxHeight: 640 }}>
-      <img src={src} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
-      <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 55%, ${bg}dd 100%)` }} />
-    </section>
-  );
-}
-
 // ─── VideoSection ─────────────────────────────────────────────────────────────
 function VideoSection({ url, bg, primary, text }: { url: string; bg: string; primary: string; text: string }) {
   const embedUrl = (() => {
@@ -450,36 +440,22 @@ export default function LandingPage() {
   const btnTxt = theme.buttonTextColor ?? "#000";
   const sectionAlt = theme.altBgColor ?? `color-mix(in srgb, ${bg} 88%, white 12%)`;
   const isLight = theme.heroStyle === "light-overlay";
-  const heroBg = lp.hero.bgImage || project.main_image_url;
-  const heroText = heroBg ? (isLight ? text : "#fff") : text;
-  const heroSub = heroBg ? (isLight ? `${text}bb` : "rgba(255,255,255,0.78)") : `${text}aa`;
 
-  // ── Layout system ──────────────────────────────────────────────────────────
-  const layout = lp.layout ?? "flow-A";
-  const img0 = lp.gallery?.[0] ?? null;
-  const img1 = lp.gallery?.[1] ?? null;
-  // locationSideImage: replaces the highlights grid with an image in the Location section
-  const locationSideImage = (layout === "flow-A" || layout === "flow-C") ? img0 : null;
+  // ── Image pool — gallery first, fallback to project.scraped_images ─────────
+  const imgs: string[] = (() => {
+    const pool = [...(lp.gallery ?? []), ...(project.scraped_images ?? [])];
+    // deduplicate preserving order
+    const seen = new Set<string>();
+    return pool.filter(u => { if (seen.has(u)) return false; seen.add(u); return true; });
+  })();
 
-  // Reusable gallery & map fragments (rendered in layout-dependent positions)
-  const galleryEl = lp.gallery && lp.gallery.length > 0 ? (
-    <section className="py-20 sm:py-28 overflow-hidden" style={{ backgroundColor: bg }}>
-      <FadeUp>
-        <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
-          <div>
-            <SectionLabel color={primary}>Galeria</SectionLabel>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Conheça o espaço</h2>
-          </div>
-          <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
-            {lp.gallery!.length} {lp.gallery!.length === 1 ? "foto" : "fotos"}
-          </span>
-        </div>
-      </FadeUp>
-      <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
-        <GalleryCarousel images={lp.gallery!} primary={primary} btnTxt={btnTxt} />
-      </div>
-    </section>
-  ) : null;
+  const heroBgImg = lp.hero.bgImage || imgs[0] || project.main_image_url || "";
+  const heroText = heroBgImg ? (isLight ? text : "#fff") : text;
+  const heroSub = heroBgImg ? (isLight ? `${text}bb` : "rgba(255,255,255,0.78)") : `${text}aa`;
+  const stripImgs = imgs.slice(1, 4);          // up to 3 for photo strip
+  const showcaseImg = imgs[4] ?? null;         // full-width mid-page showcase
+  const gridImgs = imgs.slice(5, 13);          // up to 8 for photo grid
+  const carouselImgs = imgs.length > 0 ? imgs : [];  // all images for carousel
 
   const mapEl = project.map_embed_url ? (
     <section className="lp-section-alt py-16 px-6 sm:px-10">
@@ -535,19 +511,19 @@ export default function LandingPage() {
         <section
           className="relative min-h-screen flex flex-col justify-end overflow-hidden"
           style={{
-            backgroundImage: heroBg ? `url(${heroBg})` : undefined,
+            backgroundImage: heroBgImg ? `url(${heroBgImg})` : undefined,
             backgroundSize: "cover",
             backgroundPosition: "center",
-            backgroundColor: heroBg ? undefined : bg,
+            backgroundColor: heroBgImg ? undefined : bg,
           }}
         >
           {/* Overlay */}
           <div className="absolute inset-0" style={{
             background: isLight
-              ? heroBg
+              ? heroBgImg
                 ? "linear-gradient(to top, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.65) 45%, rgba(255,255,255,0.05) 100%)"
                 : `linear-gradient(135deg, ${bg} 0%, ${primary}15 100%)`
-              : heroBg
+              : heroBgImg
                 ? "linear-gradient(to top, rgba(0,0,0,0.93) 0%, rgba(0,0,0,0.48) 55%, rgba(0,0,0,0.05) 100%)"
                 : `linear-gradient(135deg, ${bg} 0%, ${primary}18 100%)`,
           }} />
@@ -603,11 +579,28 @@ export default function LandingPage() {
           </div>
 
           {/* Scroll hint */}
-          <div className="absolute bottom-7 right-8 hidden md:flex items-center gap-2" style={{ color: heroBg ? (isLight ? `${text}60` : "rgba(255,255,255,0.35)") : `${text}40` }}>
+          <div className="absolute bottom-7 right-8 hidden md:flex items-center gap-2" style={{ color: heroBgImg ? (isLight ? `${text}60` : "rgba(255,255,255,0.35)") : `${text}40` }}>
             <span className="text-[10px] uppercase tracking-widest font-semibold">scroll</span>
             <ChevronDown className="w-4 h-4 animate-bounce" />
           </div>
         </section>
+
+        {/* ── PHOTO STRIP — right after hero ────────────────────────────── */}
+        {stripImgs.length > 0 && (
+          <div className="flex overflow-hidden" style={{ height: "clamp(180px, 30vw, 380px)" }}>
+            {stripImgs.map((img, i) => (
+              <div key={i} className="flex-1 overflow-hidden relative">
+                <img
+                  src={img}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-700"
+                  loading="lazy"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* ── FEATURES STRIP ────────────────────────────────────────────── */}
         {lp.features.length > 0 && (
@@ -634,16 +627,9 @@ export default function LandingPage() {
           </section>
         )}
 
-        {/* ── flow-B: showcase img0 after features ──────────────────────── */}
-        {layout === "flow-B" && img0 && <ShowcaseImage src={img0} primary={primary} bg={bg} />}
-
-        {/* ── flow-C: gallery + map early (before location) ─────────────── */}
-        {layout === "flow-C" && galleryEl}
-        {layout === "flow-C" && mapEl}
-
         {/* ── LOCATION ──────────────────────────────────────────────────── */}
         <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
+          <div className="max-w-6xl mx-auto">
             <FadeUp>
               <SectionLabel color={primary}>Localização</SectionLabel>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={{ color: text }}>
@@ -652,63 +638,91 @@ export default function LandingPage() {
               <p className="text-base md:text-lg leading-relaxed mb-6" style={{ color: `${text}88` }}>
                 {lp.location.description}
               </p>
-              {/* When image is in the right column, highlights show inline below the text */}
-              {locationSideImage && lp.location.highlights.length > 0 && (
-                <ul className="flex flex-wrap gap-2">
-                  {lp.location.highlights.map((h, i) => (
-                    <li
-                      key={i}
-                      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
-                      style={{ background: `${primary}10`, border: `1px solid ${primary}22`, color: text }}
-                    >
-                      <Check className="w-3.5 h-3.5 shrink-0" style={{ color: primary }} />
-                      {h}
-                    </li>
-                  ))}
-                </ul>
-              )}
             </FadeUp>
 
-            {locationSideImage ? (
-              <FadeUp delay={120}>
-                <div className="rounded-3xl overflow-hidden" style={{ aspectRatio: "4/3" }}>
-                  <img
-                    src={locationSideImage}
-                    alt="Imagem do imóvel"
-                    className="w-full h-full object-cover"
-                    loading="lazy"
-                  />
-                </div>
-              </FadeUp>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 md:pt-8">
-                {lp.location.highlights.map((h, i) => (
-                  <FadeUp key={i} delay={i * 80 + 100}>
+            <div className="grid grid-cols-2 gap-3 md:pt-8">
+              {lp.location.highlights.map((h, i) => (
+                <FadeUp key={i} delay={i * 80 + 100}>
+                  <div
+                    className="flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02]"
+                    style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
+                  >
                     <div
-                      className="flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02]"
-                      style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
+                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                      style={{ backgroundColor: primary }}
                     >
-                      <div
-                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                        style={{ backgroundColor: primary }}
-                      >
-                        <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
-                      </div>
-                      <span className="text-sm font-medium leading-snug">{h}</span>
+                      <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
                     </div>
-                  </FadeUp>
-                ))}
-              </div>
-            )}
+                    <span className="text-sm font-medium leading-snug">{h}</span>
+                  </div>
+                </FadeUp>
+              ))}
+            </div>
           </div>
         </section>
 
-        {/* ── flow-C: showcase img1 after location, before audience ─────── */}
-        {layout === "flow-C" && img1 && <ShowcaseImage src={img1} primary={primary} bg={bg} />}
+        {/* ── SHOWCASE IMAGE — mid page ──────────────────────────────────── */}
+        {showcaseImg && (
+          <section className="relative w-full overflow-hidden" style={{ height: "clamp(260px, 45vw, 600px)" }}>
+            <img
+              src={showcaseImg}
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 50%, ${bg}cc 100%)` }} />
+          </section>
+        )}
 
-        {/* ── GALLERY & MAP — normal position (flow-A and flow-B) ────────── */}
-        {layout !== "flow-C" && galleryEl}
-        {layout !== "flow-C" && mapEl}
+        {/* ── PHOTO GRID ────────────────────────────────────────────────── */}
+        {gridImgs.length > 0 && (
+          <section className="py-16 sm:py-20" style={{ backgroundColor: bg }}>
+            <FadeUp>
+              <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-8">
+                <SectionLabel color={primary}>Fotos do imóvel</SectionLabel>
+                <h2 className="text-3xl sm:text-4xl font-black">Veja cada detalhe</h2>
+              </div>
+            </FadeUp>
+            <div className="max-w-6xl mx-auto px-6 sm:px-10 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 sm:gap-3">
+              {gridImgs.map((img, i) => (
+                <FadeUp key={i} delay={i * 40}>
+                  <div className="aspect-square rounded-xl overflow-hidden">
+                    <img
+                      src={img}
+                      alt={`Foto ${i + 6}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                </FadeUp>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* ── GALLERY CAROUSEL (all images) ──────────────────────────────── */}
+        {carouselImgs.length > 0 && (
+          <section className="py-16 sm:py-24 overflow-hidden" style={{ backgroundColor: bg }}>
+            <FadeUp>
+              <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
+                <div>
+                  <SectionLabel color={primary}>Galeria completa</SectionLabel>
+                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Todas as fotos</h2>
+                </div>
+                <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
+                  {carouselImgs.length} {carouselImgs.length === 1 ? "foto" : "fotos"}
+                </span>
+              </div>
+            </FadeUp>
+            <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
+              <GalleryCarousel images={carouselImgs} primary={primary} btnTxt={btnTxt} />
+            </div>
+          </section>
+        )}
+
+        {mapEl}
 
         {/* ── AUDIENCE ──────────────────────────────────────────────────── */}
         {lp.audience?.length > 0 && (
@@ -752,8 +766,7 @@ export default function LandingPage() {
           </section>
         )}
 
-        {/* ── flow-B: video before urgency ──────────────────────────────── */}
-        {layout === "flow-B" && videoEl}
+        {videoEl}
 
         {/* ── URGENCY ───────────────────────────────────────────────────── */}
         {lp.urgency && (
@@ -837,9 +850,6 @@ export default function LandingPage() {
             </div>
           </section>
         )}
-
-        {/* ── flow-A / flow-C: video after benefits ─────────────────────── */}
-        {layout !== "flow-B" && videoEl}
 
         {/* ── CTA FINAL ─────────────────────────────────────────────────── */}
         <section className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>

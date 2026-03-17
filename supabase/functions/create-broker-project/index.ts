@@ -53,7 +53,7 @@ Deno.serve(async (req) => {
       hero_title, hero_subtitle, webhook_url, tenant_id,
       property_type, address, bedrooms, suites, parking_spots,
       area_m2, price_range, ideal_buyer, differentials, amenities,
-      main_image_url, video_url, map_embed_url,
+      main_image_url, video_url, map_embed_url, scraped_images,
     } = body;
 
     if (!name || !slug || !city || !city_slug) {
@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
           main_image_url: main_image_url || null,
           video_url: video_url || null,
           map_embed_url: map_embed_url || null,
+          scraped_images: Array.isArray(scraped_images) ? scraped_images : null,
           is_active: true,
         })
         .select("id, name, slug, city, city_slug")
