@@ -565,8 +565,6 @@ export default function ProjectEditor() {
 
   // Preview
   const [showPreview, setShowPreview] = useState(true);
-  const [iframeLoaded, setIframeLoaded] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -1149,26 +1147,9 @@ export default function ProjectEditor() {
                 </button>
               )}
             </div>
-            {previewUrl ? (
-              <div className="flex-1 relative">
-                {!iframeLoaded && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f12] z-10">
-                    <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                )}
-                <iframe
-                  ref={iframeRef}
-                  src={previewUrl}
-                  className="w-full h-full border-0"
-                  title="Preview"
-                  onLoad={() => setIframeLoaded(true)}
-                />
-              </div>
-            ) : (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                <RefreshCw className="w-4 h-4 animate-spin mr-2" /> Carregando preview...
-              </div>
-            )}
+            {lpData ? (
+              <LandingPagePreview data={lpData} project={project} broker={broker} onUpdate={setLpData} />
+            ) : null}
           </div>
         )}
       </div>
