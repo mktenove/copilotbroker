@@ -441,6 +441,81 @@ function FloatingTextEditor({
   );
 }
 
+// ─── Floating image editor ────────────────────────────────────────────────────
+function FloatingImageEditor({
+  path,
+  currentUrl,
+  rect,
+  onUpload,
+  onClose,
+  projectId,
+}: {
+  path: string;
+  currentUrl: string;
+  rect: DOMRect;
+  onUpload: (path: string, url: string) => void;
+  onClose: () => void;
+  projectId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const top = Math.min(rect.bottom + 8, window.innerHeight - 180);
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 280));
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const { blob, ext, contentType } = await convertToWebP(file);
+      const storagePath = `projects/${projectId}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("project-media")
+        .upload(storagePath, blob, { upsert: true, contentType });
+      if (error) throw new Error(error.message);
+      const { data: { publicUrl } } = supabase.storage.from("project-media").getPublicUrl(storagePath);
+      onUpload(path, publicUrl);
+      toast.success("Imagem trocada!");
+      onClose();
+    } catch (err) {
+      toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  return createPortal(
+    <>
+      <div className="fixed inset-0 z-[9998]" onClick={onClose} />
+      <div
+        className="fixed z-[9999] bg-[#1e1e22] border border-[#3a3a3e] rounded-xl shadow-2xl p-3 w-64"
+        style={{ top, left }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="text-[10px] text-muted-foreground mb-2 font-mono">{path}</p>
+        {currentUrl && (
+          <div className="rounded-lg overflow-hidden h-20 bg-[#0f0f12] mb-2">
+            <img src={currentUrl} className="w-full h-full object-cover" alt="" />
+          </div>
+        )}
+        <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
+        <button
+          disabled={uploading}
+          onClick={() => fileRef.current?.click()}
+          className="w-full text-xs bg-[#2a2a2e] hover:bg-[#3a3a3e] disabled:opacity-50 text-white rounded-lg h-8 flex items-center justify-center gap-1.5 transition-colors"
+        >
+          {uploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
+          {uploading ? "Enviando..." : "Trocar imagem"}
+        </button>
+        <button onClick={onClose} className="absolute top-2 right-2 text-[11px] text-gray-500 hover:text-white px-1">✕</button>
+      </div>
+    </>,
+    document.body
+  );
+}
+
 // ─── Section panel ─────────────────────────────────────────────────────────────
 function SectionPanel({
   section,
@@ -671,6 +746,7 @@ export default function ProjectEditor() {
     path: string;
     value: string;
     rect: DOMRect;
+    type: 'text' | 'image';
   } | null>(null);
 
   const handleLpUpdate = (path: string, value: string) => {
@@ -702,7 +778,11 @@ export default function ProjectEditor() {
       const path = target.dataset?.lpPath;
       if (path) {
         const rect = target.getBoundingClientRect();
-        setActiveEdit({ path, value: target.textContent?.trim() || '', rect });
+        const type = (target.dataset?.lpType as 'image') ?? 'text';
+        const value = type === 'image'
+          ? (target.tagName === 'IMG' ? (target as HTMLImageElement).src : '')
+          : target.textContent?.trim() || '';
+        setActiveEdit({ path, value, rect, type });
         return;
       }
       target = target.parentElement;
@@ -1301,8 +1381,17 @@ export default function ProjectEditor() {
                 >
                   <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
                 </div>
-                {/* Floating text editor popup */}
-                {activeEdit && (
+                {/* Floating editor popup */}
+                {activeEdit && activeEdit.type === 'image' ? (
+                  <FloatingImageEditor
+                    path={activeEdit.path}
+                    currentUrl={activeEdit.value}
+                    rect={activeEdit.rect}
+                    onUpload={handleLpUpdate}
+                    onClose={() => setActiveEdit(null)}
+                    projectId={projectId!}
+                  />
+                ) : activeEdit ? (
                   <FloatingTextEditor
                     path={activeEdit.path}
                     value={activeEdit.value}
@@ -1312,7 +1401,7 @@ export default function ProjectEditor() {
                     onStyleChange={handleStyleUpdate}
                     onClose={() => setActiveEdit(null)}
                   />
-                )}
+                ) : null}
               </div>
             ) : null}
           </div>

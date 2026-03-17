@@ -399,6 +399,12 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
   const gridImgs = imgs.slice(5, 13);          // up to 8 for photo grid
   const carouselImgs = imgs.length > 0 ? imgs : [];  // all images for carousel
 
+  // Returns the lp.gallery index for a given URL (used to build data-lp-path for image editing)
+  const imgEditPath = (url: string): string | undefined => {
+    const idx = (lp.gallery ?? []).indexOf(url);
+    return idx >= 0 ? `gallery.${idx}` : undefined;
+  };
+
   const mapEl = project.map_embed_url ? (
     <section className="lp-section-alt py-16 px-6 sm:px-10">
       <div className="max-w-6xl mx-auto">
@@ -452,6 +458,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
         {/* ── HERO ─────────────────────────────────────────────────────────── */}
         <section
           className="relative min-h-screen flex flex-col justify-end overflow-hidden"
+          data-lp-path={isPreview ? "hero.bgImage" : undefined}
+          data-lp-type={isPreview ? "image" : undefined}
           style={{
             backgroundImage: heroBgImg ? `url(${heroBgImg})` : undefined,
             backgroundSize: "cover",
@@ -476,7 +484,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               <span
                 data-lp-path="hero.badge"
                 className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-[11px] font-bold uppercase tracking-[0.18em] mb-7 border"
-                style={{ color: primary, borderColor: `${primary}50`, background: `${primary}12` }}
+                style={es('hero.badge', { color: primary, borderColor: `${primary}50`, background: `${primary}12` })}
               >
                 <Zap className="w-3 h-3" />
                 {lp.hero.badge}
@@ -506,7 +514,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
             </FadeUp>
 
             <FadeUp delay={220}>
-              <p data-lp-path="hero.subtitle" className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={{ color: heroSub }}>
+              <p data-lp-path="hero.subtitle" className="text-base sm:text-lg md:text-xl max-w-2xl mb-10 leading-relaxed" style={es('hero.subtitle', { color: heroSub })}>
                 {lp.hero.subtitle}
               </p>
             </FadeUp>
@@ -516,6 +524,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 data-lp-path="hero.ctaText"
                 onClick={scrollToForm}
                 className="lp-btn lp-pulse inline-flex items-center gap-3 px-8 py-4 rounded-full text-base sm:text-lg font-bold shadow-2xl"
+                style={es('hero.ctaText')}
               >
                 {lp.hero.ctaText}
                 <span className="opacity-60">→</span>
@@ -541,6 +550,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                   className="absolute inset-0 w-full h-full object-cover hover:scale-105 transition-transform duration-700"
                   loading="lazy"
                   referrerPolicy="no-referrer"
+                  data-lp-path={isPreview ? imgEditPath(img) : undefined}
+                  data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
                 />
               </div>
             ))}
@@ -562,8 +573,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                       style={{ borderRight: i < lp.features.length - 1 ? `1px solid ${primary}12` : undefined }}
                     >
                       <DynamicIcon name={f.icon} className="w-5 h-5 opacity-50" style={{ color: primary }} />
-                      <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={{ color: primary }}>{f.value}</div>
-                      <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight">{f.label}</div>
+                      <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={es(`features.${i}.value`, { color: primary })}>{f.value}</div>
+                      <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight" style={es(`features.${i}.label`)}>{f.label}</div>
                     </div>
                   </FadeUp>
                 ))}
@@ -580,7 +591,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               <h2 data-lp-path="location.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={es('location.title', { color: text })}>
                 {lp.location.title}
               </h2>
-              <p data-lp-path="location.description" className="text-base md:text-lg leading-relaxed mb-6" style={{ color: `${text}88` }}>
+              <p data-lp-path="location.description" className="text-base md:text-lg leading-relaxed mb-6" style={es('location.description', { color: `${text}88` })}>
                 {lp.location.description}
               </p>
             </FadeUp>
@@ -598,7 +609,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                     >
                       <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
                     </div>
-                    <span data-lp-path={`location.highlights.${i}`} className="text-sm font-medium leading-snug">{h}</span>
+                    <span data-lp-path={`location.highlights.${i}`} className="text-sm font-medium leading-snug" style={es(`location.highlights.${i}`)}>{h}</span>
                   </div>
                 </FadeUp>
               ))}
@@ -615,6 +626,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               className="absolute inset-0 w-full h-full object-cover"
               loading="lazy"
               referrerPolicy="no-referrer"
+              data-lp-path={isPreview ? imgEditPath(showcaseImg) : undefined}
+              data-lp-type={isPreview && imgEditPath(showcaseImg) ? "image" : undefined}
             />
             <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 50%, ${bg}cc 100%)` }} />
           </section>
@@ -639,6 +652,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                       className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
                       loading="lazy"
                       referrerPolicy="no-referrer"
+                      data-lp-path={isPreview ? imgEditPath(img) : undefined}
+                      data-lp-type={isPreview && imgEditPath(img) ? "image" : undefined}
                     />
                   </div>
                 </FadeUp>
@@ -700,8 +715,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                         {i + 1}
                       </div>
                       <div>
-                        <h3 data-lp-path={`audience.${i}.title`} className="font-bold text-base mb-1.5">{a.title}</h3>
-                        <p data-lp-path={`audience.${i}.description`} className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{a.description}</p>
+                        <h3 data-lp-path={`audience.${i}.title`} className="font-bold text-base mb-1.5" style={es(`audience.${i}.title`)}>{a.title}</h3>
+                        <p data-lp-path={`audience.${i}.description`} className="text-sm leading-relaxed" style={es(`audience.${i}.description`, { color: `${text}70` })}>{a.description}</p>
                       </div>
                     </div>
                   </FadeUp>
@@ -736,12 +751,12 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 </span>
               </FadeUp>
               <FadeUp delay={100}>
-                <h2 data-lp-path="urgency.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={{ color: btnTxt }}>
+                <h2 data-lp-path="urgency.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('urgency.title', { color: btnTxt })}>
                   {lp.urgency.title}
                 </h2>
               </FadeUp>
               <FadeUp delay={180}>
-                <p data-lp-path="urgency.description" className="text-base md:text-lg leading-relaxed" style={{ color: `${btnTxt}cc` }}>
+                <p data-lp-path="urgency.description" className="text-base md:text-lg leading-relaxed" style={es('urgency.description', { color: `${btnTxt}cc` })}>
                   {lp.urgency.description}
                 </p>
               </FadeUp>
@@ -749,7 +764,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 <div
                   data-lp-path="urgency.highlight"
                   className="inline-block px-10 py-4 rounded-2xl text-xl font-black"
-                  style={{ background: "rgba(0,0,0,0.2)", color: btnTxt, border: "1px solid rgba(255,255,255,0.2)" }}
+                  style={es('urgency.highlight', { background: "rgba(0,0,0,0.2)", color: btnTxt, border: "1px solid rgba(255,255,255,0.2)" })}
                 >
                   {lp.urgency.highlight}
                 </div>
@@ -786,8 +801,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                         <DynamicIcon name={b.icon} className="w-6 h-6" style={{ color: primary }} />
                       </div>
                       <div>
-                        <h3 data-lp-path={`benefits.${i}.title`} className="font-bold text-base mb-1.5">{b.title}</h3>
-                        <p data-lp-path={`benefits.${i}.description`} className="text-sm leading-relaxed" style={{ color: `${text}70` }}>{b.description}</p>
+                        <h3 data-lp-path={`benefits.${i}.title`} className="font-bold text-base mb-1.5" style={es(`benefits.${i}.title`)}>{b.title}</h3>
+                        <p data-lp-path={`benefits.${i}.description`} className="text-sm leading-relaxed" style={es(`benefits.${i}.description`, { color: `${text}70` })}>{b.description}</p>
                       </div>
                     </div>
                   </FadeUp>
@@ -801,10 +816,10 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
         <section className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>
           <div className="max-w-3xl mx-auto space-y-7">
             <FadeUp>
-              <h2 data-lp-path="cta.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight">{lp.cta.title}</h2>
+              <h2 data-lp-path="cta.title" className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight" style={es('cta.title')}>{lp.cta.title}</h2>
             </FadeUp>
             <FadeUp delay={100}>
-              <p data-lp-path="cta.subtitle" className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={{ color: `${text}80` }}>
+              <p data-lp-path="cta.subtitle" className="text-base md:text-xl leading-relaxed max-w-xl mx-auto" style={es('cta.subtitle', { color: `${text}80` })}>
                 {lp.cta.subtitle}
               </p>
             </FadeUp>
@@ -813,6 +828,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 data-lp-path="cta.buttonText"
                 onClick={scrollToForm}
                 className="lp-btn lp-pulse inline-flex items-center gap-3 px-10 py-5 rounded-full text-base sm:text-lg font-bold shadow-2xl"
+                style={es('cta.buttonText')}
               >
                 {lp.cta.buttonText} →
               </button>
@@ -841,8 +857,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               ) : (
                 <>
                   <div className="text-center mb-9">
-                    <h2 data-lp-path="form.title" className="text-2xl sm:text-3xl font-black mb-2">{lp.form.title}</h2>
-                    <p data-lp-path="form.subtitle" className="text-sm" style={{ color: `${text}60` }}>{lp.form.subtitle}</p>
+                    <h2 data-lp-path="form.title" className="text-2xl sm:text-3xl font-black mb-2" style={es('form.title')}>{lp.form.title}</h2>
+                    <p data-lp-path="form.subtitle" className="text-sm" style={es('form.subtitle', { color: `${text}60` })}>{lp.form.subtitle}</p>
                   </div>
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="space-y-1.5">
