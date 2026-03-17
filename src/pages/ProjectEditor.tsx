@@ -794,44 +794,58 @@ export default function ProjectEditor() {
     type: 'text' | 'image';
   } | null>(null);
 
+  // Persist data directly to DB (fire-and-forget)
+  const persistNow = (data: LandingPageData) => {
+    const proj = projectRef.current;
+    if (!proj) return;
+    (supabase.from("projects") as any)
+      .update({ landing_page_data: data })
+      .eq("id", proj.id)
+      .then(({ error }: { error: Error | null }) => {
+        if (error) console.error("[persist]", error);
+      });
+  };
+
   const handleLpUpdate = (path: string, value: string) => {
-    setLpData(prev => {
-      if (!prev) return prev;
-      const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
-      const parts = path.split('.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      let obj: any = clone;
-      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
-      obj[parts[parts.length - 1]] = value;
-      return clone;
-    });
+    const prev = lpDataRef.current;
+    if (!prev) return;
+    const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let obj: any = clone;
+    const parts = path.split('.');
+    for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+    obj[parts[parts.length - 1]] = value;
+    setLpData(clone);
+    persistNow(clone);
   };
 
   const handleImageDelete = (path: string) => {
-    setLpData(prev => {
-      if (!prev) return prev;
-      const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
-      const parts = path.split('.');
-      if (parts[0] === 'gallery' && parts.length === 2) {
-        const idx = parseInt(parts[1]);
-        if (!isNaN(idx)) clone.gallery = clone.gallery?.filter((_, i) => i !== idx);
-      } else {
-        let obj: any = clone; // eslint-disable-line @typescript-eslint/no-explicit-any
-        for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
-        obj[parts[parts.length - 1]] = '';
-      }
-      return clone;
-    });
+    const prev = lpDataRef.current;
+    if (!prev) return;
+    const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
+    const parts = path.split('.');
+    if (parts[0] === 'gallery' && parts.length === 2) {
+      const idx = parseInt(parts[1]);
+      if (!isNaN(idx)) clone.gallery = clone.gallery?.filter((_, i) => i !== idx);
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let obj: any = clone;
+      for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+      obj[parts[parts.length - 1]] = '';
+    }
+    setLpData(clone);
+    persistNow(clone);
   };
 
   const handleStyleUpdate = (path: string, style: ElementStyle) => {
-    setLpData(prev => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        elementStyles: { ...(prev.elementStyles ?? {}), [path]: style },
-      } as LandingPageData;
-    });
+    const prev = lpDataRef.current;
+    if (!prev) return;
+    const clone = {
+      ...prev,
+      elementStyles: { ...(prev.elementStyles ?? {}), [path]: style },
+    } as LandingPageData;
+    setLpData(clone);
+    persistNow(clone);
   };
 
   const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -876,7 +890,8 @@ export default function ProjectEditor() {
     if (projectId) loadEditor();
   }, [projectId]);
 
-  // Auto-save: 1.5s after any lpData change, skip initial load
+  // Auto-save fallback: covers left-panel edits (gallery, theme, etc.)
+  // No cleanup return — timer fires even if user navigates away before 1.5s
   useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
@@ -885,23 +900,20 @@ export default function ProjectEditor() {
     if (!lpData || !project) return;
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     setAutoSaving(true);
-    autoSaveTimer.current = setTimeout(async () => {
+    autoSaveTimer.current = setTimeout(() => {
+      autoSaveTimer.current = null;
+      setAutoSaving(false);
       const data = lpDataRef.current;
       const proj = projectRef.current;
       if (!data || !proj) return;
-      try {
-        await (supabase.from("projects") as any)
-          .update({ landing_page_data: data })
-          .eq("id", proj.id);
-      } catch (err) {
-        console.error("[auto-save]", err);
-      } finally {
-        setAutoSaving(false);
-      }
+      (supabase.from("projects") as any)
+        .update({ landing_page_data: data })
+        .eq("id", proj.id)
+        .then(({ error }: { error: Error | null }) => {
+          if (error) console.error("[auto-save]", error);
+        });
     }, 1500);
-    return () => {
-      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    };
+    // intentionally no cleanup — do NOT cancel on unmount so navigation doesn't lose data
   }, [lpData]);
 
   useEffect(() => {
