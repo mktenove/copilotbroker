@@ -30,6 +30,7 @@ export interface Project {
   landing_page_data: LandingPageData | null;
   landing_page_status: 'draft' | 'published' | null;
   landing_page_generated_at: string | null;
+  scraped_images: string[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -73,6 +74,8 @@ export interface LandingPageTheme {
   textColor: string;
   fontFamily: string;
   heroStyle: 'dark-overlay' | 'light-overlay' | 'gradient';
+  buttonTextColor?: string; // auto-detected from preset; dark buttons need white text
+  altBgColor?: string;      // explicit section-alt background for light themes
 }
 
 export interface LandingPageHero {

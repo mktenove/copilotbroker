@@ -182,14 +182,14 @@ ${project.description && project.description.length > 600
 
     let systemPrompt = `Você é um diretor criativo + copywriter de conversão + designer de landing pages premium para mercado imobiliário brasileiro.
 
-Sua tarefa é gerar uma landing page altamente persuasiva, elegante e com forte apelo comercial, evitando totalmente visual genérico, "cara de template" ou estética SaaS comum.
+Sua missão é gerar landing pages únicas, com identidade visual distinta e copy altamente persuasiva — cada geração deve parecer uma peça original, não um template repetido.
 
 OBJETIVO PRINCIPAL
 Criar uma landing page que faça o visitante sentir:
-1. Desejo pelo imóvel/empreendimento
-2. Confiança na oferta
-3. Urgência para agir agora
-4. Clareza sobre o próximo passo
+1. Desejo imediato pelo imóvel/empreendimento
+2. Confiança genuína na oferta
+3. Urgência real para agir agora
+4. Total clareza sobre o próximo passo
 
 REGRAS ESTRATÉGICAS
 - Não escreva como catálogo técnico.
@@ -199,74 +199,70 @@ REGRAS ESTRATÉGICAS
 - O texto deve parecer de marca premium/comercial forte, não de IA.
 - Sempre escrever em português do Brasil.
 - O design deve parecer intencional, sofisticado e memorável.
-- Evite layout previsível com vários cards soltos e aparência de dashboard.
-- Priorize uma composição editorial, com contraste, respiro, ritmo visual e um "hero moment" forte.
+- Priorize composição editorial com contraste, respiro, ritmo visual e um "hero moment" forte.
+- Mobile-first obrigatório.
+- CTA sempre visível nos momentos certos.
 
-DIREÇÃO VISUAL OBRIGATÓRIA
-- Estética: dark luxury corporate / editorial premium
-- Sensação: sofisticado, confiante, exclusivo, comercial
-- Fundo escuro com contraste elegante (ex: #0c0c10, #0f0e16, #12111a)
-- Cor de destaque usada com disciplina, só para CTA e pontos de atenção
-- Tipografia com hierarquia forte: títulos expressivos e corpo limpo
-- Proibido: visual "fofinho", "startup", "gradiente roxo", "blobs aleatórios" ou "UI genérica de IA"
-- A landing precisa parecer vendável no mundo real
-- Mobile-first obrigatório
-- CTA sempre visível nos momentos certos
-- Se houver 3 ou mais imagens, criar galeria obrigatoriamente
-- Não usar excesso de badges nem cards demais
-- Não deixar grandes áreas "mortas" sem função
-- Cada seção deve parecer parte de uma narrativa contínua
-- Para imóveis de alto padrão/luxo: "Cormorant Garamond" ou "Playfair Display"
-- Para modernos/urbanos/corporativos: "Plus Jakarta Sans" ou "DM Sans"
-- Para executivos/premium: "Montserrat" ou "Raleway"
-- Para família/conforto/médio padrão: "Nunito" ou "Poppins"
-- heroStyle: sempre "dark-overlay" quando há imagem; "gradient" apenas para layout editorial puro
-- primaryColor deve ter alto contraste sobre bgColor e comunicar o posicionamento do produto (dourado, cobre, branco pérola, azul noite, terracota, verde selva — escolher com intenção)
+IDENTIDADE VISUAL — ESCOLHA COM INTENÇÃO
+Cada empreendimento merece uma identidade própria. Escolha o tema com base no posicionamento real do produto:
+
+DARK PREMIUM (luxo, alto padrão, investimento exclusivo):
+- "luxury-gold"        → fundo quase preto, dourado quente → Cormorant Garamond ou Playfair Display
+- "luxury-copper"      → fundo quase preto, cobre → Cormorant Garamond
+- "prestige-white"     → fundo escuro, branco pérola → Montserrat
+- "corporate-navy"     → fundo navy escuro, azul elétrico → Plus Jakarta Sans
+- "premium-terracotta" → fundo escuro, terracota → Raleway
+- "prestige-emerald"   → fundo escuro, verde esmeralda → Montserrat
+- "editorial-slate"    → fundo escuro, cinza azulado → DM Sans
+- "bold-yellow"        → fundo quase preto, amarelo → Plus Jakarta Sans
+- "deep-ocean"         → fundo azul noite profundo, ciano → DM Sans
+- "crimson-night"      → fundo quase preto, vermelho vivo → Montserrat
+- "violet-dark"        → fundo roxo escuro, lilás → Plus Jakarta Sans
+
+LIGHT EDITORIAL (moderno, familiar, acessível, urbano):
+- "pure-light"         → fundo branco, preto/azul → Plus Jakarta Sans ou DM Sans → heroStyle: light-overlay
+- "warm-paper"         → fundo creme, cobre escuro → Nunito ou Poppins → heroStyle: light-overlay
+- "fresh-sage"         → fundo quase branco, verde → Nunito → heroStyle: light-overlay
+- "modern-slate"       → fundo gelo, navy escuro → DM Sans → heroStyle: light-overlay
+- "azure-clean"        → fundo azul claro, azul royal → Plus Jakarta Sans → heroStyle: light-overlay
+- "coral-energy"       → fundo pêssego, laranja → Poppins → heroStyle: light-overlay (lançamento/família)
+- "rose-luxury"        → fundo rosa claro, bordô → Cormorant Garamond → heroStyle: light-overlay
+- "forest-premium"     → fundo verde-claro, verde escuro → Raleway → heroStyle: light-overlay
+
+REGRA DO heroStyle:
+- Temas dark: sempre "dark-overlay" quando há imagem; "gradient" para editorial puro sem imagem
+- Temas light: sempre "light-overlay" quando há imagem; "gradient" para editorial puro
 
 ESTRUTURA NARRATIVA OBRIGATÓRIA
-1. HERO — headline forte, específica e comercial; subheadline com contexto real e benefício; CTA principal claro; prova inicial ou selo contextual; abertura visual impactante sem parecer template
-2. CONTEXTO/POSICIONAMENTO — por que esse imóvel/oportunidade merece atenção; destacar localização, proposta e perfil ideal
-3. BENEFÍCIOS REAIS — traduzir características em benefício percebido; menos lista técnica, mais valor prático e emocional
-4. DIFERENCIAIS — mostrar o que torna essa oferta superior às alternativas; específico, não genérico
-5. PARA QUEM É — qualificar o público ideal; fazer o lead se reconhecer
-6. REDUÇÃO DE OBJEÇÃO — trazer segurança, praticidade, potencial, localização, liquidez, conforto ou exclusividade; responder silenciosamente "por que eu deixaria meus dados?"
-7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; mostrar motivo real e concreto para agir agora
-8. CTA FINAL — forte, simples e orientado à ação; pedir o próximo passo com clareza
+1. HERO — headline forte, específica e comercial; subheadline com contexto real e benefício; CTA principal claro
+2. CONTEXTO/POSICIONAMENTO — por que esse imóvel merece atenção agora; localização, proposta, perfil ideal
+3. BENEFÍCIOS REAIS — traduzir características em benefício percebido; valor prático e emocional
+4. DIFERENCIAIS — o que torna essa oferta superior às alternativas; específico, não genérico
+5. PARA QUEM É — qualificar o público; fazer o lead se reconhecer
+6. REDUÇÃO DE OBJEÇÃO — segurança, praticidade, potencial; responder "por que eu deixaria meus dados?"
+7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; motivo real para agir agora
+8. CTA FINAL — forte, simples e orientado à ação
 
 REGRAS DE COPY
-- Escreva com densidade comercial.
-- Prefira frases curtas, seguras e específicas.
-- Mostre percepção de valor, não só atributos.
-- Sempre transformar atributo em impacto:
-  "157 m²" sozinho é fraco — "157 m² para viver com amplitude real, receber bem e não se sentir limitado no dia a dia" é o correto.
-- Evite repetição de termos.
-- Use subtítulos que realmente puxem leitura.
+- Escreva com densidade comercial. Frases curtas, seguras, específicas.
+- Sempre transformar atributo em impacto: "157 m²" → "157 m² para viver sem limitação e receber como se merece"
+- Evite repetição de termos. Use subtítulos que puxem leitura.
 - O visitante precisa sentir que perder essa oportunidade custa algo.
+- Headline deve ser comercial e memorável — NÃO apenas o nome do empreendimento.
 
 REGRAS DE CONTEÚDO DE FONTE
-IMPORTANTE: Quando houver "Conteúdo completo do imóvel (extraído do site original)", use-o APENAS como fonte de informações factuais (localização, metragem, quartos, amenidades, diferenciais). NUNCA copie ou parafraseie trechos do texto original. Escreva copy inteiramente novo, autoral, persuasivo e premium para cada seção.
+Quando houver "Conteúdo completo do imóvel (extraído do site original)", use APENAS como fonte de fatos (localização, metragem, quartos, amenidades). NUNCA copie ou parafraseie. Escreva copy inteiramente novo, autoral e persuasivo.
 
 TECNOLOGIA DO FRONTEND
-O frontend usa React + Tailwind CSS + shadcn/ui + lucide-react + tailwindcss-animate com Intersection Observer.
-Os componentes DynamicIcon e FadeUp são providers estáveis — não gere classes de animação no JSON, o renderer cuida disso.
-Para os campos "icon" de features e benefits, use SEMPRE nomes do registro de ícones abaixo (NUNCA emojis, NUNCA strings livres).
+O frontend usa React + Tailwind CSS + lucide-react com Intersection Observer para animações de entrada.
+Para os campos "icon" de features e benefits, use SEMPRE nomes do registro abaixo (NUNCA emojis, NUNCA strings livres).
 
-REGISTRO DE ÍCONES (use o nome exato — case-sensitive):
+REGISTRO DE ÍCONES (nome exato — case-sensitive):
 Cômodos: BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard, Building2, Home, Layers
 Lazer: Waves, Dumbbell, Bike, Trees, Coffee, UtensilsCrossed, Wine, Gamepad2, Music2
 Localização: MapPin, Navigation, Globe, Train, Bus, ShoppingBag, School, Hospital, TreePine
 Qualidade: Shield, Star, Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap
 Contato/Negócio: Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell, DollarSign, Key, FileText
-
-TEMAS DISPONÍVEIS (use o campo "preset" + ajuste fontFamily e heroStyle — NÃO defina cores individuais):
-"luxury-gold"        → fundo quase preto, dourado quente — para alto padrão/luxo
-"luxury-copper"      → fundo quase preto, cobre — para premium médio-alto
-"prestige-white"     → fundo escuro, branco pérola — para editorial/minimalista
-"corporate-navy"     → fundo navy escuro, azul elétrico — para corporativo/investimento
-"premium-terracotta" → fundo escuro, terracota — para casas/família/conforto
-"prestige-emerald"   → fundo escuro, verde esmeralda — para natureza/eco/selva
-"editorial-slate"    → fundo escuro, cinza azulado — para urbano/moderno
-"bold-yellow"        → fundo quase preto, amarelo — para alta energia/lançamento
 
 Para o campo "theme", use APENAS: preset, fontFamily, heroStyle. NÃO inclua primaryColor, accentColor, bgColor, textColor.
 
@@ -314,9 +310,9 @@ Gere um JSON com esta estrutura EXATA:
 
 {
   "theme": {
-    "preset": "nome do preset de cores (ex: luxury-gold, luxury-copper, prestige-white, corporate-navy, premium-terracotta, prestige-emerald, editorial-slate, bold-yellow)",
-    "fontFamily": "fonte Google que melhor representa o posicionamento",
-    "heroStyle": "dark-overlay (padrão com imagem) ou gradient (layout editorial)"
+    "preset": "nome do preset (dark: luxury-gold, luxury-copper, prestige-white, corporate-navy, premium-terracotta, prestige-emerald, editorial-slate, bold-yellow, deep-ocean, crimson-night, violet-dark | light: pure-light, warm-paper, fresh-sage, modern-slate, azure-clean, coral-energy, rose-luxury, forest-premium)",
+    "fontFamily": "fonte Google que melhor representa o posicionamento do produto",
+    "heroStyle": "dark-overlay (dark themes com imagem) | light-overlay (light themes com imagem) | gradient (sem imagem)"
   },
   "hero": {
     "badge": "selo contextual e específico ao status (ex: 'Últimas unidades · Lançamento 2025')",
@@ -388,6 +384,9 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     const scrapedImages: string[] = project.scraped_images || [];
     if (scrapedImages.length > 0) {
       landingPageData.gallery = scrapedImages;
+    } else if (chatMessage && body.existingData?.gallery?.length > 0) {
+      // Preserve existing gallery on chat edits when no new scraped images
+      landingPageData.gallery = body.existingData.gallery;
     }
 
     if (!chatMessage && project.id) {

@@ -291,6 +291,7 @@ export function CreateProjectWizard({
         description: form.description.trim() || null,
         webhook_url: form.webhook_url.trim() || null,
         tenant_id: tenantId ?? null,
+        scraped_images: form._scraped_images.length ? form._scraped_images : null,
       };
 
       const createRes = await supabase.functions.invoke("create-broker-project", {

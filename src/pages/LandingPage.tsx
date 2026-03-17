@@ -31,18 +31,32 @@ const ICON_REGISTRY: Record<string, LucideIcon> = {
 };
 
 // ─── Curated theme presets (AI picks by name, no arbitrary hex) ──────────────
-const LANDING_THEMES: Record<string, Partial<LandingPageTheme>> = {
-  "luxury-gold":       { primaryColor: "#c8a96e", accentColor: "#e8d48a", bgColor: "#0d0b08", textColor: "#f5ede0" },
-  "luxury-copper":     { primaryColor: "#c17f4a", accentColor: "#d9a070", bgColor: "#0f0d0a", textColor: "#f5ebe0" },
-  "prestige-white":    { primaryColor: "#e8e4dc", accentColor: "#ffffff", bgColor: "#0f0f12", textColor: "#ffffff" },
-  "corporate-navy":    { primaryColor: "#60a5fa", accentColor: "#93c5fd", bgColor: "#0a0f1a", textColor: "#f0f4ff" },
-  "premium-terracotta":{ primaryColor: "#c86b48", accentColor: "#d9876a", bgColor: "#0f0c0a", textColor: "#f5ede8" },
-  "prestige-emerald":  { primaryColor: "#4ade80", accentColor: "#86efac", bgColor: "#0a0f0c", textColor: "#f0fdf4" },
-  "editorial-slate":   { primaryColor: "#94a3b8", accentColor: "#cbd5e1", bgColor: "#0c0e12", textColor: "#f1f5f9" },
-  "bold-yellow":       { primaryColor: "#facc15", accentColor: "#fde68a", bgColor: "#0f0f0a", textColor: "#fefce8" },
+export const LANDING_THEMES: Record<string, Partial<LandingPageTheme>> = {
+  // Dark premium
+  "luxury-gold":          { primaryColor: "#c8a96e", accentColor: "#e8d48a", bgColor: "#0d0b08", textColor: "#f5ede0", buttonTextColor: "#000" },
+  "luxury-copper":        { primaryColor: "#c17f4a", accentColor: "#d9a070", bgColor: "#0f0d0a", textColor: "#f5ebe0", buttonTextColor: "#000" },
+  "prestige-white":       { primaryColor: "#e8e4dc", accentColor: "#ffffff", bgColor: "#0f0f12", textColor: "#ffffff", buttonTextColor: "#000" },
+  "corporate-navy":       { primaryColor: "#60a5fa", accentColor: "#93c5fd", bgColor: "#0a0f1a", textColor: "#f0f4ff", buttonTextColor: "#000" },
+  "premium-terracotta":   { primaryColor: "#c86b48", accentColor: "#d9876a", bgColor: "#0f0c0a", textColor: "#f5ede8", buttonTextColor: "#000" },
+  "prestige-emerald":     { primaryColor: "#4ade80", accentColor: "#86efac", bgColor: "#0a0f0c", textColor: "#f0fdf4", buttonTextColor: "#000" },
+  "editorial-slate":      { primaryColor: "#94a3b8", accentColor: "#cbd5e1", bgColor: "#0c0e12", textColor: "#f1f5f9", buttonTextColor: "#000" },
+  "bold-yellow":          { primaryColor: "#facc15", accentColor: "#fde68a", bgColor: "#0f0f0a", textColor: "#fefce8", buttonTextColor: "#000" },
+  // Dark vibrant
+  "deep-ocean":           { primaryColor: "#22d3ee", accentColor: "#67e8f9", bgColor: "#020b14", textColor: "#ecfeff", buttonTextColor: "#000" },
+  "crimson-night":        { primaryColor: "#f43f5e", accentColor: "#fb7185", bgColor: "#0a0205", textColor: "#fff1f2", buttonTextColor: "#fff" },
+  "violet-dark":          { primaryColor: "#a78bfa", accentColor: "#c4b5fd", bgColor: "#07050f", textColor: "#f5f3ff", buttonTextColor: "#000" },
+  // Light editorial
+  "pure-light":           { primaryColor: "#111827", accentColor: "#1e40af", bgColor: "#ffffff", textColor: "#111827", buttonTextColor: "#fff", altBgColor: "#f1f5f9" },
+  "warm-paper":           { primaryColor: "#92400e", accentColor: "#b45309", bgColor: "#fffbf5", textColor: "#1c0f06", buttonTextColor: "#fff", altBgColor: "#f5ede0" },
+  "fresh-sage":           { primaryColor: "#15803d", accentColor: "#16a34a", bgColor: "#f8fffe", textColor: "#052e16", buttonTextColor: "#fff", altBgColor: "#dcfce7" },
+  "modern-slate":         { primaryColor: "#1e293b", accentColor: "#334155", bgColor: "#f8fafc", textColor: "#0f172a", buttonTextColor: "#fff", altBgColor: "#e2e8f0" },
+  "azure-clean":          { primaryColor: "#1d4ed8", accentColor: "#3b82f6", bgColor: "#f0f6ff", textColor: "#0f1e40", buttonTextColor: "#fff", altBgColor: "#dbeafe" },
+  "coral-energy":         { primaryColor: "#ea580c", accentColor: "#f97316", bgColor: "#fff8f5", textColor: "#431407", buttonTextColor: "#fff", altBgColor: "#ffedd5" },
+  "rose-luxury":          { primaryColor: "#be185d", accentColor: "#db2777", bgColor: "#fff5f8", textColor: "#3b0a1f", buttonTextColor: "#fff", altBgColor: "#fce7f3" },
+  "forest-premium":       { primaryColor: "#14532d", accentColor: "#166534", bgColor: "#f0fdf4", textColor: "#052e16", buttonTextColor: "#fff", altBgColor: "#dcfce7" },
 };
 
-function resolveTheme(raw: LandingPageTheme): LandingPageTheme {
+export function resolveTheme(raw: LandingPageTheme): LandingPageTheme {
   const preset = raw.preset ? (LANDING_THEMES[raw.preset] ?? {}) : {};
   return { ...raw, ...preset, fontFamily: raw.fontFamily, heroStyle: raw.heroStyle };
 }
@@ -370,16 +384,21 @@ export default function LandingPage() {
 
   const theme = resolveTheme(lp.theme);
   const fontUrl = getFontStyle(theme.fontFamily);
+  const btnTxt = theme.buttonTextColor ?? "#000";
+  const sectionAlt = theme.altBgColor
+    ?? `color-mix(in srgb, ${theme.bgColor} 85%, white 15%)`;
 
   return (
     <>
       <link rel="stylesheet" href={fontUrl} />
       <style>{`
         .lp-root { font-family: '${theme.fontFamily}', sans-serif; background-color: ${theme.bgColor}; color: ${theme.textColor}; }
-        .lp-btn { background-color: ${theme.primaryColor}; color: #000; font-weight: 700; }
-        .lp-btn:hover { filter: brightness(1.1); }
+        .lp-btn { background-color: ${theme.primaryColor}; color: ${btnTxt}; font-weight: 700; }
+        .lp-btn:hover { filter: brightness(1.08); transform: scale(1.02); }
+        .lp-btn-pulse { animation: lp-pulse 2.2s ease-in-out infinite; }
+        @keyframes lp-pulse { 0%,100%{ box-shadow:0 0 0 0 ${theme.primaryColor}55; } 50%{ box-shadow:0 0 0 10px ${theme.primaryColor}00; } }
         .lp-accent { color: ${theme.accentColor}; }
-        .lp-section-alt { background-color: color-mix(in srgb, ${theme.bgColor} 85%, white 15%); }
+        .lp-section-alt { background-color: ${sectionAlt}; }
       `}</style>
 
       <div className="lp-root min-h-screen pb-20 md:pb-0">
@@ -421,13 +440,22 @@ export default function LandingPage() {
             <FadeUp delay={120}>
               <h1
                 className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight"
-                style={{ color: theme.heroStyle === "light-overlay" ? theme.bgColor : "#fff" }}
+                style={{ color: theme.heroStyle === "light-overlay" ? theme.textColor : "#fff" }}
               >
                 {lp.hero.titleHighlight ? (
-                  <>
-                    {lp.hero.title.replace(lp.hero.titleHighlight, "")}{" "}
-                    <span className="lp-accent">{lp.hero.titleHighlight}</span>
-                  </>
+                  (() => {
+                    const idx = lp.hero.title.indexOf(lp.hero.titleHighlight);
+                    if (idx === -1) return (
+                      <>{lp.hero.title} <span className="lp-accent">{lp.hero.titleHighlight}</span></>
+                    );
+                    return (
+                      <>
+                        {lp.hero.title.slice(0, idx)}
+                        <span className="lp-accent">{lp.hero.titleHighlight}</span>
+                        {lp.hero.title.slice(idx + lp.hero.titleHighlight.length)}
+                      </>
+                    );
+                  })()
                 ) : (
                   lp.hero.title
                 )}
@@ -439,7 +467,9 @@ export default function LandingPage() {
               <p
                 className="text-base sm:text-lg md:text-xl max-w-xl mx-auto"
                 style={{
-                  color: theme.heroStyle === "light-overlay" ? "#374151" : "rgba(255,255,255,0.85)",
+                  color: theme.heroStyle === "light-overlay"
+                    ? `${theme.textColor}cc`
+                    : "rgba(255,255,255,0.85)",
                 }}
               >
                 {lp.hero.subtitle}
@@ -450,7 +480,7 @@ export default function LandingPage() {
             <FadeUp delay={340}>
               <button
                 onClick={scrollToForm}
-                className="lp-btn inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+                className="lp-btn lp-btn-pulse inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold shadow-lg transition-all active:scale-95"
               >
                 {lp.hero.ctaText}
               </button>

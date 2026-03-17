@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
+import { LANDING_THEMES, resolveTheme } from "@/pages/LandingPage";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -26,6 +27,8 @@ import {
   CheckCircle2,
   Zap,
   Users,
+  Trash2,
+  GalleryHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -670,9 +673,17 @@ export default function ProjectEditor() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Sessão expirada");
 
+      // Pass scraped_images from DB or fall back to existing gallery
+      const projectWithImages = {
+        ...project,
+        scraped_images: project.scraped_images?.length
+          ? project.scraped_images
+          : (lpData?.gallery ?? []),
+      };
+
       const res = await supabase.functions.invoke("generate-landing-page", {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { project },
+        body: { project: projectWithImages },
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
@@ -920,41 +931,106 @@ export default function ProjectEditor() {
                         />
                       </div>
 
-                      {/* Theme colors */}
-                      <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Tema Visual
-                        </p>
-                        <div className="grid grid-cols-3 gap-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Cor primária</Label>
-                            <input
-                              type="color"
-                              value={lpData.theme.primaryColor}
-                              onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...prev.theme, primaryColor: e.target.value } } : prev)}
-                              className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
-                            />
+                      {/* Gallery images */}
+                      {lpData.gallery && lpData.gallery.length > 0 && (
+                        <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                              <GalleryHorizontal className="w-3.5 h-3.5" /> Galeria ({lpData.gallery.length} fotos)
+                            </p>
+                            <button
+                              onClick={() => setLpData(prev => prev ? { ...prev, gallery: [] } : prev)}
+                              className="text-[10px] text-red-400 hover:text-red-300 flex items-center gap-1"
+                            >
+                              <Trash2 className="w-3 h-3" /> Limpar tudo
+                            </button>
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Destaque</Label>
-                            <input
-                              type="color"
-                              value={lpData.theme.accentColor}
-                              onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...prev.theme, accentColor: e.target.value } } : prev)}
-                              className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs text-muted-foreground">Fundo</Label>
-                            <input
-                              type="color"
-                              value={lpData.theme.bgColor}
-                              onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...prev.theme, bgColor: e.target.value } } : prev)}
-                              className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
-                            />
+                          <p className="text-[10px] text-muted-foreground">Clique no X para remover uma imagem da galeria.</p>
+                          <div className="grid grid-cols-4 gap-1.5 max-h-52 overflow-y-auto pr-0.5">
+                            {lpData.gallery.map((img, i) => (
+                              <div key={i} className="relative rounded-lg overflow-hidden aspect-square group">
+                                <img src={img} alt="" className="w-full h-full object-cover" loading="lazy" />
+                                <button
+                                  onClick={() => setLpData(prev => {
+                                    if (!prev) return prev;
+                                    const g = prev.gallery!.filter((_, idx) => idx !== i);
+                                    return { ...prev, gallery: g };
+                                  })}
+                                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      </div>
+                      )}
+
+                      {/* Theme colors */}
+                      {(() => {
+                        const rt = resolveTheme(lpData.theme);
+                        return (
+                          <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                Tema Visual
+                              </p>
+                              {lpData.theme.preset && (
+                                <span className="text-[10px] text-muted-foreground bg-[#2a2a2e] px-2 py-0.5 rounded-full">
+                                  {lpData.theme.preset}
+                                </span>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Cor primária</Label>
+                                <input
+                                  type="color"
+                                  value={rt.primaryColor || "#ffffff"}
+                                  onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...resolveTheme(prev.theme), primaryColor: e.target.value, preset: undefined } } : prev)}
+                                  className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Destaque</Label>
+                                <input
+                                  type="color"
+                                  value={rt.accentColor || "#ffffff"}
+                                  onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...resolveTheme(prev.theme), accentColor: e.target.value, preset: undefined } } : prev)}
+                                  className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs text-muted-foreground">Fundo</Label>
+                                <input
+                                  type="color"
+                                  value={rt.bgColor || "#0f0f12"}
+                                  onChange={(e) => setLpData(prev => prev ? { ...prev, theme: { ...resolveTheme(prev.theme), bgColor: e.target.value, preset: undefined } } : prev)}
+                                  className="w-full h-8 rounded cursor-pointer bg-transparent border border-[#2a2a2e]"
+                                />
+                              </div>
+                            </div>
+                            {/* Theme preset picker */}
+                            <div className="space-y-1.5">
+                              <Label className="text-xs text-muted-foreground">Trocar preset</Label>
+                              <div className="grid grid-cols-4 gap-1.5">
+                                {Object.entries(LANDING_THEMES).map(([name, t]) => (
+                                  <button
+                                    key={name}
+                                    title={name}
+                                    onClick={() => setLpData(prev => prev ? { ...prev, theme: { ...prev.theme, preset: name } } : prev)}
+                                    className={cn(
+                                      "h-6 rounded border-2 transition-all",
+                                      lpData.theme.preset === name ? "border-primary scale-110" : "border-transparent hover:border-[#3a3a3e]"
+                                    )}
+                                    style={{ background: `linear-gradient(135deg, ${t.bgColor} 50%, ${t.primaryColor} 100%)` }}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })()}
 
                       {/* Sections */}
                       {SECTIONS.map((s) => (
@@ -1131,7 +1207,7 @@ function LandingPagePreview({
   broker: BrokerInfo | null;
   onUpdate?: (updated: LandingPageData) => void;
 }) {
-  const { theme } = data;
+  const theme = resolveTheme(data.theme);
   const upd = (patch: Partial<LandingPageData>) => onUpdate?.({ ...data, ...patch });
   const heroBg = data.hero.bgImage || project.main_image_url;
   const heroOpacity = data.hero.bgOpacity ?? 0.65;
@@ -1139,6 +1215,8 @@ function LandingPagePreview({
   const accent = theme.accentColor;
   const bg = theme.bgColor;
   const text = theme.textColor;
+  const btnTxt = theme.buttonTextColor ?? "#000";
+  const sectionAlt = theme.altBgColor ?? `color-mix(in srgb, ${bg} 85%, white 15%)`;
 
   return (
     <ScrollArea className="flex-1 h-full">
@@ -1160,28 +1238,33 @@ function LandingPagePreview({
           <div className="relative z-10 space-y-4 max-w-sm mx-auto">
             <span
               className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider shadow-lg"
-              style={{ backgroundColor: primary, color: "#000" }}
+              style={{ backgroundColor: primary, color: btnTxt }}
             >
               <Zap className="w-3 h-3" />
               <EditableText value={data.hero.badge} onSave={(v) => upd({ hero: { ...data.hero, badge: v } })} />
             </span>
             <h1 className="text-2xl font-black leading-tight" style={{ color: heroBg ? "#fff" : text }}>
               {data.hero.titleHighlight ? (
-                <>
-                  <EditableText
-                    value={data.hero.title}
-                    onSave={(v) => upd({ hero: { ...data.hero, title: v } })}
-                    style={{ color: heroBg ? "#fff" : text }}
-                  />
-                  {" "}
-                  <EditableText
-                    value={data.hero.titleHighlight}
-                    onSave={(v) => upd({ hero: { ...data.hero, titleHighlight: v } })}
-                    style={{ color: primary }}
-                  />
-                </>
+                (() => {
+                  const idx = data.hero.title.indexOf(data.hero.titleHighlight);
+                  const titleColor = heroBg ? "#fff" : text;
+                  if (idx === -1) return (
+                    <>
+                      <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} style={{ color: titleColor }} />
+                      {" "}
+                      <EditableText value={data.hero.titleHighlight} onSave={(v) => upd({ hero: { ...data.hero, titleHighlight: v } })} style={{ color: primary }} />
+                    </>
+                  );
+                  return (
+                    <>
+                      <span style={{ color: titleColor }}>{data.hero.title.slice(0, idx)}</span>
+                      <EditableText value={data.hero.titleHighlight} onSave={(v) => upd({ hero: { ...data.hero, titleHighlight: v } })} style={{ color: primary }} />
+                      <span style={{ color: titleColor }}>{data.hero.title.slice(idx + data.hero.titleHighlight.length)}</span>
+                    </>
+                  );
+                })()
               ) : (
-                <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} />
+                <EditableText value={data.hero.title} onSave={(v) => upd({ hero: { ...data.hero, title: v } })} style={{ color: heroBg ? "#fff" : text }} />
               )}
             </h1>
             <p className="text-sm leading-relaxed" style={{ color: heroBg ? "rgba(255,255,255,0.8)" : `${text}99` }}>
@@ -1189,7 +1272,7 @@ function LandingPagePreview({
             </p>
             <button
               className="inline-flex items-center gap-2 px-7 py-3 rounded-xl text-sm font-bold shadow-lg hover:brightness-110 transition-all"
-              style={{ backgroundColor: primary, color: "#000" }}
+              style={{ backgroundColor: primary, color: btnTxt }}
             >
               <EditableText value={data.hero.ctaText} onSave={(v) => upd({ hero: { ...data.hero, ctaText: v } })} />
             </button>
@@ -1197,7 +1280,7 @@ function LandingPagePreview({
         </div>
 
         {/* ── Location ── */}
-        <div className="py-12 px-6" style={{ backgroundColor: `${bg}` }}>
+        <div className="py-12 px-6" style={{ backgroundColor: sectionAlt }}>
           <div className="max-w-sm mx-auto">
             <div className="flex items-center gap-2 mb-3">
               <MapPin className="w-4 h-4 shrink-0" style={{ color: primary }} />
@@ -1324,7 +1407,7 @@ function LandingPagePreview({
               </p>
               <div
                 className="inline-block px-8 py-3 rounded-2xl text-base font-black shadow-lg"
-                style={{ backgroundColor: primary, color: "#000" }}
+                style={{ backgroundColor: primary, color: btnTxt }}
               >
                 <EditableText value={data.urgency.highlight} onSave={(v) => upd({ urgency: { ...data.urgency, highlight: v } })} />
               </div>
@@ -1390,7 +1473,7 @@ function LandingPagePreview({
             </p>
             <button
               className="inline-flex items-center gap-2 px-8 py-3 rounded-xl text-sm font-bold shadow-xl hover:brightness-110 transition-all"
-              style={{ backgroundColor: primary, color: "#000" }}
+              style={{ backgroundColor: primary, color: btnTxt }}
             >
               <EditableText value={data.cta.buttonText} onSave={(v) => upd({ cta: { ...data.cta, buttonText: v } })} />
             </button>
@@ -1418,7 +1501,7 @@ function LandingPagePreview({
               ))}
               <button
                 className="w-full py-3 rounded-xl text-xs font-bold shadow-md hover:brightness-110 transition-all"
-                style={{ backgroundColor: primary, color: "#000" }}
+                style={{ backgroundColor: primary, color: btnTxt }}
               >
                 <EditableText value={data.form.buttonText} onSave={(v) => upd({ form: { ...data.form, buttonText: v } })} />
               </button>
