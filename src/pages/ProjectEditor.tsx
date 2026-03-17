@@ -370,6 +370,8 @@ function FloatingTextEditor({
   elementStyle,
   computedColor,
   computedBg,
+  computedStrokeWidth,
+  computedStrokeColor,
   onSave,
   onStyleChange,
   onClose,
@@ -380,6 +382,8 @@ function FloatingTextEditor({
   elementStyle?: ElementStyle;
   computedColor?: string;
   computedBg?: string;
+  computedStrokeWidth?: number;
+  computedStrokeColor?: string;
   onSave: (path: string, value: string) => void;
   onStyleChange: (path: string, style: ElementStyle) => void;
   onClose: () => void;
@@ -392,7 +396,7 @@ function FloatingTextEditor({
 
   const bgTransparent = elementStyle?.backgroundTransparent ?? false;
   const opacityPct = Math.round((elementStyle?.backgroundOpacity ?? 1) * 100);
-  const strokeWidth = elementStyle?.strokeWidth ?? 0;
+  const strokeWidth = elementStyle?.strokeWidth ?? computedStrokeWidth ?? 0;
 
   return createPortal(
     <>
@@ -485,7 +489,7 @@ function FloatingTextEditor({
           <span className="text-[10px] text-gray-500 w-10 shrink-0">Stroke</span>
           <input
             type="color"
-            value={elementStyle?.strokeColor || '#000000'}
+            value={elementStyle?.strokeColor || computedStrokeColor || '#000000'}
             onChange={(e) => onStyleChange(path, { ...elementStyle, strokeColor: e.target.value, strokeWidth: strokeWidth || 1 })}
             className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent shrink-0"
             title="Cor do stroke"
@@ -852,6 +856,8 @@ export default function ProjectEditor() {
     type: 'text' | 'image';
     computedColor?: string;
     computedBg?: string;
+    computedStrokeWidth?: number;
+    computedStrokeColor?: string;
   } | null>(null);
 
   // Persist data directly to DB (fire-and-forget)
@@ -970,7 +976,10 @@ export default function ProjectEditor() {
           : target.textContent?.trim() || '';
         const computedColor = getTextColor(target);
         const computedBg = getEffectiveBg(target);
-        setActiveEdit({ path, value, rect, type, computedColor, computedBg });
+        const cs = window.getComputedStyle(target);
+        const computedStrokeWidth = parseFloat(cs.borderWidth) || 0;
+        const computedStrokeColor = computedStrokeWidth > 0 ? rgbToHex(cs.borderColor) : '#000000';
+        setActiveEdit({ path, value, rect, type, computedColor, computedBg, computedStrokeWidth, computedStrokeColor });
         return;
       }
       target = target.parentElement;
@@ -1652,6 +1661,8 @@ export default function ProjectEditor() {
                     elementStyle={(lpData as any).elementStyles?.[activeEdit.path]}
                     computedColor={activeEdit.computedColor}
                     computedBg={activeEdit.computedBg}
+                    computedStrokeWidth={activeEdit.computedStrokeWidth}
+                    computedStrokeColor={activeEdit.computedStrokeColor}
                     onSave={handleLpUpdate}
                     onStyleChange={handleStyleUpdate}
                     onClose={() => setActiveEdit(null)}
