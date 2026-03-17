@@ -696,22 +696,8 @@ export default function ProjectEditor() {
     });
   };
 
-  const handlePreviewWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    if (previewContentRef.current) {
-      previewContentRef.current.scrollTop += e.deltaY;
-    }
-  };
-
   const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const overlay = e.currentTarget as HTMLElement;
-    const contentEl = previewContentRef.current;
-    // Temporarily disable overlay and enable content so elementFromPoint can find children
-    overlay.style.pointerEvents = 'none';
-    if (contentEl) contentEl.style.pointerEvents = 'auto';
-    const el = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-    overlay.style.pointerEvents = 'auto';
-    if (contentEl) contentEl.style.pointerEvents = 'none';
-    let target = el;
+    let target = e.target as HTMLElement | null;
     while (target) {
       const path = target.dataset?.lpPath;
       if (path) {
@@ -1307,17 +1293,14 @@ export default function ProjectEditor() {
             </div>
             {lpData && project ? (
               <div className="relative flex-1 overflow-hidden">
-                {/* Landing page content — pointer-events: none so overlay captures all clicks */}
-                <div ref={previewContentRef} className="absolute inset-0 overflow-y-auto" style={{ pointerEvents: 'none' }}>
-                  <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
-                </div>
-                {/* Transparent click-capture overlay — forwards scroll to content div */}
                 <div
-                  className="absolute inset-0 z-10"
+                  ref={previewContentRef}
+                  className="absolute inset-0 overflow-y-scroll"
                   style={{ cursor: 'crosshair' }}
                   onClick={handlePreviewClick}
-                  onWheel={handlePreviewWheel}
-                />
+                >
+                  <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
+                </div>
                 {/* Floating text editor popup */}
                 {activeEdit && (
                   <FloatingTextEditor
