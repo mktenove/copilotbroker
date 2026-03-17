@@ -404,18 +404,34 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     async function mirrorImageToStorage(url: string, path: string): Promise<string> {
       try {
         const res = await fetch(url, {
-          headers: { "User-Agent": "Mozilla/5.0", "Accept": "image/*,*/*" },
-          signal: AbortSignal.timeout(12000),
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "Accept": "image/webp,image/jpeg,image/png,image/*,*/*;q=0.8",
+            "Referer": "https://www.zapimoveis.com.br/",
+          },
+          signal: AbortSignal.timeout(15000),
         });
-        if (!res.ok) return url;
-        const contentType = res.headers.get("content-type") || "image/jpeg";
+        if (!res.ok) {
+          console.error(`mirrorImage: fetch failed ${res.status} for ${url}`);
+          return url;
+        }
+        // Strip charset/params — Supabase Storage checks exact MIME type
+        const rawCt = res.headers.get("content-type") || "image/jpeg";
+        const contentType = rawCt.split(";")[0].trim() || "image/jpeg";
+        // Validate it's an image type we accept
+        const allowed = ["image/jpeg","image/png","image/webp","image/gif","image/heic"];
+        const finalType = allowed.includes(contentType) ? contentType : "image/jpeg";
         const buffer = await res.arrayBuffer();
         const { error } = await supabase.storage
           .from("project-media")
-          .upload(path, buffer, { contentType, upsert: true });
-        if (error) return url;
+          .upload(path, buffer, { contentType: finalType, upsert: true });
+        if (error) {
+          console.error(`mirrorImage: upload failed for ${url}: ${error.message}`);
+          return url;
+        }
         return supabase.storage.from("project-media").getPublicUrl(path).data.publicUrl;
-      } catch {
+      } catch (e) {
+        console.error(`mirrorImage: exception for ${url}:`, e);
         return url;
       }
     }
@@ -426,12 +442,14 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
       // Mirror external scraped images to Storage on initial generation (not chat edits)
       if (!chatMessage && project.id) {
         const toMirror = scrapedImages.slice(0, 20);
+        console.log(`Mirroring ${toMirror.length} images for project ${project.id}`);
         const mirrored = await Promise.all(
           toMirror.map((url: string, i: number) => {
-            const ext = url.split("?")[0].split(".").pop()?.slice(0, 4) || "jpg";
-            return mirrorImageToStorage(url, `projects/${project.id}/scraped/${i}.${ext}`);
+            return mirrorImageToStorage(url, `projects/${project.id}/scraped/${i}.jpg`);
           })
         );
+        const mirroredCount = mirrored.filter(u => u.includes("supabase.co")).length;
+        console.log(`Mirrored ${mirroredCount}/${toMirror.length} images to Storage`);
         landingPageData.gallery = mirrored;
         // Also update the project's scraped_images with stable Storage URLs
         await supabase
