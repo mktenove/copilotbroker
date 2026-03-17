@@ -350,10 +350,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       bgStyle = { background: `rgba(${r},${g},${b},${alpha})` };
     }
     const strokeStyle: React.CSSProperties = override.strokeWidth > 0
-      ? { boxShadow: `0 0 0 ${override.strokeWidth}px ${override.strokeColor || '#000000'}` }
-      : override.strokeWidth === 0
-        ? { boxShadow: 'none' }
-        : {};
+      ? { border: `${override.strokeWidth}px solid ${override.strokeColor || '#000000'}` }
+      : {};
     return {
       ...(baseStyle ?? {}),
       ...(override.color ? { color: override.color } : {}),
