@@ -44,6 +44,15 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Detect SEO-formatted property titles from portals like ZAP/OLX/Viva Real
+// e.g. "Casa à venda em Estância Velha, União, com 3 quartos, 157m²"
+const isSpecsOnlyDescription = (text: string): boolean => {
+  const lower = text.toLowerCase();
+  const hasForSale = lower.includes("à venda") || lower.includes("para venda") || lower.includes("aluguel em ");
+  const hasSpecs = lower.includes("m²") || lower.includes("m2") || lower.includes("quarto") || lower.includes("dormitório");
+  return hasForSale && hasSpecs;
+};
+
 const toSlug = (value: string) =>
   value
     .toLowerCase()
@@ -177,7 +186,7 @@ export function CreateProjectWizard({
           slug: s.name ? toSlug(s.name) : prev.slug,
           city: s.city || prev.city,
           city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-          description: (s.description && s.description.length > 60 ? s.description : null)
+          description: (s.description && s.description.length > 60 && !isSpecsOnlyDescription(s.description) ? s.description : null)
             || (s.page_content && s.page_content.length > 120 ? s.page_content.slice(0, 400) : null)
             || prev.description,
           bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
