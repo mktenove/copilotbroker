@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { getCorsHeaders, validateServiceRoleKey } from "../_shared/security.ts";
+import { getCorsHeaders, validateSupabaseKey } from "../_shared/security.ts";
 
 const DEFAULT_STEPS = [
   { messageContent: "Olá {nome}, tudo bem? Aqui é {corretor_nome}, da Enove Imobiliária! Recebi agora seu cadastro para saber mais sobre o {empreendimento}, já quis te chamar para te explicar como funciona! Foi você mesmo que se cadastrou?", delayMinutes: 0, sendIfReplied: true },
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (!validateServiceRoleKey(req)) {
+  if (!validateSupabaseKey(req)) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
