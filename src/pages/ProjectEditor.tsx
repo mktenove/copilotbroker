@@ -865,12 +865,18 @@ export default function ProjectEditor() {
   const [autoSaving, setAutoSaving] = useState(false);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isInitialLoad = useRef(true);
+  // Always-current ref — eliminates stale closure issues in save/auto-save
+  const lpDataRef = useRef<LandingPageData | null>(null);
+  const projectRef = useRef<Project | null>(null);
+
+  useEffect(() => { lpDataRef.current = lpData; }, [lpData]);
+  useEffect(() => { projectRef.current = project; }, [project]);
 
   useEffect(() => {
     if (projectId) loadEditor();
   }, [projectId]);
 
-  // Auto-save lpData to DB 1.5s after any change (skips initial load)
+  // Auto-save: 1.5s after any lpData change, skip initial load
   useEffect(() => {
     if (isInitialLoad.current) {
       isInitialLoad.current = false;
@@ -880,10 +886,13 @@ export default function ProjectEditor() {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
     setAutoSaving(true);
     autoSaveTimer.current = setTimeout(async () => {
+      const data = lpDataRef.current;
+      const proj = projectRef.current;
+      if (!data || !proj) return;
       try {
         await (supabase.from("projects") as any)
-          .update({ landing_page_data: lpData })
-          .eq("id", project.id);
+          .update({ landing_page_data: data })
+          .eq("id", proj.id);
       } catch (err) {
         console.error("[auto-save]", err);
       } finally {
@@ -957,13 +966,16 @@ export default function ProjectEditor() {
   };
 
   const save = async (targetStatus: 'draft' | 'published') => {
-    if (!lpData || !project) return;
+    // Use refs to guarantee latest data regardless of closure timing
+    const currentData = lpDataRef.current;
+    const currentProject = projectRef.current;
+    if (!currentData || !currentProject) return;
     setSaving(true);
     try {
       const { error } = await (supabase
         .from("projects") as any)
-        .update({ landing_page_data: lpData, landing_page_status: targetStatus })
-        .eq("id", project.id);
+        .update({ landing_page_data: currentData, landing_page_status: targetStatus })
+        .eq("id", currentProject.id);
       if (error) throw error;
       setLpStatus(targetStatus);
       toast.success(targetStatus === 'published' ? "Landing page publicada!" : "Rascunho salvo!");
