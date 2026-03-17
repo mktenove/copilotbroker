@@ -581,12 +581,6 @@ export default function ProjectEditor() {
     if (projectId) loadEditor();
   }, [projectId]);
 
-  useEffect(() => {
-    if (brokerId && !broker) {
-      supabase.from("brokers").select("id, name, slug").eq("id", brokerId).maybeSingle()
-        .then(({ data }) => { if (data) setBroker(data); });
-    }
-  }, [brokerId]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -616,7 +610,15 @@ export default function ProjectEditor() {
         setLpData(buildDefaultLp(typedProject as Project));
       }
 
-      // broker is loaded separately in useEffect([brokerId])
+      // Load broker via session user_id (avoids timing issues with useUserRole hook)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user?.id) {
+        const { data: brokerData } = await (supabase.from("brokers" as any)
+          .select("id, name, slug")
+          .eq("user_id", session.user.id)
+          .maybeSingle());
+        if (brokerData) setBroker(brokerData);
+      }
     } catch (err) {
       console.error(err);
     } finally {
