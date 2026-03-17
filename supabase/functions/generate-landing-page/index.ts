@@ -291,51 +291,66 @@ ${project.description && project.description.length > 200
     if (chatMessage && existingData) {
       isChatMode = true;
 
+      const currentPreset = existingData?.theme?.preset || "desconhecido";
+      const currentHeroStyle = existingData?.theme?.heroStyle || "desconhecido";
+
       systemPrompt = `${LP_EXPERTISE}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 MODO EDITOR INTELIGENTE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Você é o editor inteligente da landing page. Recebe a LP atual, o histórico de conversa e um novo pedido.
+Você é o editor inteligente da landing page. Recebe a LP atual, histórico de conversa e um novo pedido.
 
 PASSO 1 — CLASSIFICAR A INTENÇÃO:
-Analise o pedido e classifique como:
 
-→ "patch" (edição cirúrgica): o usuário quer mudar algo específico sem alterar o resto
-   Exemplos: "muda o título do hero", "deixa o CTA mais urgente", "reescreve a seção de benefícios",
-   "muda a fonte para Montserrat", "deixa o badge mais impactante", "troca o tema para dark",
-   "deixa os textos mais curtos", "fala mais de família", "adiciona mais urgência"
+→ "patch" (edição cirúrgica): o usuário quer ajuste pontual sem reformular o todo
+   PATCH quando: "muda o título", "deixa o CTA mais urgente", "reescreve os benefícios",
+   "troca a fonte", "muda a cor do tema", "deixa o badge diferente", "adiciona urgência",
+   "deixa mais curto", "foco em família", "foco em investidor", "ajusta o subtítulo",
+   "muda só o hero", "muda só a seção X"
 
-→ "full" (novo layout): o usuário quer uma criação nova, diferente, com outro posicionamento
-   Exemplos: "gera um completamente diferente", "cria outro layout", "quero algo mais luxuoso",
-   "refaz do zero", "muda tudo", "tenta outro estilo", "cria uma versão diferente",
-   "quero uma landing nova", "faz uma para investidor", "outra abordagem"
+→ "full" (novo layout): o usuário quer identidade visual, narrativa e copy completamente novos
+   FULL quando: "altera a estrutura", "muda o layout", "reorganiza a página", "cria outro layout",
+   "versão diferente", "refaz do zero", "muda tudo", "gera um novo", "outra abordagem",
+   "quero outro estilo", "mais luxuoso", "mais moderno", "tema completamente diferente",
+   "parece muito parecido", "tenta de novo diferente", "não gostei, faz outro"
 
 PASSO 2 — AGIR:
 
 SE "patch":
-  Retorne APENAS os campos que precisam mudar, no formato nested. NÃO inclua campos que não mudaram.
+  Retorne APENAS os campos que mudaram, em formato nested. NÃO repita campos inalterados.
   {
     "type": "patch",
-    "changes": { /* apenas campos modificados, ex: {"hero": {"title": "novo"}} */ },
-    "message": "O que você fez, em 1-2 frases em português, direto e específico"
+    "changes": { /* somente o que mudou, ex: {"hero": {"title": "novo título"}} */ },
+    "message": "O que você fez, específico, 1-2 frases"
   }
 
-SE "full":
-  Crie uma landing page completamente nova e diferente da atual — outro tema, outro posicionamento, outra narrativa.
+SE "full" — REGRAS OBRIGATÓRIAS DE REDIAGRAMAÇÃO COMPLETA:
+  ❶ TEMA: escolha um preset DIFERENTE de "${currentPreset}". Mude também a família tipográfica.
+  ❷ heroStyle: se o tema atual é "${currentHeroStyle}", use o oposto sempre que possível.
+     Light themes (pure-light, warm-paper, fresh-sage, modern-slate, azure-clean, coral-energy, rose-luxury, forest-premium) = SEMPRE "light-overlay"
+     Dark themes (luxury-gold, luxury-copper, prestige-white, corporate-navy, premium-terracotta, prestige-emerald, editorial-slate, bold-yellow, deep-ocean, crimson-night, violet-dark) = SEMPRE "dark-overlay"
+  ❸ HEADLINE: ângulo completamente diferente — se o atual foca em localização, foque em lifestyle; se foca em espaço, foque em exclusividade; etc.
+  ❹ NARRATIVA: mude o posicionamento de vendas — outro perfil de comprador como protagonista, outra promessa central
+  ❺ COPY TONE: se o atual é direto/objetivo, seja mais emocional; se é emocional, seja mais editorial/frio
+  ❻ BADGE e URGENCY: ângulo diferente do atual
+  NÃO é aceitável entregar apenas mudança de cor com o mesmo texto/estrutura narrativa.
+
   {
     "type": "full",
     "data": { /* LP completa seguindo o schema */ },
-    "message": "O que você criou e qual foi a direção criativa, em 2-3 frases"
+    "message": "Descreva o que mudou: novo tema, nova direção criativa, novo posicionamento — 2-3 frases"
   }
 
 SCHEMA COMPLETO (para "full"):
 ${LP_SCHEMA}
 
-IMPORTANTE:
-- O campo "message" deve ser informativo e específico, não genérico (ex: NÃO "Apliquei as alterações")
-- Galeria de imagens é preservada automaticamente — não inclua "gallery" nem "hero.bgImage"
+CONTRASTE — REGRA ABSOLUTA:
+- Temas DARK (fundo escuro): textos primários são claros/brancos pelo sistema. NÃO defina cores explícitas.
+- Temas LIGHT (fundo claro): textos primários são escuros pelo sistema. NÃO defina cores explícitas.
+- O heroStyle correto garante o contraste do hero automaticamente. Sempre defina heroStyle correto.
+- Galeria de imagens é preservada pelo sistema — NÃO inclua "gallery" nem "hero.bgImage" na resposta.
 - Retorne APENAS o JSON. Sem markdown. Sem explicações fora do campo "message".`;
 
       // Build conversation history context
@@ -394,6 +409,25 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações.`;
 
     const parsed = JSON.parse(rawText);
 
+    // Light themes require heroStyle = "light-overlay" for correct text contrast
+    const LIGHT_PRESETS = new Set([
+      "pure-light", "warm-paper", "fresh-sage", "modern-slate",
+      "azure-clean", "coral-energy", "rose-luxury", "forest-premium",
+    ]);
+
+    function fixHeroStyle(data: Record<string, unknown>) {
+      const theme = data.theme as Record<string, unknown> | undefined;
+      if (!theme) return;
+      const preset = theme.preset as string | undefined;
+      if (!preset) return;
+      if (LIGHT_PRESETS.has(preset)) {
+        theme.heroStyle = "light-overlay";
+      } else if (theme.heroStyle === "light-overlay") {
+        // Dark theme mistakenly set to light — correct it
+        theme.heroStyle = "dark-overlay";
+      }
+    }
+
     let landingPageData: Record<string, unknown>;
     let aiMessage = "";
     let responseType = "full";
@@ -402,30 +436,32 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações.`;
       responseType = parsed.type || "full";
 
       if (parsed.type === "patch" && parsed.changes) {
-        // Surgical merge — only changed fields
+        // Surgical merge — only changed fields; preserve elementStyles
         landingPageData = deepMerge(existingData, parsed.changes);
-        // Always preserve gallery & hero background image
         landingPageData.gallery = existingData.gallery;
         if (existingData.hero?.bgImage) {
           (landingPageData.hero as Record<string, unknown>).bgImage = existingData.hero.bgImage;
         }
+        fixHeroStyle(landingPageData);
       } else {
-        // Full regen
+        // Full regen — take new data, wipe elementStyles so no stale color overrides
         landingPageData = parsed.data || parsed;
-        // Preserve gallery from existing data
+        delete landingPageData.elementStyles; // clear old per-element overrides
         if (existingData?.gallery?.length > 0) {
           landingPageData.gallery = existingData.gallery;
           if (!landingPageData.hero) landingPageData.hero = {};
-          if (!(landingPageData.hero as Record<string, unknown>).bgImage && existingData.hero?.bgImage) {
+          if (existingData.hero?.bgImage) {
             (landingPageData.hero as Record<string, unknown>).bgImage = existingData.hero.bgImage;
           }
         }
+        fixHeroStyle(landingPageData);
       }
 
       aiMessage = parsed.message || (parsed.type === "patch" ? "Edição aplicada." : "Nova versão criada.");
     } else {
       // Initial generation
       landingPageData = parsed;
+      fixHeroStyle(landingPageData);
       const scrapedImages: string[] = scrapedImagesForContext;
       if (scrapedImages.length > 0) {
         landingPageData.gallery = scrapedImages;
