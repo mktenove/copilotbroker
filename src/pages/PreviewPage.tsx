@@ -1,15 +1,8 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
-import { createClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { LandingPageRenderer, buildDefault } from "@/pages/LandingPage";
 import { Project, LandingPageData } from "@/types/project";
-
-// Isolated Supabase client — no auth, no session persistence
-const sb = createClient(
-  import.meta.env.VITE_SUPABASE_URL,
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-  { auth: { autoRefreshToken: false, persistSession: false } }
-);
 
 export default function PreviewPage() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -20,12 +13,12 @@ export default function PreviewPage() {
   useEffect(() => {
     if (!projectId) return;
     (async () => {
-      const { data: proj } = await sb.from("projects").select("*").eq("id", projectId).maybeSingle();
+      const { data: proj } = await supabase.from("projects").select("*").eq("id", projectId).maybeSingle();
       if (!proj) return;
       setProject(proj as Project);
       setLp((proj as any).landing_page_data ?? buildDefault(proj as Project));
 
-      const { data: bp } = await (sb.from("broker_projects" as any)
+      const { data: bp } = await (supabase.from("broker_projects" as any)
         .select("broker:brokers(id, name, slug, whatsapp)")
         .eq("project_id", projectId)
         .eq("is_active", true)

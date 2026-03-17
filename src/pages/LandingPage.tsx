@@ -1,18 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
-import { supabase as supabaseDefault } from "@/integrations/supabase/client";
-import { createClient } from "@supabase/supabase-js";
-
-// When rendered inside an iframe (editor preview), use an isolated Supabase client
-// with a separate storageKey so token refreshes don't fire onAuthStateChange in the parent.
-const isInIframe = (() => { try { return window.self !== window.top; } catch { return true; } })();
-const supabase = isInIframe
-  ? createClient(
-      import.meta.env.VITE_SUPABASE_URL,
-      import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-      { auth: { storageKey: "sb-preview-session", autoRefreshToken: false, persistSession: false } }
-    )
-  : supabaseDefault;
+import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
 import { toast } from "sonner";
 import * as LucideIcons from "lucide-react";
