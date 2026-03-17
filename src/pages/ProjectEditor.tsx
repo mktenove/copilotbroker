@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
-import { LANDING_THEMES, resolveTheme } from "@/pages/LandingPage";
+import { LANDING_THEMES, resolveTheme, DynamicIcon } from "@/pages/LandingPage";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -1272,10 +1272,7 @@ function LandingPagePreview({
                     style={{ backgroundColor: `${bg}`, border: `1px solid ${primary}22`, boxShadow: `0 2px 12px ${primary}10` }}
                   >
                     <div className="text-2xl leading-none">
-                      <EditableText value={f.icon} onSave={(v) => {
-                        const arr = [...data.features]; arr[i] = { ...arr[i], icon: v };
-                        upd({ features: arr });
-                      }} />
+                      <DynamicIcon name={f.icon} className="w-6 h-6" style={{ color: primary }} />
                     </div>
                     <div className="text-[10px] opacity-55 leading-tight">
                       <EditableText value={f.label} onSave={(v) => {
@@ -1403,7 +1400,7 @@ function LandingPagePreview({
                     className="flex items-start gap-3 p-4 rounded-2xl"
                     style={{ backgroundColor: `${primary}08`, border: `1px solid ${primary}18` }}
                   >
-                    <span className="text-xl leading-none shrink-0">{b.icon}</span>
+                    <DynamicIcon name={b.icon} className="w-5 h-5 shrink-0 mt-0.5" style={{ color: primary }} />
                     <div>
                       <p className="text-xs font-bold mb-0.5">
                         <EditableText value={b.title} onSave={(v) => {

@@ -57,7 +57,7 @@ export function resolveTheme(raw: LandingPageTheme): LandingPageTheme {
 }
 
 // ─── DynamicIcon ──────────────────────────────────────────────────────────────
-function DynamicIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
+export function DynamicIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   if (!name) return null;
   const Icon = ICON_REGISTRY[name];
   if (Icon) return <Icon className={className} style={style} />;
