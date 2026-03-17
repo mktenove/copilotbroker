@@ -256,6 +256,13 @@ REGRAS DE COPY
 REGRAS DE CONTEÚDO DE FONTE
 Quando houver "Conteúdo completo do imóvel (extraído do site original)", use APENAS como fonte de fatos (localização, metragem, quartos, amenidades). NUNCA copie ou parafraseie o texto original. Escreva copy inteiramente novo, autoral e persuasivo.
 
+PROIBIDO INVENTAR:
+- ❌ NÃO mencione "pré-lançamento", "lançamento", "obras", "entrega prevista" ou qualquer estágio de obra a não ser que esteja EXPLICITAMENTE nos dados do imóvel.
+- ❌ NÃO invente unidades restantes, vagas ou prazos.
+- ❌ NÃO cite preços ou condições de pagamento a não ser que estejam nos dados.
+- ❌ NÃO mencione "exclusividade" ou "últimas unidades" sem base nos dados.
+- Se os dados não informam o estágio do empreendimento, trate-o como imóvel pronto/disponível.
+
 EXEMPLOS DE HERO.TITLE:
 ❌ PROIBIDO: "Apartamento 3 Quartos 2 Suítes 157m² 2 Vagas Piscina Academia – Vila Olímpia SP"
 ❌ PROIBIDO: "Realize seu sonho de morar bem em [cidade]"
