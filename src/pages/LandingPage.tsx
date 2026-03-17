@@ -4,18 +4,60 @@ import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
 import { toast } from "sonner";
 import { RefreshCw, ChevronDown, Check, MapPin, MessageSquare } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-// ─── Icon map ────────────────────────────────────────────────────────────────
-const ICON_MAP: Record<string, string> = {
-  "🏠": "🏠", "🏢": "🏢", "🏊": "🏊", "🌳": "🌳", "🚗": "🚗", "🛡️": "🛡️",
-  "📐": "📐", "🛏️": "🛏️", "🚿": "🚿", "🏋️": "🏋️", "🎾": "🎾", "🌆": "🌆",
-  "💎": "💎", "🔑": "🔑", "📍": "📍", "💬": "💬", "📋": "📋", "⭐": "⭐",
-  "🎯": "🎯", "🏆": "🏆", "✅": "✅", "📞": "📞",
-};
+// ─── Dynamic lucide icon + emoji resolver ────────────────────────────────────
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
+  if (!name) return null;
+  // If it looks like an emoji (short, no uppercase start) render as text
+  const isEmoji = name.length <= 4 && !/^[A-Z]/.test(name);
+  if (isEmoji) return <span className={className}>{name}</span>;
+  const Icon = (LucideIcons as Record<string, any>)[name];
+  if (!Icon) return <span className={className}>◆</span>;
+  return <Icon className={className} />;
+}
+
+// ─── Scroll-triggered fade-up animation ──────────────────────────────────────
+function FadeUp({
+  children,
+  delay = 0,
+  className,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setVisible(true); },
+      { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "transition-all duration-700 ease-out",
+        visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
+        className
+      )}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {children}
+    </div>
+  );
+}
 
 interface BrokerInfo {
   id: string;
@@ -324,51 +366,61 @@ export default function LandingPage() {
             style={{
               background:
                 theme.heroStyle === "light-overlay"
-                  ? "rgba(255,255,255,0.7)"
+                  ? "rgba(255,255,255,0.65)"
+                  : (lp.hero.bgImage || project.main_image_url)
+                  ? "linear-gradient(to bottom, rgba(0,0,0,0.40) 0%, rgba(0,0,0,0.72) 100%)"
                   : "rgba(0,0,0,0.65)",
             }}
           />
 
           <div className="relative z-10 max-w-3xl mx-auto space-y-6">
             {/* Badge */}
-            <span
-              className="inline-block px-4 py-1.5 rounded-full text-sm font-semibold lp-btn"
-            >
-              {lp.hero.badge}
-            </span>
+            <FadeUp>
+              <Badge
+                className="lp-btn text-sm font-semibold px-4 py-1.5 rounded-full border-0 shadow-lg"
+              >
+                {lp.hero.badge}
+              </Badge>
+            </FadeUp>
 
             {/* Title */}
-            <h1
-              className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight"
-              style={{ color: theme.heroStyle === "light-overlay" ? theme.bgColor : "#fff" }}
-            >
-              {lp.hero.titleHighlight ? (
-                <>
-                  {lp.hero.title.replace(lp.hero.titleHighlight, "")}{" "}
-                  <span className="lp-accent">{lp.hero.titleHighlight}</span>
-                </>
-              ) : (
-                lp.hero.title
-              )}
-            </h1>
+            <FadeUp delay={120}>
+              <h1
+                className="text-3xl sm:text-5xl md:text-6xl font-extrabold leading-tight"
+                style={{ color: theme.heroStyle === "light-overlay" ? theme.bgColor : "#fff" }}
+              >
+                {lp.hero.titleHighlight ? (
+                  <>
+                    {lp.hero.title.replace(lp.hero.titleHighlight, "")}{" "}
+                    <span className="lp-accent">{lp.hero.titleHighlight}</span>
+                  </>
+                ) : (
+                  lp.hero.title
+                )}
+              </h1>
+            </FadeUp>
 
             {/* Subtitle */}
-            <p
-              className="text-base sm:text-lg md:text-xl max-w-xl mx-auto"
-              style={{
-                color: theme.heroStyle === "light-overlay" ? "#374151" : "rgba(255,255,255,0.85)",
-              }}
-            >
-              {lp.hero.subtitle}
-            </p>
+            <FadeUp delay={220}>
+              <p
+                className="text-base sm:text-lg md:text-xl max-w-xl mx-auto"
+                style={{
+                  color: theme.heroStyle === "light-overlay" ? "#374151" : "rgba(255,255,255,0.85)",
+                }}
+              >
+                {lp.hero.subtitle}
+              </p>
+            </FadeUp>
 
             {/* CTA */}
-            <button
-              onClick={scrollToForm}
-              className="lp-btn inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold shadow-lg transition-all hover:scale-105"
-            >
-              {lp.hero.ctaText}
-            </button>
+            <FadeUp delay={340}>
+              <button
+                onClick={scrollToForm}
+                className="lp-btn inline-block px-6 sm:px-8 py-3 sm:py-4 rounded-xl text-base sm:text-lg font-bold shadow-lg transition-all hover:scale-105 active:scale-95"
+              >
+                {lp.hero.ctaText}
+              </button>
+            </FadeUp>
           </div>
 
           {/* Scroll indicator */}
@@ -386,23 +438,26 @@ export default function LandingPage() {
         {/* ─── LOCATION ─────────────────────────────────────────────────── */}
         <section className="lp-section-alt py-16 px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="flex items-center gap-3 mb-4">
-              <MapPin className="w-6 h-6 lp-accent" />
-              <h2 className="text-2xl md:text-3xl font-bold">{lp.location.title}</h2>
-            </div>
-            <p className="text-base md:text-lg opacity-80 mb-8 max-w-2xl">
-              {lp.location.description}
-            </p>
+            <FadeUp>
+              <div className="flex items-center gap-3 mb-4">
+                <MapPin className="w-6 h-6 lp-accent" />
+                <h2 className="text-2xl md:text-3xl font-bold">{lp.location.title}</h2>
+              </div>
+              <p className="text-base md:text-lg opacity-80 mb-8 max-w-2xl">
+                {lp.location.description}
+              </p>
+            </FadeUp>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {lp.location.highlights.map((h, i) => (
-                <div
-                  key={i}
-                  className="flex items-center gap-2 p-3 rounded-xl border"
-                  style={{ borderColor: `${theme.primaryColor}40` }}
-                >
-                  <Check className="w-4 h-4 lp-accent shrink-0" />
-                  <span className="text-xs sm:text-sm font-medium">{h}</span>
-                </div>
+                <FadeUp key={i} delay={i * 80}>
+                  <div
+                    className="flex items-center gap-2 p-3 rounded-xl border h-full hover:scale-[1.02] transition-transform"
+                    style={{ borderColor: `${theme.primaryColor}40` }}
+                  >
+                    <Check className="w-4 h-4 lp-accent shrink-0" />
+                    <span className="text-xs sm:text-sm font-medium">{h}</span>
+                  </div>
+                </FadeUp>
               ))}
             </div>
           </div>
@@ -432,26 +487,67 @@ export default function LandingPage() {
           </section>
         )}
 
+        {/* ─── GALLERY ──────────────────────────────────────────────────── */}
+        {lp.gallery && lp.gallery.length > 0 && (
+          <section className="py-12 px-4">
+            <div className="max-w-4xl mx-auto">
+              <h2 className="text-2xl md:text-3xl font-bold text-center mb-8">Galeria</h2>
+              <div
+                className={cn(
+                  "grid gap-2",
+                  lp.gallery.length === 1
+                    ? "grid-cols-1"
+                    : lp.gallery.length === 2
+                    ? "grid-cols-2"
+                    : "grid-cols-2 md:grid-cols-3"
+                )}
+              >
+                {lp.gallery.map((img, i) => (
+                  <div
+                    key={i}
+                    className={cn(
+                      "overflow-hidden rounded-xl",
+                      i === 0 && lp.gallery!.length >= 3
+                        ? "col-span-2 aspect-video"
+                        : "aspect-square"
+                    )}
+                  >
+                    <img
+                      src={img}
+                      alt={`Foto ${i + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* ─── FEATURES / DIFERENCIAIS ──────────────────────────────────── */}
         {lp.features.length > 0 && (
           <section className="py-16 px-4">
             <div className="max-w-4xl mx-auto">
-              <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
-                Diferenciais
-              </h2>
+              <FadeUp>
+                <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+                  Diferenciais
+                </h2>
+              </FadeUp>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {lp.features.map((f, i) => (
-                  <div
-                    key={i}
-                    className="flex flex-col items-center text-center p-5 rounded-2xl border"
-                    style={{ borderColor: `${theme.primaryColor}30` }}
-                  >
-                    <span className="text-3xl mb-3">{f.icon}</span>
-                    <span className="text-xs uppercase tracking-wider opacity-60 mb-1">
-                      {f.label}
-                    </span>
-                    <span className="text-lg font-bold lp-accent">{f.value}</span>
-                  </div>
+                  <FadeUp key={i} delay={i * 70}>
+                    <div
+                      className="flex flex-col items-center text-center p-5 rounded-2xl border h-full hover:scale-[1.03] hover:shadow-lg transition-all duration-300"
+                      style={{ borderColor: `${theme.primaryColor}30`, background: `color-mix(in srgb, ${theme.primaryColor} 4%, ${theme.bgColor} 96%)` }}
+                    >
+                      <DynamicIcon name={f.icon} className="w-8 h-8 mb-3 lp-accent" />
+                      <span className="text-xs uppercase tracking-wider opacity-60 mb-1">
+                        {f.label}
+                      </span>
+                      <span className="text-sm font-bold lp-accent">{f.value}</span>
+                    </div>
+                  </FadeUp>
                 ))}
               </div>
             </div>
@@ -461,27 +557,30 @@ export default function LandingPage() {
         {/* ─── AUDIENCE ─────────────────────────────────────────────────── */}
         <section className="lp-section-alt py-16 px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
-              Para quem é
-            </h2>
+            <FadeUp>
+              <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+                Para quem é
+              </h2>
+            </FadeUp>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {lp.audience.map((a, i) => (
-                <div
-                  key={i}
-                  className="flex items-start gap-4 p-5 rounded-2xl border"
-                  style={{ borderColor: `${theme.primaryColor}30` }}
-                >
+                <FadeUp key={i} delay={i * 100}>
                   <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm"
-                    style={{ backgroundColor: theme.primaryColor, color: "#000" }}
+                    className="flex items-start gap-4 p-5 rounded-2xl border h-full hover:scale-[1.02] transition-transform"
+                    style={{ borderColor: `${theme.primaryColor}30` }}
                   >
-                    {i + 1}
+                    <div
+                      className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-sm"
+                      style={{ backgroundColor: theme.primaryColor, color: "#000" }}
+                    >
+                      {i + 1}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold mb-1">{a.title}</h3>
+                      <p className="text-sm opacity-70">{a.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold mb-1">{a.title}</h3>
-                    <p className="text-sm opacity-70">{a.description}</p>
-                  </div>
-                </div>
+                </FadeUp>
               ))}
             </div>
           </div>
@@ -495,38 +594,48 @@ export default function LandingPage() {
           }}
         >
           <div className="max-w-2xl mx-auto space-y-4">
-            <span
-              className="inline-block px-4 py-1.5 rounded-full text-sm font-bold lp-btn"
-            >
-              {lp.urgency.highlight}
-            </span>
-            <h2 className="text-2xl md:text-4xl font-extrabold">{lp.urgency.title}</h2>
-            <p className="text-base md:text-lg opacity-80">{lp.urgency.description}</p>
-            <button
-              onClick={scrollToForm}
-              className="lp-btn inline-block px-8 py-3 rounded-xl font-bold shadow-md transition hover:scale-105"
-            >
-              {lp.cta.buttonText}
-            </button>
+            <FadeUp>
+              <Badge className="lp-btn text-sm font-bold px-4 py-1.5 rounded-full border-0">
+                {lp.urgency.highlight}
+              </Badge>
+            </FadeUp>
+            <FadeUp delay={100}>
+              <h2 className="text-2xl md:text-4xl font-extrabold">{lp.urgency.title}</h2>
+            </FadeUp>
+            <FadeUp delay={180}>
+              <p className="text-base md:text-lg opacity-80">{lp.urgency.description}</p>
+            </FadeUp>
+            <FadeUp delay={260}>
+              <button
+                onClick={scrollToForm}
+                className="lp-btn inline-block px-8 py-3 rounded-xl font-bold shadow-md transition hover:scale-105 active:scale-95"
+              >
+                {lp.cta.buttonText}
+              </button>
+            </FadeUp>
           </div>
         </section>
 
         {/* ─── BENEFITS ─────────────────────────────────────────────────── */}
         <section className="lp-section-alt py-16 px-4">
           <div className="max-w-4xl mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
-              Vantagens de se cadastrar
-            </h2>
+            <FadeUp>
+              <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+                Vantagens de se cadastrar
+              </h2>
+            </FadeUp>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {lp.benefits.map((b, i) => (
-                <div key={i} className="flex items-start gap-4 p-5 rounded-2xl border"
-                  style={{ borderColor: `${theme.primaryColor}30` }}>
-                  <span className="text-3xl shrink-0">{b.icon}</span>
-                  <div>
-                    <h3 className="font-semibold mb-1">{b.title}</h3>
-                    <p className="text-sm opacity-70">{b.description}</p>
+                <FadeUp key={i} delay={i * 90}>
+                  <div className="flex items-start gap-4 p-5 rounded-2xl border h-full hover:scale-[1.02] transition-transform"
+                    style={{ borderColor: `${theme.primaryColor}30` }}>
+                    <DynamicIcon name={b.icon} className="w-7 h-7 lp-accent shrink-0 mt-0.5" />
+                    <div>
+                      <h3 className="font-semibold mb-1">{b.title}</h3>
+                      <p className="text-sm opacity-70">{b.description}</p>
+                    </div>
                   </div>
-                </div>
+                </FadeUp>
               ))}
             </div>
           </div>
@@ -535,8 +644,12 @@ export default function LandingPage() {
         {/* ─── CTA FINAL ────────────────────────────────────────────────── */}
         <section className="py-16 px-4 text-center">
           <div className="max-w-2xl mx-auto space-y-4">
-            <h2 className="text-3xl md:text-4xl font-extrabold">{lp.cta.title}</h2>
-            <p className="text-lg opacity-80">{lp.cta.subtitle}</p>
+            <FadeUp>
+              <h2 className="text-3xl md:text-4xl font-extrabold">{lp.cta.title}</h2>
+            </FadeUp>
+            <FadeUp delay={120}>
+              <p className="text-lg opacity-80">{lp.cta.subtitle}</p>
+            </FadeUp>
           </div>
         </section>
 

@@ -137,6 +137,7 @@ export interface LandingPageData {
   theme: LandingPageTheme;
   hero: LandingPageHero;
   location: LandingPageLocation;
+  gallery?: string[];
   features: LandingPageFeatureItem[];
   audience: LandingPageAudienceCard[];
   urgency: LandingPageUrgency;

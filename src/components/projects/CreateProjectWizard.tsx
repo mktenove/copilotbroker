@@ -316,7 +316,7 @@ export function CreateProjectWizard({
 
       const genRes = await supabase.functions.invoke("generate-landing-page", {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { project: { ...projectPayload, id: projectId } },
+        body: { project: { ...projectPayload, id: projectId, scraped_images: form._scraped_images } },
       });
 
       if (genRes.error || genRes.data?.error) {
@@ -520,7 +520,7 @@ export function CreateProjectWizard({
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Fotos ({form._scraped_images.length}) — Clique para definir capa
+                    Fotos ({form._scraped_images.length}) — Clique para capa · X para remover
                   </p>
                   {imgFailCount > 0 && (
                     <span className="text-xs text-yellow-400">{imgFailCount} não carregaram</span>
@@ -528,29 +528,47 @@ export function CreateProjectWizard({
                 </div>
                 <div className="grid grid-cols-5 gap-1.5 max-h-64 overflow-y-auto pr-1">
                   {form._scraped_images.map((img, i) => (
-                    <button
+                    <div
                       key={i}
-                      type="button"
-                      onClick={() => set("main_image_url", img)}
                       className={cn(
-                        "relative rounded-lg overflow-hidden h-20 border-2 transition-all",
+                        "relative rounded-lg overflow-hidden h-20 border-2 transition-all group",
                         form.main_image_url === img
                           ? "border-primary ring-1 ring-primary"
                           : "border-transparent hover:border-[#3a3a3e]"
                       )}
                     >
-                      <img
-                        src={img}
-                        className="w-full h-full object-cover"
-                        alt=""
-                        onError={() => setImgFailCount((c) => c + 1)}
-                      />
+                      <button
+                        type="button"
+                        onClick={() => set("main_image_url", img)}
+                        className="absolute inset-0 w-full h-full"
+                      >
+                        <img
+                          src={img}
+                          className="w-full h-full object-cover"
+                          alt=""
+                          onError={() => setImgFailCount((c) => c + 1)}
+                        />
+                      </button>
                       {form.main_image_url === img && (
-                        <div className="absolute top-1 left-1 bg-primary text-black text-[10px] font-bold px-1.5 py-0.5 rounded">
+                        <div className="absolute top-1 left-1 bg-primary text-black text-[10px] font-bold px-1.5 py-0.5 rounded pointer-events-none">
                           CAPA
                         </div>
                       )}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setForm((prev) => ({
+                            ...prev,
+                            _scraped_images: prev._scraped_images.filter((_, idx) => idx !== i),
+                            main_image_url: prev.main_image_url === img ? "" : prev.main_image_url,
+                          }));
+                        }}
+                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>

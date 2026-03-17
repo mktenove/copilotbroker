@@ -51,6 +51,9 @@ Deno.serve(async (req) => {
     const {
       name, slug, city, city_slug, description, status,
       hero_title, hero_subtitle, webhook_url, tenant_id,
+      property_type, address, bedrooms, suites, parking_spots,
+      area_m2, price_range, ideal_buyer, differentials, amenities,
+      main_image_url, video_url, map_embed_url,
     } = body;
 
     if (!name || !slug || !city || !city_slug) {
@@ -74,6 +77,19 @@ Deno.serve(async (req) => {
           hero_subtitle: hero_subtitle || null,
           webhook_url: webhook_url || null,
           tenant_id: tenant_id || null,
+          property_type: property_type || null,
+          address: address || null,
+          bedrooms: bedrooms || null,
+          suites: suites || null,
+          parking_spots: parking_spots || null,
+          area_m2: area_m2 || null,
+          price_range: price_range || null,
+          ideal_buyer: ideal_buyer || null,
+          differentials: differentials || null,
+          amenities: amenities || null,
+          main_image_url: main_image_url || null,
+          video_url: video_url || null,
+          map_embed_url: map_embed_url || null,
           is_active: true,
         })
         .select("id, name, slug, city, city_slug")

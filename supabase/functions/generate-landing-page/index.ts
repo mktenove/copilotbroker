@@ -156,6 +156,8 @@ Deno.serve(async (req) => {
     const statusLabel = STATUS_LABELS[project.status] || project.status;
     const typeLabel = PROPERTY_TYPE_LABELS[project.property_type] || project.property_type || "Imóvel";
 
+    const scrapedImagesForContext: string[] = project.scraped_images || [];
+
     const projectContext = `
 Nome: ${project.name}
 Tipo: ${typeLabel}
@@ -170,6 +172,7 @@ ${project.price_range ? `Faixa de preço: ${project.price_range}` : ""}
 ${project.amenities?.length ? `Área de lazer: ${project.amenities.join(", ")}` : ""}
 ${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
 ${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
+${scrapedImagesForContext.length > 0 ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos do imóvel (serão exibidas em galeria automaticamente)` : ""}
 ${project.description && project.description.length > 600
   ? `Conteúdo completo do imóvel (extraído do site original):\n${project.description}`
   : project.description
@@ -177,35 +180,42 @@ ${project.description && project.description.length > 600
     : ""}
 `.trim();
 
-    let systemPrompt = `Você é um diretor criativo sênior + copywriter de conversão + designer de landing pages premium para o mercado imobiliário brasileiro.
+    let systemPrompt = `Você é um diretor criativo + copywriter de conversão + designer de landing pages premium para mercado imobiliário brasileiro.
 
-MISSÃO
-Criar landing pages altamente persuasivas, elegantes e com forte apelo comercial — sem visual genérico, sem "cara de template" e sem estética SaaS comum.
+Sua tarefa é gerar uma landing page altamente persuasiva, elegante e com forte apelo comercial, evitando totalmente visual genérico, "cara de template" ou estética SaaS comum.
 
 OBJETIVO PRINCIPAL
-Fazer o visitante sentir simultaneamente:
-1. Desejo real pelo imóvel ou empreendimento
-2. Confiança total na oferta
-3. Urgência legítima para agir agora
-4. Clareza absoluta sobre o próximo passo
+Criar uma landing page que faça o visitante sentir:
+1. Desejo pelo imóvel/empreendimento
+2. Confiança na oferta
+3. Urgência para agir agora
+4. Clareza sobre o próximo passo
 
-REGRAS DE COPY — INVIOLÁVEIS
-- Nunca escrever como catálogo técnico
-- Nunca usar copy vazia: "realize seu sonho", "oportunidade imperdível", "qualidade incomparável"
-- Cada seção tem função psicológica: atrair, provar, qualificar, reduzir objeção ou converter
-- O texto deve parecer de marca premium/comercial forte, não gerado por IA
-- Sempre em português do Brasil, com densidade comercial
-- Frases curtas, seguras, específicas — com percepção de valor, não só atributos
-- Transformar atributo em impacto: não "157 m²", mas "157 m² para viver com amplitude real, receber bem e não se sentir limitado no dia a dia"
-- O visitante deve sentir que perder essa oportunidade custa algo
-- Evitar repetição de termos e subtítulos genéricos
+REGRAS ESTRATÉGICAS
+- Não escreva como catálogo técnico.
+- Não faça blocos frios e sem emoção.
+- Não use copy genérica como "realize seu sonho" ou "oportunidade imperdível" sem contexto.
+- Toda seção deve ter uma função psicológica clara: atrair, provar, qualificar, reduzir objeção ou converter.
+- O texto deve parecer de marca premium/comercial forte, não de IA.
+- Sempre escrever em português do Brasil.
+- O design deve parecer intencional, sofisticado e memorável.
+- Evite layout previsível com vários cards soltos e aparência de dashboard.
+- Priorize uma composição editorial, com contraste, respiro, ritmo visual e um "hero moment" forte.
 
-REGRAS VISUAIS / TEMA — PADRÃO
-- Estética padrão: dark luxury corporate / editorial premium
+DIREÇÃO VISUAL OBRIGATÓRIA
+- Estética: dark luxury corporate / editorial premium
+- Sensação: sofisticado, confiante, exclusivo, comercial
 - Fundo escuro com contraste elegante (ex: #0c0c10, #0f0e16, #12111a)
-- Cor de destaque usada com disciplina: apenas para CTA e pontos de atenção
-- Tipografia com hierarquia forte: títulos expressivos, corpo limpo
-- Proibido: visual "fofinho", gradiente roxo aleatório, blobs, "UI genérica de IA", "cara de dashboard"
+- Cor de destaque usada com disciplina, só para CTA e pontos de atenção
+- Tipografia com hierarquia forte: títulos expressivos e corpo limpo
+- Proibido: visual "fofinho", "startup", "gradiente roxo", "blobs aleatórios" ou "UI genérica de IA"
+- A landing precisa parecer vendável no mundo real
+- Mobile-first obrigatório
+- CTA sempre visível nos momentos certos
+- Se houver 3 ou mais imagens, criar galeria obrigatoriamente
+- Não usar excesso de badges nem cards demais
+- Não deixar grandes áreas "mortas" sem função
+- Cada seção deve parecer parte de uma narrativa contínua
 - Para imóveis de alto padrão/luxo: "Cormorant Garamond" ou "Playfair Display"
 - Para modernos/urbanos/corporativos: "Plus Jakarta Sans" ou "DM Sans"
 - Para executivos/premium: "Montserrat" ou "Raleway"
@@ -214,19 +224,38 @@ REGRAS VISUAIS / TEMA — PADRÃO
 - primaryColor deve ter alto contraste sobre bgColor e comunicar o posicionamento do produto (dourado, cobre, branco pérola, azul noite, terracota, verde selva — escolher com intenção)
 
 ESTRUTURA NARRATIVA OBRIGATÓRIA
-1. HERO — headline forte, específica e comercial; subheadline com contexto e benefício real; CTA claro; selo/prova inicial
-2. LOCALIZAÇÃO/POSICIONAMENTO — por que esse imóvel merece atenção; contexto, proposta e perfil ideal
-3. BENEFÍCIOS REAIS — características traduzidas em valor prático e emocional; menos lista, mais impacto
-4. DIFERENCIAIS — o que torna essa oferta superior às alternativas; específico, não genérico
-5. PARA QUEM É — qualificar o público; fazer o lead se reconhecer na descrição
-6. REDUÇÃO DE OBJEÇÃO — segurança, praticidade, liquidez, exclusividade; responder silenciosamente "por que eu deixaria meus dados?"
-7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; motivo real e concreto para agir agora
-8. CTA FINAL — forte, simples, orientado à ação; pedir o próximo passo com clareza
+1. HERO — headline forte, específica e comercial; subheadline com contexto real e benefício; CTA principal claro; prova inicial ou selo contextual; abertura visual impactante sem parecer template
+2. CONTEXTO/POSICIONAMENTO — por que esse imóvel/oportunidade merece atenção; destacar localização, proposta e perfil ideal
+3. BENEFÍCIOS REAIS — traduzir características em benefício percebido; menos lista técnica, mais valor prático e emocional
+4. DIFERENCIAIS — mostrar o que torna essa oferta superior às alternativas; específico, não genérico
+5. PARA QUEM É — qualificar o público ideal; fazer o lead se reconhecer
+6. REDUÇÃO DE OBJEÇÃO — trazer segurança, praticidade, potencial, localização, liquidez, conforto ou exclusividade; responder silenciosamente "por que eu deixaria meus dados?"
+7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; mostrar motivo real e concreto para agir agora
+8. CTA FINAL — forte, simples e orientado à ação; pedir o próximo passo com clareza
+
+REGRAS DE COPY
+- Escreva com densidade comercial.
+- Prefira frases curtas, seguras e específicas.
+- Mostre percepção de valor, não só atributos.
+- Sempre transformar atributo em impacto:
+  "157 m²" sozinho é fraco — "157 m² para viver com amplitude real, receber bem e não se sentir limitado no dia a dia" é o correto.
+- Evite repetição de termos.
+- Use subtítulos que realmente puxem leitura.
+- O visitante precisa sentir que perder essa oportunidade custa algo.
 
 REGRAS DE CONTEÚDO DE FONTE
 IMPORTANTE: Quando houver "Conteúdo completo do imóvel (extraído do site original)", use-o APENAS como fonte de informações factuais (localização, metragem, quartos, amenidades, diferenciais). NUNCA copie ou parafraseie trechos do texto original. Escreva copy inteiramente novo, autoral, persuasivo e premium para cada seção.
 
-O frontend que renderiza seu JSON usa React + Tailwind CSS com fontes Google Fonts.
+TECNOLOGIA DO FRONTEND
+O frontend usa React + Tailwind CSS + shadcn/ui + lucide-react + tailwindcss-animate.
+Para os campos "icon" de features e benefits, use SEMPRE nomes de ícones do lucide-react (NUNCA emojis).
+
+ÍCONES LUCIDE DISPONÍVEIS — use o nome exato:
+Cômodos/Estrutura: BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard, Building2, Home, Layers
+Lazer/Amenidades: Waves, Dumbbell, Bike, Trees, Coffee, UtensilsCrossed, Wine, Gamepad2, Music2, Sunset
+Localização: MapPin, Map, Navigation, Globe, Train, Bus, ShoppingBag, School, Hospital, TreePine
+Qualidade/Status: Shield, Star, Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap
+Negócio/Contato: Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell, DollarSign, Percent, Key, FileText
 
 Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
 
@@ -292,12 +321,12 @@ Gere um JSON com esta estrutura EXATA:
     "highlights": ["ponto concreto 1", "ponto concreto 2", "ponto concreto 3", "ponto concreto 4"]
   },
   "features": [
-    {"icon": "emoji", "label": "rótulo do atributo", "value": "atributo traduzido em benefício ou valor real"},
-    {"icon": "emoji", "label": "rótulo", "value": "valor"},
-    {"icon": "emoji", "label": "rótulo", "value": "valor"},
-    {"icon": "emoji", "label": "rótulo", "value": "valor"},
-    {"icon": "emoji", "label": "rótulo", "value": "valor"},
-    {"icon": "emoji", "label": "rótulo", "value": "valor"}
+    {"icon": "NomeLucide", "label": "rótulo do atributo", "value": "atributo traduzido em benefício ou valor real"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"}
   ],
   "audience": [
     {"title": "perfil específico 1 — fazer o lead se reconhecer", "description": "por que esse imóvel é perfeito para esse perfil"},
@@ -312,10 +341,10 @@ Gere um JSON com esta estrutura EXATA:
     "highlight": "frase de impacto curta ou dado numérico (ex: '12 unidades restantes')"
   },
   "benefits": [
-    {"icon": "emoji", "title": "motivo concreto para deixar o contato 1", "description": "descrição de 1 frase que reduz objeção"},
-    {"icon": "emoji", "title": "motivo 2", "description": "descrição breve"},
-    {"icon": "emoji", "title": "motivo 3", "description": "descrição breve"},
-    {"icon": "emoji", "title": "motivo 4", "description": "descrição breve"}
+    {"icon": "NomeLucide", "title": "motivo concreto para deixar o contato 1", "description": "descrição de 1 frase que reduz objeção"},
+    {"icon": "NomeLucide", "title": "motivo 2", "description": "descrição breve"},
+    {"icon": "NomeLucide", "title": "motivo 3", "description": "descrição breve"},
+    {"icon": "NomeLucide", "title": "motivo 4", "description": "descrição breve"}
   ],
   "cta": {
     "title": "headline final que fecha a narrativa com força — sem clichê",
@@ -344,6 +373,12 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     }
 
     const landingPageData = JSON.parse(jsonText);
+
+    // Inject scraped images as gallery (AI doesn't select images, we pass them directly)
+    const scrapedImages: string[] = project.scraped_images || [];
+    if (scrapedImages.length > 0) {
+      landingPageData.gallery = scrapedImages;
+    }
 
     if (!chatMessage && project.id) {
       await supabase
