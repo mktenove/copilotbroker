@@ -582,6 +582,13 @@ export default function ProjectEditor() {
   }, [projectId]);
 
   useEffect(() => {
+    if (brokerId && !broker) {
+      supabase.from("brokers").select("id, name, slug").eq("id", brokerId).maybeSingle()
+        .then(({ data }) => { if (data) setBroker(data); });
+    }
+  }, [brokerId]);
+
+  useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
@@ -609,15 +616,7 @@ export default function ProjectEditor() {
         setLpData(buildDefaultLp(typedProject as Project));
       }
 
-      // Load broker for URL preview
-      if (brokerId) {
-        const { data: brokerData } = await supabase
-          .from("brokers")
-          .select("id, name, slug")
-          .eq("id", brokerId)
-          .maybeSingle();
-        if (brokerData) setBroker(brokerData);
-      }
+      // broker is loaded separately in useEffect([brokerId])
     } catch (err) {
       console.error(err);
     } finally {
