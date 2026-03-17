@@ -320,9 +320,10 @@ export interface LandingPageRendererProps {
   lp: LandingPageData;
   project: Project;
   broker: { id: string; name: string; slug: string; whatsapp?: string | null } | null;
+  isPreview?: boolean;
 }
 
-export function LandingPageRenderer({ lp, project, broker }: LandingPageRendererProps) {
+export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingPageRendererProps) {
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
@@ -334,6 +335,7 @@ export function LandingPageRenderer({ lp, project, broker }: LandingPageRenderer
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPreview) { toast.info("Formulário desativado no preview."); return; }
     if (!name.trim() || !whatsapp.trim()) { toast.error("Nome e WhatsApp são obrigatórios."); return; }
     if (!project || !broker) return;
     setSubmitting(true);

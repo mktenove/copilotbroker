@@ -1148,8 +1148,8 @@ export default function ProjectEditor() {
               )}
             </div>
             {lpData && project ? (
-              <div className="flex-1 overflow-y-auto" style={{ pointerEvents: "none" }}>
-                <LandingPageRenderer lp={lpData} project={project} broker={broker} />
+              <div className="flex-1 overflow-y-auto">
+                <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
               </div>
             ) : null}
           </div>
