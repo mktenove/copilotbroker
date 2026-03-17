@@ -177,7 +177,9 @@ export function CreateProjectWizard({
           slug: s.name ? toSlug(s.name) : prev.slug,
           city: s.city || prev.city,
           city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-          description: s.description || (s.page_content ? s.page_content.slice(0, 400) : '') || prev.description,
+          description: (s.description && s.description.length > 60 ? s.description : null)
+            || (s.page_content && s.page_content.length > 120 ? s.page_content.slice(0, 400) : null)
+            || prev.description,
           bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
           suites: s.suites != null ? String(s.suites) : prev.suites,
           parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
@@ -642,15 +644,23 @@ export function CreateProjectWizard({
                 </p>
               </div>
 
+              {!form.description && (
+                <div className="flex items-start gap-2.5 p-3 rounded-lg border border-yellow-500/25 bg-yellow-500/8 text-xs text-yellow-400/90">
+                  <span className="mt-0.5 shrink-0">⚡</span>
+                  <span>O site não permitiu extração automática de texto (renderização por JavaScript). Cole abaixo a descrição do imóvel — quanto mais detalhes, melhor a landing page.</span>
+                </div>
+              )}
+
               <div className="space-y-1.5">
-                <Label>Conteúdo Completo do Imóvel *</Label>
+                <Label>Conteúdo Completo do Imóvel</Label>
                 <p className="text-xs text-muted-foreground/70">
-                  Inclua: descrição, diferenciais, infraestrutura, tipologias, faixa de preço, público-alvo, argumentos de venda, links de mapas interativos, vídeos do YouTube, e qualquer informação relevante.
+                  Inclua: descrição, diferenciais, infraestrutura, tipologias, faixa de preço, público-alvo, argumentos de venda. Pode deixar vazio — a IA usará as fotos e dados estruturais.
                 </p>
                 <Textarea
                   value={form.description}
                   onChange={(e) => set("description", e.target.value)}
                   rows={11}
+                  placeholder="Cole aqui a descrição do imóvel copiada do site..."
                   className="bg-[#141417] border-[#2a2a2e] text-sm"
                 />
               </div>
