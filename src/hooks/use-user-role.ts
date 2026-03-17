@@ -12,9 +12,11 @@ interface UserRoleState {
 }
 
 export const useUserRole = () => {
+  const isPreview = window.location.pathname.startsWith("/preview/");
+
   const [state, setState] = useState<UserRoleState>({
     role: null,
-    isLoading: true,
+    isLoading: isPreview ? false : true,
     brokerId: null,
     isLeader: false,
     tenantId: null,
@@ -24,6 +26,7 @@ export const useUserRole = () => {
   const cachedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (isPreview) return;
     const fetchUserRole = async (userId: string) => {
       // Skip if already fetching or cached for same user
       if (isFetchingRef.current) return;

@@ -20,15 +20,18 @@ const TenantContext = createContext<TenantInfo>({
 export const useTenant = () => useContext(TenantContext);
 
 export function TenantProvider({ children }: { children: ReactNode }) {
+  const isPreview = window.location.pathname.startsWith("/preview/");
+
   const [tenant, setTenant] = useState<TenantInfo>({
     tenantId: null,
     tenantName: null,
     planType: null,
     status: null,
-    isLoading: true,
+    isLoading: isPreview ? false : true,
   });
 
   useEffect(() => {
+    if (isPreview) return;
     const fetchTenant = async (_userId: string) => {
       try {
         // Use SECURITY DEFINER RPC to get tenant_id (bypasses RLS on tenant_memberships)

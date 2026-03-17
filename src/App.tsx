@@ -28,6 +28,7 @@ import AdminCopilotConfig from "./pages/AdminCopilotConfig";
 import Termos from "./pages/Termos";
 import LeadPage from "./pages/LeadPage";
 import LandingPage from "./pages/LandingPage";
+import PreviewPage from "./pages/PreviewPage";
 import ProjectEditor from "./pages/ProjectEditor";
 import Signup from "./pages/Signup";
 import BillingSuccess from "./pages/BillingSuccess";
@@ -60,6 +61,9 @@ const App = () => (
           <BrowserRouter>
             <AppHead />
             <Routes>
+            {/* Isolated preview route — no auth hooks, safe for iframe */}
+            <Route path="/preview/:projectId" element={<PreviewPage />} />
+
             <Route path="/" element={<Home />} />
             
             {/* Public invite acceptance */}

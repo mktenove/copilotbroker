@@ -284,7 +284,7 @@ function getFontStyle(font: string) {
 }
 
 // ─── Default landing page ─────────────────────────────────────────────────────
-function buildDefault(project: Project): LandingPageData {
+export function buildDefault(project: Project): LandingPageData {
   const isRenting = project.status === "renting";
   return {
     theme: { primaryColor: "#FFFF00", accentColor: "#facc15", bgColor: "#0f0f12", textColor: "#ffffff", fontFamily: "Inter", heroStyle: "dark-overlay" },

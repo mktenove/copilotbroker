@@ -631,6 +631,10 @@ export default function ProjectEditor() {
       ? `${window.location.origin}/${project.city_slug}/${project.slug}/${broker.slug}`
       : "";
 
+  const previewUrl = project
+    ? `${window.location.origin}/preview/${project.id}`
+    : "";
+
   const copyUrl = async () => {
     if (!publicUrl) return;
     await navigator.clipboard.writeText(publicUrl);
@@ -1145,7 +1149,7 @@ export default function ProjectEditor() {
                 </button>
               )}
             </div>
-            {publicUrl ? (
+            {previewUrl ? (
               <div className="flex-1 relative">
                 {!iframeLoaded && (
                   <div className="absolute inset-0 flex items-center justify-center bg-[#0f0f12] z-10">
@@ -1154,7 +1158,7 @@ export default function ProjectEditor() {
                 )}
                 <iframe
                   ref={iframeRef}
-                  src={publicUrl}
+                  src={previewUrl}
                   className="w-full h-full border-0"
                   title="Preview"
                   onLoad={() => setIframeLoaded(true)}
