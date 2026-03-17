@@ -797,17 +797,23 @@ export default function ProjectEditor() {
   // Persist data directly to DB (fire-and-forget)
   const persistNow = (data: LandingPageData) => {
     const proj = projectRef.current;
-    if (!proj) return;
+    console.log("[persistNow] proj:", proj?.id, "| hero.badge:", (data as any).hero?.badge);
+    if (!proj) { console.warn("[persistNow] ABORTED — projectRef.current is null"); return; }
     (supabase.from("projects") as any)
       .update({ landing_page_data: data })
       .eq("id", proj.id)
-      .then(({ error }: { error: Error | null }) => {
-        if (error) console.error("[persist]", error);
+      .then(({ error, data: result }: { error: Error | null; data: any }) => {
+        if (error) {
+          console.error("[persistNow] SUPABASE ERROR:", error);
+        } else {
+          console.log("[persistNow] OK — rows updated:", result);
+        }
       });
   };
 
   const handleLpUpdate = (path: string, value: string) => {
     const prev = lpDataRef.current;
+    console.log("[handleLpUpdate] path:", path, "| value:", value, "| prev exists:", !!prev);
     if (!prev) return;
     const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -981,29 +987,28 @@ export default function ProjectEditor() {
   };
 
   const save = async (targetStatus: 'draft' | 'published') => {
-    // Cancel any pending auto-save to avoid race condition
-    if (autoSaveTimer.current) {
-      clearTimeout(autoSaveTimer.current);
-      autoSaveTimer.current = null;
-    }
-    // lpDataRef.current is always kept in sync synchronously by the handlers
+    if (autoSaveTimer.current) { clearTimeout(autoSaveTimer.current); autoSaveTimer.current = null; }
     const currentData = lpDataRef.current;
     const currentProject = projectRef.current;
+    console.log("[save] status:", targetStatus, "| project:", currentProject?.id, "| data exists:", !!currentData, "| hero.badge:", (currentData as any)?.hero?.badge);
     if (!currentData || !currentProject) {
       toast.error("Dados não carregados ainda.");
       return;
     }
     setSaving(true);
     try {
-      const { error } = await (supabase
+      const { error, data: result, status, statusText } = await (supabase
         .from("projects") as any)
         .update({ landing_page_data: currentData, landing_page_status: targetStatus })
-        .eq("id", currentProject.id);
+        .eq("id", currentProject.id)
+        .select();
+      console.log("[save] response — status:", status, statusText, "| error:", error, "| result:", result);
       if (error) throw error;
       setLpStatus(targetStatus);
       toast.success(targetStatus === 'published' ? "Landing page publicada!" : "Rascunho salvo!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
+      console.error("[save] CATCH:", msg);
       toast.error("Erro ao salvar: " + msg);
     } finally {
       setSaving(false);
