@@ -39,6 +39,9 @@ import {
   CheckCircle,
   MapPin,
   Home,
+  ImageIcon,
+  Video,
+  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -148,6 +151,13 @@ export function CreateProjectWizard({
   const [form, setForm] = useState<WizardFormData>(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Temp ID for pre-creation uploads
+  const [tempId] = useState(() => crypto.randomUUID());
+  const [imageUploading, setImageUploading] = useState(false);
+  const [videoUploading, setVideoUploading] = useState(false);
+  const imageFileRef = useRef<HTMLInputElement>(null);
+  const videoFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => () => importTimers.current.forEach(clearTimeout), []);
 
@@ -841,14 +851,136 @@ export function CreateProjectWizard({
                 {/* STEP 3 */}
                 {step === 3 && (
                   <>
+                    {/* Image upload */}
                     <div className="space-y-2">
-                      <Label>URL da Imagem Principal</Label>
-                      <Input type="url" value={form.main_image_url} onChange={(e) => set("main_image_url", e.target.value)} placeholder="https://..." className="bg-[#141417] border-[#2a2a2e]" />
+                      <Label>Imagem Principal</Label>
+                      <input
+                        ref={imageFileRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          setImageUploading(true);
+                          try {
+                            const path = `projects/${tempId}/${Date.now()}-${file.name}`;
+                            const { error } = await supabase.storage
+                              .from("project-media")
+                              .upload(path, file, { upsert: true });
+                            if (error) throw error;
+                            const { data: { publicUrl } } = supabase.storage
+                              .from("project-media")
+                              .getPublicUrl(path);
+                            set("main_image_url", publicUrl);
+                            toast.success("Imagem enviada!");
+                          } catch (err) {
+                            toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+                          } finally {
+                            setImageUploading(false);
+                            if (imageFileRef.current) imageFileRef.current.value = "";
+                          }
+                        }}
+                      />
+                      {form.main_image_url ? (
+                        <div className="relative rounded-lg overflow-hidden h-32 bg-[#141417] border border-[#2a2a2e]">
+                          <img src={form.main_image_url} className="w-full h-full object-cover" alt="" />
+                          <button
+                            type="button"
+                            onClick={() => set("main_image_url", "")}
+                            className="absolute top-2 right-2 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => imageFileRef.current?.click()}
+                            className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 hover:bg-black/80 text-white text-xs flex items-center gap-1"
+                          >
+                            <Upload className="w-3 h-3" /> Trocar
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => imageFileRef.current?.click()}
+                          disabled={imageUploading}
+                          className="w-full h-28 rounded-lg border-2 border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground disabled:opacity-50"
+                        >
+                          {imageUploading ? (
+                            <RefreshCw className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <ImageIcon className="w-5 h-5" />
+                          )}
+                          <span className="text-xs">{imageUploading ? "Enviando..." : "Clique para enviar imagem"}</span>
+                        </button>
+                      )}
                       <p className="text-xs text-muted-foreground/70">Usada como fundo do hero da landing page.</p>
                     </div>
+
+                    {/* Video upload */}
                     <div className="space-y-2">
-                      <Label>URL do Vídeo (opcional)</Label>
-                      <Input type="url" value={form.video_url} onChange={(e) => set("video_url", e.target.value)} placeholder="https://youtube.com/..." className="bg-[#141417] border-[#2a2a2e]" />
+                      <Label>Vídeo (opcional)</Label>
+                      <input
+                        ref={videoFileRef}
+                        type="file"
+                        accept="video/*"
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          if (file.size > 50 * 1024 * 1024) {
+                            toast.error("O vídeo deve ter no máximo 50 MB");
+                            if (videoFileRef.current) videoFileRef.current.value = "";
+                            return;
+                          }
+                          setVideoUploading(true);
+                          try {
+                            const ext = file.name.split(".").pop() || "mp4";
+                            const path = `projects/${tempId}/${Date.now()}.${ext}`;
+                            const { error } = await supabase.storage
+                              .from("project-media")
+                              .upload(path, file, { upsert: true });
+                            if (error) throw error;
+                            const { data: { publicUrl } } = supabase.storage
+                              .from("project-media")
+                              .getPublicUrl(path);
+                            set("video_url", publicUrl);
+                            toast.success("Vídeo enviado!");
+                          } catch (err) {
+                            toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
+                          } finally {
+                            setVideoUploading(false);
+                            if (videoFileRef.current) videoFileRef.current.value = "";
+                          }
+                        }}
+                      />
+                      {form.video_url ? (
+                        <div className="relative rounded-lg overflow-hidden bg-[#141417] border border-[#2a2a2e] p-2">
+                          <video src={form.video_url} className="w-full max-h-28 rounded" controls />
+                          <button
+                            type="button"
+                            onClick={() => set("video_url", "")}
+                            className="absolute top-3 right-3 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => videoFileRef.current?.click()}
+                          disabled={videoUploading}
+                          className="w-full h-20 rounded-lg border-2 border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground disabled:opacity-50"
+                        >
+                          {videoUploading ? (
+                            <RefreshCw className="w-5 h-5 animate-spin" />
+                          ) : (
+                            <Video className="w-5 h-5" />
+                          )}
+                          <span className="text-xs">{videoUploading ? "Enviando..." : "Clique para enviar vídeo (máx. 50 MB)"}</span>
+                        </button>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Embed do Mapa (opcional)</Label>
