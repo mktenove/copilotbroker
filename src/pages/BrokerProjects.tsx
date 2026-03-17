@@ -270,99 +270,132 @@ const BrokerProjects = () => {
       )}
 
       {/* Projects Grid */}
-      <div className="grid gap-3 mb-6">
-        {brokerProjects.length === 0 ? (
-          <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-8 text-center">
-            <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <p className="text-muted-foreground mb-4">
-              Você ainda não está associado a nenhum empreendimento.
-            </p>
-            {planType === 'broker' ? (
-              <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Novo Empreendimento
-              </Button>
-            ) : unassociatedProjects.length > 0 ? (
-              <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsAssociateDialogOpen(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Adicionar Empreendimento
-              </Button>
-            ) : (
-              <p className="text-xs text-muted-foreground">Aguarde a imobiliária adicionar empreendimentos.</p>
-            )}
-          </div>
-        ) : (
-          brokerProjects.map((bp) => (
-            <div
-              key={bp.id}
-              className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-3 hover:border-primary/30 transition-colors"
-            >
-              <div className="flex items-start gap-3">
-                <Building2 className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
-                
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <h3 className="font-semibold text-foreground truncate text-sm">
-                      {bp.project.name}
-                    </h3>
-                    <span className="text-[10px] text-muted-foreground bg-[#2a2a2e] px-1.5 py-0.5 rounded shrink-0">
-                      {bp.project.city}
-                    </span>
-                    {(bp.project as any).landing_page_status === 'published' ? (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-400 border border-green-500/30 shrink-0">
-                        Publicada
-                      </span>
-                    ) : (
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/30 shrink-0">
-                        Rascunho
-                      </span>
-                    )}
-                  </div>
-                  <code className="text-[11px] text-muted-foreground/70 break-all block">
-                    {window.location.origin}{bp.url}
-                  </code>
-                </div>
+      {brokerProjects.length === 0 ? (
+        <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-8 text-center mb-6">
+          <Building2 className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+          <p className="text-muted-foreground mb-4">
+            Você ainda não está associado a nenhum empreendimento.
+          </p>
+          {planType === 'broker' ? (
+            <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Novo Empreendimento
+            </Button>
+          ) : unassociatedProjects.length > 0 ? (
+            <Button className="bg-[#FFFF00] text-black hover:brightness-110" onClick={() => setIsAssociateDialogOpen(true)}>
+              <Plus className="w-4 h-4 mr-2" />
+              Adicionar Empreendimento
+            </Button>
+          ) : (
+            <p className="text-xs text-muted-foreground">Aguarde a imobiliária adicionar empreendimentos.</p>
+          )}
+        </div>
+      ) : (
+        (() => {
+          const published = brokerProjects.filter(bp => (bp.project as any).landing_page_status === 'published');
+          const drafts = brokerProjects.filter(bp => (bp.project as any).landing_page_status !== 'published');
 
-                <div className="flex items-center gap-1 shrink-0">
-                  <button
-                    onClick={() => navigate(`/corretor/empreendimentos/${bp.project.id}/editor`)}
-                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
-                    title="Editar landing page"
-                  >
-                    <Pencil className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => copyUrl(bp.url)}
-                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
-                    title="Copiar link"
-                  >
-                    {copiedUrl === bp.url ? (
-                      <Check className="w-3.5 h-3.5" />
-                    ) : (
-                      <Copy className="w-3.5 h-3.5" />
+          const renderCard = (bp: typeof brokerProjects[0]) => {
+            const isPublished = (bp.project as any).landing_page_status === 'published';
+            return (
+              <div
+                key={bp.id}
+                className={`bg-[#1e1e22] border rounded-lg p-3 hover:border-primary/30 transition-colors ${isPublished ? 'border-green-500/20' : 'border-[#2a2a2e]'}`}
+              >
+                <div className="flex items-start gap-3">
+                  <Building2 className="w-5 h-5 text-muted-foreground mt-0.5 shrink-0" />
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <h3 className="font-semibold text-foreground truncate text-sm">
+                        {bp.project.name}
+                      </h3>
+                      <span className="text-[10px] text-muted-foreground bg-[#2a2a2e] px-1.5 py-0.5 rounded shrink-0">
+                        {bp.project.city}
+                      </span>
+                    </div>
+                    <code className="text-[11px] text-muted-foreground/70 break-all block">
+                      {window.location.origin}{bp.url}
+                    </code>
+                  </div>
+
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => navigate(`/corretor/empreendimentos/${bp.project.id}/editor`)}
+                      className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
+                      title="Editar landing page"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    {isPublished && (
+                      <>
+                        <button
+                          onClick={() => copyUrl(bp.url)}
+                          className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-primary hover:bg-[#2a2a2e] transition-colors"
+                          title="Copiar link"
+                        >
+                          {copiedUrl === bp.url ? (
+                            <Check className="w-3.5 h-3.5" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => window.open(`${window.location.origin}${bp.url}`, "_blank")}
+                          className="p-1.5 rounded-md bg-green-500/15 text-green-400 hover:bg-green-500/25 transition-colors"
+                          title="Abrir página publicada"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </button>
+                      </>
                     )}
-                  </button>
-                  <button
-                    onClick={() => openLanding(bp.url)}
-                    className="p-1.5 rounded-md bg-primary/20 text-primary hover:bg-primary/30 transition-colors"
-                    title="Abrir landing page"
-                  >
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    onClick={() => setProjectToRemove({ bpId: bp.id, projectId: bp.project.id })}
-                    disabled={isSaving}
-                    className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
-                    title="Remover empreendimento"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                    <button
+                      onClick={() => setProjectToRemove({ bpId: bp.id, projectId: bp.project.id })}
+                      disabled={isSaving}
+                      className="p-1.5 rounded-md bg-[#2a2a2e]/50 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors disabled:opacity-50"
+                      title="Remover empreendimento"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
-        )}
-      </div>
+            );
+          };
+
+          return (
+            <>
+              {published.length > 0 && (
+                <div className="mb-5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" />
+                    <p className="text-xs font-semibold text-green-400 uppercase tracking-wider">
+                      Publicadas ({published.length})
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    {published.map(renderCard)}
+                  </div>
+                </div>
+              )}
+
+              {drafts.length > 0 && (
+                <div className="mb-6">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="w-2 h-2 rounded-full bg-slate-500 shrink-0" />
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                      Rascunhos ({drafts.length})
+                    </p>
+                  </div>
+                  <div className="grid gap-2">
+                    {drafts.map(renderCard)}
+                  </div>
+                </div>
+              )}
+            </>
+          );
+        })()
+      )}
 
       {/* Slug Editor */}
       <div className="bg-[#1e1e22] border border-[#2a2a2e] rounded-lg p-3">
