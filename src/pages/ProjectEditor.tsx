@@ -578,8 +578,8 @@ export default function ProjectEditor() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (projectId && !roleLoading) loadEditor();
-  }, [projectId, roleLoading]);
+    if (projectId) loadEditor();
+  }, [projectId]);
 
 
   useEffect(() => {
@@ -610,14 +610,15 @@ export default function ProjectEditor() {
         setLpData(buildDefaultLp(typedProject as Project));
       }
 
-      // brokerId is now guaranteed to be loaded (useEffect waits for !roleLoading)
-      if (brokerId) {
-        const { data: brokerData } = await (supabase.from("brokers" as any)
-          .select("id, name, slug")
-          .eq("id", brokerId)
-          .maybeSingle());
-        if (brokerData) setBroker(brokerData);
-      }
+      // Load broker via broker_projects — doesn't depend on useUserRole timing
+      const { data: bpData } = await (supabase
+        .from("broker_projects" as any)
+        .select("broker_id, broker:brokers(id, name, slug)")
+        .eq("project_id", projectId)
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle());
+      if (bpData?.broker) setBroker(bpData.broker as any);
     } catch (err) {
       console.error(err);
     } finally {
