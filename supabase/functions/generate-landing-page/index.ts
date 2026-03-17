@@ -247,15 +247,28 @@ REGRAS DE CONTEÚDO DE FONTE
 IMPORTANTE: Quando houver "Conteúdo completo do imóvel (extraído do site original)", use-o APENAS como fonte de informações factuais (localização, metragem, quartos, amenidades, diferenciais). NUNCA copie ou parafraseie trechos do texto original. Escreva copy inteiramente novo, autoral, persuasivo e premium para cada seção.
 
 TECNOLOGIA DO FRONTEND
-O frontend usa React + Tailwind CSS + shadcn/ui + lucide-react + tailwindcss-animate.
-Para os campos "icon" de features e benefits, use SEMPRE nomes de ícones do lucide-react (NUNCA emojis).
+O frontend usa React + Tailwind CSS + shadcn/ui + lucide-react + tailwindcss-animate com Intersection Observer.
+Os componentes DynamicIcon e FadeUp são providers estáveis — não gere classes de animação no JSON, o renderer cuida disso.
+Para os campos "icon" de features e benefits, use SEMPRE nomes do registro de ícones abaixo (NUNCA emojis, NUNCA strings livres).
 
-ÍCONES LUCIDE DISPONÍVEIS — use o nome exato:
-Cômodos/Estrutura: BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard, Building2, Home, Layers
-Lazer/Amenidades: Waves, Dumbbell, Bike, Trees, Coffee, UtensilsCrossed, Wine, Gamepad2, Music2, Sunset
-Localização: MapPin, Map, Navigation, Globe, Train, Bus, ShoppingBag, School, Hospital, TreePine
-Qualidade/Status: Shield, Star, Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap
-Negócio/Contato: Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell, DollarSign, Percent, Key, FileText
+REGISTRO DE ÍCONES (use o nome exato — case-sensitive):
+Cômodos: BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard, Building2, Home, Layers
+Lazer: Waves, Dumbbell, Bike, Trees, Coffee, UtensilsCrossed, Wine, Gamepad2, Music2
+Localização: MapPin, Navigation, Globe, Train, Bus, ShoppingBag, School, Hospital, TreePine
+Qualidade: Shield, Star, Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap
+Contato/Negócio: Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell, DollarSign, Key, FileText
+
+TEMAS DISPONÍVEIS (use o campo "preset" + ajuste fontFamily e heroStyle — NÃO defina cores individuais):
+"luxury-gold"        → fundo quase preto, dourado quente — para alto padrão/luxo
+"luxury-copper"      → fundo quase preto, cobre — para premium médio-alto
+"prestige-white"     → fundo escuro, branco pérola — para editorial/minimalista
+"corporate-navy"     → fundo navy escuro, azul elétrico — para corporativo/investimento
+"premium-terracotta" → fundo escuro, terracota — para casas/família/conforto
+"prestige-emerald"   → fundo escuro, verde esmeralda — para natureza/eco/selva
+"editorial-slate"    → fundo escuro, cinza azulado — para urbano/moderno
+"bold-yellow"        → fundo quase preto, amarelo — para alta energia/lançamento
+
+Para o campo "theme", use APENAS: preset, fontFamily, heroStyle. NÃO inclua primaryColor, accentColor, bgColor, textColor.
 
 Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
 
@@ -301,10 +314,7 @@ Gere um JSON com esta estrutura EXATA:
 
 {
   "theme": {
-    "primaryColor": "cor hex de destaque principal — escolher com intenção (dourado, cobre, terracota, verde, azul noite etc)",
-    "accentColor": "cor hex complementar ao primary",
-    "bgColor": "cor hex do fundo — preferencialmente escuro premium",
-    "textColor": "cor hex do texto principal",
+    "preset": "nome do preset de cores (ex: luxury-gold, luxury-copper, prestige-white, corporate-navy, premium-terracotta, prestige-emerald, editorial-slate, bold-yellow)",
     "fontFamily": "fonte Google que melhor representa o posicionamento",
     "heroStyle": "dark-overlay (padrão com imagem) ou gradient (layout editorial)"
   },

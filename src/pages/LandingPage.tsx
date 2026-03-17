@@ -1,28 +1,62 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { Project, LandingPageData } from "@/types/project";
+import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
 import { toast } from "sonner";
-import { RefreshCw, ChevronDown, Check, MapPin, MessageSquare } from "lucide-react";
-import * as LucideIcons from "lucide-react";
+import {
+  RefreshCw, ChevronDown, Check, MapPin, MessageSquare,
+  BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard,
+  Building2, Home, Layers, Waves, Dumbbell, Bike, Trees, Coffee,
+  UtensilsCrossed, Wine, Gamepad2, Music2, Navigation, Globe, Train,
+  Bus, ShoppingBag, School, Hospital, TreePine, Shield, Star, Award,
+  Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap,
+  Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell,
+  DollarSign, Key, FileText, type LucideIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-// ─── Dynamic lucide icon + emoji resolver ────────────────────────────────────
-function DynamicIcon({ name, className }: { name: string; className?: string }) {
-  if (!name) return null;
-  // If it looks like an emoji (short, no uppercase start) render as text
-  const isEmoji = name.length <= 4 && !/^[A-Z]/.test(name);
-  if (isEmoji) return <span className={className}>{name}</span>;
-  const Icon = (LucideIcons as Record<string, any>)[name];
-  if (!Icon) return <span className={className}>◆</span>;
-  return <Icon className={className} />;
+// ─── Explicit lucide icon registry (import * doesn't work for dynamic access) ─
+const ICON_REGISTRY: Record<string, LucideIcon> = {
+  BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard,
+  Building2, Home, Layers, Waves, Dumbbell, Bike, Trees, Coffee,
+  UtensilsCrossed, Wine, Gamepad2, Music2, MapPin, Navigation, Globe,
+  Train, Bus, ShoppingBag, School, Hospital, TreePine, Shield, Star,
+  Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp,
+  Zap, Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell,
+  DollarSign, Key, FileText,
+};
+
+// ─── Curated theme presets (AI picks by name, no arbitrary hex) ──────────────
+const LANDING_THEMES: Record<string, Partial<LandingPageTheme>> = {
+  "luxury-gold":       { primaryColor: "#c8a96e", accentColor: "#e8d48a", bgColor: "#0d0b08", textColor: "#f5ede0" },
+  "luxury-copper":     { primaryColor: "#c17f4a", accentColor: "#d9a070", bgColor: "#0f0d0a", textColor: "#f5ebe0" },
+  "prestige-white":    { primaryColor: "#e8e4dc", accentColor: "#ffffff", bgColor: "#0f0f12", textColor: "#ffffff" },
+  "corporate-navy":    { primaryColor: "#60a5fa", accentColor: "#93c5fd", bgColor: "#0a0f1a", textColor: "#f0f4ff" },
+  "premium-terracotta":{ primaryColor: "#c86b48", accentColor: "#d9876a", bgColor: "#0f0c0a", textColor: "#f5ede8" },
+  "prestige-emerald":  { primaryColor: "#4ade80", accentColor: "#86efac", bgColor: "#0a0f0c", textColor: "#f0fdf4" },
+  "editorial-slate":   { primaryColor: "#94a3b8", accentColor: "#cbd5e1", bgColor: "#0c0e12", textColor: "#f1f5f9" },
+  "bold-yellow":       { primaryColor: "#facc15", accentColor: "#fde68a", bgColor: "#0f0f0a", textColor: "#fefce8" },
+};
+
+function resolveTheme(raw: LandingPageTheme): LandingPageTheme {
+  const preset = raw.preset ? (LANDING_THEMES[raw.preset] ?? {}) : {};
+  return { ...raw, ...preset, fontFamily: raw.fontFamily, heroStyle: raw.heroStyle };
 }
 
-// ─── Scroll-triggered fade-up animation ──────────────────────────────────────
+// ─── Stable named component: lucide icon resolver ────────────────────────────
+function DynamicIcon({ name, className }: { name: string; className?: string }) {
+  if (!name) return null;
+  const Icon = ICON_REGISTRY[name];
+  if (Icon) return <Icon className={className} />;
+  // fallback: emoji or unknown string rendered as text
+  return <span className={cn("leading-none", className)}>{name}</span>;
+}
+
+// ─── Stable named component: scroll-triggered fade-up ────────────────────────
 function FadeUp({
   children,
   delay = 0,
@@ -37,18 +71,18 @@ function FadeUp({
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
+    const obs = new IntersectionObserver(
       ([entry]) => { if (entry.isIntersecting) setVisible(true); },
       { threshold: 0.08, rootMargin: "0px 0px -40px 0px" }
     );
-    observer.observe(el);
-    return () => observer.disconnect();
+    obs.observe(el);
+    return () => obs.disconnect();
   }, []);
   return (
     <div
       ref={ref}
       className={cn(
-        "transition-all duration-700 ease-out",
+        "transition-all duration-700 ease-out will-change-transform",
         visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8",
         className
       )}
@@ -334,7 +368,7 @@ export default function LandingPage() {
     );
   }
 
-  const theme = lp.theme;
+  const theme = resolveTheme(lp.theme);
   const fontUrl = getFontStyle(theme.fontFamily);
 
   return (

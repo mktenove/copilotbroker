@@ -66,6 +66,7 @@ export interface GalleryImage {
 // ─── Landing Page Data ────────────────────────────────────────────────────────
 
 export interface LandingPageTheme {
+  preset?: string;
   primaryColor: string;
   accentColor: string;
   bgColor: string;
