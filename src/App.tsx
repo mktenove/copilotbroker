@@ -117,6 +117,7 @@ const App = () => (
             
             {/* Public landing pages — :citySlug/:projectSlug/:brokerSlug */}
             <Route path="/:citySlug/:projectSlug/:brokerSlug" element={<LandingPage />} />
+            <Route path="/:citySlug/:projectSlug/:brokerSlug/obrigado" element={<LandingPage />} />
 
             {/* Catch-all for 404 */}
             <Route path="*" element={<NotFound />} />

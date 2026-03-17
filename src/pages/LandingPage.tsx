@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
 import { toast } from "sonner";
@@ -326,11 +326,14 @@ export interface LandingPageRendererProps {
 }
 
 export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteItem }: LandingPageRendererProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isObrigado = location.pathname.endsWith('/obrigado');
+
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
-  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted] = useState(isObrigado);
   const formRef = useRef<HTMLDivElement>(null);
 
   // Per-element style override helper (used in editor mode)
@@ -365,6 +368,13 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
 
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth" });
 
+  // On /obrigado direct load, scroll to form section
+  useEffect(() => {
+    if (isObrigado) {
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+    }
+  }, [isObrigado]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isPreview) { toast.info("Formulário desativado no preview."); return; }
@@ -373,7 +383,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
     setSubmitting(true);
     try {
       const { error } = await supabase.from("leads").insert({
-        name: name.trim(), whatsapp: whatsapp.trim(), email: email.trim() || null,
+        name: name.trim(), whatsapp: whatsapp.trim(),
         broker_id: broker.id, project_id: project.id,
         source: "landing_page", lead_origin: "landing_page",
         lead_origin_detail: `${window.location.origin}${window.location.pathname}`,
@@ -382,9 +392,13 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       if (error) throw error;
       if (project.webhook_url) {
         try {
-          await fetch(project.webhook_url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), whatsapp: whatsapp.trim(), email: email.trim() || null, project: project.name, broker: broker.name, source: "landing_page" }) });
+          await fetch(project.webhook_url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), whatsapp: whatsapp.trim(), project: project.name, broker: broker.name, source: "landing_page" }) });
         } catch { /* Non-fatal */ }
       }
+      // Navigate to /obrigado keeping same page, then scroll to form
+      const obrigadoPath = location.pathname.replace(/\/?$/, '') + '/obrigado';
+      navigate(obrigadoPath, { replace: false });
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100);
       setSubmitted(true);
     } catch (err) {
       toast.error("Erro ao enviar cadastro: " + (err instanceof Error ? err.message : String(err)));
@@ -1098,8 +1112,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
                           >
                             <Check className="w-10 h-10" style={{ color: btnTxt }} />
                           </div>
-                          <h3 className="text-2xl font-black">{lp.form.thankYouTitle}</h3>
-                          <p className="text-sm leading-relaxed" style={{ color: `${text}80` }}>{lp.form.thankYouMessage}</p>
+                          <h3 className="text-2xl font-black" style={{ color: text }}>Parabéns pelo seu cadastro.</h3>
+                          <p className="text-sm leading-relaxed" style={{ color: `${text}80` }}>Em breve entraremos em contato no seu WhatsApp.</p>
                         </div>
                       ) : (
                         <>
@@ -1124,17 +1138,6 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
                                 placeholder="(51) 99999-9999" required
                                 className="h-12 rounded-xl text-base bg-transparent border-2"
                                 style={{ borderColor: `${primary}35`, color: text }}
-                              />
-                            </div>
-                            <div className="space-y-1.5">
-                              <Label className="text-[11px] uppercase tracking-widest font-semibold opacity-50">
-                                E-mail <span className="opacity-50 normal-case tracking-normal">(opcional)</span>
-                              </Label>
-                              <Input
-                                type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-                                placeholder="seu@email.com"
-                                className="h-12 rounded-xl text-base bg-transparent border-2"
-                                style={{ borderColor: `${primary}25`, color: text }}
                               />
                             </div>
                             <button
