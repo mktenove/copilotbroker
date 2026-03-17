@@ -254,7 +254,7 @@ REGRAS DE COPY
 - Headline deve ser comercial e memorável — NÃO apenas o nome do empreendimento.
 
 REGRAS DE CONTEÚDO DE FONTE
-Quando houver "Conteúdo completo do imóvel (extraído do site original)", use APENAS como fonte de fatos (localização, metragem, quartos, amenidades). NUNCA copie ou parafraseie o texto original. Escreva copy inteiramente novo, autoral e persuasivo.
+Quando houver "Referência factual (extraída do site original)", use APENAS como fonte de fatos brutos (localização, metragem, quartos, amenidades, preço). NUNCA copie nem parafraseie qualquer frase do texto original. Escreva copy inteiramente novo, autoral e persuasivo — como se você fosse um copywriter que só recebeu bullet points de dados.
 
 PROIBIDO INVENTAR:
 - ❌ NÃO mencione "pré-lançamento", "lançamento", "obras", "entrega prevista" ou qualquer estágio de obra a não ser que esteja EXPLICITAMENTE nos dados do imóvel.
@@ -291,7 +291,7 @@ Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
     let userPrompt: string;
 
     if (chatMessage && body.existingData) {
-      systemPrompt += `\nO usuário quer ajustar partes da landing page existente. Retorne o JSON completo atualizado.`;
+      systemPrompt += `\nO usuário quer ajustar partes da landing page existente. Retorne o JSON completo atualizado. IMPORTANTE: qualquer texto na seção "Referência factual (extraída do site original)" serve APENAS como fonte de dados brutos — NUNCA copie nem parafraseie essas frases. Escreva copy novo e persuasivo.`;
       userPrompt = `
 Dados do empreendimento:
 ${projectContext}
