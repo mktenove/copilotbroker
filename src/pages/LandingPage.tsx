@@ -340,6 +340,8 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
       ...(baseStyle ?? {}),
       ...(override.color ? { color: override.color } : {}),
       ...(override.fontSize ? { fontSize: `${override.fontSize}em` } : {}),
+      ...(override.background ? { background: override.background } : {}),
+      ...(override.opacity !== undefined ? { opacity: override.opacity } : {}),
     };
   };
 

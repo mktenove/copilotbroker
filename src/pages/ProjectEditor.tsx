@@ -353,6 +353,8 @@ function VideoUploadField({
 }
 
 // ─── Floating inline text/style editor ───────────────────────────────────────
+type ElementStyle = { color?: string; fontSize?: number; background?: string; opacity?: number };
+
 function FloatingTextEditor({
   path,
   value,
@@ -365,23 +367,25 @@ function FloatingTextEditor({
   path: string;
   value: string;
   rect: DOMRect;
-  elementStyle?: { color?: string; fontSize?: number };
+  elementStyle?: ElementStyle;
   onSave: (path: string, value: string) => void;
-  onStyleChange: (path: string, style: { color?: string; fontSize?: number }) => void;
+  onStyleChange: (path: string, style: ElementStyle) => void;
   onClose: () => void;
 }) {
   const [text, setText] = useState(value);
   const isMultiline = value.length > 60 || value.includes('\n');
 
-  const top = Math.min(rect.bottom + 8, window.innerHeight - 180);
-  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 328));
+  const top = Math.min(rect.bottom + 8, window.innerHeight - 220);
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 340));
+
+  const opacityPct = Math.round((elementStyle?.opacity ?? 1) * 100);
 
   return createPortal(
     <>
       {/* Backdrop */}
       <div className="fixed inset-0 z-[9998]" onClick={onClose} />
       <div
-        className="fixed z-[9999] bg-[#1e1e22] border border-[#3a3a3e] rounded-xl shadow-2xl p-3 w-80"
+        className="fixed z-[9999] bg-[#1e1e22] border border-[#3a3a3e] rounded-xl shadow-2xl p-3 w-[336px]"
         style={{ top, left }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -402,13 +406,15 @@ function FloatingTextEditor({
             className="bg-[#0f0f12] border-[#2a2a2e] text-sm h-8 w-full mb-2"
           />
         )}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-gray-500">Cor</span>
+        {/* Row 1: text color + font size */}
+        <div className="flex items-center gap-1.5 mb-1.5">
+          <span className="text-[10px] text-gray-500 w-10 shrink-0">Texto</span>
           <input
             type="color"
             value={elementStyle?.color || '#ffffff'}
             onChange={(e) => onStyleChange(path, { ...elementStyle, color: e.target.value })}
             className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
+            title="Cor do texto"
           />
           <div className="w-px h-4 bg-[#3a3a3e]" />
           <button
@@ -421,12 +427,38 @@ function FloatingTextEditor({
             className="w-6 h-6 text-[12px] bg-[#2a2a2e] rounded hover:bg-[#3a3a3e] text-white flex items-center justify-center font-bold"
             title="Aumentar texto"
           >A+</button>
-          {elementStyle && (
+          <span className="text-[10px] text-gray-600 ml-1">{Math.round((elementStyle?.fontSize ?? 1) * 100)}%</span>
+        </div>
+        {/* Row 2: background + opacity */}
+        <div className="flex items-center gap-1.5 mb-2">
+          <span className="text-[10px] text-gray-500 w-10 shrink-0">Fundo</span>
+          <input
+            type="color"
+            value={elementStyle?.background || '#000000'}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, background: e.target.value })}
+            className="w-7 h-7 rounded cursor-pointer p-0 border border-[#3a3a3e] bg-transparent"
+            title="Cor de fundo"
+          />
+          <div className="w-px h-4 bg-[#3a3a3e]" />
+          <span className="text-[10px] text-gray-500 shrink-0">Opac</span>
+          <input
+            type="range"
+            min={0} max={100}
+            value={opacityPct}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, opacity: Number(e.target.value) / 100 })}
+            className="flex-1 h-1 accent-yellow-400"
+            title="Opacidade"
+          />
+          <span className="text-[10px] text-gray-600 w-7 text-right">{opacityPct}%</span>
+        </div>
+        {/* Row 3: reset + save */}
+        <div className="flex items-center gap-1.5">
+          {elementStyle && Object.keys(elementStyle).length > 0 && (
             <button
               onClick={() => onStyleChange(path, {})}
               className="text-[10px] text-red-400 hover:text-red-300 px-1"
-              title="Resetar estilo"
-            >↺</button>
+              title="Resetar estilos"
+            >↺ reset</button>
           )}
           <div className="flex-1" />
           <button onClick={onClose} className="text-[11px] text-gray-500 hover:text-white px-1">✕</button>
@@ -447,6 +479,7 @@ function FloatingImageEditor({
   currentUrl,
   rect,
   onUpload,
+  onDelete,
   onClose,
   projectId,
 }: {
@@ -454,6 +487,7 @@ function FloatingImageEditor({
   currentUrl: string;
   rect: DOMRect;
   onUpload: (path: string, url: string) => void;
+  onDelete: (path: string) => void;
   onClose: () => void;
   projectId: string;
 }) {
@@ -501,14 +535,25 @@ function FloatingImageEditor({
           </div>
         )}
         <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={handleFile} />
-        <button
-          disabled={uploading}
-          onClick={() => fileRef.current?.click()}
-          className="w-full text-xs bg-[#2a2a2e] hover:bg-[#3a3a3e] disabled:opacity-50 text-white rounded-lg h-8 flex items-center justify-center gap-1.5 transition-colors"
-        >
-          {uploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
-          {uploading ? "Enviando..." : "Trocar imagem"}
-        </button>
+        <div className="flex gap-1.5">
+          <button
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+            className="flex-1 text-xs bg-[#2a2a2e] hover:bg-[#3a3a3e] disabled:opacity-50 text-white rounded-lg h-8 flex items-center justify-center gap-1.5 transition-colors"
+          >
+            {uploading ? <RefreshCw className="w-3 h-3 animate-spin" /> : <ImageIcon className="w-3 h-3" />}
+            {uploading ? "Enviando..." : "Trocar"}
+          </button>
+          {currentUrl && (
+            <button
+              onClick={() => { onDelete(path); onClose(); }}
+              className="text-xs bg-red-900/40 hover:bg-red-900/70 text-red-400 rounded-lg h-8 px-2.5 flex items-center gap-1 transition-colors"
+              title="Remover imagem"
+            >
+              <X className="w-3 h-3" /> Deletar
+            </button>
+          )}
+        </div>
         <button onClick={onClose} className="absolute top-2 right-2 text-[11px] text-gray-500 hover:text-white px-1">✕</button>
       </div>
     </>,
@@ -762,7 +807,24 @@ export default function ProjectEditor() {
     });
   };
 
-  const handleStyleUpdate = (path: string, style: { color?: string; fontSize?: number }) => {
+  const handleImageDelete = (path: string) => {
+    setLpData(prev => {
+      if (!prev) return prev;
+      const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
+      const parts = path.split('.');
+      if (parts[0] === 'gallery' && parts.length === 2) {
+        const idx = parseInt(parts[1]);
+        if (!isNaN(idx)) clone.gallery = clone.gallery?.filter((_, i) => i !== idx);
+      } else {
+        let obj: any = clone; // eslint-disable-line @typescript-eslint/no-explicit-any
+        for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+        obj[parts[parts.length - 1]] = '';
+      }
+      return clone;
+    });
+  };
+
+  const handleStyleUpdate = (path: string, style: ElementStyle) => {
     setLpData(prev => {
       if (!prev) return prev;
       return {
@@ -1388,6 +1450,7 @@ export default function ProjectEditor() {
                     currentUrl={activeEdit.value}
                     rect={activeEdit.rect}
                     onUpload={handleLpUpdate}
+                    onDelete={handleImageDelete}
                     onClose={() => setActiveEdit(null)}
                     projectId={projectId!}
                   />
