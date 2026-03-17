@@ -565,8 +565,10 @@ export default function ProjectEditor() {
 
   // Preview
   const [showPreview, setShowPreview] = useState(true);
-  const [previewKey, setPreviewKey] = useState(0);
   const previewRef = useRef<HTMLIFrameElement>(null);
+  const reloadPreview = () => {
+    try { previewRef.current?.contentWindow?.location.reload(); } catch {}
+  };
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -649,7 +651,7 @@ export default function ProjectEditor() {
         .eq("id", project.id);
       if (error) throw error;
       setLpStatus(targetStatus);
-      setPreviewKey(k => k + 1);
+      reloadPreview();
       toast.success(targetStatus === 'published' ? "Landing page publicada!" : "Rascunho salvo!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -704,7 +706,7 @@ export default function ProjectEditor() {
       } else {
         toast.success("Landing page regenerada com sucesso!");
       }
-      setPreviewKey(k => k + 1);
+      reloadPreview();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Erro: " + msg);
@@ -1149,7 +1151,6 @@ export default function ProjectEditor() {
             </div>
             {publicUrl ? (
               <iframe
-                key={previewKey}
                 ref={previewRef}
                 src={publicUrl}
                 className="flex-1 w-full border-0"
