@@ -41,7 +41,6 @@ import {
   Home,
   ImageIcon,
   Video,
-  Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -79,6 +78,7 @@ interface WizardFormData {
   webhook_url: string;
   _scraped_images: string[];
   _source_url: string;
+  _uploaded_videos: string[];
 }
 
 const initialForm: WizardFormData = {
@@ -105,6 +105,7 @@ const initialForm: WizardFormData = {
   webhook_url: "",
   _scraped_images: [],
   _source_url: "",
+  _uploaded_videos: [],
 };
 
 interface CreateProjectWizardProps {
@@ -851,29 +852,46 @@ export function CreateProjectWizard({
                 {/* STEP 3 */}
                 {step === 3 && (
                   <>
-                    {/* Image upload */}
+                    {/* Image upload — multiple */}
                     <div className="space-y-2">
-                      <Label>Imagem Principal</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Imagens</Label>
+                        {form._scraped_images.length > 0 && (
+                          <span className="text-xs text-muted-foreground">{form._scraped_images.length} foto{form._scraped_images.length > 1 ? "s" : ""} · clique para definir capa</span>
+                        )}
+                      </div>
                       <input
                         ref={imageFileRef}
                         type="file"
                         accept="image/*"
+                        multiple
                         className="hidden"
                         onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
+                          const files = Array.from(e.target.files ?? []);
+                          if (!files.length) return;
                           setImageUploading(true);
+                          const newUrls: string[] = [];
                           try {
-                            const path = `projects/${tempId}/${Date.now()}-${file.name}`;
-                            const { error } = await supabase.storage
-                              .from("project-media")
-                              .upload(path, file, { upsert: true });
-                            if (error) throw error;
-                            const { data: { publicUrl } } = supabase.storage
-                              .from("project-media")
-                              .getPublicUrl(path);
-                            set("main_image_url", publicUrl);
-                            toast.success("Imagem enviada!");
+                            for (const file of files) {
+                              const path = `projects/${tempId}/${Date.now()}-${file.name}`;
+                              const { error } = await supabase.storage
+                                .from("project-media")
+                                .upload(path, file, { upsert: true });
+                              if (error) throw error;
+                              const { data: { publicUrl } } = supabase.storage
+                                .from("project-media")
+                                .getPublicUrl(path);
+                              newUrls.push(publicUrl);
+                            }
+                            setForm((prev) => {
+                              const all = [...prev._scraped_images, ...newUrls];
+                              return {
+                                ...prev,
+                                _scraped_images: all,
+                                main_image_url: prev.main_image_url || all[0] || "",
+                              };
+                            });
+                            toast.success(`${newUrls.length} imagem${newUrls.length > 1 ? "ns" : ""} enviada${newUrls.length > 1 ? "s" : ""}!`);
                           } catch (err) {
                             toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
                           } finally {
@@ -882,22 +900,53 @@ export function CreateProjectWizard({
                           }
                         }}
                       />
-                      {form.main_image_url ? (
-                        <div className="relative rounded-lg overflow-hidden h-32 bg-[#141417] border border-[#2a2a2e]">
-                          <img src={form.main_image_url} className="w-full h-full object-cover" alt="" />
-                          <button
-                            type="button"
-                            onClick={() => set("main_image_url", "")}
-                            className="absolute top-2 right-2 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
+
+                      {form._scraped_images.length > 0 ? (
+                        <div className="grid grid-cols-4 gap-1.5">
+                          {form._scraped_images.map((img, i) => (
+                            <div
+                              key={i}
+                              className={cn(
+                                "relative rounded-lg overflow-hidden h-20 border-2 transition-all group cursor-pointer",
+                                form.main_image_url === img
+                                  ? "border-primary ring-1 ring-primary"
+                                  : "border-transparent hover:border-[#3a3a3e]"
+                              )}
+                              onClick={() => set("main_image_url", img)}
+                            >
+                              <img src={img} className="w-full h-full object-cover" alt="" />
+                              {form.main_image_url === img && (
+                                <div className="absolute top-1 left-1 bg-primary text-black text-[9px] font-bold px-1 py-0.5 rounded pointer-events-none">
+                                  CAPA
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setForm((prev) => {
+                                    const imgs = prev._scraped_images.filter((_, idx) => idx !== i);
+                                    return {
+                                      ...prev,
+                                      _scraped_images: imgs,
+                                      main_image_url: prev.main_image_url === img ? (imgs[0] ?? "") : prev.main_image_url,
+                                    };
+                                  });
+                                }}
+                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
                           <button
                             type="button"
                             onClick={() => imageFileRef.current?.click()}
-                            className="absolute bottom-2 right-2 px-2 py-1 rounded bg-black/60 hover:bg-black/80 text-white text-xs flex items-center gap-1"
+                            disabled={imageUploading}
+                            className="h-20 rounded-lg border-2 border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-1 text-muted-foreground disabled:opacity-50"
                           >
-                            <Upload className="w-3 h-3" /> Trocar
+                            {imageUploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                            <span className="text-[10px]">{imageUploading ? "..." : "Mais"}</span>
                           </button>
                         </div>
                       ) : (
@@ -907,46 +956,57 @@ export function CreateProjectWizard({
                           disabled={imageUploading}
                           className="w-full h-28 rounded-lg border-2 border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground disabled:opacity-50"
                         >
-                          {imageUploading ? (
-                            <RefreshCw className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <ImageIcon className="w-5 h-5" />
-                          )}
-                          <span className="text-xs">{imageUploading ? "Enviando..." : "Clique para enviar imagem"}</span>
+                          {imageUploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <ImageIcon className="w-5 h-5" />}
+                          <span className="text-xs">{imageUploading ? "Enviando..." : "Clique para enviar imagens"}</span>
+                          <span className="text-[10px] text-muted-foreground/50">Selecione várias de uma vez</span>
                         </button>
                       )}
-                      <p className="text-xs text-muted-foreground/70">Usada como fundo do hero da landing page.</p>
+                      <p className="text-xs text-muted-foreground/70">A imagem marcada como CAPA será usada no hero da landing page.</p>
                     </div>
 
-                    {/* Video upload */}
+                    {/* Video upload — multiple */}
                     <div className="space-y-2">
-                      <Label>Vídeo (opcional)</Label>
+                      <div className="flex items-center justify-between">
+                        <Label>Vídeos (opcional)</Label>
+                        {form._uploaded_videos.length > 0 && (
+                          <span className="text-xs text-muted-foreground">{form._uploaded_videos.length} vídeo{form._uploaded_videos.length > 1 ? "s" : ""}</span>
+                        )}
+                      </div>
                       <input
                         ref={videoFileRef}
                         type="file"
                         accept="video/*"
+                        multiple
                         className="hidden"
                         onChange={async (e) => {
-                          const file = e.target.files?.[0];
-                          if (!file) return;
-                          if (file.size > 50 * 1024 * 1024) {
-                            toast.error("O vídeo deve ter no máximo 50 MB");
+                          const files = Array.from(e.target.files ?? []);
+                          if (!files.length) return;
+                          const oversized = files.filter((f) => f.size > 50 * 1024 * 1024);
+                          if (oversized.length) {
+                            toast.error(`${oversized.length} arquivo${oversized.length > 1 ? "s" : ""} excede${oversized.length > 1 ? "m" : ""} 50 MB`);
                             if (videoFileRef.current) videoFileRef.current.value = "";
                             return;
                           }
                           setVideoUploading(true);
+                          const newUrls: string[] = [];
                           try {
-                            const ext = file.name.split(".").pop() || "mp4";
-                            const path = `projects/${tempId}/${Date.now()}.${ext}`;
-                            const { error } = await supabase.storage
-                              .from("project-media")
-                              .upload(path, file, { upsert: true });
-                            if (error) throw error;
-                            const { data: { publicUrl } } = supabase.storage
-                              .from("project-media")
-                              .getPublicUrl(path);
-                            set("video_url", publicUrl);
-                            toast.success("Vídeo enviado!");
+                            for (const file of files) {
+                              const ext = file.name.split(".").pop() || "mp4";
+                              const path = `projects/${tempId}/${Date.now()}.${ext}`;
+                              const { error } = await supabase.storage
+                                .from("project-media")
+                                .upload(path, file, { upsert: true });
+                              if (error) throw error;
+                              const { data: { publicUrl } } = supabase.storage
+                                .from("project-media")
+                                .getPublicUrl(path);
+                              newUrls.push(publicUrl);
+                            }
+                            setForm((prev) => {
+                              const all = [...prev._uploaded_videos, ...newUrls];
+                              return { ...prev, _uploaded_videos: all, video_url: prev.video_url || all[0] || "" };
+                            });
+                            toast.success(`${newUrls.length} vídeo${newUrls.length > 1 ? "s" : ""} enviado${newUrls.length > 1 ? "s" : ""}!`);
                           } catch (err) {
                             toast.error("Erro no upload: " + (err instanceof Error ? err.message : String(err)));
                           } finally {
@@ -955,15 +1015,34 @@ export function CreateProjectWizard({
                           }
                         }}
                       />
-                      {form.video_url ? (
-                        <div className="relative rounded-lg overflow-hidden bg-[#141417] border border-[#2a2a2e] p-2">
-                          <video src={form.video_url} className="w-full max-h-28 rounded" controls />
+
+                      {form._uploaded_videos.length > 0 ? (
+                        <div className="space-y-2">
+                          {form._uploaded_videos.map((url, i) => (
+                            <div key={i} className="relative rounded-lg overflow-hidden bg-[#141417] border border-[#2a2a2e] p-2">
+                              <video src={url} className="w-full max-h-28 rounded" controls />
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setForm((prev) => {
+                                    const vids = prev._uploaded_videos.filter((_, idx) => idx !== i);
+                                    return { ...prev, _uploaded_videos: vids, video_url: vids[0] ?? "" };
+                                  })
+                                }
+                                className="absolute top-3 right-3 p-1 rounded bg-black/60 hover:bg-red-600 text-white"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
                           <button
                             type="button"
-                            onClick={() => set("video_url", "")}
-                            className="absolute top-3 right-3 p-1 rounded bg-black/60 hover:bg-black/80 text-white"
+                            onClick={() => videoFileRef.current?.click()}
+                            disabled={videoUploading}
+                            className="w-full h-10 rounded-lg border border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex items-center justify-center gap-2 text-muted-foreground text-xs disabled:opacity-50"
                           >
-                            <X className="w-3 h-3" />
+                            {videoUploading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                            {videoUploading ? "Enviando..." : "Adicionar mais vídeos"}
                           </button>
                         </div>
                       ) : (
@@ -973,12 +1052,9 @@ export function CreateProjectWizard({
                           disabled={videoUploading}
                           className="w-full h-20 rounded-lg border-2 border-dashed border-[#2a2a2e] hover:border-primary/40 hover:bg-primary/5 transition-colors flex flex-col items-center justify-center gap-2 text-muted-foreground disabled:opacity-50"
                         >
-                          {videoUploading ? (
-                            <RefreshCw className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <Video className="w-5 h-5" />
-                          )}
-                          <span className="text-xs">{videoUploading ? "Enviando..." : "Clique para enviar vídeo (máx. 50 MB)"}</span>
+                          {videoUploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Video className="w-5 h-5" />}
+                          <span className="text-xs">{videoUploading ? "Enviando..." : "Clique para enviar vídeos"}</span>
+                          <span className="text-[10px] text-muted-foreground/50">Máx. 50 MB por arquivo</span>
                         </button>
                       )}
                     </div>
