@@ -382,14 +382,21 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
     if (!project || !broker) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from("leads").insert({
+      const { data: insertedLead, error } = await supabase.from("leads").insert({
         name: name.trim(), whatsapp: whatsapp.trim(),
         broker_id: broker.id, project_id: project.id,
         source: "landing_page", lead_origin: "landing_page",
         lead_origin_detail: `${window.location.origin}${window.location.pathname}`,
         status: "new", tenant_id: project.tenant_id,
-      });
+      }).select("id").single();
       if (error) throw error;
+
+      // Trigger automations (fire-and-forget — non-fatal)
+      if (insertedLead?.id) {
+        const leadId = insertedLead.id;
+        supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } }).catch(() => {});
+        supabase.functions.invoke("auto-first-message", { body: { leadId } }).catch(() => {});
+      }
       if (project.webhook_url) {
         try {
           await fetch(project.webhook_url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), whatsapp: whatsapp.trim(), project: project.name, broker: broker.name, source: "landing_page" }) });
