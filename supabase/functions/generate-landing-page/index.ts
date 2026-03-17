@@ -380,12 +380,18 @@ Gere um JSON com esta estrutura EXATA:
   "floatingButtonText": "texto curto do botão flutuante mobile — ação + benefício",
   "footer": {
     "disclaimer": "disclaimer legal breve e profissional"
-  },
-  "layout": "flow-A | flow-B | flow-C — escolha com intenção: flow-A (padrão — localização com imagem lateral, vídeo após conteúdo); flow-B (impacto visual imediato — imagem showcase após hero, produto aspiracional/luxo); flow-C (galeria em destaque cedo — produto com muitas fotos, vídeo no final)"
+  }
 }
 
 Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     }
+
+    // Pre-assign layout server-side before AI call to guarantee variety
+    const imgCount = (project.scraped_images || []).length;
+    const layoutOptions = imgCount >= 4 ? ["flow-A", "flow-B", "flow-C"] : imgCount >= 2 ? ["flow-A", "flow-B"] : ["flow-A"];
+    const preLayout = chatMessage && body.existingData?.layout
+      ? body.existingData.layout
+      : layoutOptions[Math.floor(Math.random() * layoutOptions.length)];
 
     let jsonText = (await callAi(systemPrompt, userPrompt)).trim();
     if (jsonText.startsWith("```")) {
@@ -440,17 +446,8 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
       landingPageData.gallery = body.existingData.gallery;
     }
 
-    // Preserve layout when chat edit doesn't return one
-    if (chatMessage && body.existingData?.layout && !landingPageData.layout) {
-      landingPageData.layout = body.existingData.layout;
-    }
-
-    // Fallback: randomly assign layout when AI didn't return one
-    if (!landingPageData.layout) {
-      const imgCount = landingPageData.gallery?.length ?? 0;
-      const options = imgCount >= 4 ? ["flow-A", "flow-B", "flow-C"] : imgCount >= 2 ? ["flow-A", "flow-B"] : ["flow-A"];
-      landingPageData.layout = options[Math.floor(Math.random() * options.length)];
-    }
+    // Always use pre-assigned layout (server-side randomization)
+    landingPageData.layout = preLayout;
 
     if (!chatMessage && project.id) {
       await supabase

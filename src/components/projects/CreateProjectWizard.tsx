@@ -314,7 +314,7 @@ export function CreateProjectWizard({
         throw new Error(createRes.data?.error || createRes.error?.message || "Erro ao criar projeto");
       }
 
-      const projectId: string = createRes.data.project_id || createRes.data.id;
+      const projectId: string = createRes.data.project?.id || createRes.data.project_id || createRes.data.id;
 
       if (!withAI) {
         toast.success("Empreendimento criado com sucesso!");
