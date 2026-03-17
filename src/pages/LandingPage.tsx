@@ -3,11 +3,9 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
 import { toast } from "sonner";
-import {
-  RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Check, MapPin, MessageSquare,
-  X as XIcon, type LucideIcon,
-} from "lucide-react";
 import * as LucideIcons from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+const { RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Check, MapPin, MessageSquare, Zap, X: XIcon } = LucideIcons as any;
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
