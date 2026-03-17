@@ -174,9 +174,9 @@ ${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
 ${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
 ${scrapedImagesForContext.length > 0 ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos do imóvel (serão exibidas em galeria automaticamente)` : ""}
 ${project.description && project.description.length > 600
-  ? `Conteúdo completo do imóvel (extraído do site original):\n${project.description}`
+  ? `Referência factual (extraída do site original — use APENAS para extrair fatos, NÃO copie o texto):\n${project.description.slice(0, 2000)}`
   : project.description
-    ? `Descrição adicional: ${project.description}`
+    ? `Contexto adicional: ${project.description}`
     : ""}
 `.trim();
 
@@ -251,7 +251,17 @@ REGRAS DE COPY
 - Headline deve ser comercial e memorável — NÃO apenas o nome do empreendimento.
 
 REGRAS DE CONTEÚDO DE FONTE
-Quando houver "Conteúdo completo do imóvel (extraído do site original)", use APENAS como fonte de fatos (localização, metragem, quartos, amenidades). NUNCA copie ou parafraseie. Escreva copy inteiramente novo, autoral e persuasivo.
+Quando houver "Conteúdo completo do imóvel (extraído do site original)", use APENAS como fonte de fatos (localização, metragem, quartos, amenidades). NUNCA copie ou parafraseie o texto original. Escreva copy inteiramente novo, autoral e persuasivo.
+
+EXEMPLOS DE HERO.TITLE:
+❌ PROIBIDO: "Apartamento 3 Quartos 2 Suítes 157m² 2 Vagas Piscina Academia – Vila Olímpia SP"
+❌ PROIBIDO: "Realize seu sonho de morar bem em [cidade]"
+❌ PROIBIDO: usar o nome do empreendimento como headline
+❌ PROIBIDO: listar atributos/features no título
+✅ CORRETO: "Vila Olímpia redefinida. O padrão que você esperava chegou."
+✅ CORRETO: "Quando 157 m² é pouco pra tudo que você planejou."
+✅ CORRETO: "Invista onde São Paulo nunca para de crescer."
+✅ CORRETO: "Viver bem aqui é inevitável."
 
 TECNOLOGIA DO FRONTEND
 O frontend usa React + Tailwind CSS + lucide-react com Intersection Observer para animações de entrada.

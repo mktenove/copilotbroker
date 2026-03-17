@@ -858,7 +858,7 @@ export default function ProjectEditor() {
           <Tabs defaultValue="edit" className="flex flex-col flex-1 overflow-hidden">
             <TabsList className="mx-3 mt-3 shrink-0 bg-[#2a2a2e]">
               <TabsTrigger value="edit" className="flex-1 text-xs gap-1">
-                <Pencil className="w-3.5 h-3.5" /> Editar Seções
+                <Pencil className="w-3.5 h-3.5" /> Editar
               </TabsTrigger>
               <TabsTrigger value="chat" className="flex-1 text-xs gap-1">
                 <MessageSquare className="w-3.5 h-3.5" /> Chat IA
@@ -890,47 +890,6 @@ export default function ProjectEditor() {
                   )}
                   {lpData && (
                     <>
-                      {/* Regenerate button */}
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={regenerate}
-                        disabled={regenerating}
-                        className="w-full text-xs border border-[#2a2a2e] hover:bg-[#2a2a2e] gap-1"
-                      >
-                        {regenerating ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Sparkles className="w-3.5 h-3.5 text-primary" />
-                        )}
-                        Regenerar tudo com IA
-                      </Button>
-
-                      {/* Project media */}
-                      <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                          Mídia do Projeto
-                        </p>
-                        <ImageUploadField
-                          label="Imagem principal"
-                          value={project.main_image_url || ""}
-                          projectId={project.id}
-                          onChange={async (url) => {
-                            setProject(prev => prev ? { ...prev, main_image_url: url } : prev);
-                            await (supabase.from("projects") as any).update({ main_image_url: url }).eq("id", project.id);
-                          }}
-                        />
-                        <VideoUploadField
-                          label="Vídeo do empreendimento"
-                          value={project.video_url || ""}
-                          projectId={project.id}
-                          onChange={async (url) => {
-                            setProject(prev => prev ? { ...prev, video_url: url } : prev);
-                            await (supabase.from("projects") as any).update({ video_url: url }).eq("id", project.id);
-                          }}
-                        />
-                      </div>
-
                       {/* Gallery images */}
                       {lpData.gallery && lpData.gallery.length > 0 && (
                         <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-3">
@@ -1031,17 +990,6 @@ export default function ProjectEditor() {
                           </div>
                         );
                       })()}
-
-                      {/* Sections */}
-                      {SECTIONS.map((s) => (
-                        <SectionPanel
-                          key={s.key}
-                          section={s}
-                          data={lpData}
-                          onUpdate={setLpData}
-                          projectId={project.id}
-                        />
-                      ))}
 
                       {/* Floating button text */}
                       <div className="border border-[#2a2a2e] rounded-lg p-3 space-y-2">
