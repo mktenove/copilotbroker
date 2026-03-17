@@ -134,7 +134,7 @@ function extractPageContent(html: string): string {
     .replace(/<[^>]+>/g, " ")
     .replace(/\s+/g, " ")
     .trim();
-  return decodeEntities(stripped).slice(0, 12000);
+  return decodeEntities(stripped).slice(0, 20000);
 }
 
 function extractBRPatterns(html: string) {

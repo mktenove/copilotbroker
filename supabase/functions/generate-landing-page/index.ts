@@ -318,7 +318,7 @@ ORIENTAÇÃO CRIATIVA:
 - hero.subtitle deve contextualizar localização e proposta de valor com uma frase densa e persuasiva
 - location.description deve valorizar a localização de forma específica, não genérica
 - location.highlights devem ser pontos reais e concretos sobre a localização (ex: "A 500m do metrô Butantã", não só "Bem localizado")
-- features: traduzir cada atributo em valor percebido (área, dormitórios, vagas, amenidades)
+- features: listar APENAS atributos que estejam EXPLICITAMENTE nos dados (área, dormitórios, vagas, suítes, amenidades confirmadas). NÃO invente diferenciais, infraestrutura ou comodidades que não foram mencionadas
 - audience: descrever perfis de comprador com especificidade — fazer o lead se reconhecer
 - urgency: inserir com elegância, baseada no status real do imóvel, sem parecer spam
 - benefits: focar em por que deixar o contato, não nos atributos do imóvel
@@ -347,12 +347,12 @@ Gere um JSON com esta estrutura EXATA:
     "highlights": ["ponto concreto 1", "ponto concreto 2", "ponto concreto 3", "ponto concreto 4"]
   },
   "features": [
-    {"icon": "NomeLucide", "label": "rótulo do atributo", "value": "atributo traduzido em benefício ou valor real"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor"}
+    {"icon": "NomeLucide", "label": "rótulo do atributo (ex: Área)", "value": "valor REAL extraído dos dados (ex: 103 m²) — NUNCA invente"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real — omita este item se não houver dado real"},
+    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real — omita este item se não houver dado real"}
   ],
   "audience": [
     {"title": "perfil específico 1 — fazer o lead se reconhecer", "description": "por que esse imóvel é perfeito para esse perfil"},
