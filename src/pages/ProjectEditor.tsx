@@ -845,6 +845,20 @@ export default function ProjectEditor() {
     persistNow(clone);
   };
 
+  const handleDeleteItem = (arrayPath: string, index: number) => {
+    const prev = lpDataRef.current;
+    if (!prev) return;
+    const clone = JSON.parse(JSON.stringify(prev)) as LandingPageData;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let obj: any = clone;
+    const parts = arrayPath.split('.');
+    for (const part of parts) obj = obj[part];
+    (obj as unknown[]).splice(index, 1);
+    lpDataRef.current = clone;
+    setLpData(clone);
+    persistNow(clone);
+  };
+
   const handleStyleUpdate = (path: string, style: ElementStyle) => {
     const prev = lpDataRef.current;
     if (!prev) return;
@@ -1515,7 +1529,7 @@ export default function ProjectEditor() {
                   style={{ cursor: 'crosshair' }}
                   onClick={handlePreviewClick}
                 >
-                  <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview />
+                  <LandingPageRenderer lp={lpData} project={project} broker={broker} isPreview onDeleteItem={handleDeleteItem} />
                 </div>
                 {/* Floating editor popup */}
                 {activeEdit && activeEdit.type === 'image' ? (

@@ -322,9 +322,10 @@ export interface LandingPageRendererProps {
   project: Project;
   broker: { id: string; name: string; slug: string; whatsapp?: string | null } | null;
   isPreview?: boolean;
+  onDeleteItem?: (arrayPath: string, index: number) => void;
 }
 
-export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingPageRendererProps) {
+export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteItem }: LandingPageRendererProps) {
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
@@ -580,9 +581,17 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 {lp.features.map((f, i) => (
                   <FadeUp key={i} delay={i * 55}>
                     <div
-                      className="flex flex-col items-center text-center px-8 py-8 gap-3 min-w-[140px]"
+                      className="relative flex flex-col items-center text-center px-8 py-8 gap-3 min-w-[140px] group/feat"
                       style={{ borderRight: i < lp.features.length - 1 ? `1px solid ${primary}12` : undefined }}
                     >
+                      {isPreview && onDeleteItem && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteItem('features', i); }}
+                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/feat:opacity-100 transition-opacity z-10"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                      )}
                       <DynamicIcon name={f.icon} className="w-5 h-5 opacity-50" style={{ color: primary }} />
                       <div data-lp-path={`features.${i}.value`} className="text-2xl sm:text-3xl font-black" style={es(`features.${i}.value`, { color: primary })}>{f.value}</div>
                       <div data-lp-path={`features.${i}.label`} className="text-[10px] uppercase tracking-widest opacity-40 font-semibold leading-tight" style={es(`features.${i}.label`)}>{f.label}</div>
@@ -611,9 +620,17 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               {lp.location.highlights.map((h, i) => (
                 <FadeUp key={i} delay={i * 80 + 100}>
                   <div
-                    className="flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02]"
+                    className="relative flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02] group/loc"
                     style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
                   >
+                    {isPreview && onDeleteItem && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onDeleteItem('location.highlights', i); }}
+                        className="absolute top-1.5 right-1.5 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/loc:opacity-100 transition-opacity z-10"
+                      >
+                        <XIcon className="w-3 h-3" />
+                      </button>
+                    )}
                     <div
                       className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
                       style={{ backgroundColor: primary }}
@@ -709,7 +726,7 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                 {lp.audience.map((a, i) => (
                   <FadeUp key={i} delay={i * 80}>
                     <div
-                      className="relative flex items-start gap-5 p-6 rounded-2xl overflow-hidden transition hover:scale-[1.015]"
+                      className="relative flex items-start gap-5 p-6 rounded-2xl overflow-hidden transition hover:scale-[1.015] group/aud"
                       style={{ background: `${primary}07`, border: `1px solid ${primary}15` }}
                     >
                       {/* Big faded number decoration */}
@@ -719,6 +736,14 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
                       >
                         0{i + 1}
                       </div>
+                      {isPreview && onDeleteItem && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteItem('audience', i); }}
+                          className="absolute top-2 right-2 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/aud:opacity-100 transition-opacity z-10"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                      )}
                       <div
                         className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 font-black text-sm"
                         style={{ backgroundColor: primary, color: btnTxt }}
@@ -804,7 +829,15 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
                 {lp.benefits.map((b, i) => (
                   <FadeUp key={i} delay={i * 75}>
-                    <div className="space-y-4">
+                    <div className="relative space-y-4 group/ben">
+                      {isPreview && onDeleteItem && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteItem('benefits', i); }}
+                          className="absolute top-0 right-0 w-5 h-5 rounded-full bg-black/60 hover:bg-red-600 text-white flex items-center justify-center opacity-0 group-hover/ben:opacity-100 transition-opacity z-10"
+                        >
+                          <XIcon className="w-3 h-3" />
+                        </button>
+                      )}
                       <div
                         className="w-12 h-12 rounded-2xl flex items-center justify-center"
                         style={{ background: `${primary}10`, border: `1px solid ${primary}22` }}
