@@ -186,6 +186,9 @@ export function FollowUpSheet({
         created_by: (await supabase.auth.getUser()).data.user?.id,
       });
 
+      // Move lead to Copiloto (automatic follow-up stage)
+      await supabase.from("leads").update({ status: "copiloto" }).eq("id", leadId);
+
       toast.success("Follow-up agendado com sucesso!");
       onCreated?.();
       onOpenChange(false);

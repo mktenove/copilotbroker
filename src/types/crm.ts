@@ -201,6 +201,11 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
     color: 'text-yellow-400',
     bgColor: 'bg-yellow-500/10 border-yellow-500/30'
   },
+  copiloto: {
+    label: 'Copiloto',
+    color: 'text-purple-400',
+    bgColor: 'bg-purple-500/10 border-purple-500/30'
+  },
   awaiting_docs: {
     label: 'Aguardando Dados',
     color: 'text-yellow-300',

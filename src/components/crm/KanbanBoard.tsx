@@ -47,8 +47,8 @@ interface KanbanBoardProps {
   onAddLead?: () => void;
 }
 
-const STATUSES: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
-const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'scheduling', 'docs_received', 'registered'];
+const STATUSES: LeadStatus[] = ['new', 'info_sent', 'copiloto', 'scheduling', 'docs_received', 'registered'];
+const STATUS_ORDER: LeadStatus[] = ['new', 'info_sent', 'copiloto', 'scheduling', 'docs_received', 'registered'];
 
 export function KanbanBoard({ brokerId, isAdmin = false, brokers: brokersProp = [], searchTerm = "", onSearchChange, onAddLead }: KanbanBoardProps) {
   const navigate = useNavigate();
