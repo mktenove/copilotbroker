@@ -176,8 +176,8 @@ ${scrapedImagesForContext.length > 0
   ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos. URLs (primeiras ${Math.min(scrapedImagesForContext.length, 8)}):\n${scrapedImagesForContext.slice(0, 8).join("\n")}`
   : ""}
 ${project.video_url ? `Vídeo do imóvel disponível: ${project.video_url}` : ""}
-${project.description && project.description.length > 600
-  ? `Referência factual (extraída do site original — use APENAS para extrair fatos, NÃO copie o texto):\n${project.description.slice(0, 2000)}`
+${project.description && project.description.length > 500
+  ? `Referência factual (extraída do site original — use APENAS para extrair fatos como metragem, quartos, localização; NÃO copie nem parafraseie nenhuma frase):\n${project.description.slice(0, 500)}`
   : project.description
     ? `Contexto adicional: ${project.description}`
     : ""}
@@ -394,10 +394,47 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
 
     const landingPageData = JSON.parse(jsonText);
 
+    // Mirror external image URLs to Supabase Storage to avoid CORS/expiry issues
+    async function mirrorImageToStorage(url: string, path: string): Promise<string> {
+      try {
+        const res = await fetch(url, {
+          headers: { "User-Agent": "Mozilla/5.0", "Accept": "image/*,*/*" },
+          signal: AbortSignal.timeout(12000),
+        });
+        if (!res.ok) return url;
+        const contentType = res.headers.get("content-type") || "image/jpeg";
+        const buffer = await res.arrayBuffer();
+        const { error } = await supabase.storage
+          .from("project-media")
+          .upload(path, buffer, { contentType, upsert: true });
+        if (error) return url;
+        return supabase.storage.from("project-media").getPublicUrl(path).data.publicUrl;
+      } catch {
+        return url;
+      }
+    }
+
     // Inject scraped images as gallery (AI doesn't select images, we pass them directly)
     const scrapedImages: string[] = project.scraped_images || [];
     if (scrapedImages.length > 0) {
-      landingPageData.gallery = scrapedImages;
+      // Mirror external scraped images to Storage on initial generation (not chat edits)
+      if (!chatMessage && project.id) {
+        const toMirror = scrapedImages.slice(0, 20);
+        const mirrored = await Promise.all(
+          toMirror.map((url: string, i: number) => {
+            const ext = url.split("?")[0].split(".").pop()?.slice(0, 4) || "jpg";
+            return mirrorImageToStorage(url, `projects/${project.id}/scraped/${i}.${ext}`);
+          })
+        );
+        landingPageData.gallery = mirrored;
+        // Also update the project's scraped_images with stable Storage URLs
+        await supabase
+          .from("projects")
+          .update({ scraped_images: mirrored })
+          .eq("id", project.id);
+      } else {
+        landingPageData.gallery = scrapedImages;
+      }
     } else if (chatMessage && body.existingData?.gallery?.length > 0) {
       // Preserve existing gallery on chat edits when no new scraped images
       landingPageData.gallery = body.existingData.gallery;
@@ -406,6 +443,13 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     // Preserve layout when chat edit doesn't return one
     if (chatMessage && body.existingData?.layout && !landingPageData.layout) {
       landingPageData.layout = body.existingData.layout;
+    }
+
+    // Fallback: randomly assign layout when AI didn't return one
+    if (!landingPageData.layout) {
+      const imgCount = landingPageData.gallery?.length ?? 0;
+      const options = imgCount >= 4 ? ["flow-A", "flow-B", "flow-C"] : imgCount >= 2 ? ["flow-A", "flow-B"] : ["flow-A"];
+      landingPageData.layout = options[Math.floor(Math.random() * options.length)];
     }
 
     if (!chatMessage && project.id) {

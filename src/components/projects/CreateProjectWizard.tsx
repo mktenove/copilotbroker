@@ -177,7 +177,7 @@ export function CreateProjectWizard({
           slug: s.name ? toSlug(s.name) : prev.slug,
           city: s.city || prev.city,
           city_slug: s.city ? toSlug(s.city) : prev.city_slug,
-          description: s.page_content || s.description || prev.description,
+          description: s.description || (s.page_content ? s.page_content.slice(0, 400) : '') || prev.description,
           bedrooms: s.bedrooms != null ? String(s.bedrooms) : prev.bedrooms,
           suites: s.suites != null ? String(s.suites) : prev.suites,
           parking_spots: s.parking_spots != null ? String(s.parking_spots) : prev.parking_spots,
