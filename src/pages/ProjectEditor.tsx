@@ -551,7 +551,7 @@ function buildDefaultLp(project: Project): LandingPageData {
 export default function ProjectEditor() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
-  const { role, brokerId } = useUserRole();
+  const { role, brokerId, isLoading: roleLoading } = useUserRole();
 
   const [project, setProject] = useState<Project | null>(null);
   const [broker, setBroker] = useState<BrokerInfo | null>(null);
@@ -578,8 +578,8 @@ export default function ProjectEditor() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (projectId) loadEditor();
-  }, [projectId]);
+    if (projectId && !roleLoading) loadEditor();
+  }, [projectId, roleLoading]);
 
 
   useEffect(() => {
@@ -610,12 +610,11 @@ export default function ProjectEditor() {
         setLpData(buildDefaultLp(typedProject as Project));
       }
 
-      // Load broker via session user_id (avoids timing issues with useUserRole hook)
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user?.id) {
+      // brokerId is now guaranteed to be loaded (useEffect waits for !roleLoading)
+      if (brokerId) {
         const { data: brokerData } = await (supabase.from("brokers" as any)
           .select("id, name, slug")
-          .eq("user_id", session.user.id)
+          .eq("id", brokerId)
           .maybeSingle());
         if (brokerData) setBroker(brokerData);
       }
