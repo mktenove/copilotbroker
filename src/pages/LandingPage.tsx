@@ -5,28 +5,12 @@ import { Project, LandingPageData, LandingPageTheme } from "@/types/project";
 import { toast } from "sonner";
 import {
   RefreshCw, ChevronDown, ChevronLeft, ChevronRight, Check, MapPin, MessageSquare,
-  BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard,
-  Building2, Home, Layers, Waves, Dumbbell, Bike, Trees, Coffee,
-  UtensilsCrossed, Wine, Gamepad2, Music2, Navigation, Globe, Train,
-  Bus, ShoppingBag, School, Hospital, TreePine, Shield, Star, Award,
-  Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp, Zap,
-  Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell,
-  DollarSign, Key, FileText, X as XIcon, type LucideIcon,
+  X as XIcon, type LucideIcon,
 } from "lucide-react";
+import * as LucideIcons from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
-
-// ─── Explicit lucide icon registry ───────────────────────────────────────────
-const ICON_REGISTRY: Record<string, LucideIcon> = {
-  BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard,
-  Building2, Home, Layers, Waves, Dumbbell, Bike, Trees, Coffee,
-  UtensilsCrossed, Wine, Gamepad2, Music2, MapPin, Navigation, Globe,
-  Train, Bus, ShoppingBag, School, Hospital, TreePine, Shield, Star,
-  Award, Crown, Gem, CheckCircle2, BadgeCheck, Sparkles, TrendingUp,
-  Zap, Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell,
-  DollarSign, Key, FileText,
-};
 
 // ─── Curated theme presets ────────────────────────────────────────────────────
 export const LANDING_THEMES: Record<string, Partial<LandingPageTheme>> = {
@@ -59,9 +43,9 @@ export function resolveTheme(raw: LandingPageTheme): LandingPageTheme {
 // ─── DynamicIcon ──────────────────────────────────────────────────────────────
 export function DynamicIcon({ name, className, style }: { name: string; className?: string; style?: React.CSSProperties }) {
   if (!name) return null;
-  const Icon = ICON_REGISTRY[name];
+  const Icon = (LucideIcons as Record<string, unknown>)[name] as LucideIcon | undefined;
   if (Icon) return <Icon className={className} style={style} />;
-  return <span className={cn("leading-none", className)} style={style}>{name}</span>;
+  return null;
 }
 
 // ─── FadeUp ───────────────────────────────────────────────────────────────────
