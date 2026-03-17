@@ -336,12 +336,21 @@ export function LandingPageRenderer({ lp, project, broker, isPreview }: LandingP
   const es = (path: string, baseStyle?: React.CSSProperties): React.CSSProperties => {
     const override = (lp as any).elementStyles?.[path];
     if (!override) return baseStyle ?? {};
+    let bgStyle: React.CSSProperties = {};
+    if (override.background) {
+      // Combine hex color + backgroundOpacity into rgba so only the bg is transparent
+      const hex = override.background as string;
+      const alpha = override.backgroundOpacity ?? 1;
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      bgStyle = { background: `rgba(${r},${g},${b},${alpha})` };
+    }
     return {
       ...(baseStyle ?? {}),
       ...(override.color ? { color: override.color } : {}),
       ...(override.fontSize ? { fontSize: `${override.fontSize}em` } : {}),
-      ...(override.background ? { background: override.background } : {}),
-      ...(override.opacity !== undefined ? { opacity: override.opacity } : {}),
+      ...bgStyle,
     };
   };
 

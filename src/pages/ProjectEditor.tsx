@@ -353,7 +353,7 @@ function VideoUploadField({
 }
 
 // ─── Floating inline text/style editor ───────────────────────────────────────
-type ElementStyle = { color?: string; fontSize?: number; background?: string; opacity?: number };
+type ElementStyle = { color?: string; fontSize?: number; background?: string; backgroundOpacity?: number };
 
 function FloatingTextEditor({
   path,
@@ -378,7 +378,7 @@ function FloatingTextEditor({
   const top = Math.min(rect.bottom + 8, window.innerHeight - 220);
   const left = Math.max(8, Math.min(rect.left, window.innerWidth - 340));
 
-  const opacityPct = Math.round((elementStyle?.opacity ?? 1) * 100);
+  const opacityPct = Math.round((elementStyle?.backgroundOpacity ?? 1) * 100);
 
   return createPortal(
     <>
@@ -445,7 +445,7 @@ function FloatingTextEditor({
             type="range"
             min={0} max={100}
             value={opacityPct}
-            onChange={(e) => onStyleChange(path, { ...elementStyle, opacity: Number(e.target.value) / 100 })}
+            onChange={(e) => onStyleChange(path, { ...elementStyle, backgroundOpacity: Number(e.target.value) / 100 })}
             className="flex-1 h-1 accent-yellow-400"
             title="Opacidade"
           />
