@@ -883,6 +883,27 @@ export default function ProjectEditor() {
     return '#' + [m[1], m[2], m[3]].map(n => parseInt(n).toString(16).padStart(2, '0')).join('');
   };
 
+  const isTransparent = (color: string) =>
+    !color || color === 'rgba(0, 0, 0, 0)' || color === 'transparent';
+
+  const getEffectiveBg = (el: HTMLElement): string => {
+    let node: HTMLElement | null = el;
+    while (node) {
+      const bg = window.getComputedStyle(node).backgroundColor;
+      if (!isTransparent(bg)) return rgbToHex(bg);
+      node = node.parentElement;
+    }
+    return '#000000';
+  };
+
+  const getTextColor = (el: HTMLElement): string => {
+    // Try to find a direct text child first for more accurate color
+    const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+    const textNode = walker.nextNode();
+    const textEl = textNode ? (textNode.parentElement ?? el) : el;
+    return rgbToHex(window.getComputedStyle(textEl).color);
+  };
+
   const handlePreviewClick = (e: React.MouseEvent<HTMLDivElement>) => {
     let target = e.target as HTMLElement | null;
     while (target) {
@@ -893,11 +914,8 @@ export default function ProjectEditor() {
         const value = type === 'image'
           ? (target.tagName === 'IMG' ? (target as HTMLImageElement).src : '')
           : target.textContent?.trim() || '';
-        const cs = window.getComputedStyle(target);
-        const computedColor = rgbToHex(cs.color);
-        const computedBg = cs.backgroundColor && cs.backgroundColor !== 'rgba(0, 0, 0, 0)'
-          ? rgbToHex(cs.backgroundColor)
-          : '#000000';
+        const computedColor = getTextColor(target);
+        const computedBg = getEffectiveBg(target);
         setActiveEdit({ path, value, rect, type, computedColor, computedBg });
         return;
       }
