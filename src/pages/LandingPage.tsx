@@ -315,56 +315,20 @@ function buildDefault(project: Project): LandingPageData {
   };
 }
 
-// ─── Main page ────────────────────────────────────────────────────────────────
-export default function LandingPage() {
-  const { citySlug, projectSlug, brokerSlug } = useParams<{
-    citySlug: string;
-    projectSlug: string;
-    brokerSlug: string;
-  }>();
+// ─── LandingPageRenderer ──────────────────────────────────────────────────────
+export interface LandingPageRendererProps {
+  lp: LandingPageData;
+  project: Project;
+  broker: { id: string; name: string; slug: string; whatsapp?: string | null } | null;
+}
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [broker, setBroker] = useState<BrokerInfo | null>(null);
-  const [lp, setLp] = useState<LandingPageData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notFound, setNotFound] = useState(false);
-
+export function LandingPageRenderer({ lp, project, broker }: LandingPageRendererProps) {
   const [name, setName] = useState("");
   const [whatsapp, setWhatsapp] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!citySlug || !projectSlug || !brokerSlug) { setNotFound(true); setLoading(false); return; }
-    loadPage();
-  }, [citySlug, projectSlug, brokerSlug]);
-
-  const loadPage = async () => {
-    try {
-      const { data: brokerData } = await supabase.from("brokers").select("id, name, slug, whatsapp").eq("slug", brokerSlug).maybeSingle();
-      if (!brokerData) { setNotFound(true); return; }
-      setBroker(brokerData);
-
-      const { data: projectData } = await supabase.from("projects").select("*").eq("slug", projectSlug).eq("city_slug", citySlug).eq("is_active", true).maybeSingle();
-      const typedProject = projectData as ProjectRecord | null;
-      if (!typedProject) { setNotFound(true); return; }
-      if (typedProject.landing_page_status && typedProject.landing_page_status !== 'published') { setNotFound(true); return; }
-
-      const { data: bpCheck } = await supabase.from("broker_projects").select("id").eq("broker_id", brokerData.id).eq("project_id", typedProject.id).eq("is_active", true).maybeSingle();
-      if (!bpCheck) { setNotFound(true); return; }
-
-      const normalizedProject = typedProject as Project;
-      setProject(normalizedProject);
-      setLp(typedProject.landing_page_data || buildDefault(normalizedProject));
-    } catch (err) {
-      console.error("LandingPage load error:", err);
-      setNotFound(true);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const scrollToForm = () => formRef.current?.scrollIntoView({ behavior: "smooth" });
 
@@ -394,24 +358,6 @@ export default function LandingPage() {
       setSubmitting(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
-        <RefreshCw className="w-8 h-8 animate-spin text-yellow-400" />
-      </div>
-    );
-  }
-
-  if (notFound || !lp || !project || !broker) {
-    return (
-      <div className="min-h-screen bg-[#0f0f12] flex flex-col items-center justify-center text-white gap-4">
-        <span className="text-6xl">🏠</span>
-        <h1 className="text-2xl font-bold">Página não encontrada</h1>
-        <p className="text-gray-400">Este link pode ter expirado ou não existe.</p>
-      </div>
-    );
-  }
 
   const theme = resolveTheme(lp.theme);
   const fontUrl = getFontStyle(theme.fontFamily);
@@ -926,9 +872,11 @@ export default function LandingPage() {
         {/* ── FOOTER ────────────────────────────────────────────────────── */}
         <footer className="py-10 px-6 sm:px-10 text-center border-t lp-divider" style={{ backgroundColor: bg }}>
           <p className="text-xs opacity-35 max-w-lg mx-auto leading-relaxed">{lp.footer.disclaimer}</p>
-          <p className="text-xs opacity-25 mt-3">
-            Apresentado por <strong>{broker.name}</strong> — {project.name} · {project.city}
-          </p>
+          {broker && (
+            <p className="text-xs opacity-25 mt-3">
+              Apresentado por <strong>{broker.name}</strong> — {project.name} · {project.city}
+            </p>
+          )}
         </footer>
 
         {/* ── FLOATING BUTTON (mobile) ───────────────────────────────────── */}
@@ -946,4 +894,69 @@ export default function LandingPage() {
       </div>
     </>
   );
+}
+
+// ─── Main page (fetches data, then delegates to LandingPageRenderer) ──────────
+export default function LandingPage() {
+  const { citySlug, projectSlug, brokerSlug } = useParams<{
+    citySlug: string;
+    projectSlug: string;
+    brokerSlug: string;
+  }>();
+
+  const [project, setProject] = useState<Project | null>(null);
+  const [broker, setBroker] = useState<BrokerInfo | null>(null);
+  const [lp, setLp] = useState<LandingPageData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!citySlug || !projectSlug || !brokerSlug) { setNotFound(true); setLoading(false); return; }
+    loadPage();
+  }, [citySlug, projectSlug, brokerSlug]);
+
+  const loadPage = async () => {
+    try {
+      const { data: brokerData } = await supabase.from("brokers").select("id, name, slug, whatsapp").eq("slug", brokerSlug).maybeSingle();
+      if (!brokerData) { setNotFound(true); return; }
+      setBroker(brokerData);
+
+      const { data: projectData } = await supabase.from("projects").select("*").eq("slug", projectSlug).eq("city_slug", citySlug).eq("is_active", true).maybeSingle();
+      const typedProject = projectData as ProjectRecord | null;
+      if (!typedProject) { setNotFound(true); return; }
+      if (typedProject.landing_page_status && typedProject.landing_page_status !== 'published') { setNotFound(true); return; }
+
+      const { data: bpCheck } = await supabase.from("broker_projects").select("id").eq("broker_id", brokerData.id).eq("project_id", typedProject.id).eq("is_active", true).maybeSingle();
+      if (!bpCheck) { setNotFound(true); return; }
+
+      const normalizedProject = typedProject as Project;
+      setProject(normalizedProject);
+      setLp(typedProject.landing_page_data || buildDefault(normalizedProject));
+    } catch (err) {
+      console.error("LandingPage load error:", err);
+      setNotFound(true);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-[#0f0f12] flex items-center justify-center">
+        <RefreshCw className="w-8 h-8 animate-spin text-yellow-400" />
+      </div>
+    );
+  }
+
+  if (notFound || !lp || !project || !broker) {
+    return (
+      <div className="min-h-screen bg-[#0f0f12] flex flex-col items-center justify-center text-white gap-4">
+        <span className="text-6xl">🏠</span>
+        <h1 className="text-2xl font-bold">Página não encontrada</h1>
+        <p className="text-gray-400">Este link pode ter expirado ou não existe.</p>
+      </div>
+    );
+  }
+
+  return <LandingPageRenderer lp={lp} project={project} broker={broker} />;
 }

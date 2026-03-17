@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Project, LandingPageData } from "@/types/project";
-import { LANDING_THEMES, resolveTheme, DynamicIcon } from "@/pages/LandingPage";
+import { LANDING_THEMES, resolveTheme, DynamicIcon, LandingPageRenderer } from "@/pages/LandingPage";
 import { toast } from "sonner";
 import {
   ArrowLeft,
@@ -565,10 +565,6 @@ export default function ProjectEditor() {
 
   // Preview
   const [showPreview, setShowPreview] = useState(true);
-  const previewRef = useRef<HTMLIFrameElement>(null);
-  const reloadPreview = () => {
-    try { previewRef.current?.contentWindow?.location.reload(); } catch {}
-  };
 
   // Chat
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
@@ -651,7 +647,6 @@ export default function ProjectEditor() {
         .eq("id", project.id);
       if (error) throw error;
       setLpStatus(targetStatus);
-      reloadPreview();
       toast.success(targetStatus === 'published' ? "Landing page publicada!" : "Rascunho salvo!");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -706,7 +701,6 @@ export default function ProjectEditor() {
       } else {
         toast.success("Landing page regenerada com sucesso!");
       }
-      reloadPreview();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Erro: " + msg);
@@ -1149,17 +1143,9 @@ export default function ProjectEditor() {
                 </button>
               )}
             </div>
-            {publicUrl ? (
-              <iframe
-                ref={previewRef}
-                src={publicUrl}
-                className="flex-1 w-full border-0"
-                style={{ height: "100%" }}
-                title="Preview"
-              />
-            ) : lpData ? (
-              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
-                Salve para ver o preview
+            {lpData && project ? (
+              <div className="flex-1 overflow-y-auto">
+                <LandingPageRenderer lp={lpData} project={project} broker={broker} />
               </div>
             ) : null}
           </div>
