@@ -815,6 +815,7 @@ export default function ProjectEditor() {
     const parts = path.split('.');
     for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
     obj[parts[parts.length - 1]] = value;
+    lpDataRef.current = clone; // sync ref immediately so save() never reads stale data
     setLpData(clone);
     persistNow(clone);
   };
@@ -833,6 +834,7 @@ export default function ProjectEditor() {
       for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
       obj[parts[parts.length - 1]] = '';
     }
+    lpDataRef.current = clone;
     setLpData(clone);
     persistNow(clone);
   };
@@ -844,6 +846,7 @@ export default function ProjectEditor() {
       ...prev,
       elementStyles: { ...(prev.elementStyles ?? {}), [path]: style },
     } as LandingPageData;
+    lpDataRef.current = clone;
     setLpData(clone);
     persistNow(clone);
   };
@@ -978,10 +981,18 @@ export default function ProjectEditor() {
   };
 
   const save = async (targetStatus: 'draft' | 'published') => {
-    // Use refs to guarantee latest data regardless of closure timing
+    // Cancel any pending auto-save to avoid race condition
+    if (autoSaveTimer.current) {
+      clearTimeout(autoSaveTimer.current);
+      autoSaveTimer.current = null;
+    }
+    // lpDataRef.current is always kept in sync synchronously by the handlers
     const currentData = lpDataRef.current;
     const currentProject = projectRef.current;
-    if (!currentData || !currentProject) return;
+    if (!currentData || !currentProject) {
+      toast.error("Dados não carregados ainda.");
+      return;
+    }
     setSaving(true);
     try {
       const { error } = await (supabase
