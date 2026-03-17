@@ -687,10 +687,20 @@ export default function ProjectEditor() {
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
+      const wasFirst = !lpData;
       if (lpData) pushToHistory(lpData);
       setLpData(res.data.data);
       setHasAiData(true);
-      toast.success("Landing page regenerada com sucesso!");
+      // Auto-publish on first generation so the link works immediately
+      if (wasFirst) {
+        await (supabase.from("projects") as any)
+          .update({ landing_page_data: res.data.data, landing_page_status: 'published' })
+          .eq("id", project!.id);
+        setLpStatus('published');
+        toast.success("Landing page gerada e publicada!");
+      } else {
+        toast.success("Landing page regenerada com sucesso!");
+      }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       toast.error("Erro: " + msg);
