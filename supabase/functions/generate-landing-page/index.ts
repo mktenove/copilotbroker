@@ -172,7 +172,10 @@ ${project.price_range ? `Faixa de preço: ${project.price_range}` : ""}
 ${project.amenities?.length ? `Área de lazer: ${project.amenities.join(", ")}` : ""}
 ${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
 ${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
-${scrapedImagesForContext.length > 0 ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos do imóvel (serão exibidas em galeria automaticamente)` : ""}
+${scrapedImagesForContext.length > 0
+  ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos. URLs (primeiras ${Math.min(scrapedImagesForContext.length, 8)}):\n${scrapedImagesForContext.slice(0, 8).join("\n")}`
+  : ""}
+${project.video_url ? `Vídeo do imóvel disponível: ${project.video_url}` : ""}
 ${project.description && project.description.length > 600
   ? `Referência factual (extraída do site original — use APENAS para extrair fatos, NÃO copie o texto):\n${project.description.slice(0, 2000)}`
   : project.description
@@ -377,7 +380,8 @@ Gere um JSON com esta estrutura EXATA:
   "floatingButtonText": "texto curto do botão flutuante mobile — ação + benefício",
   "footer": {
     "disclaimer": "disclaimer legal breve e profissional"
-  }
+  },
+  "layout": "flow-A | flow-B | flow-C — escolha com intenção: flow-A (padrão — localização com imagem lateral, vídeo após conteúdo); flow-B (impacto visual imediato — imagem showcase após hero, produto aspiracional/luxo); flow-C (galeria em destaque cedo — produto com muitas fotos, vídeo no final)"
 }
 
 Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
@@ -397,6 +401,11 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
     } else if (chatMessage && body.existingData?.gallery?.length > 0) {
       // Preserve existing gallery on chat edits when no new scraped images
       landingPageData.gallery = body.existingData.gallery;
+    }
+
+    // Preserve layout when chat edit doesn't return one
+    if (chatMessage && body.existingData?.layout && !landingPageData.layout) {
+      landingPageData.layout = body.existingData.layout;
     }
 
     if (!chatMessage && project.id) {

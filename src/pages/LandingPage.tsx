@@ -208,6 +208,70 @@ function SectionLabel({ children, color }: { children: React.ReactNode; color: s
   );
 }
 
+// ─── ShowcaseImage ────────────────────────────────────────────────────────────
+function ShowcaseImage({ src, primary, bg }: { src: string; primary: string; bg: string }) {
+  return (
+    <section className="relative w-full overflow-hidden" style={{ height: "55vh", minHeight: 320, maxHeight: 640 }}>
+      <img src={src} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+      <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom, transparent 55%, ${bg}dd 100%)` }} />
+    </section>
+  );
+}
+
+// ─── VideoSection ─────────────────────────────────────────────────────────────
+function VideoSection({ url, bg, primary, text }: { url: string; bg: string; primary: string; text: string }) {
+  const embedUrl = (() => {
+    const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+    if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1`;
+    if (url.includes("youtube.com/embed/")) return url;
+    const shortsMatch = url.match(/youtube\.com\/shorts\/([A-Za-z0-9_-]{11})/);
+    if (shortsMatch) return `https://www.youtube.com/embed/${shortsMatch[1]}?rel=0`;
+    const vmMatch = url.match(/vimeo\.com\/(\d+)/);
+    if (vmMatch) return `https://player.vimeo.com/video/${vmMatch[1]}?dnt=1`;
+    return null; // direct file
+  })();
+
+  return (
+    <section className="py-20 sm:py-28 px-6 sm:px-10" style={{ backgroundColor: bg }}>
+      <div className="max-w-6xl mx-auto">
+        <FadeUp>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-5 h-px" style={{ backgroundColor: primary }} />
+            <span className="text-[11px] uppercase tracking-[0.18em] font-bold opacity-50">Vídeo</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-10" style={{ color: text }}>
+            Conheça em detalhes
+          </h2>
+        </FadeUp>
+        <FadeUp delay={100}>
+          {embedUrl ? (
+            <div
+              className="relative rounded-3xl overflow-hidden border"
+              style={{ aspectRatio: "16/9", borderColor: `${primary}20` }}
+            >
+              <iframe
+                src={embedUrl}
+                className="absolute inset-0 w-full h-full"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title="Vídeo do empreendimento"
+              />
+            </div>
+          ) : (
+            <video
+              src={url}
+              controls
+              playsInline
+              className="w-full rounded-3xl"
+              style={{ border: `1px solid ${primary}20` }}
+            />
+          )}
+        </FadeUp>
+      </div>
+    </section>
+  );
+}
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface BrokerInfo {
   id: string;
@@ -390,6 +454,64 @@ export default function LandingPage() {
   const heroText = heroBg ? (isLight ? text : "#fff") : text;
   const heroSub = heroBg ? (isLight ? `${text}bb` : "rgba(255,255,255,0.78)") : `${text}aa`;
 
+  // ── Layout system ──────────────────────────────────────────────────────────
+  const layout = lp.layout ?? "flow-A";
+  const img0 = lp.gallery?.[0] ?? null;
+  const img1 = lp.gallery?.[1] ?? null;
+  // locationSideImage: replaces the highlights grid with an image in the Location section
+  const locationSideImage = (layout === "flow-A" || layout === "flow-C") ? img0 : null;
+
+  // Reusable gallery & map fragments (rendered in layout-dependent positions)
+  const galleryEl = lp.gallery && lp.gallery.length > 0 ? (
+    <section className="py-20 sm:py-28 overflow-hidden" style={{ backgroundColor: bg }}>
+      <FadeUp>
+        <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
+          <div>
+            <SectionLabel color={primary}>Galeria</SectionLabel>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Conheça o espaço</h2>
+          </div>
+          <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
+            {lp.gallery!.length} {lp.gallery!.length === 1 ? "foto" : "fotos"}
+          </span>
+        </div>
+      </FadeUp>
+      <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
+        <GalleryCarousel images={lp.gallery!} primary={primary} btnTxt={btnTxt} />
+      </div>
+    </section>
+  ) : null;
+
+  const mapEl = project.map_embed_url ? (
+    <section className="lp-section-alt py-16 px-6 sm:px-10">
+      <div className="max-w-6xl mx-auto">
+        <FadeUp>
+          <div className="flex items-center gap-3 mb-6">
+            <MapPin className="w-4 h-4" style={{ color: primary }} />
+            <span className="text-sm font-semibold opacity-50 uppercase tracking-widest">Localização no mapa</span>
+          </div>
+        </FadeUp>
+        <FadeUp delay={80}>
+          <div className="rounded-3xl overflow-hidden border lp-divider">
+            <iframe
+              src={project.map_embed_url}
+              width="100%"
+              height="380"
+              style={{ border: 0 }}
+              allowFullScreen
+              loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              title="Localização do empreendimento"
+            />
+          </div>
+        </FadeUp>
+      </div>
+    </section>
+  ) : null;
+
+  const videoEl = project.video_url ? (
+    <VideoSection url={project.video_url} bg={bg} primary={primary} text={text} />
+  ) : null;
+
   return (
     <>
       <link rel="stylesheet" href={fontUrl} />
@@ -512,87 +634,81 @@ export default function LandingPage() {
           </section>
         )}
 
+        {/* ── flow-B: showcase img0 after features ──────────────────────── */}
+        {layout === "flow-B" && img0 && <ShowcaseImage src={img0} primary={primary} bg={bg} />}
+
+        {/* ── flow-C: gallery + map early (before location) ─────────────── */}
+        {layout === "flow-C" && galleryEl}
+        {layout === "flow-C" && mapEl}
+
         {/* ── LOCATION ──────────────────────────────────────────────────── */}
         <section className="lp-section-alt py-20 sm:py-28 px-6 sm:px-10">
-          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-20 items-start">
+          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 md:gap-16 items-center">
             <FadeUp>
               <SectionLabel color={primary}>Localização</SectionLabel>
               <h2 className="text-3xl sm:text-4xl md:text-5xl font-black leading-tight mb-6" style={{ color: text }}>
                 {lp.location.title}
               </h2>
-              <p className="text-base md:text-lg leading-relaxed" style={{ color: `${text}88` }}>
+              <p className="text-base md:text-lg leading-relaxed mb-6" style={{ color: `${text}88` }}>
                 {lp.location.description}
               </p>
-            </FadeUp>
-            <div className="grid grid-cols-2 gap-3 md:pt-8">
-              {lp.location.highlights.map((h, i) => (
-                <FadeUp key={i} delay={i * 80 + 100}>
-                  <div
-                    className="flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02]"
-                    style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
-                  >
-                    <div
-                      className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                      style={{ backgroundColor: primary }}
+              {/* When image is in the right column, highlights show inline below the text */}
+              {locationSideImage && lp.location.highlights.length > 0 && (
+                <ul className="flex flex-wrap gap-2">
+                  {lp.location.highlights.map((h, i) => (
+                    <li
+                      key={i}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
+                      style={{ background: `${primary}10`, border: `1px solid ${primary}22`, color: text }}
                     >
-                      <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
-                    </div>
-                    <span className="text-sm font-medium leading-snug">{h}</span>
-                  </div>
-                </FadeUp>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── GALLERY ───────────────────────────────────────────────────── */}
-        {lp.gallery && lp.gallery.length > 0 && (
-          <section className="py-20 sm:py-28 overflow-hidden" style={{ backgroundColor: bg }}>
-            <FadeUp>
-              <div className="max-w-6xl mx-auto px-6 sm:px-10 mb-10 flex items-end justify-between">
-                <div>
-                  <SectionLabel color={primary}>Galeria</SectionLabel>
-                  <h2 className="text-3xl sm:text-4xl md:text-5xl font-black">Conheça o espaço</h2>
-                </div>
-                <span className="text-sm opacity-30 font-medium hidden md:block shrink-0 ml-4">
-                  {lp.gallery.length} {lp.gallery.length === 1 ? "foto" : "fotos"}
-                </span>
-              </div>
+                      <Check className="w-3.5 h-3.5 shrink-0" style={{ color: primary }} />
+                      {h}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </FadeUp>
-            {/* Left-padded so first slide peeks from edge */}
-            <div className="pl-6 sm:pl-10 md:pl-[max(2.5rem,calc((100vw-72rem)/2+2.5rem))]">
-              <GalleryCarousel images={lp.gallery} primary={primary} btnTxt={btnTxt} />
-            </div>
-          </section>
-        )}
 
-        {/* ── MAP ───────────────────────────────────────────────────────── */}
-        {project.map_embed_url && (
-          <section className="lp-section-alt py-16 px-6 sm:px-10">
-            <div className="max-w-6xl mx-auto">
-              <FadeUp>
-                <div className="flex items-center gap-3 mb-6">
-                  <MapPin className="w-4 h-4" style={{ color: primary }} />
-                  <span className="text-sm font-semibold opacity-50 uppercase tracking-widest">Localização no mapa</span>
-                </div>
-              </FadeUp>
-              <FadeUp delay={80}>
-                <div className="rounded-3xl overflow-hidden border lp-divider">
-                  <iframe
-                    src={project.map_embed_url}
-                    width="100%"
-                    height="380"
-                    style={{ border: 0 }}
-                    allowFullScreen
+            {locationSideImage ? (
+              <FadeUp delay={120}>
+                <div className="rounded-3xl overflow-hidden" style={{ aspectRatio: "4/3" }}>
+                  <img
+                    src={locationSideImage}
+                    alt="Imagem do imóvel"
+                    className="w-full h-full object-cover"
                     loading="lazy"
-                    referrerPolicy="no-referrer-when-downgrade"
-                    title="Localização do empreendimento"
                   />
                 </div>
               </FadeUp>
-            </div>
-          </section>
-        )}
+            ) : (
+              <div className="grid grid-cols-2 gap-3 md:pt-8">
+                {lp.location.highlights.map((h, i) => (
+                  <FadeUp key={i} delay={i * 80 + 100}>
+                    <div
+                      className="flex items-start gap-3 p-4 rounded-2xl h-full transition-transform hover:scale-[1.02]"
+                      style={{ background: `${primary}08`, border: `1px solid ${primary}18` }}
+                    >
+                      <div
+                        className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                        style={{ backgroundColor: primary }}
+                      >
+                        <Check className="w-3.5 h-3.5" style={{ color: btnTxt }} />
+                      </div>
+                      <span className="text-sm font-medium leading-snug">{h}</span>
+                    </div>
+                  </FadeUp>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* ── flow-C: showcase img1 after location, before audience ─────── */}
+        {layout === "flow-C" && img1 && <ShowcaseImage src={img1} primary={primary} bg={bg} />}
+
+        {/* ── GALLERY & MAP — normal position (flow-A and flow-B) ────────── */}
+        {layout !== "flow-C" && galleryEl}
+        {layout !== "flow-C" && mapEl}
 
         {/* ── AUDIENCE ──────────────────────────────────────────────────── */}
         {lp.audience?.length > 0 && (
@@ -635,6 +751,9 @@ export default function LandingPage() {
             </div>
           </section>
         )}
+
+        {/* ── flow-B: video before urgency ──────────────────────────────── */}
+        {layout === "flow-B" && videoEl}
 
         {/* ── URGENCY ───────────────────────────────────────────────────── */}
         {lp.urgency && (
@@ -718,6 +837,9 @@ export default function LandingPage() {
             </div>
           </section>
         )}
+
+        {/* ── flow-A / flow-C: video after benefits ─────────────────────── */}
+        {layout !== "flow-B" && videoEl}
 
         {/* ── CTA FINAL ─────────────────────────────────────────────────── */}
         <section className="py-24 sm:py-32 px-6 sm:px-10 text-center" style={{ backgroundColor: bg }}>

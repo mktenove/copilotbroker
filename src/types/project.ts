@@ -142,6 +142,7 @@ export interface LandingPageData {
   hero: LandingPageHero;
   location: LandingPageLocation;
   gallery?: string[];
+  layout?: 'flow-A' | 'flow-B' | 'flow-C';
   features: LandingPageFeatureItem[];
   audience: LandingPageAudienceCard[];
   urgency: LandingPageUrgency;
