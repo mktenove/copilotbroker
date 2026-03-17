@@ -26,7 +26,6 @@ async function getAuthUser(authHeader?: string) {
   return { user, error: null };
 }
 
-// Load AI config from platform_settings, falling back to env vars
 async function loadAiConfig() {
   const { data } = await supabase
     .from("platform_settings")
@@ -58,7 +57,6 @@ async function loadAiConfig() {
   };
 }
 
-// Call the configured AI provider and return raw text
 async function callAi(systemPrompt: string, userPrompt: string): Promise<string> {
   const cfg = await loadAiConfig();
 
@@ -66,7 +64,7 @@ async function callAi(systemPrompt: string, userPrompt: string): Promise<string>
     const client = new Anthropic({ apiKey: cfg.anthropic.apiKey });
     const message = await client.messages.create({
       model: cfg.anthropic.model,
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [{ role: "user", content: userPrompt }],
       system: systemPrompt,
     });
@@ -79,7 +77,7 @@ async function callAi(systemPrompt: string, userPrompt: string): Promise<string>
     const client = new OpenAI({ apiKey: cfg.openai.apiKey });
     const completion = await client.chat.completions.create({
       model: cfg.openai.model,
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -89,14 +87,13 @@ async function callAi(systemPrompt: string, userPrompt: string): Promise<string>
   }
 
   if (cfg.provider === "gemini") {
-    // Gemini exposes an OpenAI-compatible endpoint
     const client = new OpenAI({
       apiKey: cfg.gemini.apiKey,
       baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
     });
     const completion = await client.chat.completions.create({
       model: cfg.gemini.model,
-      max_tokens: 4096,
+      max_tokens: 8192,
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
@@ -106,6 +103,29 @@ async function callAi(systemPrompt: string, userPrompt: string): Promise<string>
   }
 
   throw new Error(`Provedor de IA desconhecido: ${cfg.provider}`);
+}
+
+// Deep merge: recursively merges source into target (arrays are replaced, not merged)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function deepMerge(target: any, source: any): any {
+  if (typeof source !== "object" || source === null) return source;
+  if (Array.isArray(source)) return source;
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (
+      typeof source[key] === "object" &&
+      source[key] !== null &&
+      !Array.isArray(source[key]) &&
+      typeof target?.[key] === "object" &&
+      target[key] !== null &&
+      !Array.isArray(target[key])
+    ) {
+      result[key] = deepMerge(target[key], source[key]);
+    } else {
+      result[key] = source[key];
+    }
+  }
+  return result;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -127,63 +147,8 @@ const PROPERTY_TYPE_LABELS: Record<string, string> = {
   studio: "Studio",
 };
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
-  }
-
-  try {
-    const authHeader = req.headers.get("Authorization") ?? undefined;
-    const { user, error: authError } = await getAuthUser(authHeader);
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: "Não autorizado" }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    const body = await req.json();
-    const { project, chatMessage } = body;
-
-    if (!project) {
-      return new Response(JSON.stringify({ error: "Dados do projeto são obrigatórios" }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Build project context string
-    const statusLabel = STATUS_LABELS[project.status] || project.status;
-    const typeLabel = PROPERTY_TYPE_LABELS[project.property_type] || project.property_type || "Imóvel";
-
-    const scrapedImagesForContext: string[] = project.scraped_images || [];
-
-    const projectContext = `
-Nome: ${project.name}
-Tipo: ${typeLabel}
-Status: ${statusLabel}
-Cidade: ${project.city}
-${project.address ? `Endereço/Bairro: ${project.address}` : ""}
-${project.bedrooms ? `Dormitórios: ${project.bedrooms}` : ""}
-${project.suites ? `Suítes: ${project.suites}` : ""}
-${project.parking_spots ? `Vagas de garagem: ${project.parking_spots}` : ""}
-${project.area_m2 ? `Metragem: ${project.area_m2}m²` : ""}
-${project.price_range ? `Faixa de preço: ${project.price_range}` : ""}
-${project.amenities?.length ? `Área de lazer: ${project.amenities.join(", ")}` : ""}
-${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
-${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
-${scrapedImagesForContext.length > 0
-  ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos. URLs (primeiras ${Math.min(scrapedImagesForContext.length, 8)}):\n${scrapedImagesForContext.slice(0, 8).join("\n")}`
-  : ""}
-${project.video_url ? `Vídeo do imóvel disponível: ${project.video_url}` : ""}
-${project.description && project.description.length > 200
-  ? `Referência factual (extraída do site original — use APENAS para extrair fatos como metragem, quartos, localização; NÃO copie nem parafraseie nenhuma frase):\n${project.description.slice(0, 3000)}`
-  : project.description
-    ? `Contexto adicional: ${project.description}`
-    : ""}
-`.trim();
-
-    let systemPrompt = `Você é um diretor criativo + copywriter de conversão + designer de landing pages premium para mercado imobiliário brasileiro.
+// ─── Shared LP expertise block ────────────────────────────────────────────────
+const LP_EXPERTISE = `Você é um diretor criativo + copywriter de conversão + designer de landing pages premium para mercado imobiliário brasileiro.
 
 Sua missão é gerar landing pages únicas, com identidade visual distinta e copy altamente persuasiva — cada geração deve parecer uma peça original, não um template repetido.
 
@@ -203,12 +168,8 @@ REGRAS ESTRATÉGICAS
 - Sempre escrever em português do Brasil.
 - O design deve parecer intencional, sofisticado e memorável.
 - Priorize composição editorial com contraste, respiro, ritmo visual e um "hero moment" forte.
-- Mobile-first obrigatório.
-- CTA sempre visível nos momentos certos.
 
 IDENTIDADE VISUAL — ESCOLHA COM INTENÇÃO
-Cada empreendimento merece uma identidade própria. Escolha o tema com base no posicionamento real do produto:
-
 DARK PREMIUM (luxo, alto padrão, investimento exclusivo):
 - "luxury-gold"        → fundo quase preto, dourado quente → Cormorant Garamond ou Playfair Display
 - "luxury-copper"      → fundo quase preto, cobre → Cormorant Garamond
@@ -228,56 +189,13 @@ LIGHT EDITORIAL (moderno, familiar, acessível, urbano):
 - "fresh-sage"         → fundo quase branco, verde → Nunito → heroStyle: light-overlay
 - "modern-slate"       → fundo gelo, navy escuro → DM Sans → heroStyle: light-overlay
 - "azure-clean"        → fundo azul claro, azul royal → Plus Jakarta Sans → heroStyle: light-overlay
-- "coral-energy"       → fundo pêssego, laranja → Poppins → heroStyle: light-overlay (lançamento/família)
+- "coral-energy"       → fundo pêssego, laranja → Poppins → heroStyle: light-overlay
 - "rose-luxury"        → fundo rosa claro, bordô → Cormorant Garamond → heroStyle: light-overlay
 - "forest-premium"     → fundo verde-claro, verde escuro → Raleway → heroStyle: light-overlay
 
-REGRA DO heroStyle:
-- Temas dark: sempre "dark-overlay" quando há imagem; "gradient" para editorial puro sem imagem
-- Temas light: sempre "light-overlay" quando há imagem; "gradient" para editorial puro
+REGRA DO heroStyle: temas dark = "dark-overlay"; temas light = "light-overlay"; sem imagem = "gradient"
 
-ESTRUTURA NARRATIVA OBRIGATÓRIA
-1. HERO — headline forte, específica e comercial; subheadline com contexto real e benefício; CTA principal claro
-2. CONTEXTO/POSICIONAMENTO — por que esse imóvel merece atenção agora; localização, proposta, perfil ideal
-3. BENEFÍCIOS REAIS — traduzir características em benefício percebido; valor prático e emocional
-4. DIFERENCIAIS — o que torna essa oferta superior às alternativas; específico, não genérico
-5. PARA QUEM É — qualificar o público; fazer o lead se reconhecer
-6. REDUÇÃO DE OBJEÇÃO — segurança, praticidade, potencial; responder "por que eu deixaria meus dados?"
-7. URGÊNCIA/ESCASSEZ — inserir com elegância, sem parecer spam; motivo real para agir agora
-8. CTA FINAL — forte, simples e orientado à ação
-
-REGRAS DE COPY
-- Escreva com densidade comercial. Frases curtas, seguras, específicas.
-- Sempre transformar atributo em impacto: "157 m²" → "157 m² para viver sem limitação e receber como se merece"
-- Evite repetição de termos. Use subtítulos que puxem leitura.
-- O visitante precisa sentir que perder essa oportunidade custa algo.
-- Headline deve ser comercial e memorável — NÃO apenas o nome do empreendimento.
-
-REGRAS DE CONTEÚDO DE FONTE
-Quando houver "Referência factual (extraída do site original)", use APENAS como fonte de fatos brutos (localização, metragem, quartos, amenidades, preço). NUNCA copie nem parafraseie qualquer frase do texto original. Escreva copy inteiramente novo, autoral e persuasivo — como se você fosse um copywriter que só recebeu bullet points de dados.
-
-PROIBIDO INVENTAR:
-- ❌ NÃO mencione "pré-lançamento", "lançamento", "obras", "entrega prevista" ou qualquer estágio de obra a não ser que esteja EXPLICITAMENTE nos dados do imóvel.
-- ❌ NÃO invente unidades restantes, vagas ou prazos.
-- ❌ NÃO cite preços ou condições de pagamento a não ser que estejam nos dados.
-- ❌ NÃO mencione "exclusividade" ou "últimas unidades" sem base nos dados.
-- Se os dados não informam o estágio do empreendimento, trate-o como imóvel pronto/disponível.
-
-EXEMPLOS DE HERO.TITLE:
-❌ PROIBIDO: "Apartamento 3 Quartos 2 Suítes 157m² 2 Vagas Piscina Academia – Vila Olímpia SP"
-❌ PROIBIDO: "Realize seu sonho de morar bem em [cidade]"
-❌ PROIBIDO: usar o nome do empreendimento como headline
-❌ PROIBIDO: listar atributos/features no título
-✅ CORRETO: "Vila Olímpia redefinida. O padrão que você esperava chegou."
-✅ CORRETO: "Quando 157 m² é pouco pra tudo que você planejou."
-✅ CORRETO: "Invista onde São Paulo nunca para de crescer."
-✅ CORRETO: "Viver bem aqui é inevitável."
-
-TECNOLOGIA DO FRONTEND
-O frontend usa React + Tailwind CSS + lucide-react com Intersection Observer para animações de entrada.
-Para os campos "icon" de features e benefits, use SEMPRE nomes do registro abaixo (NUNCA emojis, NUNCA strings livres).
-
-REGISTRO DE ÍCONES (nome exato — case-sensitive):
+ÍCONES LUCIDE (use SEMPRE nomes exatos, NUNCA emojis):
 Cômodos: BedDouble, Bath, ShowerHead, Car, Sofa, Maximize2, LayoutDashboard, Building2, Home, Layers
 Lazer: Waves, Dumbbell, Bike, Trees, Coffee, UtensilsCrossed, Wine, Gamepad2, Music2
 Localização: MapPin, Navigation, Globe, Train, Bus, ShoppingBag, School, Hospital, TreePine
@@ -286,131 +204,236 @@ Contato/Negócio: Phone, MessageCircle, Mail, CalendarCheck, Clock, Bell, Dollar
 
 Para o campo "theme", use APENAS: preset, fontFamily, heroStyle. NÃO inclua primaryColor, accentColor, bgColor, textColor.
 
-Sempre responda com JSON válido. Não inclua markdown, apenas o JSON puro.`;
+PROIBIDO INVENTAR:
+- ❌ NÃO mencione pré-lançamento, obras, entrega prevista a não ser que esteja nos dados
+- ❌ NÃO invente unidades restantes, vagas ou prazos
+- ❌ NÃO cite preços a não ser que estejam nos dados
+- ❌ NÃO mencione "exclusividade" ou "últimas unidades" sem base nos dados
+- Se os dados não informam o estágio, trate como imóvel pronto/disponível
 
+COPY RULES:
+- Transformar atributo em impacto: "157 m²" → "157 m² para viver sem limitação"
+- Headline comercial memorável — NÃO o nome do empreendimento, NÃO lista de atributos
+- Frases curtas, seguras, específicas
+- O visitante precisa sentir que perder essa oportunidade custa algo`;
+
+// ─── Full LP JSON schema example ─────────────────────────────────────────────
+const LP_SCHEMA = `{
+  "theme": { "preset": "nome-do-preset", "fontFamily": "Fonte Google", "heroStyle": "dark-overlay|light-overlay|gradient" },
+  "hero": { "badge": "...", "title": "...", "titleHighlight": "...", "subtitle": "...", "ctaText": "..." },
+  "location": { "title": "...", "description": "...", "highlights": ["...", "...", "...", "..."] },
+  "features": [{ "icon": "NomeLucide", "label": "...", "value": "..." }],
+  "audience": [{ "title": "...", "description": "..." }],
+  "urgency": { "type": "urgency|opportunity|availability", "title": "...", "description": "...", "highlight": "..." },
+  "benefits": [{ "icon": "NomeLucide", "title": "...", "description": "..." }],
+  "cta": { "title": "...", "subtitle": "...", "buttonText": "..." },
+  "form": { "title": "...", "subtitle": "...", "buttonText": "...", "thankYouTitle": "...", "thankYouMessage": "..." },
+  "floatingButtonText": "...",
+  "footer": { "disclaimer": "..." }
+}`;
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authHeader = req.headers.get("Authorization") ?? undefined;
+    const { user, error: authError } = await getAuthUser(authHeader);
+    if (authError || !user) {
+      return new Response(JSON.stringify({ error: "Não autorizado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json();
+    const { project, chatMessage, existingData, chatHistory } = body;
+
+    if (!project) {
+      return new Response(JSON.stringify({ error: "Dados do projeto são obrigatórios" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const statusLabel = STATUS_LABELS[project.status] || project.status;
+    const typeLabel = PROPERTY_TYPE_LABELS[project.property_type] || project.property_type || "Imóvel";
+    const scrapedImagesForContext: string[] = project.scraped_images || [];
+
+    const projectContext = `
+Nome: ${project.name}
+Tipo: ${typeLabel}
+Status: ${statusLabel}
+Cidade: ${project.city}
+${project.address ? `Endereço/Bairro: ${project.address}` : ""}
+${project.bedrooms ? `Dormitórios: ${project.bedrooms}` : ""}
+${project.suites ? `Suítes: ${project.suites}` : ""}
+${project.parking_spots ? `Vagas de garagem: ${project.parking_spots}` : ""}
+${project.area_m2 ? `Metragem: ${project.area_m2}m²` : ""}
+${project.price_range ? `Faixa de preço: ${project.price_range}` : ""}
+${project.amenities?.length ? `Área de lazer: ${project.amenities.join(", ")}` : ""}
+${project.differentials ? `Diferenciais: ${project.differentials}` : ""}
+${project.ideal_buyer ? `Perfil do comprador ideal: ${project.ideal_buyer}` : ""}
+${scrapedImagesForContext.length > 0
+  ? `Imagens disponíveis: ${scrapedImagesForContext.length} fotos`
+  : ""}
+${project.description && project.description.length > 200
+  ? `Referência factual (APENAS fatos brutos — NÃO copie nem parafraseie):\n${project.description.slice(0, 3000)}`
+  : project.description ? `Contexto: ${project.description}` : ""}
+`.trim();
+
+    let systemPrompt: string;
     let userPrompt: string;
+    let isChatMode = false;
 
-    if (chatMessage && body.existingData) {
-      systemPrompt += `\nO usuário quer ajustar partes da landing page existente. Retorne o JSON completo atualizado. IMPORTANTE: qualquer texto na seção "Referência factual (extraída do site original)" serve APENAS como fonte de dados brutos — NUNCA copie nem parafraseie essas frases. Escreva copy novo e persuasivo.`;
-      userPrompt = `
-Dados do empreendimento:
+    // ── MODO CHAT (edição inteligente) ───────────────────────────────────────
+    if (chatMessage && existingData) {
+      isChatMode = true;
+
+      systemPrompt = `${LP_EXPERTISE}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MODO EDITOR INTELIGENTE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Você é o editor inteligente da landing page. Recebe a LP atual, o histórico de conversa e um novo pedido.
+
+PASSO 1 — CLASSIFICAR A INTENÇÃO:
+Analise o pedido e classifique como:
+
+→ "patch" (edição cirúrgica): o usuário quer mudar algo específico sem alterar o resto
+   Exemplos: "muda o título do hero", "deixa o CTA mais urgente", "reescreve a seção de benefícios",
+   "muda a fonte para Montserrat", "deixa o badge mais impactante", "troca o tema para dark",
+   "deixa os textos mais curtos", "fala mais de família", "adiciona mais urgência"
+
+→ "full" (novo layout): o usuário quer uma criação nova, diferente, com outro posicionamento
+   Exemplos: "gera um completamente diferente", "cria outro layout", "quero algo mais luxuoso",
+   "refaz do zero", "muda tudo", "tenta outro estilo", "cria uma versão diferente",
+   "quero uma landing nova", "faz uma para investidor", "outra abordagem"
+
+PASSO 2 — AGIR:
+
+SE "patch":
+  Retorne APENAS os campos que precisam mudar, no formato nested. NÃO inclua campos que não mudaram.
+  {
+    "type": "patch",
+    "changes": { /* apenas campos modificados, ex: {"hero": {"title": "novo"}} */ },
+    "message": "O que você fez, em 1-2 frases em português, direto e específico"
+  }
+
+SE "full":
+  Crie uma landing page completamente nova e diferente da atual — outro tema, outro posicionamento, outra narrativa.
+  {
+    "type": "full",
+    "data": { /* LP completa seguindo o schema */ },
+    "message": "O que você criou e qual foi a direção criativa, em 2-3 frases"
+  }
+
+SCHEMA COMPLETO (para "full"):
+${LP_SCHEMA}
+
+IMPORTANTE:
+- O campo "message" deve ser informativo e específico, não genérico (ex: NÃO "Apliquei as alterações")
+- Galeria de imagens é preservada automaticamente — não inclua "gallery" nem "hero.bgImage"
+- Retorne APENAS o JSON. Sem markdown. Sem explicações fora do campo "message".`;
+
+      // Build conversation history context
+      const historyLines: string[] = (chatHistory || []).map(
+        (m: { role: string; content: string }) =>
+          `${m.role === "user" ? "Usuário" : "IA"}: ${m.content}`
+      );
+      const historyBlock = historyLines.length > 0
+        ? `\nHistórico da conversa:\n${historyLines.join("\n")}\n`
+        : "";
+
+      userPrompt = `Empreendimento:
 ${projectContext}
 
-Landing page atual (JSON):
-${JSON.stringify(body.existingData, null, 2)}
+Landing page atual:
+${JSON.stringify(existingData, null, 2)}
+${historyBlock}
+Novo pedido: "${chatMessage}"`;
+    }
 
-Pedido do usuário: "${chatMessage}"
+    // ── MODO GERAÇÃO INICIAL ─────────────────────────────────────────────────
+    else {
+      systemPrompt = `${LP_EXPERTISE}
 
-Aplique as alterações solicitadas e retorne o JSON completo da landing page com as mesmas chaves, mantendo o que não foi pedido para alterar.
-Retorne APENAS o JSON, sem explicações.`;
-    } else {
-      userPrompt = `
-Crie a landing page para o seguinte empreendimento imobiliário. Aplique toda a sua expertise de diretor criativo + copywriter de conversão + designer premium.
+Sempre responda com JSON válido seguindo o schema exato. Não inclua markdown, apenas o JSON puro.`;
+
+      userPrompt = `Crie a landing page para o seguinte empreendimento imobiliário. Aplique toda a sua expertise de diretor criativo + copywriter de conversão + designer premium.
 
 DADOS DO EMPREENDIMENTO:
 ${projectContext}
 
 ORIENTAÇÃO CRIATIVA:
-- Escolha o posicionamento correto (luxo, premium, médio-alto, família, investimento) com base nos dados acima
+- Escolha o posicionamento correto (luxo, premium, médio-alto, família, investimento) com base nos dados
 - O theme deve refletir o posicionamento com cores, tipografia e estilo coerentes
-- O hero.title deve ser uma headline comercial forte, específica e memorável — não o nome do empreendimento simplesmente
-- hero.titleHighlight deve destacar a palavra-chave mais impactante do título (pode ser vazia se não aplicável)
-- hero.subtitle deve contextualizar localização e proposta de valor com uma frase densa e persuasiva
-- location.description deve valorizar a localização de forma específica, não genérica
-- location.highlights devem ser pontos reais e concretos sobre a localização (ex: "A 500m do metrô Butantã", não só "Bem localizado")
-- features: listar APENAS atributos que estejam EXPLICITAMENTE nos dados (área, dormitórios, vagas, suítes, amenidades confirmadas). NÃO invente diferenciais, infraestrutura ou comodidades que não foram mencionadas
-- audience: descrever perfis de comprador com especificidade — fazer o lead se reconhecer
-- urgency: inserir com elegância, baseada no status real do imóvel, sem parecer spam
-- benefits: focar em por que deixar o contato, não nos atributos do imóvel
-- cta.title: headline final que fecha a narrativa com força e clareza
-- form.subtitle: criar senso de segurança e facilidade — reduzir última objeção antes do envio
-- form.thankYouMessage: mensagem calorosa, profissional e que define o próximo passo
+- hero.title: headline comercial forte, específica e memorável — NÃO o nome do empreendimento
+- hero.titleHighlight: palavra-chave mais impactante do título (ou string vazia)
+- hero.subtitle: frase densa — localização + proposta de valor + quem é o imóvel
+- location.highlights: pontos reais e concretos (ex: "A 500m do metrô Butantã", não "Bem localizado")
+- features: APENAS atributos nos dados (área, dormitórios, vagas, suítes, amenidades confirmadas)
+- audience: perfis específicos — fazer o lead se reconhecer
+- urgency: elegante, sem spam, baseada no status real
+- benefits: por que deixar o contato, não atributos do imóvel
+- cta.title: fecha a narrativa com força, sem clichê
+- form.subtitle: segurança + próximo passo
 
-Gere um JSON com esta estrutura EXATA:
+Gere o JSON com esta estrutura EXATA:
+${LP_SCHEMA}
 
-{
-  "theme": {
-    "preset": "nome do preset (dark: luxury-gold, luxury-copper, prestige-white, corporate-navy, premium-terracotta, prestige-emerald, editorial-slate, bold-yellow, deep-ocean, crimson-night, violet-dark | light: pure-light, warm-paper, fresh-sage, modern-slate, azure-clean, coral-energy, rose-luxury, forest-premium)",
-    "fontFamily": "fonte Google que melhor representa o posicionamento do produto",
-    "heroStyle": "dark-overlay (dark themes com imagem) | light-overlay (light themes com imagem) | gradient (sem imagem)"
-  },
-  "hero": {
-    "badge": "selo contextual e específico ao status (ex: 'Últimas unidades · Lançamento 2025')",
-    "title": "headline comercial forte, específica e memorável",
-    "titleHighlight": "palavra-chave mais impactante do título, para destacar em cor de acento (ou string vazia)",
-    "subtitle": "frase densa: contextualiza localização + proposta de valor + quem é o imóvel",
-    "ctaText": "verbo de ação + benefício imediato (ex: 'Quero conhecer este imóvel')"
-  },
-  "location": {
-    "title": "título editorial sobre a localização — não 'Localização Privilegiada'",
-    "description": "parágrafo de 2-3 frases valorizando a localização com argumentos concretos e específicos",
-    "highlights": ["ponto concreto 1", "ponto concreto 2", "ponto concreto 3", "ponto concreto 4"]
-  },
-  "features": [
-    {"icon": "NomeLucide", "label": "rótulo do atributo (ex: Área)", "value": "valor REAL extraído dos dados (ex: 103 m²) — NUNCA invente"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real — omita este item se não houver dado real"},
-    {"icon": "NomeLucide", "label": "rótulo", "value": "valor real — omita este item se não houver dado real"}
-  ],
-  "audience": [
-    {"title": "perfil específico 1 — fazer o lead se reconhecer", "description": "por que esse imóvel é perfeito para esse perfil"},
-    {"title": "perfil específico 2", "description": "por que esse imóvel é perfeito para esse perfil"},
-    {"title": "perfil específico 3", "description": "por que esse imóvel é perfeito para esse perfil"},
-    {"title": "perfil específico 4", "description": "por que esse imóvel é perfeito para esse perfil"}
-  ],
-  "urgency": {
-    "type": "urgency ou opportunity ou availability",
-    "title": "título que provoca urgência legítima e elegante",
-    "description": "texto persuasivo que justifica a urgência com argumento concreto, sem tom de spam",
-    "highlight": "frase de impacto curta ou dado numérico (ex: '12 unidades restantes')"
-  },
-  "benefits": [
-    {"icon": "NomeLucide", "title": "motivo concreto para deixar o contato 1", "description": "descrição de 1 frase que reduz objeção"},
-    {"icon": "NomeLucide", "title": "motivo 2", "description": "descrição breve"},
-    {"icon": "NomeLucide", "title": "motivo 3", "description": "descrição breve"},
-    {"icon": "NomeLucide", "title": "motivo 4", "description": "descrição breve"}
-  ],
-  "cta": {
-    "title": "headline final que fecha a narrativa com força — sem clichê",
-    "subtitle": "frase que define o próximo passo e reduz última objeção",
-    "buttonText": "texto de ação claro e direto"
-  },
-  "form": {
-    "title": "título do formulário — curto e orientado ao benefício",
-    "subtitle": "frase que cria segurança e define o que acontece após o envio",
-    "buttonText": "texto do botão — verbo de ação",
-    "thankYouTitle": "título da confirmação — caloroso e profissional",
-    "thankYouMessage": "mensagem que confirma o recebimento, cria expectativa positiva e define próximo passo"
-  },
-  "floatingButtonText": "texto curto do botão flutuante mobile — ação + benefício",
-  "footer": {
-    "disclaimer": "disclaimer legal breve e profissional"
-  }
-}
-
-Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
+Retorne APENAS o JSON. Sem markdown. Sem explicações.`;
     }
 
-    let jsonText = (await callAi(systemPrompt, userPrompt)).trim();
-    if (jsonText.startsWith("```")) {
-      jsonText = jsonText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "");
+    let rawText = (await callAi(systemPrompt, userPrompt)).trim();
+    if (rawText.startsWith("```")) {
+      rawText = rawText.replace(/^```[a-z]*\n?/, "").replace(/\n?```$/, "");
     }
 
-    const landingPageData = JSON.parse(jsonText);
+    const parsed = JSON.parse(rawText);
 
-    // Inject all scraped images directly into gallery — no mirroring
-    const scrapedImages: string[] = project.scraped_images || [];
-    if (scrapedImages.length > 0) {
-      landingPageData.gallery = scrapedImages;
-      // Set hero background to first image if AI didn't set one
-      if (!landingPageData.hero?.bgImage && scrapedImages[0]) {
-        if (!landingPageData.hero) landingPageData.hero = {};
-        landingPageData.hero.bgImage = scrapedImages[0];
+    let landingPageData: Record<string, unknown>;
+    let aiMessage = "";
+    let responseType = "full";
+
+    if (isChatMode) {
+      responseType = parsed.type || "full";
+
+      if (parsed.type === "patch" && parsed.changes) {
+        // Surgical merge — only changed fields
+        landingPageData = deepMerge(existingData, parsed.changes);
+        // Always preserve gallery & hero background image
+        landingPageData.gallery = existingData.gallery;
+        if (existingData.hero?.bgImage) {
+          (landingPageData.hero as Record<string, unknown>).bgImage = existingData.hero.bgImage;
+        }
+      } else {
+        // Full regen
+        landingPageData = parsed.data || parsed;
+        // Preserve gallery from existing data
+        if (existingData?.gallery?.length > 0) {
+          landingPageData.gallery = existingData.gallery;
+          if (!landingPageData.hero) landingPageData.hero = {};
+          if (!(landingPageData.hero as Record<string, unknown>).bgImage && existingData.hero?.bgImage) {
+            (landingPageData.hero as Record<string, unknown>).bgImage = existingData.hero.bgImage;
+          }
+        }
       }
-    } else if (chatMessage && body.existingData?.gallery?.length > 0) {
-      landingPageData.gallery = body.existingData.gallery;
+
+      aiMessage = parsed.message || (parsed.type === "patch" ? "Edição aplicada." : "Nova versão criada.");
+    } else {
+      // Initial generation
+      landingPageData = parsed;
+      const scrapedImages: string[] = scrapedImagesForContext;
+      if (scrapedImages.length > 0) {
+        landingPageData.gallery = scrapedImages;
+        if (!landingPageData.hero) landingPageData.hero = {};
+        if (!(landingPageData.hero as Record<string, unknown>).bgImage && scrapedImages[0]) {
+          (landingPageData.hero as Record<string, unknown>).bgImage = scrapedImages[0];
+        }
+      }
     }
 
     landingPageData.layout = "flow-A";
@@ -422,12 +445,12 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
           landing_page_data: landingPageData,
           landing_page_status: "published",
           landing_page_generated_at: new Date().toISOString(),
-          ...(scrapedImages.length > 0 ? { scraped_images: scrapedImages } : {}),
+          ...(scrapedImagesForContext.length > 0 && !isChatMode ? { scraped_images: scrapedImagesForContext } : {}),
         })
         .eq("id", project.id);
     }
 
-    return new Response(JSON.stringify({ data: landingPageData }), {
+    return new Response(JSON.stringify({ data: landingPageData, message: aiMessage, type: responseType }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {

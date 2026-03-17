@@ -1086,7 +1086,9 @@ export default function ProjectEditor() {
     const msg = chatInput.trim();
     if (!msg || !lpData || !project) return;
 
-    const newMessages: ChatMessage[] = [...chatMessages, { role: "user", content: msg }];
+    // Pass current chat history (before new user message) for context
+    const history = chatMessages;
+    const newMessages: ChatMessage[] = [...history, { role: "user", content: msg }];
     setChatMessages(newMessages);
     setChatInput("");
     setChatLoading(true);
@@ -1097,23 +1099,27 @@ export default function ProjectEditor() {
 
       const res = await supabase.functions.invoke("generate-landing-page", {
         headers: { Authorization: `Bearer ${session.access_token}` },
-        body: { project, chatMessage: msg, existingData: lpData },
+        body: {
+          project,
+          chatMessage: msg,
+          existingData: lpData,
+          chatHistory: history, // full conversation context
+        },
       });
       if (res.error || res.data?.error) throw new Error(res.data?.error || res.error?.message);
 
       const updated = res.data.data as LandingPageData;
+      const aiMessage: string = res.data.message || "Alterações aplicadas.";
+
       if (lpData) pushToHistory(lpData);
       setLpData(updated);
+      lpDataRef.current = updated;
 
-      // Auto-save
-      await (supabase
-        .from("projects") as any)
-        .update({ landing_page_data: updated })
-        .eq("id", project.id);
+      // Edge function already saved — no extra round trip needed
 
       setChatMessages([
         ...newMessages,
-        { role: "assistant", content: "Pronto! Apliquei as alterações na sua landing page." },
+        { role: "assistant", content: aiMessage },
       ]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -1414,26 +1420,40 @@ export default function ProjectEditor() {
               <ScrollArea className="flex-1">
                 <div className="p-3 space-y-3">
                   {chatMessages.length === 0 && (
-                    <div className="py-6 text-center space-y-3">
-                      <Sparkles className="w-8 h-8 text-primary mx-auto" />
-                      <p className="text-sm font-medium text-foreground">Chat com IA</p>
-                      <p className="text-xs text-muted-foreground">
-                        Descreva as alterações que deseja fazer na landing page.
-                      </p>
-                      <div className="flex flex-col gap-2 mt-4">
+                    <div className="py-4 space-y-3">
+                      <div className="text-center space-y-1">
+                        <Sparkles className="w-7 h-7 text-primary mx-auto" />
+                        <p className="text-sm font-semibold text-foreground">Editor com IA</p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Edite algo específico ou peça um layout completamente novo.
+                        </p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-1">Edições cirúrgicas</p>
                         {[
-                          "Deixe o hero mais sofisticado",
-                          "Reescreva o CTA para ser mais urgente",
+                          "Deixe o título do hero mais impactante",
+                          "Reescreva o CTA com mais urgência",
+                          "Deixa a seção de urgência mais forte",
                           "Mude o foco para família com filhos",
-                          "Adapte a linguagem para investidores",
-                          "Deixe os textos mais curtos",
-                        ].map((suggestion) => (
-                          <button
-                            key={suggestion}
-                            onClick={() => setChatInput(suggestion)}
-                            className="text-xs text-left px-3 py-2 rounded-lg bg-[#2a2a2e] hover:bg-[#3a3a3e] text-muted-foreground hover:text-foreground transition-colors"
-                          >
-                            {suggestion}
+                          "Deixe os textos mais curtos e diretos",
+                        ].map((s) => (
+                          <button key={s} onClick={() => setChatInput(s)}
+                            className="w-full text-xs text-left px-3 py-2 rounded-lg bg-[#2a2a2e] hover:bg-[#3a3a3e] text-muted-foreground hover:text-foreground transition-colors">
+                            ✏️ {s}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-semibold px-1">Novo layout</p>
+                        {[
+                          "Gera uma versão completamente diferente",
+                          "Cria um layout mais luxuoso e premium",
+                          "Faz uma versão focada em investidores",
+                          "Cria outro com tema claro e moderno",
+                        ].map((s) => (
+                          <button key={s} onClick={() => setChatInput(s)}
+                            className="w-full text-xs text-left px-3 py-2 rounded-lg bg-[#2a2a2e] hover:bg-[#3a3a3e] text-muted-foreground hover:text-foreground transition-colors">
+                            ✨ {s}
                           </button>
                         ))}
                       </div>
@@ -1441,21 +1461,13 @@ export default function ProjectEditor() {
                   )}
 
                   {chatMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "flex",
-                        msg.role === "user" ? "justify-end" : "justify-start"
-                      )}
-                    >
-                      <div
-                        className={cn(
-                          "max-w-[85%] rounded-xl px-3 py-2 text-xs",
-                          msg.role === "user"
-                            ? "bg-primary text-black font-medium"
-                            : "bg-[#2a2a2e] text-foreground"
-                        )}
-                      >
+                    <div key={i} className={cn("flex", msg.role === "user" ? "justify-end" : "justify-start")}>
+                      <div className={cn(
+                        "max-w-[88%] rounded-xl px-3 py-2 text-xs leading-relaxed",
+                        msg.role === "user"
+                          ? "bg-primary text-black font-medium"
+                          : "bg-[#2a2a2e] text-foreground"
+                      )}>
                         {msg.content}
                       </div>
                     </div>
@@ -1463,8 +1475,9 @@ export default function ProjectEditor() {
 
                   {chatLoading && (
                     <div className="flex justify-start">
-                      <div className="bg-[#2a2a2e] rounded-xl px-3 py-2">
-                        <RefreshCw className="w-4 h-4 animate-spin text-primary" />
+                      <div className="bg-[#2a2a2e] rounded-xl px-3 py-2.5 flex items-center gap-2">
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-primary shrink-0" />
+                        <span className="text-[11px] text-muted-foreground">Analisando e aplicando...</span>
                       </div>
                     </div>
                   )}
