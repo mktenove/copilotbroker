@@ -395,8 +395,12 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       if (error) throw error;
 
       // Trigger automations (fire-and-forget — non-fatal)
-      supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } }).catch(() => {});
-      supabase.functions.invoke("auto-first-message", { body: { leadId } }).catch(() => {});
+      supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } })
+        .then(r => console.log("[auto-cadencia-10d]", r?.data))
+        .catch(e => console.error("[auto-cadencia-10d error]", e));
+      supabase.functions.invoke("auto-first-message", { body: { leadId } })
+        .then(r => console.log("[auto-first-message]", r?.data))
+        .catch(e => console.error("[auto-first-message error]", e));
       if (project.webhook_url) {
         try {
           await fetch(project.webhook_url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim(), whatsapp: whatsapp.trim(), project: project.name, broker: broker.name, source: "landing_page" }) });
