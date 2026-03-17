@@ -784,7 +784,7 @@ export default function ProjectEditor() {
   if (!project) return null;
 
   return (
-    <div className="min-h-screen bg-[#0f0f12] flex flex-col">
+    <div className="h-screen bg-[#0f0f12] flex flex-col overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-[#2a2a2e] bg-[#1e1e22]">
         <div className="flex items-center gap-3">
