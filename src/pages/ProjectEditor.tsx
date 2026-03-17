@@ -861,10 +861,39 @@ export default function ProjectEditor() {
   // Copy URL
   const [copied, setCopied] = useState(false);
 
+  // Auto-save
+  const [autoSaving, setAutoSaving] = useState(false);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isInitialLoad = useRef(true);
+
   useEffect(() => {
     if (projectId) loadEditor();
   }, [projectId]);
 
+  // Auto-save lpData to DB 1.5s after any change (skips initial load)
+  useEffect(() => {
+    if (isInitialLoad.current) {
+      isInitialLoad.current = false;
+      return;
+    }
+    if (!lpData || !project) return;
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    setAutoSaving(true);
+    autoSaveTimer.current = setTimeout(async () => {
+      try {
+        await (supabase.from("projects") as any)
+          .update({ landing_page_data: lpData })
+          .eq("id", project.id);
+      } catch (err) {
+        console.error("[auto-save]", err);
+      } finally {
+        setAutoSaving(false);
+      }
+    }, 1500);
+    return () => {
+      if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    };
+  }, [lpData]);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1113,7 +1142,7 @@ export default function ProjectEditor() {
             {showPreview ? "Ocultar" : "Preview"}
           </Button>
 
-          {/* Status badge */}
+          {/* Status badge + auto-save indicator */}
           <span className={cn(
             "text-[10px] font-medium px-2 py-0.5 rounded-full border shrink-0",
             lpStatus === 'published'
@@ -1122,6 +1151,11 @@ export default function ProjectEditor() {
           )}>
             {lpStatus === 'published' ? "Publicada" : "Rascunho"}
           </span>
+          {autoSaving && (
+            <span className="text-[10px] text-muted-foreground flex items-center gap-1 shrink-0">
+              <RefreshCw className="w-3 h-3 animate-spin" /> salvando...
+            </span>
+          )}
 
           <Button
             size="sm"
