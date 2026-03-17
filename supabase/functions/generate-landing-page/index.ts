@@ -415,11 +415,12 @@ Retorne APENAS o JSON. Sem markdown. Sem explicações. Sem comentários.`;
 
     landingPageData.layout = "flow-A";
 
-    if (!chatMessage && project.id) {
+    if (project.id) {
       await supabase
         .from("projects")
         .update({
           landing_page_data: landingPageData,
+          landing_page_status: "published",
           landing_page_generated_at: new Date().toISOString(),
           ...(scrapedImages.length > 0 ? { scraped_images: scrapedImages } : {}),
         })
