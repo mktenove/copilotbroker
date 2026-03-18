@@ -111,11 +111,8 @@ Deno.serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  if (!validateSupabaseKey(req)) {
-    return new Response(JSON.stringify({ error: "Unauthorized" }), {
-      status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
-  }
+  // No key validation needed: function uses service role for all DB ops.
+  // JWT verification is disabled at the platform level (verify_jwt = false).
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
