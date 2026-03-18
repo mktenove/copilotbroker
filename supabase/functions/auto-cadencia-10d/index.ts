@@ -335,7 +335,7 @@ Deno.serve(async (req) => {
     // 12. Update lead status: move to Atendimento + prevent timeout
     const now = new Date().toISOString();
     await supabase.from("leads").update({
-      status: "info_sent",
+      status: "copiloto",
       atendimento_iniciado_em: now,
       status_distribuicao: "atendimento_iniciado",
       reserva_expira_em: null,
