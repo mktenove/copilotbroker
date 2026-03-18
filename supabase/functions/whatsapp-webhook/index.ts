@@ -285,6 +285,46 @@ async function processReply(
   } catch (err) {
     await logError(supabase, "updateDailyReplyStats", err, { broker_id: firstMsg.broker_id });
   }
+
+  // Move lead from "copiloto" → "info_sent" (Atendimento) when they reply
+  if (campaignIds.length > 0) {
+    try {
+      const { data: campaign } = await supabase
+        .from("whatsapp_campaigns")
+        .select("lead_id")
+        .eq("id", campaignIds[0])
+        .maybeSingle();
+
+      const leadId = (campaign as { lead_id: string | null } | null)?.lead_id;
+      if (leadId) {
+        const { data: lead } = await supabase
+          .from("leads")
+          .select("status")
+          .eq("id", leadId)
+          .maybeSingle();
+
+        if ((lead as { status: string } | null)?.status === "copiloto") {
+          await supabase
+            .from("leads")
+            .update({ status: "info_sent", updated_at: new Date().toISOString() })
+            .eq("id", leadId);
+
+          await supabase.from("lead_interactions").insert({
+            lead_id: leadId,
+            broker_id: firstMsg.broker_id,
+            interaction_type: "status_change",
+            old_status: "copiloto",
+            new_status: "info_sent",
+            notes: "Lead respondeu à cadência automática — movido para Atendimento",
+          });
+
+          console.log(`✅ Lead ${leadId} moved copiloto → info_sent after reply`);
+        }
+      }
+    } catch (err) {
+      await logError(supabase, "moveLeadToAtendimento", err, {});
+    }
+  }
 }
 
 // ========================= OPT-OUT PROCESSING =========================

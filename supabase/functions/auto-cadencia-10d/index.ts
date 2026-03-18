@@ -332,10 +332,10 @@ Deno.serve(async (req) => {
     const { error: qErr } = await supabase.from("whatsapp_message_queue").insert(queueItems);
     if (qErr) throw qErr;
 
-    // 12. Update lead status: move to Atendimento + prevent timeout
+    // 12. Prevent timeout / reset distribution but keep lead in "new" (pré-atendimento).
+    // The kanban card will move to "copiloto" only when the first message is actually sent.
     const now = new Date().toISOString();
     await supabase.from("leads").update({
-      status: "copiloto",
       atendimento_iniciado_em: now,
       status_distribuicao: "atendimento_iniciado",
       reserva_expira_em: null,

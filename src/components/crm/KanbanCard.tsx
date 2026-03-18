@@ -48,6 +48,7 @@ const ORIGIN_COLORS: Record<string, string> = {
 const STATUS_PROGRESS: Record<string, number> = {
   new: 10,
   info_sent: 30,
+  copiloto: 25,
   scheduling: 50,
   docs_received: 75,
   registered: 100,
@@ -57,6 +58,7 @@ const STATUS_PROGRESS: Record<string, number> = {
 const PROGRESS_COLORS: Record<string, string> = {
   new: "bg-blue-500",
   info_sent: "bg-enove-yellow",
+  copiloto: "bg-purple-500",
   scheduling: "bg-orange-500",
   docs_received: "bg-emerald-500",
   registered: "bg-slate-400",
