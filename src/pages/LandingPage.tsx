@@ -396,10 +396,10 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
 
       // Trigger automations (fire-and-forget — non-fatal)
       supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } })
-        .then(r => console.log("[auto-cadencia-10d]", r?.data))
+        .then(r => { console.log("[auto-cadencia-10d] data:", r?.data); if (r?.error) console.error("[auto-cadencia-10d] error:", r.error); })
         .catch(e => console.error("[auto-cadencia-10d error]", e));
       supabase.functions.invoke("auto-first-message", { body: { leadId } })
-        .then(r => console.log("[auto-first-message]", r?.data))
+        .then(r => { console.log("[auto-first-message] data:", r?.data); if (r?.error) console.error("[auto-first-message] error:", r.error); })
         .catch(e => console.error("[auto-first-message error]", e));
       if (project.webhook_url) {
         try {
