@@ -247,7 +247,7 @@ Deno.serve(async (req) => {
     // 8. Get broker and project names for variable replacement
     const { data: broker } = await supabase
       .from("brokers")
-      .select("name")
+      .select("name, tenant_id")
       .eq("id", lead.broker_id)
       .single();
 
@@ -272,6 +272,7 @@ Deno.serve(async (req) => {
       .from("whatsapp_campaigns")
       .insert({
         broker_id: lead.broker_id,
+        tenant_id: broker?.tenant_id,
         name: `Cadência 10D Auto - ${lead.name}`,
         status: "running",
         total_leads: stepsToUse.length,
@@ -329,6 +330,7 @@ Deno.serve(async (req) => {
 
       return {
         broker_id: lead.broker_id,
+        tenant_id: broker?.tenant_id,
         campaign_id: campaign.id,
         lead_id: leadId,
         phone,
@@ -359,6 +361,8 @@ Deno.serve(async (req) => {
 
     await supabase.from("lead_interactions").insert({
       lead_id: leadId,
+      broker_id: lead.broker_id,
+      tenant_id: broker?.tenant_id,
       interaction_type: "atendimento_iniciado",
       old_status: lead.status,
       new_status: "info_sent",
@@ -369,6 +373,8 @@ Deno.serve(async (req) => {
     if (adjustmentLogs.length > 0) {
       await supabase.from("lead_interactions").insert({
         lead_id: leadId,
+        broker_id: lead.broker_id,
+        tenant_id: broker?.tenant_id,
         interaction_type: "note_added",
         notes: adjustmentLogs.join("\n"),
       });
@@ -380,8 +386,9 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (error) {
-    console.error("Error in auto-cadencia-10d:", error);
-    return new Response(JSON.stringify({ error: "Erro interno do servidor" }), {
+    const msg = error instanceof Error ? error.message : JSON.stringify(error);
+    console.error("Error in auto-cadencia-10d:", msg);
+    return new Response(JSON.stringify({ error: msg }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

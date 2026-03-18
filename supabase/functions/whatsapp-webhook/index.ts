@@ -286,7 +286,7 @@ async function processReply(
     await logError(supabase, "updateDailyReplyStats", err, { broker_id: firstMsg.broker_id });
   }
 
-  // Move lead from "copiloto" → "info_sent" (Atendimento) when they reply
+  // Move lead to "info_sent" (Atendimento) when they reply to campaign
   if (campaignIds.length > 0) {
     try {
       const { data: campaign } = await supabase
@@ -299,11 +299,15 @@ async function processReply(
       if (leadId) {
         const { data: lead } = await supabase
           .from("leads")
-          .select("status")
+          .select("status, tenant_id")
           .eq("id", leadId)
           .maybeSingle();
 
-        if ((lead as { status: string } | null)?.status === "copiloto") {
+        const leadStatus = (lead as { status: string; tenant_id: string | null } | null)?.status;
+        const tenantId = (lead as { status: string; tenant_id: string | null } | null)?.tenant_id;
+
+        // Move to atendimento if lead is in copiloto OR still in new (msg sent but status not updated yet)
+        if (leadStatus === "copiloto" || leadStatus === "new") {
           await supabase
             .from("leads")
             .update({ status: "info_sent", updated_at: new Date().toISOString() })
@@ -312,13 +316,14 @@ async function processReply(
           await supabase.from("lead_interactions").insert({
             lead_id: leadId,
             broker_id: firstMsg.broker_id,
+            tenant_id: tenantId,
             interaction_type: "status_change",
-            old_status: "copiloto",
+            old_status: leadStatus,
             new_status: "info_sent",
             notes: "Lead respondeu à cadência automática — movido para Atendimento",
           });
 
-          console.log(`✅ Lead ${leadId} moved copiloto → info_sent after reply`);
+          console.log(`✅ Lead ${leadId} moved ${leadStatus} → info_sent after reply`);
         }
       }
     } catch (err) {
