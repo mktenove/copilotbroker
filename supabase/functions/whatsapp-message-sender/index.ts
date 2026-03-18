@@ -69,77 +69,77 @@ const formatPhoneForUAZAPI = (phone: string): string => {
   return cleaned.startsWith("55") ? cleaned : `55${cleaned}`;
 };
 
-// Send message via UAZAPI
-// Documentação oficial: POST /send/text com { number, text } e header "token"
+// Send message via UAZAPI — tries multiple auth headers and endpoints as fallback
 const sendMessageViaUAZAPI = async (
-  instanceName: string,
+  _instanceName: string,
   instanceToken: string | null,
   phone: string,
   messageText: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> => {
   const cleanPhone = formatPhoneForUAZAPI(phone);
   const token = instanceToken || UAZAPI_TOKEN;
-  
-  // UAZAPI v2: always use the base URL origin, instances are identified by token header
+
   let baseUrl = UAZAPI_BASE_URL.replace(/\/$/, "");
   try {
-    const urlObj = new URL(baseUrl);
-    baseUrl = urlObj.origin;
-  } catch {
-    // If URL parsing fails, use as-is
+    baseUrl = new URL(baseUrl).origin;
+  } catch { /* keep as-is */ }
+
+  // Try both common Uazapi endpoints
+  const endpoints = ["/send/text", "/chat/send/text"];
+  // Try all common auth header styles in order
+  const authHeaders = [
+    { token },
+    { admintoken: token },
+    { apikey: token },
+    { "x-api-key": token },
+    { Authorization: `Bearer ${token}` },
+  ];
+
+  for (const endpoint of endpoints) {
+    for (const authHeader of authHeaders) {
+      try {
+        const url = `${baseUrl}${endpoint}`;
+        console.log(`📤 Enviando para ${cleanPhone} via ${url} (auth: ${Object.keys(authHeader)[0]})`);
+
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...authHeader },
+          body: JSON.stringify({ number: cleanPhone, text: messageText }),
+        });
+
+        // Auth failure or not found — try next combination
+        if (res.status === 401 || res.status === 404) {
+          await res.text(); // consume body
+          continue;
+        }
+
+        const responseText = await res.text();
+        console.log(`📨 Resposta (${res.status}):`, responseText);
+
+        if (!res.ok) {
+          return { success: false, error: `HTTP ${res.status}: ${responseText}` };
+        }
+
+        let result: Record<string, unknown> = {};
+        try { result = JSON.parse(responseText); } catch { /* ok */ }
+
+        if (result.error) {
+          return { success: false, error: String(result.error) };
+        }
+
+        console.log(`✅ Mensagem enviada com sucesso via ${endpoint}`);
+        return {
+          success: true,
+          messageId: String(result.id || result.messageid || (result.key as Record<string, unknown>)?.id || ""),
+        };
+      } catch (err) {
+        console.warn(`⚠️ Falha ${endpoint}:`, (err as Error).message);
+        continue;
+      }
+    }
   }
-  
-  const apiUrl = `${baseUrl}/send/text`;
-  console.log(`📤 Enviando para ${cleanPhone} via ${apiUrl}`);
-  
-  try {
-    // Documentação UAZAPI: POST /send/text
-    // Header: "token" (não Authorization Bearer)
-    // Body: { number: "5511999999999", text: "mensagem" }
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "token": token,
-      },
-      body: JSON.stringify({
-        number: cleanPhone,
-        text: messageText,
-      }),
-    });
 
-    const responseText = await response.text();
-    console.log(`📨 Resposta (${response.status}):`, responseText);
-
-    if (!response.ok) {
-      return { 
-        success: false, 
-        error: `HTTP ${response.status}: ${responseText}` 
-      };
-    }
-
-    let result: Record<string, unknown> = {};
-    try {
-      result = JSON.parse(responseText);
-    } catch {
-      // Response might not be JSON
-    }
-
-    if (result.error) {
-      return { success: false, error: String(result.error) };
-    }
-
-    console.log(`✅ Mensagem enviada com sucesso`);
-    return { 
-      success: true, 
-      messageId: String(result.id || result.messageid || result.key?.id || "") 
-    };
-    
-  } catch (err) {
-    const error = err as Error;
-    console.error(`❌ Erro ao enviar:`, error.message);
-    return { success: false, error: error.message };
-  }
+  return { success: false, error: "Todos os endpoints/auth falharam" };
 };
 
 /**
