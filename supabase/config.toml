@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.auto-first-message]
 verify_jwt = false
+
+[functions.cancel-lead-cadencia]
+verify_jwt = false

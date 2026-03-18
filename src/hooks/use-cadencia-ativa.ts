@@ -121,24 +121,31 @@ export function useCadenciaAtiva(leadId: string | undefined): CadenciaAtiva {
 
 // Utility to cancel cadence for a lead (used by kanban hooks)
 export async function cancelCadenciaForLead(leadId: string): Promise<void> {
-  const { data: campaigns } = await (supabase
-    .from("whatsapp_campaigns")
-    .select("id") as any)
-    .eq("lead_id", leadId)
-    .eq("status", "running");
-
-  if (!campaigns || campaigns.length === 0) return;
-
-  for (const campaign of campaigns) {
-    await supabase
+  // Cancel all active campaigns (running OR scheduled) — use edge function to bypass RLS
+  try {
+    await supabase.functions.invoke("cancel-lead-cadencia", { body: { leadId } });
+  } catch (err) {
+    console.error("[cancelCadenciaForLead] edge function failed, falling back:", err);
+    // Fallback: direct DB (may fail silently due to RLS)
+    const { data: campaigns } = await (supabase
       .from("whatsapp_campaigns")
-      .update({ status: "cancelled" })
-      .eq("id", campaign.id);
+      .select("id") as any)
+      .eq("lead_id", leadId)
+      .in("status", ["running", "scheduled"]);
 
-    await supabase
-      .from("whatsapp_message_queue")
-      .update({ status: "cancelled" })
-      .eq("campaign_id", campaign.id)
-      .in("status", ["scheduled", "queued", "paused_by_system"]);
+    if (!campaigns || campaigns.length === 0) return;
+
+    for (const campaign of campaigns) {
+      await supabase
+        .from("whatsapp_campaigns")
+        .update({ status: "cancelled" })
+        .eq("id", campaign.id);
+
+      await supabase
+        .from("whatsapp_message_queue")
+        .update({ status: "cancelled" })
+        .eq("campaign_id", campaign.id)
+        .in("status", ["scheduled", "queued", "paused_by_system"]);
+    }
   }
 }
