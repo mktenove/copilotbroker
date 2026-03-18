@@ -65,17 +65,20 @@ export function useGlobalWhatsAppStats() {
   const { data, isLoading } = useQuery({
     queryKey: ["global-whatsapp-stats"],
     queryFn: async () => {
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
       const { data: records, error } = await supabase
         .from("lead_interactions")
         .select("id, notes, created_at, lead_id")
         .eq("channel", "whatsapp")
         .eq("interaction_type", "notification")
-        .order("created_at", { ascending: false });
+        .gte("created_at", thirtyDaysAgo)
+        .order("created_at", { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return (records || []) as NotificationRecord[];
     },
-    refetchInterval: 60000,
+    refetchInterval: 300000,
   });
 
   const records = data || [];

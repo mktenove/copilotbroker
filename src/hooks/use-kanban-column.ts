@@ -78,7 +78,7 @@ export function useKanbanColumn(status: LeadStatus, filters: KanbanColumnFilters
       if (error) throw error;
       return count || 0;
     },
-    staleTime: 30_000,
+    staleTime: 120_000,
   });
 
   const {
@@ -112,7 +112,7 @@ export function useKanbanColumn(status: LeadStatus, filters: KanbanColumnFilters
       return allPages.reduce((acc, page) => acc + page.length, 0);
     },
     initialPageParam: 0,
-    staleTime: 30_000,
+    staleTime: 120_000,
   });
 
   const leads = useMemo(() => data?.pages.flat() ?? [], [data]);

@@ -314,37 +314,64 @@ app.post("/process", async (c) => {
       }, 200, corsHeaders);
     }
 
+    const skipReasons: string[] = [];
+
     // Process each instance
     for (const rawInstance of instances) {
       const instance = rawInstance as BrokerInstance;
 
       // Check working hours
       if (!isWithinWorkingHours(instance.working_hours_start, instance.working_hours_end)) {
-        console.log(`Instance ${instance.instance_name} outside working hours, skipping`);
+        const reason = `${instance.instance_name}: outside working hours (${instance.working_hours_start}-${instance.working_hours_end})`;
+        console.log(`Instance ${reason}`);
+        skipReasons.push(reason);
         continue;
       }
 
       // Check limits
       if (instance.hourly_sent_count >= instance.hourly_limit) {
-        console.log(`Instance ${instance.instance_name} reached hourly limit, skipping`);
+        const reason = `${instance.instance_name}: hourly limit (${instance.hourly_sent_count}/${instance.hourly_limit})`;
+        console.log(`Instance ${reason}`);
+        skipReasons.push(reason);
         continue;
       }
       if (instance.daily_sent_count >= instance.daily_limit) {
-        console.log(`Instance ${instance.instance_name} reached daily limit, skipping`);
+        const reason = `${instance.instance_name}: daily limit (${instance.daily_sent_count}/${instance.daily_limit})`;
+        console.log(`Instance ${reason}`);
+        skipReasons.push(reason);
         continue;
       }
 
       // Get next scheduled message for this broker
+      const now = new Date().toISOString();
+      // Debug: count all pending messages regardless of scheduled_at
+      const { count: pendingCount } = await supabase
+        .from("whatsapp_message_queue")
+        .select("*", { count: "exact", head: true })
+        .eq("broker_id", instance.broker_id)
+        .in("status", ["scheduled", "queued"]);
+      const { data: nextPending } = await supabase
+        .from("whatsapp_message_queue")
+        .select("id, scheduled_at, status")
+        .eq("broker_id", instance.broker_id)
+        .in("status", ["scheduled", "queued"])
+        .order("scheduled_at", { ascending: true })
+        .limit(1);
+      const nextScheduledAt = (nextPending?.[0] as { scheduled_at: string } | undefined)?.scheduled_at;
+
       const { data: messages, error: msgError } = await supabase
         .from("whatsapp_message_queue")
         .select("*")
         .eq("broker_id", instance.broker_id)
         .in("status", ["scheduled", "queued"])
-        .lte("scheduled_at", new Date().toISOString())
+        .lte("scheduled_at", now)
         .order("scheduled_at", { ascending: true })
         .limit(1);
 
       if (msgError || !messages || messages.length === 0) {
+        const reason = `${instance.instance_name}: no due messages (now=${now}, pendingTotal=${pendingCount}, nextScheduledAt=${nextScheduledAt}, err=${msgError?.message})`;
+        console.log(`Instance ${reason}`);
+        skipReasons.push(reason);
         continue;
       }
 
@@ -782,7 +809,8 @@ app.post("/process", async (c) => {
     return c.json({
       success: true,
       processed: results.length,
-      results
+      results,
+      skipReasons
     }, 200, corsHeaders);
 
   } catch (err) {

@@ -152,7 +152,7 @@ const Admin = () => {
       return count || 0;
     },
     enabled: role === "admin" && activeTab === "leads",
-    staleTime: 30 * 1000,
+    staleTime: 120 * 1000,
   });
 
   // Build server-side filter query
@@ -216,7 +216,7 @@ const Admin = () => {
       return count || 0;
     },
     enabled: role === "admin" && activeTab === "leads",
-    staleTime: 15 * 1000,
+    staleTime: 60 * 1000,
   });
 
   // === REACT QUERY: Paginated leads ===
@@ -232,7 +232,7 @@ const Admin = () => {
       return (data || []) as Lead[];
     },
     enabled: role === "admin" && activeTab === "leads",
-    staleTime: 15 * 1000,
+    staleTime: 60 * 1000,
   });
 
   // === REACT QUERY: Today leads count (for stats card) ===
@@ -249,7 +249,7 @@ const Admin = () => {
       return count || 0;
     },
     enabled: role === "admin" && activeTab === "leads",
-    staleTime: 30 * 1000,
+    staleTime: 120 * 1000,
   });
 
   // === REACT QUERY: Enove vs broker counts ===
@@ -264,7 +264,7 @@ const Admin = () => {
       return count || 0;
     },
     enabled: role === "admin" && activeTab === "leads",
-    staleTime: 30 * 1000,
+    staleTime: 120 * 1000,
   });
 
   const brokerLeadsCount = totalLeadsCount - enoveCount;

@@ -69,7 +69,7 @@ export function useCadenciaAtiva(leadId: string | undefined): CadenciaAtiva {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "whatsapp_message_queue" },
+        { event: "*", schema: "public", table: "whatsapp_message_queue", filter: `lead_id=eq.${leadId}` },
         () => {
           // Invalidate to refresh next message time
           queryClient.invalidateQueries({ queryKey });

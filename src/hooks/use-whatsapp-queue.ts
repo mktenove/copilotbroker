@@ -65,7 +65,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       return data as WhatsAppMessageQueue[];
     },
     enabled: !!effectiveBrokerId || !brokerFilterId,
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
   // Query for history messages (sent, failed, cancelled)
@@ -85,69 +85,33 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       return data as WhatsAppMessageQueue[];
     },
     enabled: !!effectiveBrokerId || !brokerFilterId,
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
-  // Aggregate counts
-  const { data: queuedCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId],
+  // Single query for all aggregate counts (replaces 4 separate count queries)
+  const { data: queueStats } = useQuery({
+    queryKey: ["whatsapp-queue-stats", effectiveBrokerId],
     queryFn: async () => {
-      let query = supabase
-        .from("whatsapp_message_queue")
-        .select("*", { count: "exact", head: true })
-        .in("status", ["queued", "scheduled", "paused_by_system"]);
-      query = applyBrokerFilter(query);
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
+      const [queuedRes, pausedRes, sentRes, failedRes] = await Promise.all([
+        applyBrokerFilter(supabase.from("whatsapp_message_queue").select("*", { count: "exact", head: true }).in("status", ["queued", "scheduled", "paused_by_system"])),
+        applyBrokerFilter(supabase.from("whatsapp_message_queue").select("*", { count: "exact", head: true }).eq("status", "paused_by_system")),
+        applyBrokerFilter(supabase.from("whatsapp_message_queue").select("*", { count: "exact", head: true }).eq("status", "sent")),
+        applyBrokerFilter(supabase.from("whatsapp_message_queue").select("*", { count: "exact", head: true }).eq("status", "failed")),
+      ]);
+      return {
+        queued: queuedRes.count || 0,
+        paused: pausedRes.count || 0,
+        sent: sentRes.count || 0,
+        failed: failedRes.count || 0,
+      };
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
-  const { data: pausedCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId],
-    queryFn: async () => {
-      let query = supabase
-        .from("whatsapp_message_queue")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "paused_by_system");
-      query = applyBrokerFilter(query);
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 30000,
-  });
-
-  const { data: sentCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-sent", effectiveBrokerId],
-    queryFn: async () => {
-      let query = supabase
-        .from("whatsapp_message_queue")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "sent");
-      query = applyBrokerFilter(query);
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 30000,
-  });
-
-  const { data: failedCount = 0 } = useQuery({
-    queryKey: ["whatsapp-queue-count-failed", effectiveBrokerId],
-    queryFn: async () => {
-      let query = supabase
-        .from("whatsapp_message_queue")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "failed");
-      query = applyBrokerFilter(query);
-      const { count, error } = await query;
-      if (error) throw error;
-      return count || 0;
-    },
-    refetchInterval: 30000,
-  });
+  const queuedCount = queueStats?.queued ?? 0;
+  const pausedCount = queueStats?.paused ?? 0;
+  const sentCount = queueStats?.sent ?? 0;
+  const failedCount = queueStats?.failed ?? 0;
 
   const { data: repliesCount = 0 } = useQuery({
     queryKey: ["whatsapp-replies-count", effectiveBrokerId],
@@ -155,7 +119,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       let campaignQuery = supabase
         .from("whatsapp_campaigns")
         .select("id");
-      
+
       if (effectiveBrokerId) {
         campaignQuery = campaignQuery.eq("broker_id", effectiveBrokerId);
       }
@@ -173,7 +137,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       const uniquePhones = new Set(replies?.map(r => r.phone) || []);
       return uniquePhones.size;
     },
-    refetchInterval: 30000,
+    refetchInterval: 120000,
   });
 
   // Realtime subscriptions
@@ -193,10 +157,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       .on("postgres_changes", channelConfig, () => {
         queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-pending"] });
         queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-history"] });
-        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-queued", effectiveBrokerId] });
-        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-sent", effectiveBrokerId] });
-        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-failed", effectiveBrokerId] });
-        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-count-paused", effectiveBrokerId] });
+        queryClient.invalidateQueries({ queryKey: ["whatsapp-queue-stats", effectiveBrokerId] });
       })
       .on("postgres_changes", {
         event: "*",
