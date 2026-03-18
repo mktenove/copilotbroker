@@ -395,9 +395,14 @@ export function LandingPageRenderer({ lp, project, broker, isPreview, onDeleteIt
       if (error) throw error;
 
       // Trigger automations (fire-and-forget — non-fatal)
-      supabase.functions.invoke("auto-cadencia-10d", { body: { leadId } })
-        .then(r => { console.log("[auto-cadencia-10d] data:", r?.data); if (r?.error) console.error("[auto-cadencia-10d] error:", r.error); })
-        .catch(e => console.error("[auto-cadencia-10d error]", e));
+      fetch("https://rsbkcuyvnzpqqcbbaoqc.supabase.co/functions/v1/auto-cadencia-10d", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
+        body: JSON.stringify({ leadId }),
+      }).then(async res => {
+        const body = await res.json().catch(() => null);
+        console.log("[auto-cadencia-10d]", res.status, body);
+      }).catch(e => console.error("[auto-cadencia-10d fetch error]", e));
       supabase.functions.invoke("auto-first-message", { body: { leadId } })
         .then(r => { console.log("[auto-first-message] data:", r?.data); if (r?.error) console.error("[auto-first-message] error:", r.error); })
         .catch(e => console.error("[auto-first-message error]", e));
