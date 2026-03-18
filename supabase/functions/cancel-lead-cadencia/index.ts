@@ -13,21 +13,32 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const { leadId } = await req.json();
-    if (!leadId) {
-      return new Response(JSON.stringify({ error: "leadId required" }), {
+    const body = await req.json();
+    const { leadId, cancelAll } = body;
+
+    if (!leadId && !cancelAll) {
+      return new Response(JSON.stringify({ error: "leadId or cancelAll required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Find all active campaigns for this lead (running or scheduled)
-    const { data: campaigns } = await supabase
-      .from("whatsapp_campaigns")
-      .select("id")
-      .eq("lead_id", leadId)
-      .in("status", ["running", "scheduled"]);
+    // Find all active campaigns (for specific lead or all)
+    let query = supabase.from("whatsapp_campaigns").select("id").in("status", ["running", "scheduled"]);
+    if (!cancelAll) query = query.eq("lead_id", leadId);
+    const { data: campaigns } = await query;
 
     if (!campaigns || campaigns.length === 0) {
+      // Even if no active campaigns, clean up orphaned queue items when cancelAll
+      if (cancelAll) {
+        const { count: orphanCount } = await supabase
+          .from("whatsapp_message_queue")
+          .update({ status: "cancelled", updated_at: new Date().toISOString() })
+          .in("status", ["scheduled", "queued", "paused_by_system"])
+          .select("*", { count: "exact", head: true });
+        return new Response(JSON.stringify({ status: "cleaned", queue_items_cancelled: orphanCount ?? 0 }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       return new Response(JSON.stringify({ status: "no_active_campaigns" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -49,7 +60,15 @@ Deno.serve(async (req) => {
       .in("status", ["scheduled", "queued", "paused_by_system"])
       .select("*", { count: "exact", head: true });
 
-    console.log(`Cancelled ${campaignIds.length} campaign(s) and ~${count} queue items for lead ${leadId}`);
+    // If cancelAll: also cancel orphaned queue items (no campaign or campaign not active)
+    if (cancelAll) {
+      await supabase
+        .from("whatsapp_message_queue")
+        .update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .in("status", ["scheduled", "queued", "paused_by_system"]);
+    }
+
+    console.log(`Cancelled ${campaignIds.length} campaign(s) and ~${count} queue items for ${cancelAll ? "ALL leads" : `lead ${leadId}`}`);
 
     return new Response(JSON.stringify({
       status: "cancelled",
