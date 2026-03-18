@@ -156,36 +156,46 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 4. Check for active rule (project-specific first, then global)
-    let rule = null;
+    // 4. Check for cadencia rule (project-specific first, then global).
+    //    - Rule exists + is_active = false → explicitly disabled → skip
+    //    - Rule exists + is_active = true  → use configured steps
+    //    - No rule at all                  → fire with DEFAULT_STEPS (implicit activation)
+    let rule: any = null;
+    let ruleExplicitlyDisabled = false;
+
     if (lead.project_id) {
       const { data } = await supabase
         .from("broker_auto_cadencia_rules")
         .select("*")
         .eq("broker_id", lead.broker_id)
         .eq("project_id", lead.project_id)
-        .eq("is_active", true)
         .maybeSingle();
-      rule = data;
+      if (data) {
+        if (!data.is_active) ruleExplicitlyDisabled = true;
+        else rule = data;
+      }
     }
 
-    if (!rule) {
+    if (!rule && !ruleExplicitlyDisabled) {
       const { data } = await supabase
         .from("broker_auto_cadencia_rules")
         .select("*")
         .eq("broker_id", lead.broker_id)
         .is("project_id", null)
-        .eq("is_active", true)
         .maybeSingle();
-      rule = data;
+      if (data) {
+        if (!data.is_active) ruleExplicitlyDisabled = true;
+        else rule = data;
+      }
     }
 
-    if (!rule) {
-      console.log("No active cadencia rule for broker:", lead.broker_id);
-      return new Response(JSON.stringify({ status: "skipped", reason: "no_active_rule" }), {
+    if (ruleExplicitlyDisabled) {
+      console.log("Cadencia explicitly disabled for broker:", lead.broker_id);
+      return new Response(JSON.stringify({ status: "skipped", reason: "explicitly_disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // rule === null here means no rule configured → proceed with DEFAULT_STEPS
 
     // 5. Check if lead already has active cadence
     const { data: existing } = await supabase
@@ -219,20 +229,23 @@ Deno.serve(async (req) => {
     const whStart = instance.working_hours_start || "09:00";
     const whEnd = instance.working_hours_end || "21:00";
 
-    // 7. Fetch custom steps from auto_cadencia_steps (or fallback to DEFAULT_STEPS)
-    const { data: customSteps } = await supabase
-      .from("auto_cadencia_steps")
-      .select("*")
-      .eq("rule_id", rule.id)
-      .order("step_order", { ascending: true });
+    // 7. Fetch custom steps if a rule is configured, otherwise use DEFAULT_STEPS
+    let stepsToUse = DEFAULT_STEPS;
+    if (rule) {
+      const { data: customSteps } = await supabase
+        .from("auto_cadencia_steps")
+        .select("*")
+        .eq("rule_id", rule.id)
+        .order("step_order", { ascending: true });
 
-    const stepsToUse = (customSteps && customSteps.length > 0)
-      ? customSteps.map((s: any) => ({
+      if (customSteps && customSteps.length > 0) {
+        stepsToUse = customSteps.map((s: any) => ({
           messageContent: s.message_content,
           delayMinutes: s.delay_minutes,
           sendIfReplied: s.send_if_replied,
-        }))
-      : DEFAULT_STEPS;
+        }));
+      }
+    }
 
     // 8. Get broker and project names for variable replacement
     const { data: broker } = await supabase
