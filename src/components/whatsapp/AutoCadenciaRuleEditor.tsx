@@ -6,17 +6,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Loader2, AlertTriangle, Zap, Plus, Trash2, GripVertical } from "lucide-react";
+import { Loader2, AlertTriangle, Zap, Plus, Trash2, GripVertical, Building2, Tag } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 import { useUserRole } from "@/hooks/use-user-role";
 import type { BrokerAutoCadenciaRule, AutoCadenciaStep } from "@/hooks/use-auto-cadencia-rules";
+
+const INTERESSE_OPTIONS = [
+  { value: "casa", label: "Interesse em Casa" },
+  { value: "apartamento", label: "Interesse em Apartamento" },
+  { value: "terreno", label: "Interesse em Terreno" },
+  { value: "investimento", label: "Interesse em Investimento" },
+  { value: "comercial", label: "Interesse em Imóvel Comercial" },
+];
 
 interface AutoCadenciaRuleEditorProps {
   isOpen: boolean;
   onClose: () => void;
   editingRule: BrokerAutoCadenciaRule | null;
-  createRule: (data: { project_id: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => Promise<any>;
-  updateRule: (id: string, data: Partial<{ project_id: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => Promise<any>;
+  createRule: (data: { name?: string | null; project_id: string | null; interest_type?: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => Promise<any>;
+  updateRule: (id: string, data: Partial<{ name: string | null; project_id: string | null; interest_type: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => Promise<any>;
   isSaving: boolean;
   rules: BrokerAutoCadenciaRule[];
 }
@@ -68,7 +77,10 @@ export function AutoCadenciaRuleEditor({
   const { brokerId } = useUserRole();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
+  const [ruleName, setRuleName] = useState<string>("");
+  const [targetMode, setTargetMode] = useState<"project" | "interest">("project");
   const [projectId, setProjectId] = useState<string>("all");
+  const [interestType, setInterestType] = useState<string>("");
   const [checkingConflict, setCheckingConflict] = useState(false);
   const [hasFirstMessageConflict, setHasFirstMessageConflict] = useState(false);
   const [steps, setSteps] = useState<AutoCadenciaStep[]>(DEFAULT_AUTO_CADENCIA_STEPS.map(s => ({ ...s })));
@@ -127,7 +139,16 @@ export function AutoCadenciaRuleEditor({
   // Load steps when editing
   useEffect(() => {
     if (editingRule) {
-      setProjectId(editingRule.project_id || "all");
+      setRuleName(editingRule.name || "");
+      if (editingRule.interest_type) {
+        setTargetMode("interest");
+        setInterestType(editingRule.interest_type);
+        setProjectId("all");
+      } else {
+        setTargetMode("project");
+        setProjectId(editingRule.project_id || "all");
+        setInterestType("");
+      }
       setHasFirstMessageConflict(false);
       // Load saved steps
       setLoadingSteps(true);
@@ -148,7 +169,10 @@ export function AutoCadenciaRuleEditor({
           setLoadingSteps(false);
         });
     } else {
+      setRuleName("");
+      setTargetMode("project");
       setProjectId("all");
+      setInterestType("");
       setSteps(DEFAULT_AUTO_CADENCIA_STEPS.map(s => ({ ...s })));
       if (isOpen && brokerId) checkConflict("all");
     }
@@ -176,7 +200,9 @@ export function AutoCadenciaRuleEditor({
 
   const handleSubmit = async () => {
     const data = {
-      project_id: projectId === "all" ? null : projectId,
+      name: ruleName.trim() || null,
+      project_id: targetMode === "project" && projectId !== "all" ? projectId : null,
+      interest_type: targetMode === "interest" ? interestType || null : null,
       is_active: true,
     };
 
@@ -214,34 +240,81 @@ export function AutoCadenciaRuleEditor({
           <>
             <div className="flex-1 overflow-y-auto px-6 pb-2">
               <div className="space-y-5 mt-4">
-                {/* Project Selection */}
+                {/* Rule Name */}
                 <div className="space-y-2">
-                  <Label className="text-slate-300">Empreendimento</Label>
-                  <Select value={projectId} onValueChange={handleProjectChange}>
-                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
-                      <SelectValue placeholder="Selecione o empreendimento" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                      <SelectItem value="all" className="text-white">
-                        🌐 Todos os empreendimentos
-                      </SelectItem>
-                      {projects.map((project) => (
-                        <SelectItem key={project.id} value={project.id} className="text-white">
-                          {project.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {checkingConflict && (
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <Loader2 className="w-3 h-3 animate-spin" />Verificando conflitos...
+                  <Label className="text-slate-300">Nome da Regra <span className="text-slate-500 font-normal">(opcional)</span></Label>
+                  <Input
+                    value={ruleName}
+                    onChange={(e) => setRuleName(e.target.value)}
+                    placeholder="Ex: Cadência Geral, Cadência Casa..."
+                    className="bg-[#141417] border-[#2a2a2e] text-white"
+                  />
+                </div>
+
+                {/* Target: Empreendimento or Interesse */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Aplicar para</Label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setTargetMode("project"); setInterestType(""); checkConflict(projectId); }}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                        targetMode === "project"
+                          ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400"
+                          : "border-[#2a2a2e] bg-[#141417] text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <Building2 className="w-4 h-4" />Empreendimento
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setTargetMode("interest"); setProjectId("all"); }}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                        targetMode === "interest"
+                          ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
+                          : "border-[#2a2a2e] bg-[#141417] text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      <Tag className="w-4 h-4" />Interesse
+                    </button>
+                  </div>
+
+                  {targetMode === "project" && (
+                    <div className="space-y-1.5">
+                      <Select value={projectId} onValueChange={handleProjectChange}>
+                        <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
+                          <SelectValue placeholder="Selecione o empreendimento" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                          <SelectItem value="all" className="text-white">🌐 Todos os empreendimentos</SelectItem>
+                          {projects.map((project) => (
+                            <SelectItem key={project.id} value={project.id} className="text-white">{project.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {checkingConflict && (
+                        <div className="flex items-center gap-2 text-xs text-slate-400">
+                          <Loader2 className="w-3 h-3 animate-spin" />Verificando conflitos...
+                        </div>
+                      )}
+                      {projectHasRule && <p className="text-xs text-red-400">Já existe uma regra para este empreendimento</p>}
+                      {!editingRule && hasFirstMessageConflict && !projectHasRule && (
+                        <p className="text-xs text-red-400">Já existe uma 1ª Mensagem ativa para este empreendimento. Desative-a primeiro.</p>
+                      )}
                     </div>
                   )}
-                  {projectHasRule && (
-                    <p className="text-xs text-red-400">Já existe uma regra para este empreendimento</p>
-                  )}
-                  {!editingRule && hasFirstMessageConflict && !projectHasRule && (
-                    <p className="text-xs text-red-400">Já existe uma 1ª Mensagem ativa para este empreendimento. Desative-a primeiro.</p>
+
+                  {targetMode === "interest" && (
+                    <Select value={interestType} onValueChange={setInterestType}>
+                      <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
+                        <SelectValue placeholder="Selecione o interesse" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                        {INTERESSE_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value} className="text-white">{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   )}
                 </div>
 
@@ -361,7 +434,7 @@ export function AutoCadenciaRuleEditor({
                 className="flex-1 border-[#2a2a2e] text-slate-300 hover:bg-[#2a2a2e] min-h-[44px] sm:min-h-0">
                 Cancelar
               </Button>
-              <Button onClick={handleSubmit} disabled={isSaving || projectHasRule || hasFirstMessageConflict || checkingConflict || !stepsValid}
+              <Button onClick={handleSubmit} disabled={isSaving || (targetMode === "project" && (projectHasRule || hasFirstMessageConflict || checkingConflict)) || (targetMode === "interest" && !interestType) || !stepsValid}
                 className="flex-1 bg-emerald-600 hover:bg-emerald-700 min-h-[44px] sm:min-h-0">
                 {isSaving ? (
                   <><Loader2 className="w-4 h-4 mr-2 animate-spin" />Salvando...</>

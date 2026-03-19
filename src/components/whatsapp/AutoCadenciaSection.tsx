@@ -79,11 +79,19 @@ export function AutoCadenciaSection() {
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
+                  {rule.name && (
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold text-white truncate max-w-[150px]">
+                      {rule.name}
+                    </span>
+                  )}
                   <span className={cn(
                     "px-2 py-0.5 rounded text-xs font-semibold uppercase tracking-wide truncate max-w-[200px]",
+                    rule.interest_type ? "bg-blue-500/20 text-blue-400" :
                     rule.project_id ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-300"
                   )}>
-                    {rule.project?.name || "🌐 Todos"}
+                    {rule.interest_type
+                      ? { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial" }[rule.interest_type] || rule.interest_type
+                      : rule.project?.name || "🌐 Todos"}
                   </span>
                   {rule.is_active ? (
                     <span className="flex items-center gap-1 text-xs text-emerald-400 shrink-0">

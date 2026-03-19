@@ -12,7 +12,9 @@ export interface AutoCadenciaStep {
 export interface BrokerAutoCadenciaRule {
   id: string;
   broker_id: string;
+  name: string | null;
   project_id: string | null;
+  interest_type: string | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -105,7 +107,7 @@ export function useAutoCadenciaRules() {
     if (error) throw error;
   };
 
-  const createRule = async (data: { project_id: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => {
+  const createRule = async (data: { name?: string | null; project_id: string | null; interest_type?: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => {
     if (!brokerId) return null;
     setIsSaving(true);
     try {
@@ -122,7 +124,9 @@ export function useAutoCadenciaRules() {
         .from("broker_auto_cadencia_rules") as any)
         .insert({
           broker_id: brokerId,
+          name: data.name || null,
           project_id: data.project_id,
+          interest_type: data.interest_type || null,
           is_active: data.is_active,
         })
         .select(`*, project:projects(id, name)`)
@@ -150,7 +154,7 @@ export function useAutoCadenciaRules() {
     }
   };
 
-  const updateRule = async (id: string, data: Partial<{ project_id: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => {
+  const updateRule = async (id: string, data: Partial<{ name: string | null; project_id: string | null; interest_type: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => {
     setIsSaving(true);
     try {
       const { data: updated, error } = await (supabase

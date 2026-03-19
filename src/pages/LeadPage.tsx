@@ -561,7 +561,10 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
               </Button>
             )}
             {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).map(rule => {
-              const label = rule.project?.name || "Cadência 10D";
+              const interestLabel = rule.interest_type
+                ? { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial" }[rule.interest_type] || rule.interest_type
+                : null;
+              const label = rule.name || rule.project?.name || interestLabel || "Cadência 10D";
               return (
                 <Button
                   key={rule.id}

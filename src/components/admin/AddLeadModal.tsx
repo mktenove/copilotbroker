@@ -20,7 +20,7 @@ import { WhatsAppInput } from "@/components/ui/whatsapp-input";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, UserPlus } from "lucide-react";
+import { Loader2, UserPlus, Building2, Tag } from "lucide-react";
 
 interface Broker {
   id: string;
@@ -74,6 +74,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [brokerId, setBrokerId] = useState<string>(defaultBrokerId || "enove");
   const [origin, setOrigin] = useState<string>("");
   const [customOrigin, setCustomOrigin] = useState("");
+  const [targetMode, setTargetMode] = useState<"project" | "interest">("project");
   const [projectId, setProjectId] = useState<string>("");
   const [interesse, setInteresse] = useState<string>("");
   const [observacao, setObservacao] = useState<string>("");
@@ -138,6 +139,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setBrokerId(defaultBrokerId || "enove");
     setOrigin("");
     setCustomOrigin("");
+    setTargetMode("project");
     setProjectId(projects.length === 1 ? projects[0].id : "");
     setInteresse("");
     setObservacao("");
@@ -167,7 +169,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     try {
       // Generate client-side UUID to avoid RLS SELECT issues
       const leadId = crypto.randomUUID();
-      const realProjectId = projectId && projectId !== "__none__" ? projectId : null;
+      const realProjectId = targetMode === "project" && projectId ? projectId : null;
       const finalOrigin = !origin ? "Cadastrado manualmente" :
         origin === "outro" ? customOrigin || "Manual" :
         ORIGIN_OPTIONS.find(o => o.value === origin)?.label || origin;
@@ -183,7 +185,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
         broker_id: brokerId === "enove" ? null : brokerId,
       };
       if (realProjectId) leadData.project_id = realProjectId;
-      if (!realProjectId && interesse) leadData.interest_type = interesse;
+      if (targetMode === "interest" && interesse) leadData.interest_type = interesse;
       if (observacao.trim()) leadData.notes = observacao.trim();
 
       // Insert lead
@@ -274,63 +276,72 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
               />
             </div>
 
-            {/* Empreendimento */}
+            {/* Empreendimento ou Interesse */}
             <div className="space-y-2">
-              <Label className="text-slate-300">Empreendimento</Label>
-              <Select value={projectId} onValueChange={(v) => { setProjectId(v); setInteresse(""); }}>
-                <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
-                  <SelectValue placeholder="Selecione o empreendimento" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                  <SelectItem value="__none__" className="text-slate-400 focus:bg-[#2a2a2e] focus:text-slate-100">
-                    — Sem empreendimento —
-                  </SelectItem>
-                  {projects.map((project) => (
-                    <SelectItem
-                      key={project.id}
-                      value={project.id}
-                      className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
-                    >
-                      {project.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+              <Label className="text-slate-300">Interesse / Empreendimento</Label>
+              <div className="flex gap-2 mb-2">
+                <button
+                  type="button"
+                  onClick={() => { setTargetMode("project"); setInteresse(""); setObservacao(""); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                    targetMode === "project"
+                      ? "border-primary/50 bg-primary/10 text-primary"
+                      : "border-[#2a2a2e] bg-[#141417] text-slate-400 hover:border-slate-500"
+                  }`}
+                >
+                  <Building2 className="w-4 h-4" />Empreendimento
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setTargetMode("interest"); setProjectId(""); }}
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                    targetMode === "interest"
+                      ? "border-blue-500/50 bg-blue-500/10 text-blue-400"
+                      : "border-[#2a2a2e] bg-[#141417] text-slate-400 hover:border-slate-500"
+                  }`}
+                >
+                  <Tag className="w-4 h-4" />Interesse
+                </button>
+              </div>
 
-            {/* Interesse + Observação (shown when no project selected) */}
-            {(!projectId || projectId === "__none__") && (
-              <>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Interesse</Label>
+              {targetMode === "project" && (
+                <Select value={projectId} onValueChange={setProjectId}>
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
+                    <SelectValue placeholder="Selecione o empreendimento" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                    {projects.map((project) => (
+                      <SelectItem key={project.id} value={project.id} className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100">
+                        {project.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+
+              {targetMode === "interest" && (
+                <>
                   <Select value={interesse} onValueChange={setInteresse}>
                     <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
                       <SelectValue placeholder="Selecione o interesse" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                       {INTERESSE_OPTIONS.map((opt) => (
-                        <SelectItem
-                          key={opt.value}
-                          value={opt.value}
-                          className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
-                        >
+                        <SelectItem key={opt.value} value={opt.value} className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100">
                           {opt.label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-slate-300">Observação</Label>
                   <Textarea
                     value={observacao}
                     onChange={(e) => setObservacao(e.target.value)}
                     placeholder="Ex: Procura imóvel de 2 quartos, até R$ 400k, prefere Zona Sul..."
-                    className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500 min-h-[80px] resize-none"
+                    className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500 min-h-[72px] resize-none mt-2"
                   />
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
 
             {/* Corretor */}
             {!hideBrokerSelect && (
