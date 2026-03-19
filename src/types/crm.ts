@@ -202,7 +202,7 @@ export const STATUS_CONFIG: Record<LeadStatus, { label: string; color: string; b
     bgColor: 'bg-yellow-500/10 border-yellow-500/30'
   },
   copiloto: {
-    label: 'Copiloto',
+    label: 'Copiloto Automático',
     color: 'text-purple-400',
     bgColor: 'bg-purple-500/10 border-purple-500/30'
   },
