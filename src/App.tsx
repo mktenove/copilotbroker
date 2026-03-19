@@ -72,7 +72,7 @@ const App = () => (
             {/* Auth and admin routes */}
             <Route path="/auth" element={<Auth />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/billing/success" element={<ProtectedRoute><BillingSuccess /></ProtectedRoute>} />
+            <Route path="/billing/success" element={<BillingSuccess />} />
             <Route path="/billing/cancel" element={<BillingCancel />} />
             <Route path="/planos" element={<ProtectedRoute><Pricing /></ProtectedRoute>} />
             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
