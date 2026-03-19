@@ -20,16 +20,21 @@ export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Regis
   const [date, setDate] = useState<Date>();
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [tipo, setTipo] = useState<string>("");
+  const [time, setTime] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
-    if (!date || !tipo) return;
+    if (!date || !tipo || !time) return;
     setLoading(true);
+    const [hours, minutes] = time.split(":").map(Number);
+    const dateWithTime = new Date(date);
+    dateWithTime.setHours(hours, minutes, 0, 0);
     try {
-      await onConfirm(date, tipo);
+      await onConfirm(dateWithTime, tipo);
       onOpenChange(false);
       setDate(undefined);
       setTipo("");
+      setTime("");
     } finally {
       setLoading(false);
     }
@@ -71,6 +76,16 @@ export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Regis
           </div>
 
           <div className="space-y-2">
+            <label className="text-sm text-slate-400">Horário *</label>
+            <input
+              type="time"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              className="w-full rounded-md border border-[#2a2a2e] bg-[#0f0f12] px-3 py-2 text-sm text-white focus:outline-none focus:ring-1 focus:ring-ring"
+            />
+          </div>
+
+          <div className="space-y-2">
             <label className="text-sm text-slate-400">Tipo de Agendamento *</label>
             <Select value={tipo} onValueChange={setTipo}>
               <SelectTrigger className="bg-[#0f0f12] border-[#2a2a2e]">
@@ -87,7 +102,7 @@ export function AgendamentoModal({ open, onOpenChange, onConfirm, title = "Regis
 
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleConfirm} disabled={!date || !tipo || loading}>
+          <Button onClick={handleConfirm} disabled={!date || !tipo || !time || loading}>
             {loading ? "Salvando..." : "Confirmar"}
           </Button>
         </DialogFooter>

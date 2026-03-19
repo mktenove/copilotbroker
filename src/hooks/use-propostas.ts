@@ -141,10 +141,12 @@ export function usePropostas(leadId: string) {
   const criarProposta = useCallback(async (data: PropostaInsert) => {
     try {
       const user = (await supabase.auth.getUser()).data.user;
+      const { data: tenantId } = await (supabase.rpc("get_my_tenant_id" as any) as any);
       const { parcelas, ...propostaData } = data;
       const { data: inserted, error } = await supabase.from("propostas").insert({
         ...propostaData,
         created_by: user?.id,
+        tenant_id: tenantId,
       } as any).select("id").single();
       if (error) throw error;
 
