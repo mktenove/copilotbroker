@@ -66,6 +66,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     },
     enabled: !!effectiveBrokerId || !brokerFilterId,
     refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   // Query for history messages (sent, failed, cancelled)
@@ -78,7 +79,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
         .in("status", ["sent", "failed", "cancelled"])
         .order("scheduled_at", { ascending: false })
         .range(0, (historyPage + 1) * PAGE_SIZE - 1);
-      
+
       query = applyBrokerFilter(query);
       const { data, error } = await query;
       if (error) throw error;
@@ -86,6 +87,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     },
     enabled: !!effectiveBrokerId || !brokerFilterId,
     refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   // Single query for all aggregate counts (replaces 4 separate count queries)
@@ -106,6 +108,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       };
     },
     refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   const queuedCount = queueStats?.queued ?? 0;
@@ -138,6 +141,7 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
       return uniquePhones.size;
     },
     refetchInterval: 120000,
+    staleTime: 120000,
   });
 
   // Realtime subscriptions

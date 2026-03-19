@@ -48,7 +48,8 @@ export function useCadenciaAtiva(leadId: string | undefined): CadenciaAtiva {
       };
     },
     enabled: !!leadId,
-    refetchInterval: 60000, // Refetch every minute to update countdown
+    refetchInterval: 120000,
+    staleTime: 60000,
   });
 
   // Realtime subscription for campaign status changes
@@ -59,12 +60,9 @@ export function useCadenciaAtiva(leadId: string | undefined): CadenciaAtiva {
       .channel(`cadencia-${leadId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "whatsapp_campaigns" },
-        (payload) => {
-          const record = payload.new as any;
-          if (record?.lead_id === leadId) {
-            queryClient.invalidateQueries({ queryKey });
-          }
+        { event: "*", schema: "public", table: "whatsapp_campaigns", filter: `lead_id=eq.${leadId}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey });
         }
       )
       .on(

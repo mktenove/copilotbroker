@@ -71,11 +71,12 @@ export function useWhatsAppCampaigns(adminBrokerFilterId?: string) {
         query = query.eq("broker_id", broker.id);
       }
       
-      const { data, error } = await query;
+      const { data, error } = await query.limit(200);
       if (error) throw error;
       return data as unknown as WhatsAppCampaign[];
     },
     enabled: role === "admin" || !!broker?.id,
+    staleTime: 300_000,
   });
 
   // Fetch leads by status with optional filters

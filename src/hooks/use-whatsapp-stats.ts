@@ -47,6 +47,7 @@ export function useWhatsAppStats(brokerId?: string): UseWhatsAppStatsReturn {
       return data as DailyStat[];
     },
     enabled: !!brokerId,
+    staleTime: 300_000,
   });
 
   const weeklyTotals = dailyStats.reduce(
@@ -89,6 +90,7 @@ export function useWhatsAppGlobalStats(): {
       if (error) throw error;
       return data as DailyStat[];
     },
+    staleTime: 300_000,
   });
 
   const globalTotals = allStats.reduce(

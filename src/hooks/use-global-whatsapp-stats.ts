@@ -79,6 +79,7 @@ export function useGlobalWhatsAppStats() {
       return (records || []) as NotificationRecord[];
     },
     refetchInterval: 300000,
+    staleTime: 300000,
   });
 
   const records = data || [];

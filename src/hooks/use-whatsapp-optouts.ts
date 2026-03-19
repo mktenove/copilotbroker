@@ -26,11 +26,13 @@ export function useWhatsAppOptouts(): UseWhatsAppOptoutsReturn {
       const { data, error } = await supabase
         .from("whatsapp_optouts")
         .select("*")
-        .order("created_at", { ascending: false });
+        .order("created_at", { ascending: false })
+        .limit(500);
 
       if (error) throw error;
       return data as WhatsAppOptout[];
     },
+    staleTime: 300_000,
   });
 
   const deleteMutation = useMutation({
