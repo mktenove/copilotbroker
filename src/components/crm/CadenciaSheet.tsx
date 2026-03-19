@@ -407,7 +407,7 @@ export function CadenciaSheet({
                       className="bg-[#0f0f11] border-[#2a2a2e] text-white min-h-[80px] text-sm"
                     />
                     <p className="text-xs text-slate-600">
-                      Variáveis: {"{nome}"}, {"{empreendimento}"}, {"{corretor_nome}"}, {"{cidade}"}, {"{dormitorios}"}, {"{piscina}"}, {"{interesse}"}, {"{tags}"}
+                      Variáveis: {"{nome}"}, {"{empreendimento}"}, {"{corretor_nome}"}, {"{cidade}"}, {"{dormitorios}"}, {"{interesse}"}
                     </p>
                   </div>
 

@@ -201,9 +201,7 @@ export interface TemplateVariables {
   corretor_nome?: string;
   cidade?: string;
   dormitorios?: string;
-  piscina?: string;
   interesse?: string;
-  tags?: string;
 }
 
 export const replaceTemplateVariables = (content: string, variables: TemplateVariables): string => {
@@ -213,9 +211,7 @@ export const replaceTemplateVariables = (content: string, variables: TemplateVar
   if (variables.corretor_nome) result = result.replace(/{corretor_nome}/g, variables.corretor_nome);
   if (variables.cidade) result = result.replace(/{cidade}/g, variables.cidade);
   if (variables.dormitorios) result = result.replace(/{dormitorios}/g, variables.dormitorios);
-  if (variables.piscina) result = result.replace(/{piscina}/g, variables.piscina);
   if (variables.interesse) result = result.replace(/{interesse}/g, variables.interesse);
-  if (variables.tags) result = result.replace(/{tags}/g, variables.tags);
   return result;
 };
 

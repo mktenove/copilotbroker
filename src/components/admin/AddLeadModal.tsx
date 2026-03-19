@@ -79,8 +79,6 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [interesse, setInteresse] = useState<string>("");
   const [interestCity, setInterestCity] = useState<string>("");
   const [interestBedrooms, setInterestBedrooms] = useState<string>("");
-  const [interestPool, setInterestPool] = useState<boolean>(false);
-  const [interestTags, setInterestTags] = useState<string>("");
   const [observacao, setObservacao] = useState<string>("");
 
   // Fetch brokers and projects on mount
@@ -148,8 +146,6 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setInteresse("");
     setInterestCity("");
     setInterestBedrooms("");
-    setInterestPool(false);
-    setInterestTags("");
     setObservacao("");
   };
 
@@ -197,8 +193,6 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
         leadData.interest_type = interesse;
         if (interestCity.trim()) leadData.interest_city = interestCity.trim();
         if (interestBedrooms) leadData.interest_bedrooms = parseInt(interestBedrooms);
-        leadData.interest_pool = interestPool;
-        if (interestTags.trim()) leadData.interest_tags = interestTags.split(",").map(t => t.trim()).filter(Boolean);
       }
       if (observacao.trim()) leadData.notes = observacao.trim();
 
@@ -359,16 +353,6 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
                         {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} dorm{n > 1 ? "s" : ""}.</option>)}
                       </select>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input type="checkbox" checked={interestPool} onChange={(e) => setInterestPool(e.target.checked)} className="rounded border-[#2a2a2e] accent-primary" />
-                      <span className="text-sm text-slate-300">Com piscina</span>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="text-xs text-slate-400 mb-1 block">Características extras <span className="text-slate-600">(separadas por vírgula)</span></label>
-                    <Input value={interestTags} onChange={(e) => setInterestTags(e.target.value)} placeholder="Ex: varanda, garagem, 2 vagas" className="bg-[#141417] border-[#2a2a2e] text-slate-200 text-sm" />
                   </div>
                   <Textarea
                     value={observacao}
