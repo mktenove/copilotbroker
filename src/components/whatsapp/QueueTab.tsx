@@ -271,13 +271,45 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
   const { data: stepData, isLoading } = useQuery({
     queryKey: ["cadencia-step-reply-stats", brokerId],
     queryFn: async () => {
-      const params: Record<string, any> = {};
-      if (brokerId) params.p_broker_id = brokerId;
-      const { data, error } = await (supabase.rpc as any)("get_cadencia_step_reply_stats", params);
-      if (error) throw error;
-      return (data || []) as { step_number: number; reply_count: number }[];
+      // Step 1: campaigns with replies
+      let campaignsQuery = supabase
+        .from("whatsapp_campaigns")
+        .select("id")
+        .gt("reply_count", 0);
+      if (brokerId) campaignsQuery = campaignsQuery.eq("broker_id", brokerId);
+      const { data: campaigns } = await campaignsQuery;
+      if (!campaigns || campaigns.length === 0) return [];
+
+      const campaignIds = campaigns.map((c: any) => c.id);
+
+      // Step 2: count sent messages per campaign → that's the step
+      const { data: sentMsgs } = await supabase
+        .from("whatsapp_message_queue")
+        .select("campaign_id")
+        .in("campaign_id", campaignIds)
+        .eq("status", "sent");
+
+      if (!sentMsgs || sentMsgs.length === 0) return [];
+
+      // Count sent messages per campaign
+      const sentPerCampaign: Record<string, number> = {};
+      for (const msg of sentMsgs) {
+        sentPerCampaign[msg.campaign_id] = (sentPerCampaign[msg.campaign_id] || 0) + 1;
+      }
+
+      // Group campaigns by step number
+      const stepCounts: Record<number, number> = {};
+      for (const campaignId of campaignIds) {
+        const step = sentPerCampaign[campaignId] || 0;
+        if (step > 0) stepCounts[step] = (stepCounts[step] || 0) + 1;
+      }
+
+      return Object.entries(stepCounts).map(([step, count]) => ({
+        step_number: Number(step),
+        reply_count: count,
+      }));
     },
-    staleTime: 60_000,
+    staleTime: 30_000,
   });
 
   const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
