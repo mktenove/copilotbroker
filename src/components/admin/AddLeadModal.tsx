@@ -41,6 +41,14 @@ interface AddLeadModalProps {
   hideBrokerSelect?: boolean;
 }
 
+const INTERESSE_OPTIONS = [
+  { value: "casa", label: "Interesse em Casa" },
+  { value: "apartamento", label: "Interesse em Apartamento" },
+  { value: "terreno", label: "Interesse em Terreno" },
+  { value: "investimento", label: "Interesse em Investimento" },
+  { value: "comercial", label: "Interesse em Imóvel Comercial" },
+];
+
 const ORIGIN_OPTIONS = [
   { value: "meta_ads", label: "Meta ADS" },
   { value: "google_ads", label: "Google ADS" },
@@ -66,6 +74,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [origin, setOrigin] = useState<string>("");
   const [customOrigin, setCustomOrigin] = useState("");
   const [projectId, setProjectId] = useState<string>("");
+  const [interesse, setInteresse] = useState<string>("");
 
   // Fetch brokers and projects on mount
   useEffect(() => {
@@ -128,6 +137,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setOrigin("");
     setCustomOrigin("");
     setProjectId(projects.length === 1 ? projects[0].id : "");
+    setInteresse("");
   };
 
   const handleClose = () => {
@@ -149,18 +159,17 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
       return;
     }
 
-    if (!projectId) {
-      toast.error("Projeto é obrigatório");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
       // Generate client-side UUID to avoid RLS SELECT issues
       const leadId = crypto.randomUUID();
-      const finalOrigin = !origin ? "Cadastrado manualmente" :
-        origin === "outro" ? customOrigin || "Manual" : 
+      const realProjectId = projectId && projectId !== "__none__" ? projectId : null;
+      const interesseLabel = !realProjectId && interesse
+        ? INTERESSE_OPTIONS.find(i => i.value === interesse)?.label
+        : null;
+      const finalOrigin = !origin ? (interesseLabel || "Cadastrado manualmente") :
+        origin === "outro" ? customOrigin || "Manual" :
         ORIGIN_OPTIONS.find(o => o.value === origin)?.label || origin;
 
       // Prepare lead data
@@ -171,9 +180,9 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
         source: brokerId === "enove" ? "enove" : "broker",
         status: "new",
         lead_origin: finalOrigin,
-        project_id: projectId,
         broker_id: brokerId === "enove" ? null : brokerId,
       };
+      if (realProjectId) leadData.project_id = realProjectId;
 
       // Insert lead
       const { error: leadError } = await (supabase
@@ -182,12 +191,14 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
 
       if (leadError) throw leadError;
 
-      // Insert attribution
-      await (supabase.from("lead_attribution" as any).insert({
-        lead_id: leadId,
-        project_id: projectId,
-        landing_page: "admin_manual",
-      }) as any);
+      // Insert attribution only if project selected
+      if (realProjectId) {
+        await (supabase.from("lead_attribution" as any).insert({
+          lead_id: leadId,
+          project_id: realProjectId,
+          landing_page: "admin_manual",
+        }) as any);
+      }
 
       // Trigger WhatsApp notification via edge function
       try {
@@ -263,17 +274,18 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
 
             {/* Empreendimento */}
             <div className="space-y-2">
-              <Label className="text-slate-300">
-                Empreendimento <span className="text-red-400">*</span>
-              </Label>
-              <Select value={projectId} onValueChange={setProjectId}>
+              <Label className="text-slate-300">Empreendimento</Label>
+              <Select value={projectId} onValueChange={(v) => { setProjectId(v); setInteresse(""); }}>
                 <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
                   <SelectValue placeholder="Selecione o empreendimento" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                  <SelectItem value="__none__" className="text-slate-400 focus:bg-[#2a2a2e] focus:text-slate-100">
+                    — Sem empreendimento —
+                  </SelectItem>
                   {projects.map((project) => (
-                    <SelectItem 
-                      key={project.id} 
+                    <SelectItem
+                      key={project.id}
                       value={project.id}
                       className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
                     >
@@ -283,6 +295,29 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Interesse (shown when no project selected) */}
+            {(!projectId || projectId === "__none__") && (
+              <div className="space-y-2">
+                <Label className="text-slate-300">Interesse</Label>
+                <Select value={interesse} onValueChange={setInteresse}>
+                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
+                    <SelectValue placeholder="Selecione o interesse" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                    {INTERESSE_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {/* Corretor */}
             {!hideBrokerSelect && (
