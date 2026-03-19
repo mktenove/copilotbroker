@@ -10,7 +10,6 @@ import { PropostaModal } from "@/components/crm/PropostaModal";
 import { PropostasList } from "@/components/crm/PropostasList";
 import { VendaModal } from "@/components/crm/VendaModal";
 import { PerdaModal } from "@/components/crm/PerdaModal";
-import { FollowUpSheet } from "@/components/crm/FollowUpSheet";
 import { CadenciaSheet } from "@/components/crm/CadenciaSheet";
 import { TransferLeadDialog } from "@/components/crm/TransferLeadDialog";
 import { useKanbanLeads } from "@/hooks/use-kanban-leads";
@@ -18,6 +17,7 @@ import { useLeadInteractions } from "@/hooks/use-lead-interactions";
 import { usePropostas } from "@/hooks/use-propostas";
 import { useUserRole } from "@/hooks/use-user-role";
 import { useCadenciaAtiva } from "@/hooks/use-cadencia-ativa";
+import { useAutoCadenciaRules } from "@/hooks/use-auto-cadencia-rules";
 import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
@@ -64,8 +64,9 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
   const [vendaOpen, setVendaOpen] = useState(false);
   const [perdaOpen, setPerdaOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
-  const [followUpOpen, setFollowUpOpen] = useState(false);
   const [cadenciaOpen, setCadenciaOpen] = useState(false);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | undefined>(undefined);
+  const [selectedRuleName, setSelectedRuleName] = useState<string | undefined>(undefined);
   const [whatsappMsgOpen, setWhatsappMsgOpen] = useState(false);
   const [whatsappMsg, setWhatsappMsg] = useState("");
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
@@ -86,6 +87,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
   const { propostas, loading: propostasLoading, criarProposta, aprovarProposta, rejeitarProposta, encaminharVendedor, hasApprovedProposta } = usePropostas(leadId || "");
   const cadencia = useCadenciaAtiva(leadId);
+  const { rules: cadenciaRules } = useAutoCadenciaRules();
 
   // Check if lead has a linked conversation for chat navigation
   const { data: linkedConversation } = useQuery({
@@ -558,14 +560,20 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                 <Calendar className="w-3.5 h-3.5 mr-1.5" />Reagendar
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={() => setFollowUpOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
-              <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Follow-Up
-            </Button>
-            {!cadencia.isActive && (
-              <Button variant="outline" size="sm" onClick={() => setCadenciaOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10">
-                <Zap className="w-3.5 h-3.5 mr-1.5" />Cadência 10D
-              </Button>
-            )}
+            {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).map(rule => {
+              const label = rule.project?.name || "Cadência 10D";
+              return (
+                <Button
+                  key={rule.id}
+                  variant="outline"
+                  size="sm"
+                  onClick={() => { setSelectedRuleId(rule.id); setSelectedRuleName(label); setCadenciaOpen(true); }}
+                  className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/10"
+                >
+                  <Zap className="w-3.5 h-3.5 mr-1.5" />{label}
+                </Button>
+              );
+            })}
             <Button variant="outline" size="sm" onClick={() => setPerdaOpen(true)} className="w-full sm:w-auto h-11 sm:h-9 text-sm sm:text-xs border-[#2a2a2e] text-red-400/80 hover:bg-red-500/10 hover:border-red-500/20">
               <UserX className="w-3.5 h-3.5 mr-1.5" />Inativar
             </Button>
@@ -880,20 +888,9 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
           if (ok) { toast.success("Lead inativado com sucesso."); refreshLead(); }
         }}
       />
-      <FollowUpSheet
-        open={followUpOpen}
-        onOpenChange={setFollowUpOpen}
-        leadId={lead.id}
-        leadName={lead.name}
-        leadPhone={lead.whatsapp}
-        projectName={lead.project?.name}
-        brokerName={lead.broker?.name}
-        brokerId={lead.broker?.id || ""}
-        onCreated={refreshLead}
-      />
       <CadenciaSheet
         open={cadenciaOpen}
-        onOpenChange={setCadenciaOpen}
+        onOpenChange={(v) => { setCadenciaOpen(v); if (!v) { setSelectedRuleId(undefined); setSelectedRuleName(undefined); } }}
         leadId={lead.id}
         leadName={lead.name}
         leadPhone={lead.whatsapp}
@@ -902,6 +899,8 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
         brokerId={lead.broker?.id || ""}
         leadStatus={lead.status}
         onCreated={refreshLead}
+        ruleId={selectedRuleId}
+        ruleName={selectedRuleName}
       />
       <TransferLeadDialog
         leadId={lead.id}

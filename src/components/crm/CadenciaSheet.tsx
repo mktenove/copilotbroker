@@ -27,6 +27,8 @@ interface CadenciaSheetProps {
   brokerId: string;
   leadStatus?: string;
   onCreated?: () => void;
+  ruleId?: string;
+  ruleName?: string;
 }
 
 const DELAY_PRESETS = [
@@ -100,6 +102,8 @@ export function CadenciaSheet({
   brokerId,
   leadStatus,
   onCreated,
+  ruleId,
+  ruleName,
 }: CadenciaSheetProps) {
   const [isCreating, setIsCreating] = useState(false);
   const [steps, setSteps] = useState<Array<{ messageContent: string; delayMinutes: number; sendIfReplied: boolean }>>(
@@ -107,10 +111,28 @@ export function CadenciaSheet({
   );
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+    if (ruleId) {
+      // Load steps from the automation rule
+      (supabase.from("auto_cadencia_steps") as any)
+        .select("message_content, delay_minutes, send_if_replied, step_order")
+        .eq("rule_id", ruleId)
+        .order("step_order", { ascending: true })
+        .then(({ data }: any) => {
+          if (data && data.length > 0) {
+            setSteps(data.map((s: any) => ({
+              messageContent: s.message_content,
+              delayMinutes: s.delay_minutes,
+              sendIfReplied: s.send_if_replied,
+            })));
+          } else {
+            setSteps(DEFAULT_STEPS.map(s => ({ ...s })));
+          }
+        });
+    } else {
       setSteps(DEFAULT_STEPS.map(s => ({ ...s })));
     }
-  }, [open]);
+  }, [open, ruleId]);
 
   const addStep = () => {
     setSteps(prev => [...prev, { messageContent: "", delayMinutes: 1440, sendIfReplied: false }]);
@@ -311,7 +333,7 @@ export function CadenciaSheet({
           <SheetHeader>
             <SheetTitle className="text-white flex items-center gap-2">
               <Zap className="w-5 h-5 text-emerald-400" />
-              Cadência 10D™
+              {ruleName || "Cadência 10D™"}
             </SheetTitle>
             <SheetDescription className="text-slate-400">
               Sequência automática para <span className="text-slate-200 font-medium">{leadName}</span>
