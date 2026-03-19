@@ -263,8 +263,8 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
 
 const STEP_LABELS = ["1º contato", "2º contato", "3º contato", "4º contato", "5º contato", "6º contato", "7º contato"];
 const STEP_COLORS = [
-  "bg-emerald-500", "bg-blue-500", "bg-violet-500", "bg-orange-500",
-  "bg-yellow-500", "bg-rose-500", "bg-slate-400"
+  "bg-yellow-500", "bg-yellow-500", "bg-yellow-500", "bg-yellow-500",
+  "bg-yellow-500", "bg-yellow-500", "bg-yellow-500"
 ];
 
 function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
