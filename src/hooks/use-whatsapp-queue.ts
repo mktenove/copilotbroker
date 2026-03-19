@@ -119,15 +119,11 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
   const { data: repliesCount = 0 } = useQuery({
     queryKey: ["whatsapp-replies-count", effectiveBrokerId],
     queryFn: async () => {
-      let query = (supabase.from("whatsapp_campaigns") as any)
-        .select("reply_count")
-        .gt("reply_count", 0);
-      if (effectiveBrokerId) {
-        query = query.eq("broker_id", effectiveBrokerId);
-      }
-      const { data, error } = await query;
+      const params: Record<string, any> = {};
+      if (effectiveBrokerId) params.p_broker_id = effectiveBrokerId;
+      const { data, error } = await (supabase.rpc as any)("get_cadencia_reply_count", params);
       if (error) throw error;
-      return (data || []).reduce((sum: number, c: any) => sum + (c.reply_count || 0), 0);
+      return Number(data) || 0;
     },
     refetchInterval: 120000,
     staleTime: 120000,
