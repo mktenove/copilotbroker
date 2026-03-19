@@ -710,7 +710,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                   icon={Building2}
                   label="Empreendimento"
                   field="project_id"
-                  displayValue={lead.project?.name || "—"}
+                  displayValue={lead.project?.name || (lead.interest_type ? `Interesse em ${lead.interest_type === "casa" ? "Casa" : lead.interest_type === "apartamento" ? "Apartamento" : lead.interest_type === "terreno" ? "Terreno" : lead.interest_type === "investimento" ? "Investimento" : lead.interest_type === "comercial" ? "Comercial" : lead.interest_type}` : "—")}
                   currentValue={lead.project_id || ""}
                   options={allProjects.map((p: any) => ({ value: p.id, label: p.name }))}
                   editingField={editingField}

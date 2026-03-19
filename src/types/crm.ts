@@ -19,6 +19,7 @@ export interface CRMLead {
   email: string | null;
   cpf: string | null;
   notes: string | null;
+  interest_type: string | null;
   source: string;
   lead_origin: string | null;
   lead_origin_detail: string | null;

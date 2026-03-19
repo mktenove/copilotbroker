@@ -190,6 +190,15 @@ export function KanbanCard({ lead, isNew, hasCadenciaAtiva, onCancelCadencia, on
             <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-primary/20 text-primary border border-primary/40">
               {lead.project.name}
             </span>
+          ) : lead.interest_type ? (
+            <span className="px-2 py-0.5 rounded-md text-[10px] font-semibold uppercase tracking-wide bg-blue-500/20 text-blue-400 border border-blue-500/30">
+              {lead.interest_type === "casa" ? "Casa" :
+               lead.interest_type === "apartamento" ? "Apartamento" :
+               lead.interest_type === "terreno" ? "Terreno" :
+               lead.interest_type === "investimento" ? "Investimento" :
+               lead.interest_type === "comercial" ? "Comercial" :
+               lead.interest_type}
+            </span>
           ) : (
             <span className="px-2 py-0.5 rounded-md text-[10px] font-medium text-slate-500 border border-dashed border-slate-600">
               Sem projeto

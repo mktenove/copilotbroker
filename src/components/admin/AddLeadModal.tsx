@@ -17,6 +17,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { WhatsAppInput } from "@/components/ui/whatsapp-input";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, UserPlus } from "lucide-react";
@@ -75,6 +76,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [customOrigin, setCustomOrigin] = useState("");
   const [projectId, setProjectId] = useState<string>("");
   const [interesse, setInteresse] = useState<string>("");
+  const [observacao, setObservacao] = useState<string>("");
 
   // Fetch brokers and projects on mount
   useEffect(() => {
@@ -138,6 +140,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setCustomOrigin("");
     setProjectId(projects.length === 1 ? projects[0].id : "");
     setInteresse("");
+    setObservacao("");
   };
 
   const handleClose = () => {
@@ -165,10 +168,7 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
       // Generate client-side UUID to avoid RLS SELECT issues
       const leadId = crypto.randomUUID();
       const realProjectId = projectId && projectId !== "__none__" ? projectId : null;
-      const interesseLabel = !realProjectId && interesse
-        ? INTERESSE_OPTIONS.find(i => i.value === interesse)?.label
-        : null;
-      const finalOrigin = !origin ? (interesseLabel || "Cadastrado manualmente") :
+      const finalOrigin = !origin ? "Cadastrado manualmente" :
         origin === "outro" ? customOrigin || "Manual" :
         ORIGIN_OPTIONS.find(o => o.value === origin)?.label || origin;
 
@@ -183,6 +183,8 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
         broker_id: brokerId === "enove" ? null : brokerId,
       };
       if (realProjectId) leadData.project_id = realProjectId;
+      if (!realProjectId && interesse) leadData.interest_type = interesse;
+      if (observacao.trim()) leadData.notes = observacao.trim();
 
       // Insert lead
       const { error: leadError } = await (supabase
@@ -296,27 +298,38 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
               </Select>
             </div>
 
-            {/* Interesse (shown when no project selected) */}
+            {/* Interesse + Observação (shown when no project selected) */}
             {(!projectId || projectId === "__none__") && (
-              <div className="space-y-2">
-                <Label className="text-slate-300">Interesse</Label>
-                <Select value={interesse} onValueChange={setInteresse}>
-                  <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
-                    <SelectValue placeholder="Selecione o interesse" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
-                    {INTERESSE_OPTIONS.map((opt) => (
-                      <SelectItem
-                        key={opt.value}
-                        value={opt.value}
-                        className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
-                      >
-                        {opt.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Interesse</Label>
+                  <Select value={interesse} onValueChange={setInteresse}>
+                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
+                      <SelectValue placeholder="Selecione o interesse" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                      {INTERESSE_OPTIONS.map((opt) => (
+                        <SelectItem
+                          key={opt.value}
+                          value={opt.value}
+                          className="text-slate-200 focus:bg-[#2a2a2e] focus:text-slate-100"
+                        >
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Observação</Label>
+                  <Textarea
+                    value={observacao}
+                    onChange={(e) => setObservacao(e.target.value)}
+                    placeholder="Ex: Procura imóvel de 2 quartos, até R$ 400k, prefere Zona Sul..."
+                    className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500 min-h-[80px] resize-none"
+                  />
+                </div>
+              </>
             )}
 
             {/* Corretor */}
