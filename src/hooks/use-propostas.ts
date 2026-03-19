@@ -154,6 +154,7 @@ export function usePropostas(leadId: string) {
       if (parcelas && parcelas.length > 0 && inserted) {
         const parcelasToInsert = parcelas.map((p, i) => ({
           proposta_id: inserted.id,
+          tenant_id: tenantId,
           tipo: p.tipo,
           valor: p.valor,
           quantidade_parcelas: p.quantidade_parcelas || null,
