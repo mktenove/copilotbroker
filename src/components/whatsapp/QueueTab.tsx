@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { QueueStatus } from "@/types/whatsapp";
 import { cn } from "@/lib/utils";
@@ -268,11 +268,7 @@ const STEP_COLORS = [
 ];
 
 function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
-  const queryClient = useQueryClient();
-  const [resetting, setResetting] = useState(false);
-  const [confirmReset, setConfirmReset] = useState(false);
-
-  // Fetch reset timestamp from broker's whatsapp instance
+  // Fetch reset timestamp so we respect the same filter as the stat
   const { data: resetAt } = useQuery({
     queryKey: ["cadencia-stats-reset-at", brokerId],
     queryFn: async () => {
@@ -284,6 +280,7 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
       return data?.[0]?.cadencia_stats_reset_at ?? null;
     },
     staleTime: 60_000,
+    enabled: !!brokerId,
   });
 
   const { data: stepData, isLoading } = useQuery({
@@ -297,23 +294,8 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
       return (data || []) as { step_number: number; reply_count: number }[];
     },
     staleTime: 60_000,
+    enabled: !!brokerId && resetAt !== undefined,
   });
-
-  const handleReset = async () => {
-    setResetting(true);
-    try {
-      const now = new Date().toISOString();
-      let query = (supabase.from("broker_whatsapp_instances") as any)
-        .update({ cadencia_stats_reset_at: now });
-      if (brokerId) query = query.eq("broker_id", brokerId);
-      await query;
-      queryClient.invalidateQueries({ queryKey: ["cadencia-stats-reset-at", brokerId] });
-      queryClient.invalidateQueries({ queryKey: ["cadencia-step-reply-stats", brokerId] });
-      setConfirmReset(false);
-    } finally {
-      setResetting(false);
-    }
-  };
 
   const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
   const maxReplies = Math.max(...(stepData || []).map(s => Number(s.reply_count)), 1);
@@ -329,54 +311,20 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
         <div className="flex items-center gap-2 mb-4">
           <MessageCircle className="w-4 h-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Respostas por Etapa da Cadência</h3>
-          <div className="ml-auto flex items-center gap-3">
-            {totalReplies > 0 && (
-              <span className="text-xs text-slate-500">{totalReplies} total</span>
-            )}
-            {resetAt && (
-              <span className="text-[10px] text-slate-600">
-                desde {new Date(resetAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
-              </span>
-            )}
-            {confirmReset ? (
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-yellow-400">Confirmar reset?</span>
-                <button
-                  onClick={handleReset}
-                  disabled={resetting}
-                  className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
-                >
-                  {resetting ? "..." : "Sim"}
-                </button>
-                <button
-                  onClick={() => setConfirmReset(false)}
-                  className="px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400 hover:bg-slate-500/30 transition-colors"
-                >
-                  Não
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={() => setConfirmReset(true)}
-                className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
-              >
-                Zerar
-              </button>
-            )}
-          </div>
+          {totalReplies > 0 && (
+            <span className="ml-auto text-xs text-slate-500">{totalReplies} total</span>
+          )}
         </div>
 
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
             <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
           </div>
-        ) : totalReplies === 0 ? (
-          <p className="text-sm text-slate-500 text-center py-4">Nenhuma resposta registrada ainda</p>
         ) : (
           <div className="space-y-2.5">
             {steps.map(({ step, count }) => {
               const pct = totalReplies > 0 ? Math.round((count / totalReplies) * 100) : 0;
-              const barWidth = maxReplies > 0 ? (count / maxReplies) * 100 : 0;
+              const barWidth = totalReplies > 0 ? (count / maxReplies) * 100 : 0;
               const color = STEP_COLORS[step - 1];
               return (
                 <div key={step} className="flex items-center gap-3">
@@ -389,7 +337,9 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
                   </div>
                   <div className="flex items-center gap-1.5 w-16 shrink-0 justify-end">
                     <span className="text-xs font-semibold text-white">{count}</span>
-                    <span className="text-[10px] text-slate-500">({pct}%)</span>
+                    {totalReplies > 0 && (
+                      <span className="text-[10px] text-slate-500">({pct}%)</span>
+                    )}
                   </div>
                 </div>
               );
@@ -434,6 +384,7 @@ export function QueueTab() {
     loadMoreHistory,
     hasMorePending,
     hasMoreHistory,
+    effectiveBrokerId,
   } = useWhatsAppQueue(effectiveFilterId);
 
   if (isLoading) {
@@ -484,7 +435,7 @@ export function QueueTab() {
       <QueueStats stats={stats} />
 
       {/* Step Reply Analytics */}
-      <StepReplyAnalytics brokerId={effectiveFilterId} />
+      <StepReplyAnalytics brokerId={effectiveBrokerId ?? effectiveFilterId} />
 
       {isEmpty ? (
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">

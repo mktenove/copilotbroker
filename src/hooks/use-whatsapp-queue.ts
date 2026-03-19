@@ -116,15 +116,31 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
   const sentCount = queueStats?.sent ?? 0;
   const failedCount = queueStats?.failed ?? 0;
 
+  // Fetch reset timestamp so "Responderam" stat matches the step analytics
+  const { data: statsResetAt } = useQuery({
+    queryKey: ["cadencia-stats-reset-at", effectiveBrokerId],
+    queryFn: async () => {
+      let q = (supabase.from("broker_whatsapp_instances") as any)
+        .select("cadencia_stats_reset_at")
+        .limit(1);
+      if (effectiveBrokerId) q = q.eq("broker_id", effectiveBrokerId);
+      const { data } = await q;
+      return data?.[0]?.cadencia_stats_reset_at ?? null;
+    },
+    staleTime: 60_000,
+  });
+
   const { data: repliesCount = 0 } = useQuery({
-    queryKey: ["whatsapp-replies-count", effectiveBrokerId],
+    queryKey: ["whatsapp-replies-count", effectiveBrokerId, statsResetAt],
     queryFn: async () => {
       const params: Record<string, any> = {};
       if (effectiveBrokerId) params.p_broker_id = effectiveBrokerId;
+      if (statsResetAt) params.p_since = statsResetAt;
       const { data, error } = await (supabase.rpc as any)("get_cadencia_reply_count", params);
       if (error) throw error;
       return Number(data) || 0;
     },
+    enabled: statsResetAt !== undefined, // wait until we know reset state
     refetchInterval: 120000,
     staleTime: 120000,
   });
@@ -269,5 +285,6 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
     hasMorePending,
     hasMoreHistory,
     allPaused,
+    effectiveBrokerId,
   };
 }
