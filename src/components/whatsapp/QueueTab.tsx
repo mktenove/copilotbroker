@@ -2,11 +2,11 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Send, 
-  Clock, 
-  Loader2, 
-  XCircle, 
+import {
+  Send,
+  Clock,
+  Loader2,
+  XCircle,
   RefreshCw,
   CheckCircle,
   AlertTriangle,
@@ -15,7 +15,8 @@ import {
   Hash,
   RotateCw,
   Calendar,
-  ChevronDown
+  ChevronDown,
+  MessageCircle
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
 import { useUserRole } from "@/hooks/use-user-role";
@@ -260,6 +261,81 @@ function HistoryMessageCard({ message, onRetry }: { message: any; onRetry: (id: 
   );
 }
 
+const STEP_LABELS = ["1º contato", "2º contato", "3º contato", "4º contato", "5º contato", "6º contato", "7º contato"];
+const STEP_COLORS = [
+  "bg-emerald-500", "bg-blue-500", "bg-violet-500", "bg-orange-500",
+  "bg-yellow-500", "bg-rose-500", "bg-slate-400"
+];
+
+function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
+  const { data: stepData, isLoading } = useQuery({
+    queryKey: ["cadencia-step-reply-stats", brokerId],
+    queryFn: async () => {
+      const { data, error } = await (supabase.rpc as any)(
+        "get_cadencia_step_reply_stats",
+        brokerId ? { p_broker_id: brokerId } : {}
+      );
+      if (error) throw error;
+      return (data || []) as { step_number: number; reply_count: number }[];
+    },
+    staleTime: 60_000,
+  });
+
+  const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
+  const maxReplies = Math.max(...(stepData || []).map(s => Number(s.reply_count)), 1);
+
+  // Build array for steps 1–7, filling gaps with 0
+  const steps = Array.from({ length: 7 }, (_, i) => {
+    const found = (stepData || []).find(s => s.step_number === i + 1);
+    return { step: i + 1, count: found ? Number(found.reply_count) : 0 };
+  });
+
+  return (
+    <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+      <CardContent className="pt-4 pb-5 px-5">
+        <div className="flex items-center gap-2 mb-4">
+          <MessageCircle className="w-4 h-4 text-blue-400" />
+          <h3 className="text-sm font-semibold text-white">Respostas por Etapa da Cadência</h3>
+          {totalReplies > 0 && (
+            <span className="ml-auto text-xs text-slate-500">{totalReplies} total</span>
+          )}
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+          </div>
+        ) : totalReplies === 0 ? (
+          <p className="text-sm text-slate-500 text-center py-4">Nenhuma resposta registrada ainda</p>
+        ) : (
+          <div className="space-y-2.5">
+            {steps.map(({ step, count }) => {
+              const pct = totalReplies > 0 ? Math.round((count / totalReplies) * 100) : 0;
+              const barWidth = maxReplies > 0 ? (count / maxReplies) * 100 : 0;
+              const color = STEP_COLORS[step - 1];
+              return (
+                <div key={step} className="flex items-center gap-3">
+                  <span className="text-xs text-slate-400 w-20 shrink-0">{STEP_LABELS[step - 1]}</span>
+                  <div className="flex-1 h-5 bg-[#0f0f12] rounded-full overflow-hidden relative">
+                    <div
+                      className={`h-full rounded-full transition-all duration-700 ${color}`}
+                      style={{ width: `${barWidth}%` }}
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 w-16 shrink-0 justify-end">
+                    <span className="text-xs font-semibold text-white">{count}</span>
+                    <span className="text-[10px] text-slate-500">({pct}%)</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function QueueTab() {
   const [selectedBrokerId, setSelectedBrokerId] = useState<string>("");
   const { role } = useUserRole();
@@ -341,6 +417,9 @@ export function QueueTab() {
 
       {/* Stats */}
       <QueueStats stats={stats} />
+
+      {/* Step Reply Analytics */}
+      <StepReplyAnalytics brokerId={effectiveFilterId} />
 
       {isEmpty ? (
         <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
