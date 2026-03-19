@@ -38,7 +38,7 @@ const Signup = () => {
             .eq("user_id", session.user.id) as any);
           const roles = (rolesData || []).map((r: { role: string }) => r.role);
           const dest = roles.includes("admin") ? "/admin" : "/corretor/admin";
-          navigate(dest, { replace: true });
+          window.location.replace(dest); // full reload so TenantContext re-fetches
           return;
         }
         const { data: rolesData } = await (supabase
