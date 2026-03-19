@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Check, Mail, Lock, User, Shield, ArrowRight, CheckCircle, Plane } from "lucide-react";
+import { Check, Mail, Lock, User, Shield, ArrowRight, CheckCircle, Plane, Building2 } from "lucide-react";
 import copilotLogo from "@/assets/copilot-logo-dark.png";
 
 const Signup = () => {
@@ -13,13 +13,14 @@ const Signup = () => {
   const sessionId = searchParams.get("session_id");
 
   const [name, setName] = useState("");
+  const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // If already logged in with roles, redirect to dashboard
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -28,10 +29,16 @@ const Signup = () => {
           setIsCheckingAuth(false);
           return;
         }
-        // If post-payment and already logged in: confirm checkout and go to onboarding
         if (sessionId) {
+          // Already logged in + post-payment: confirm checkout and go to dashboard
           await supabase.functions.invoke("confirm-checkout", { body: { session_id: sessionId } });
-          navigate(`/onboarding?session_id=${sessionId}`, { replace: true });
+          const { data: rolesData } = await (supabase
+            .from("user_roles" as any)
+            .select("role")
+            .eq("user_id", session.user.id) as any);
+          const roles = (rolesData || []).map((r: { role: string }) => r.role);
+          const dest = roles.includes("admin") ? "/admin" : "/corretor/admin";
+          navigate(dest, { replace: true });
           return;
         }
         const { data: rolesData } = await (supabase
@@ -70,6 +77,7 @@ const Signup = () => {
     }
 
     setIsLoading(true);
+    setStatusMsg("Criando conta...");
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -94,25 +102,99 @@ const Signup = () => {
         return;
       }
 
-      if (data.session && sessionId) {
-        // Post-payment: confirm checkout to create tenant + roles
+      if (!data.session) {
+        toast.success("Verifique seu email para confirmar e depois faça login.");
+        navigate("/auth");
+        return;
+      }
+
+      if (sessionId) {
+        // Post-payment: confirm checkout → creates tenant
+        setStatusMsg("Ativando assinatura...");
         const { error: confirmError } = await supabase.functions.invoke("confirm-checkout", {
           body: { session_id: sessionId },
         });
         if (confirmError) throw confirmError;
-        toast.success("Conta criada! Configurando seu acesso...");
-        navigate(`/onboarding?session_id=${sessionId}`);
-      } else if (data.session) {
+
+        // Get membership to update tenant name
+        if (orgName.trim()) {
+          setStatusMsg("Salvando nome da empresa...");
+          const { data: membership } = await (supabase
+            .from("tenant_memberships" as any)
+            .select("tenant_id")
+            .eq("user_id", data.session.user.id)
+            .eq("is_active", true)
+            .maybeSingle() as any);
+
+          if (membership) {
+            const slug = orgName
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "");
+
+            await (supabase
+              .from("tenants" as any)
+              .update({ name: orgName.trim(), slug: slug || `org-${Date.now()}` })
+              .eq("id", membership.tenant_id) as any);
+          }
+        }
+
+        // Create broker profile
+        setStatusMsg("Configurando perfil...");
+        const { data: existingBroker } = await (supabase
+          .from("brokers" as any)
+          .select("id")
+          .eq("user_id", data.session.user.id)
+          .maybeSingle() as any);
+
+        if (!existingBroker) {
+          const { data: membership } = await (supabase
+            .from("tenant_memberships" as any)
+            .select("tenant_id")
+            .eq("user_id", data.session.user.id)
+            .eq("is_active", true)
+            .maybeSingle() as any);
+
+          if (membership) {
+            const brokerSlug = name
+              .toLowerCase()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/(^-|-$)/g, "");
+
+            await (supabase.from("brokers" as any).insert({
+              user_id: data.session.user.id,
+              name: name.trim(),
+              email,
+              slug: brokerSlug || `broker-${Date.now()}`,
+              tenant_id: membership.tenant_id,
+              is_active: true,
+            }) as any);
+          }
+        }
+
+        // Determine destination by role
+        setStatusMsg("Acessando painel...");
+        const { data: rolesData } = await (supabase
+          .from("user_roles" as any)
+          .select("role")
+          .eq("user_id", data.session.user.id) as any);
+        const roles = (rolesData || []).map((r: { role: string }) => r.role);
+        const dest = roles.includes("admin") ? "/admin" : "/corretor/admin";
+        toast.success("Conta criada! Bem-vindo ao Copilot Broker.");
+        window.location.replace(dest);
+      } else {
         toast.success("Conta criada!");
         navigate("/");
-      } else {
-        toast.success("Verifique seu email para confirmar e depois faça login.");
-        navigate("/auth");
       }
     } catch (err: any) {
       toast.error(err.message || "Erro ao criar conta.");
     } finally {
       setIsLoading(false);
+      setStatusMsg("");
     }
   };
 
@@ -177,7 +259,7 @@ const Signup = () => {
                       <span className="text-primary">Agora crie sua conta.</span>
                     </h1>
                     <p className="text-muted-foreground text-sm lg:text-base font-mono max-w-md">
-                      Último passo — crie sua conta para acessar o painel.
+                      Último passo — preencha seus dados e acesse o painel imediatamente.
                     </p>
                   </>
                 ) : (
@@ -262,6 +344,24 @@ const Signup = () => {
                     </div>
                   </div>
 
+                  {sessionId && (
+                    <div>
+                      <label className="block text-xs font-mono font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
+                        Nome da imobiliária <span className="text-muted-foreground/50 normal-case tracking-normal">(opcional)</span>
+                      </label>
+                      <div className="relative">
+                        <Building2 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50" />
+                        <input
+                          type="text"
+                          value={orgName}
+                          onChange={(e) => setOrgName(e.target.value)}
+                          className="w-full pl-10 pr-4 py-3.5 bg-background border border-border rounded-xl text-foreground font-mono text-sm placeholder:text-muted-foreground/40 focus:outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/10 transition-all"
+                          placeholder="Ex: Imobiliária Alfa"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-xs font-mono font-medium text-muted-foreground mb-1.5 uppercase tracking-wider">
                       Email
@@ -320,7 +420,7 @@ const Signup = () => {
                     {isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                        {sessionId ? "Criando conta..." : "Criando conta..."}
+                        {statusMsg || "Criando conta..."}
                       </>
                     ) : (
                       <>
