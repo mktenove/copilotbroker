@@ -14,7 +14,7 @@ const BillingSuccess = () => {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(timer);
-          navigate(sessionId ? `/onboarding?session_id=${sessionId}` : "/onboarding");
+          navigate(sessionId ? `/signup?session_id=${sessionId}` : "/signup");
           return 0;
         }
         return c - 1;

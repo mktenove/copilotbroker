@@ -3,23 +3,14 @@ import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { STRIPE_PLANS, EXTRA_USER_PRICE, PlanType } from "@/lib/stripe-plans";
-import { Check, Minus, Plus, Mail, Lock, User, Shield, Zap, Building2, ArrowRight, Plane } from "lucide-react";
+import { Check, Mail, Lock, User, Shield, ArrowRight, CheckCircle, Plane } from "lucide-react";
 import copilotLogo from "@/assets/copilot-logo-dark.png";
 
 const Signup = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  const planParam = searchParams.get("plan");
-  const usersParam = searchParams.get("users");
-
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>(
-    planParam === "imobiliaria" ? "imobiliaria" : "broker"
-  );
-  const [extraUsers, setExtraUsers] = useState(
-    usersParam ? Math.max(0, parseInt(usersParam) - 3) : 0
-  );
+  const sessionId = searchParams.get("session_id");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -28,13 +19,19 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
-  // If already logged in, redirect to dashboard instead of starting checkout again
+  // If already logged in with roles, redirect to dashboard
   useEffect(() => {
     const checkSession = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) {
           setIsCheckingAuth(false);
+          return;
+        }
+        // If post-payment and already logged in: confirm checkout and go to onboarding
+        if (sessionId) {
+          await supabase.functions.invoke("confirm-checkout", { body: { session_id: sessionId } });
+          navigate(`/onboarding?session_id=${sessionId}`, { replace: true });
           return;
         }
         const { data: rolesData } = await (supabase
@@ -47,7 +44,6 @@ const Signup = () => {
         } else if (roles.includes("admin")) {
           navigate("/admin", { replace: true });
         } else {
-          // No role yet — show form so they can sign up and go to checkout
           setIsCheckingAuth(false);
         }
       } catch {
@@ -55,26 +51,10 @@ const Signup = () => {
       }
     };
     checkSession();
-  }, [navigate]);
-
-  const startCheckout = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: {
-          plan_type: selectedPlan,
-          extra_users: selectedPlan === "imobiliaria" ? extraUsers : 0,
-        },
-      });
-      if (error) throw error;
-      if (data?.url) window.location.href = data.url;
-    } catch (err: any) {
-      toast.error(err.message || "Erro ao iniciar checkout");
-    }
-  };
+  }, [navigate, sessionId]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("[SIGNUP] handleSubmit called", { name, email, agreedTerms });
 
     if (!name.trim() || !email.trim() || !password.trim()) {
       toast.error("Preencha todos os campos obrigatórios.");
@@ -91,57 +71,50 @@ const Signup = () => {
 
     setIsLoading(true);
     try {
-      console.log("[SIGNUP] calling supabase.auth.signUp...");
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: { full_name: name },
-        },
+        options: { data: { full_name: name } },
       });
 
-      console.log("[SIGNUP] signUp result", { user: data?.user?.id, identities: data?.user?.identities?.length, session: !!data?.session, error: error?.message });
-
       if (error) {
-        console.error("[SIGNUP] error from signUp:", error.message);
         if (error.message?.includes("already registered") || error.message?.includes("already been registered")) {
-          toast.error(
-            "Este email já está cadastrado. Faça login.",
-            { action: { label: "Ir para login", onClick: () => navigate("/auth") } }
-          );
+          toast.error("Este email já está cadastrado. Faça login.", {
+            action: { label: "Ir para login", onClick: () => navigate("/auth") },
+          });
           return;
         }
         throw error;
       }
 
-      // Supabase silently handles duplicate emails when email confirmation is enabled.
-      // It returns a fake user with empty identities array instead of an error.
       if (!data.session && (!data.user || data.user.identities?.length === 0)) {
-        console.log("[SIGNUP] duplicate email detected via empty identities");
-        toast.error(
-          "Este email já está cadastrado. Faça login.",
-          { action: { label: "Ir para login", onClick: () => navigate("/auth") } }
-        );
+        toast.error("Este email já está cadastrado. Faça login.", {
+          action: { label: "Ir para login", onClick: () => navigate("/auth") },
+        });
         return;
       }
 
-      if (data.session) {
-        toast.success("Conta criada! Redirecionando para pagamento...");
-        await startCheckout();
+      if (data.session && sessionId) {
+        // Post-payment: confirm checkout to create tenant + roles
+        const { error: confirmError } = await supabase.functions.invoke("confirm-checkout", {
+          body: { session_id: sessionId },
+        });
+        if (confirmError) throw confirmError;
+        toast.success("Conta criada! Configurando seu acesso...");
+        navigate(`/onboarding?session_id=${sessionId}`);
+      } else if (data.session) {
+        toast.success("Conta criada!");
+        navigate("/");
       } else {
-        toast.success("Conta criada! Verifique seu email para confirmar e depois faça login.");
+        toast.success("Verifique seu email para confirmar e depois faça login.");
         navigate("/auth");
       }
     } catch (err: any) {
-      console.error("[SIGNUP] catch:", err);
       toast.error(err.message || "Erro ao criar conta.");
     } finally {
       setIsLoading(false);
     }
   };
-
-  const plan = STRIPE_PLANS[selectedPlan];
-  const total = plan.price + (selectedPlan === "imobiliaria" ? extraUsers * EXTRA_USER_PRICE.price : 0);
 
   if (isCheckingAuth) {
     return (
@@ -154,6 +127,18 @@ const Signup = () => {
     );
   }
 
+  const steps = sessionId
+    ? [
+        { step: 1, label: "Pagamento", done: true },
+        { step: 2, label: "Criar conta", active: true },
+        { step: 3, label: "Acesso liberado", active: false },
+      ]
+    : [
+        { step: 1, label: "Criar conta", active: true },
+        { step: 2, label: "Confirmar pagamento", active: false },
+        { step: 3, label: "Acesso liberado", active: false },
+      ];
+
   return (
     <>
       <Helmet>
@@ -164,7 +149,7 @@ const Signup = () => {
       <div className="min-h-screen bg-background text-foreground">
         <div className="flex flex-col lg:flex-row min-h-screen">
 
-          {/* LEFT PANEL — Branding + Plan Selection */}
+          {/* LEFT PANEL */}
           <div className="lg:w-[55%] xl:w-[50%] lg:min-h-screen lg:sticky lg:top-0 bg-gradient-to-br from-background via-background to-card lg:border-r border-border">
             <div className="p-6 sm:p-8 lg:p-12 xl:p-16 flex flex-col h-full">
               {/* Logo */}
@@ -185,145 +170,66 @@ const Signup = () => {
                     Acesso em minutos
                   </span>
                 </div>
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[2.75rem] font-bold mb-3 tracking-tight leading-tight">
-                  Você está a 1 passo de operar como um{" "}
-                  <span className="text-primary">corretor de alta performance.</span>
-                </h1>
-                <p className="text-muted-foreground text-sm lg:text-base font-mono max-w-md">
-                  Crie sua conta e confirme o pagamento. Acesso liberado em minutos.
-                </p>
+                {sessionId ? (
+                  <>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[2.75rem] font-bold mb-3 tracking-tight leading-tight">
+                      Pagamento confirmado!{" "}
+                      <span className="text-primary">Agora crie sua conta.</span>
+                    </h1>
+                    <p className="text-muted-foreground text-sm lg:text-base font-mono max-w-md">
+                      Último passo — crie sua conta para acessar o painel.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-[2.75rem] font-bold mb-3 tracking-tight leading-tight">
+                      Você está a 1 passo de operar como um{" "}
+                      <span className="text-primary">corretor de alta performance.</span>
+                    </h1>
+                    <p className="text-muted-foreground text-sm lg:text-base font-mono max-w-md">
+                      Crie sua conta e confirme o pagamento. Acesso liberado em minutos.
+                    </p>
+                  </>
+                )}
               </div>
 
               {/* Progress Steps */}
               <div className="flex items-center gap-2 sm:gap-4 mb-8 lg:mb-10">
-                {[
-                  { step: 1, label: "Criar conta", active: true },
-                  { step: 2, label: "Confirmar pagamento", active: false },
-                  { step: 3, label: "Acesso liberado", active: false },
-                ].map(({ step, label, active }) => (
+                {steps.map(({ step, label, done, active }, i) => (
                   <div key={step} className="flex items-center gap-2 sm:gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-mono font-bold shrink-0 ${
-                      active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground border border-border"
+                      done
+                        ? "bg-primary text-primary-foreground"
+                        : active
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground border border-border"
                     }`}>
-                      {step}
+                      {done ? <CheckCircle className="w-4 h-4" /> : step}
                     </div>
-                    <span className={`text-xs sm:text-sm font-mono hidden sm:inline whitespace-nowrap ${active ? "text-foreground" : "text-muted-foreground"}`}>
+                    <span className={`text-xs sm:text-sm font-mono hidden sm:inline whitespace-nowrap ${done || active ? "text-foreground" : "text-muted-foreground"}`}>
                       {label}
                     </span>
-                    {step < 3 && <div className="w-6 sm:w-10 h-px bg-border" />}
+                    {i < steps.length - 1 && <div className="w-6 sm:w-10 h-px bg-border" />}
                   </div>
                 ))}
               </div>
 
-              {/* Plan Cards */}
-              <div className="space-y-4 flex-1">
-                <h2 className="text-sm font-mono font-semibold text-muted-foreground uppercase tracking-wider mb-3">Escolha seu plano</h2>
-
-                <div className="grid sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4">
-                  {(["broker", "imobiliaria"] as PlanType[]).map((key) => {
-                    const p = STRIPE_PLANS[key];
-                    const isSelected = selectedPlan === key;
-                    const Icon = key === "broker" ? Zap : Building2;
-                    const bullets = key === "broker"
-                      ? ["1 licença", "CRM de lançamentos", "Copiloto IA para WhatsApp", "Sem fidelidade"]
-                      : [`3 usuários inclusos (1 admin + 2 corretores)`, `+ R$ ${EXTRA_USER_PRICE.price.toFixed(2).replace(".", ",")} por usuário adicional`, "Roletas de distribuição", "Campanhas de WhatsApp", "Sem fidelidade"];
-
-                    return (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => { setSelectedPlan(key); setSearchParams({ plan: key }); }}
-                        className={`relative w-full text-left rounded-2xl border-2 p-5 transition-all duration-300 ${
-                          isSelected
-                            ? "border-primary bg-primary/5 shadow-[0_0_30px_hsl(var(--primary)/0.08)]"
-                            : "border-border bg-card hover:border-primary/30"
-                        }`}
-                      >
-                        {key === "imobiliaria" && (
-                          <span className="absolute -top-2.5 left-5 px-3 py-0.5 bg-primary text-primary-foreground text-[10px] font-bold uppercase tracking-wider rounded-full font-mono">
-                            Popular
-                          </span>
-                        )}
-
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Icon className="w-5 h-5 text-primary" />
-                            <h3 className="text-lg font-bold">{p.name}</h3>
-                          </div>
-                          <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                            isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
-                          }`}>
-                            {isSelected && <Check className="w-3 h-3 text-primary-foreground" />}
-                          </div>
-                        </div>
-
-                        <div className="mb-3">
-                          <span className="text-2xl font-bold font-mono">
-                            R$ {p.price.toFixed(2).replace(".", ",")}
-                          </span>
-                          <span className="text-muted-foreground text-sm">/mês</span>
-                        </div>
-
-                        <ul className="space-y-1.5 text-sm text-muted-foreground">
-                          {bullets.map((b) => (
-                            <li key={b} className="flex items-start gap-2">
-                              <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
-                              <span>{b}</span>
-                            </li>
-                          ))}
-                        </ul>
-
-                        {key === "imobiliaria" && isSelected && (
-                          <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                            <p className="text-sm text-muted-foreground mb-2 font-mono">
-                              Usuários extras (R$ {EXTRA_USER_PRICE.price.toFixed(2).replace(".", ",")}/mês cada)
-                            </p>
-                            <div className="flex items-center gap-3">
-                              <button type="button" onClick={() => setExtraUsers(Math.max(0, extraUsers - 1))} className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:border-primary/30">
-                                <Minus className="w-4 h-4" />
-                              </button>
-                              <span className="text-lg font-semibold w-8 text-center font-mono">{extraUsers}</span>
-                              <button type="button" onClick={() => setExtraUsers(extraUsers + 1)} className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center hover:border-primary/30">
-                                <Plus className="w-4 h-4" />
-                              </button>
-                            </div>
-                            {extraUsers > 0 && (
-                              <p className="text-xs text-muted-foreground mt-2 font-mono">
-                                Total: {3 + extraUsers} usuários · R$ {total.toFixed(2).replace(".", ",")}/mês
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Price summary */}
-                <div className="rounded-xl bg-card border border-border p-4 font-mono mt-4">
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>Plano {plan.name}</span>
-                    <span>R$ {plan.price.toFixed(2).replace(".", ",")}</span>
-                  </div>
-                  {selectedPlan === "imobiliaria" && extraUsers > 0 && (
-                    <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                      <span>{extraUsers} usuário(s) extra(s)</span>
-                      <span>R$ {(extraUsers * EXTRA_USER_PRICE.price).toFixed(2).replace(".", ",")}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between text-lg font-bold mt-3 pt-3 border-t border-border">
-                    <span>Total mensal</span>
-                    <span className="text-primary">R$ {total.toFixed(2).replace(".", ",")}</span>
+              {/* Post-payment confirmation badge */}
+              {sessionId && (
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 flex items-center gap-3">
+                  <CheckCircle className="w-8 h-8 text-primary shrink-0" />
+                  <div>
+                    <p className="text-sm font-bold text-foreground">Plano Broker ativado</p>
+                    <p className="text-xs text-muted-foreground font-mono">Pagamento processado com sucesso pelo Stripe</p>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
 
           {/* RIGHT PANEL — Sign up form */}
           <div className="lg:w-[45%] xl:w-[50%] flex items-center justify-center p-6 sm:p-8 lg:p-12 xl:p-16">
             <div className="w-full max-w-md">
-              {/* Desktop-only login link */}
               <div className="hidden lg:flex justify-end mb-8">
                 <Link to="/auth" className="text-sm text-muted-foreground hover:text-primary font-mono transition-colors">
                   Já sou cliente? <span className="text-primary">Fazer login →</span>
@@ -333,7 +239,9 @@ const Signup = () => {
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8 lg:p-10">
                 <div className="mb-8">
                   <h2 className="text-xl lg:text-2xl font-bold mb-2">Crie sua conta</h2>
-                  <p className="text-sm text-muted-foreground font-mono">Preencha abaixo e vá para o pagamento.</p>
+                  <p className="text-sm text-muted-foreground font-mono">
+                    {sessionId ? "Preencha abaixo para acessar seu painel." : "Preencha abaixo e vá para o pagamento."}
+                  </p>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-5">
@@ -412,18 +320,17 @@ const Signup = () => {
                     {isLoading ? (
                       <>
                         <div className="w-4 h-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-                        Criando conta...
+                        {sessionId ? "Criando conta..." : "Criando conta..."}
                       </>
                     ) : (
                       <>
-                        Criar conta e ir para o pagamento
+                        {sessionId ? "Criar conta e acessar" : "Criar conta e ir para o pagamento"}
                         <ArrowRight className="w-4 h-4" />
                       </>
                     )}
                   </button>
                 </form>
 
-                {/* Trust signals */}
                 <div className="mt-8 pt-6 border-t border-border grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { icon: Shield, text: "Pagamento 100% seguro via Stripe" },
@@ -437,7 +344,6 @@ const Signup = () => {
                   ))}
                 </div>
 
-                {/* Mobile login link */}
                 <div className="mt-6 pt-4 border-t border-border text-center lg:hidden">
                   <p className="text-sm text-muted-foreground font-mono">
                     Já sou cliente?{" "}

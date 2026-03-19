@@ -34,11 +34,18 @@ serve(async (req) => {
   );
 
   try {
-    const authHeader = req.headers.get("Authorization")!;
-    const token = authHeader.replace("Bearer ", "");
-    const { data } = await supabaseClient.auth.getUser(token);
-    const user = data.user;
-    if (!user?.email) throw new Error("User not authenticated");
+    // Auth is optional — user may not have an account yet (post-checkout signup flow)
+    let userEmail: string | undefined;
+    let userId: string | undefined;
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      const { data } = await supabaseClient.auth.getUser(token);
+      if (data.user?.email) {
+        userEmail = data.user.email;
+        userId = data.user.id;
+      }
+    }
 
     const { plan_type, extra_users } = await req.json();
     if (!plan_type || !PLANS[plan_type as keyof typeof PLANS]) {
@@ -50,11 +57,13 @@ serve(async (req) => {
       apiVersion: "2025-08-27.basil",
     });
 
-    // Check existing customer
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    // Check existing customer only if we have the user's email
     let customerId: string | undefined;
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
+    if (userEmail) {
+      const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+      }
     }
 
     // Build line items
@@ -67,29 +76,24 @@ serve(async (req) => {
       lineItems.push({ price: EXTRA_USER_PRICE, quantity: extra_users });
     }
 
-    const origin = req.headers.get("origin") || "https://onovocondominio.com.br";
+    const origin = req.headers.get("origin") || "https://copilotbroker.com.br";
+
+    const metadata: Record<string, string> = {
+      plan_type,
+      included_users: String(plan.included_users),
+      extra_users: String(extra_users || 0),
+    };
+    if (userId) metadata.user_id = userId;
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
-      customer_email: customerId ? undefined : user.email,
+      customer_email: customerId ? undefined : userEmail,
       line_items: lineItems,
       mode: "subscription",
       success_url: `${origin}/billing/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/signup?plan=${plan_type}&users=${plan.included_users + (extra_users || 0)}`,
-      metadata: {
-        user_id: user.id,
-        plan_type,
-        included_users: String(plan.included_users),
-        extra_users: String(extra_users || 0),
-      },
-      subscription_data: {
-        metadata: {
-          user_id: user.id,
-          plan_type,
-          included_users: String(plan.included_users),
-          extra_users: String(extra_users || 0),
-        },
-      },
+      cancel_url: `${origin}/`,
+      metadata,
+      subscription_data: { metadata },
     });
 
     return new Response(JSON.stringify({ url: session.url }), {

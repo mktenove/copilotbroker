@@ -1,27 +1,17 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Check, Minus, Plus, Zap, Building2, ArrowRight } from "lucide-react";
+import { Check, Zap, Building2, ArrowRight, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { STRIPE_PLANS, EXTRA_USER_PRICE, PlanType } from "@/lib/stripe-plans";
+import { STRIPE_PLANS } from "@/lib/stripe-plans";
 import { toast } from "sonner";
 
 const CopilotPricing = () => {
-  const [selectedPlan, setSelectedPlan] = useState<PlanType>("imobiliaria");
-  const [extraUsers, setExtraUsers] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
 
   const handleCheckout = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        const usersParam = selectedPlan === "imobiliaria" && extraUsers > 0 ? `&users=${3 + extraUsers}` : "";
-        navigate(`/signup?plan=${selectedPlan}${usersParam}`);
-        return;
-      }
       const { data, error } = await supabase.functions.invoke("create-checkout", {
-        body: { plan_type: selectedPlan, extra_users: selectedPlan === "imobiliaria" ? extraUsers : 0 },
+        body: { plan_type: "broker", extra_users: 0 },
       });
       if (error) throw error;
       if (data?.url) window.location.href = data.url;
@@ -32,10 +22,8 @@ const CopilotPricing = () => {
     }
   };
 
-  const plans: { key: PlanType; icon: typeof Zap; popular?: boolean }[] = [
-    { key: "broker", icon: Zap },
-    { key: "imobiliaria", icon: Building2, popular: true },
-  ];
+  const brokerPlan = STRIPE_PLANS["broker"];
+  const imobPlan = STRIPE_PLANS["imobiliaria"];
 
   return (
     <section id="planos" className="py-20 sm:py-28 px-4">
@@ -52,81 +40,68 @@ const CopilotPricing = () => {
         </div>
 
         <div className="grid md:grid-cols-2 gap-6 mb-10">
-          {plans.map(({ key, icon: Icon, popular }) => {
-            const plan = STRIPE_PLANS[key];
-            const isSelected = selectedPlan === key;
-            const isImob = key === "imobiliaria";
-            const total = plan.price + (isImob && isSelected ? extraUsers * EXTRA_USER_PRICE.price : 0);
-
-            return (
-              <button
-                key={key}
-                onClick={() => setSelectedPlan(key)}
-                className={`relative w-full text-left rounded-2xl border-2 p-6 md:p-8 transition-all duration-300 ${
-                  isSelected
-                    ? "border-primary bg-primary/5 shadow-[0_0_40px_hsl(var(--gold)/0.12)]"
-                    : "border-border bg-card/50 hover:border-primary/30"
-                }`}
-              >
-                {popular && (
-                  <span className="absolute -top-3 left-6 px-3 py-1 bg-primary text-primary-foreground text-xs font-bold uppercase tracking-wider rounded-full font-mono">
-                    Popular
-                  </span>
-                )}
-
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className="w-5 h-5 text-primary" />
-                      <h3 className="text-xl font-bold text-foreground">{plan.name}</h3>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{plan.description}</p>
-                  </div>
-                  <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                    isSelected ? "border-primary bg-primary" : "border-muted-foreground/30"
-                  }`}>
-                    {isSelected && <Check className="w-4 h-4 text-primary-foreground" />}
-                  </div>
+          {/* Broker — active */}
+          <div className="relative w-full text-left rounded-2xl border-2 border-primary bg-primary/5 shadow-[0_0_40px_hsl(var(--gold)/0.12)] p-6 md:p-8">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Zap className="w-5 h-5 text-primary" />
+                  <h3 className="text-xl font-bold text-foreground">{brokerPlan.name}</h3>
                 </div>
+                <p className="text-sm text-muted-foreground">{brokerPlan.description}</p>
+              </div>
+              <div className="w-6 h-6 rounded-full border-2 border-primary bg-primary flex items-center justify-center">
+                <Check className="w-4 h-4 text-primary-foreground" />
+              </div>
+            </div>
 
-                <div className="mb-5">
-                  <span className="text-3xl font-bold text-foreground font-mono">
-                    R$ {total.toFixed(2).replace(".", ",")}
-                  </span>
-                  <span className="text-muted-foreground text-sm">/mês</span>
+            <div className="mb-5">
+              <span className="text-3xl font-bold text-foreground font-mono">
+                R$ {brokerPlan.price.toFixed(2).replace(".", ",")}
+              </span>
+              <span className="text-muted-foreground text-sm">/mês</span>
+            </div>
+
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />1 licença inclusa</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />CRM Kanban completo</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />Copiloto IA para WhatsApp</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />Sem fidelidade</li>
+            </ul>
+          </div>
+
+          {/* Imobiliária — locked */}
+          <div className="relative w-full text-left rounded-2xl border-2 border-border bg-card/30 p-6 md:p-8 opacity-50 cursor-not-allowed select-none">
+            <span className="absolute -top-3 left-6 px-3 py-1 bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wider rounded-full font-mono flex items-center gap-1">
+              <Lock className="w-3 h-3" /> Em breve
+            </span>
+
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <Building2 className="w-5 h-5 text-muted-foreground" />
+                  <h3 className="text-xl font-bold text-muted-foreground">{imobPlan.name}</h3>
                 </div>
+                <p className="text-sm text-muted-foreground">{imobPlan.description}</p>
+              </div>
+              <Lock className="w-5 h-5 text-muted-foreground/40 mt-0.5" />
+            </div>
 
-                <ul className="space-y-2 text-sm text-muted-foreground mb-4">
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />{plan.included_users} {plan.included_users === 1 ? "usuário incluso" : "usuários inclusos"}</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />CRM Kanban completo</li>
-                  <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />Copiloto IA para WhatsApp</li>
-                  {isImob && (
-                    <>
-                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />Roletas de distribuição</li>
-                      <li className="flex items-center gap-2"><Check className="w-4 h-4 text-primary shrink-0" />Campanhas de WhatsApp</li>
-                    </>
-                  )}
-                </ul>
+            <div className="mb-5">
+              <span className="text-3xl font-bold text-muted-foreground font-mono">
+                R$ {imobPlan.price.toFixed(2).replace(".", ",")}
+              </span>
+              <span className="text-muted-foreground text-sm">/mês</span>
+            </div>
 
-                {isImob && isSelected && (
-                  <div className="mt-4 pt-4 border-t border-border" onClick={(e) => e.stopPropagation()}>
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Usuários extras (R$ {EXTRA_USER_PRICE.price.toFixed(2).replace(".", ",")}/mês)
-                    </p>
-                    <div className="flex items-center gap-3">
-                      <button type="button" onClick={() => setExtraUsers(Math.max(0, extraUsers - 1))} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors">
-                        <Minus className="w-4 h-4" />
-                      </button>
-                      <span className="text-lg font-semibold w-8 text-center font-mono">{extraUsers}</span>
-                      <button type="button" onClick={() => setExtraUsers(extraUsers + 1)} className="w-8 h-8 rounded-lg bg-secondary flex items-center justify-center hover:bg-secondary/80 transition-colors">
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+            <ul className="space-y-2 text-sm text-muted-foreground/60">
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 shrink-0" />3 usuários inclusos</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 shrink-0" />CRM Kanban completo</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 shrink-0" />Copiloto IA para WhatsApp</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 shrink-0" />Roletas de distribuição</li>
+              <li className="flex items-center gap-2"><Check className="w-4 h-4 shrink-0" />Campanhas de WhatsApp</li>
+            </ul>
+          </div>
         </div>
 
         <div className="text-center">
