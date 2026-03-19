@@ -268,66 +268,83 @@ const STEP_COLORS = [
 ];
 
 function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
-  const { data: stepData, isLoading } = useQuery({
+  const { data: analyticsData, isLoading } = useQuery({
     queryKey: ["cadencia-step-reply-stats", brokerId],
     queryFn: async () => {
-      // Step 1: campaigns with replies
-      let campaignsQuery = supabase
+      // All campaigns with at least 1 sent message
+      let allCampaignsQuery = supabase
         .from("whatsapp_campaigns")
-        .select("id")
-        .gt("reply_count", 0);
-      if (brokerId) campaignsQuery = campaignsQuery.eq("broker_id", brokerId);
-      const { data: campaigns } = await campaignsQuery;
-      if (!campaigns || campaigns.length === 0) return [];
+        .select("id, reply_count");
+      if (brokerId) allCampaignsQuery = allCampaignsQuery.eq("broker_id", brokerId);
+      const { data: allCampaigns } = await allCampaignsQuery;
+      if (!allCampaigns || allCampaigns.length === 0) return { totalSent: 0, steps: [], noReply: 0 };
 
-      const campaignIds = campaigns.map((c: any) => c.id);
+      const allCampaignIds = allCampaigns.map((c: any) => c.id);
 
-      // Step 2: count sent messages per campaign → that's the step
+      // Count sent messages per campaign
       const { data: sentMsgs } = await supabase
         .from("whatsapp_message_queue")
         .select("campaign_id")
-        .in("campaign_id", campaignIds)
+        .in("campaign_id", allCampaignIds)
         .eq("status", "sent");
 
-      if (!sentMsgs || sentMsgs.length === 0) return [];
+      if (!sentMsgs || sentMsgs.length === 0) return { totalSent: 0, steps: [], noReply: 0 };
 
-      // Count sent messages per campaign
       const sentPerCampaign: Record<string, number> = {};
       for (const msg of sentMsgs) {
         sentPerCampaign[msg.campaign_id] = (sentPerCampaign[msg.campaign_id] || 0) + 1;
       }
 
-      // Group campaigns by step number
+      // Only campaigns that actually had sent messages
+      const campaignsWithSent = allCampaigns.filter((c: any) => sentPerCampaign[c.id] > 0);
+      const totalSent = campaignsWithSent.length;
+
+      // Group campaigns that got replies by step
       const stepCounts: Record<number, number> = {};
-      for (const campaignId of campaignIds) {
-        const step = sentPerCampaign[campaignId] || 0;
-        if (step > 0) stepCounts[step] = (stepCounts[step] || 0) + 1;
+      let replied = 0;
+      for (const campaign of campaignsWithSent) {
+        if ((campaign as any).reply_count > 0) {
+          replied++;
+          const step = sentPerCampaign[campaign.id];
+          stepCounts[step] = (stepCounts[step] || 0) + 1;
+        }
       }
 
-      return Object.entries(stepCounts).map(([step, count]) => ({
+      const steps = Object.entries(stepCounts).map(([step, count]) => ({
         step_number: Number(step),
         reply_count: count,
       }));
+
+      return { totalSent, steps, noReply: totalSent - replied };
     },
     staleTime: 30_000,
   });
 
-  const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
-  const maxReplies = Math.max(...(stepData || []).map(s => Number(s.reply_count)), 1);
+  const totalSent = analyticsData?.totalSent ?? 0;
+  const stepRows = analyticsData?.steps ?? [];
+  const noReply = analyticsData?.noReply ?? 0;
+  const totalReplies = stepRows.reduce((acc, s) => acc + Number(s.reply_count), 0);
+  const maxVal = Math.max(...stepRows.map(s => Number(s.reply_count)), noReply, 1);
 
   const steps = Array.from({ length: 7 }, (_, i) => {
-    const found = (stepData || []).find(s => s.step_number === i + 1);
+    const found = stepRows.find(s => s.step_number === i + 1);
     return { step: i + 1, count: found ? Number(found.reply_count) : 0 };
   });
 
   return (
     <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
       <CardContent className="pt-4 pb-5 px-5">
-        <div className="flex items-center gap-2 mb-4">
+        {/* Header */}
+        <div className="flex items-center gap-2 mb-3">
           <MessageCircle className="w-4 h-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Respostas por Etapa da Cadência</h3>
+        </div>
+
+        {/* Total clients stat */}
+        <div className="mb-4 text-xs text-slate-400">
+          <span className="text-white font-semibold text-sm">{totalSent}</span> clientes contatados
           {totalReplies > 0 && (
-            <span className="ml-auto text-xs text-slate-500">{totalReplies} total</span>
+            <span className="ml-3 text-slate-500">· {totalReplies} responderam</span>
           )}
         </div>
 
@@ -338,27 +355,41 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
         ) : (
           <div className="space-y-2.5">
             {steps.map(({ step, count }) => {
-              const pct = totalReplies > 0 ? Math.round((count / totalReplies) * 100) : 0;
-              const barWidth = totalReplies > 0 ? (count / maxReplies) * 100 : 0;
-              const color = STEP_COLORS[step - 1];
+              const pct = totalSent > 0 ? Math.round((count / totalSent) * 100) : 0;
+              const barWidth = (count / maxVal) * 100;
               return (
                 <div key={step} className="flex items-center gap-3">
                   <span className="text-xs text-slate-400 w-20 shrink-0">{STEP_LABELS[step - 1]}</span>
                   <div className="flex-1 h-5 bg-[#0f0f12] rounded-full overflow-hidden">
                     <div
-                      className={`h-full rounded-full transition-all duration-700 ${color}`}
+                      className="h-full rounded-full transition-all duration-700 bg-yellow-500"
                       style={{ width: `${barWidth}%` }}
                     />
                   </div>
                   <div className="flex items-center gap-1.5 w-16 shrink-0 justify-end">
                     <span className="text-xs font-semibold text-white">{count}</span>
-                    {totalReplies > 0 && (
-                      <span className="text-[10px] text-slate-500">({pct}%)</span>
-                    )}
+                    {count > 0 && <span className="text-[10px] text-slate-500">({pct}%)</span>}
                   </div>
                 </div>
               );
             })}
+
+            {/* No reply row */}
+            <div className="flex items-center gap-3 pt-1 border-t border-[#2a2a2e] mt-1">
+              <span className="text-xs text-slate-400 w-20 shrink-0">Não resp.</span>
+              <div className="flex-1 h-5 bg-[#0f0f12] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-700 bg-slate-600"
+                  style={{ width: `${(noReply / maxVal) * 100}%` }}
+                />
+              </div>
+              <div className="flex items-center gap-1.5 w-16 shrink-0 justify-end">
+                <span className="text-xs font-semibold text-white">{noReply}</span>
+                {noReply > 0 && totalSent > 0 && (
+                  <span className="text-[10px] text-slate-500">({Math.round((noReply / totalSent) * 100)}%)</span>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
