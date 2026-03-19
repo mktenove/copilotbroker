@@ -141,13 +141,15 @@ export function usePropostas(leadId: string) {
   const criarProposta = useCallback(async (data: PropostaInsert) => {
     try {
       const user = (await supabase.auth.getUser()).data.user;
-      const { data: tenantId } = await (supabase.rpc("get_my_tenant_id" as any) as any);
+      const { data: tenantId, error: tenantError } = await (supabase.rpc("get_my_tenant_id" as any) as any);
+      console.log("[criarProposta] tenantId:", tenantId, "tenantError:", tenantError, "userId:", user?.id);
       const { parcelas, ...propostaData } = data;
       const { data: inserted, error } = await supabase.from("propostas").insert({
         ...propostaData,
         created_by: user?.id,
         tenant_id: tenantId,
       } as any).select("id").single();
+      console.log("[criarProposta] insert result:", inserted, "error:", error);
       if (error) throw error;
 
       // Insert parcelas
@@ -191,7 +193,8 @@ export function usePropostas(leadId: string) {
       toast.success("Proposta registrada!");
       return true;
     } catch (err: any) {
-      toast.error(err.message || "Erro ao criar proposta");
+      console.error("[criarProposta] erro:", err);
+      toast.error(`Erro ao registrar proposta: ${err.message || JSON.stringify(err)}`);
       return false;
     }
   }, [fetchPropostas]);
