@@ -119,26 +119,15 @@ export function useWhatsAppQueue(brokerFilterId?: string) {
   const { data: repliesCount = 0 } = useQuery({
     queryKey: ["whatsapp-replies-count", effectiveBrokerId],
     queryFn: async () => {
-      let campaignQuery = supabase
-        .from("whatsapp_campaigns")
-        .select("id");
-
+      let query = (supabase.from("whatsapp_campaigns") as any)
+        .select("reply_count")
+        .gt("reply_count", 0);
       if (effectiveBrokerId) {
-        campaignQuery = campaignQuery.eq("broker_id", effectiveBrokerId);
+        query = query.eq("broker_id", effectiveBrokerId);
       }
-
-      const { data: campaigns } = await campaignQuery;
-      if (!campaigns || campaigns.length === 0) return 0;
-
-      const campaignIds = campaigns.map(c => c.id);
-      const { data: replies, error } = await supabase
-        .from("whatsapp_lead_replies")
-        .select("phone")
-        .in("campaign_id", campaignIds);
-
+      const { data, error } = await query;
       if (error) throw error;
-      const uniquePhones = new Set(replies?.map(r => r.phone) || []);
-      return uniquePhones.size;
+      return (data || []).reduce((sum: number, c: any) => sum + (c.reply_count || 0), 0);
     },
     refetchInterval: 120000,
     staleTime: 120000,

@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { useWhatsAppQueue } from "@/hooks/use-whatsapp-queue";
 import { useUserRole } from "@/hooks/use-user-role";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { QueueStatus } from "@/types/whatsapp";
 import { cn } from "@/lib/utils";
@@ -268,23 +268,56 @@ const STEP_COLORS = [
 ];
 
 function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
-  const { data: stepData, isLoading } = useQuery({
-    queryKey: ["cadencia-step-reply-stats", brokerId],
+  const queryClient = useQueryClient();
+  const [resetting, setResetting] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  // Fetch reset timestamp from broker's whatsapp instance
+  const { data: resetAt } = useQuery({
+    queryKey: ["cadencia-stats-reset-at", brokerId],
     queryFn: async () => {
-      const { data, error } = await (supabase.rpc as any)(
-        "get_cadencia_step_reply_stats",
-        brokerId ? { p_broker_id: brokerId } : {}
-      );
+      let query = (supabase.from("broker_whatsapp_instances") as any)
+        .select("cadencia_stats_reset_at")
+        .limit(1);
+      if (brokerId) query = query.eq("broker_id", brokerId);
+      const { data } = await query;
+      return data?.[0]?.cadencia_stats_reset_at ?? null;
+    },
+    staleTime: 60_000,
+  });
+
+  const { data: stepData, isLoading } = useQuery({
+    queryKey: ["cadencia-step-reply-stats", brokerId, resetAt],
+    queryFn: async () => {
+      const params: Record<string, any> = {};
+      if (brokerId) params.p_broker_id = brokerId;
+      if (resetAt) params.p_since = resetAt;
+      const { data, error } = await (supabase.rpc as any)("get_cadencia_step_reply_stats", params);
       if (error) throw error;
       return (data || []) as { step_number: number; reply_count: number }[];
     },
     staleTime: 60_000,
   });
 
+  const handleReset = async () => {
+    setResetting(true);
+    try {
+      const now = new Date().toISOString();
+      let query = (supabase.from("broker_whatsapp_instances") as any)
+        .update({ cadencia_stats_reset_at: now });
+      if (brokerId) query = query.eq("broker_id", brokerId);
+      await query;
+      queryClient.invalidateQueries({ queryKey: ["cadencia-stats-reset-at", brokerId] });
+      queryClient.invalidateQueries({ queryKey: ["cadencia-step-reply-stats", brokerId] });
+      setConfirmReset(false);
+    } finally {
+      setResetting(false);
+    }
+  };
+
   const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
   const maxReplies = Math.max(...(stepData || []).map(s => Number(s.reply_count)), 1);
 
-  // Build array for steps 1–7, filling gaps with 0
   const steps = Array.from({ length: 7 }, (_, i) => {
     const found = (stepData || []).find(s => s.step_number === i + 1);
     return { step: i + 1, count: found ? Number(found.reply_count) : 0 };
@@ -296,9 +329,41 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
         <div className="flex items-center gap-2 mb-4">
           <MessageCircle className="w-4 h-4 text-blue-400" />
           <h3 className="text-sm font-semibold text-white">Respostas por Etapa da Cadência</h3>
-          {totalReplies > 0 && (
-            <span className="ml-auto text-xs text-slate-500">{totalReplies} total</span>
-          )}
+          <div className="ml-auto flex items-center gap-3">
+            {totalReplies > 0 && (
+              <span className="text-xs text-slate-500">{totalReplies} total</span>
+            )}
+            {resetAt && (
+              <span className="text-[10px] text-slate-600">
+                desde {new Date(resetAt).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit" })}
+              </span>
+            )}
+            {confirmReset ? (
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-yellow-400">Confirmar reset?</span>
+                <button
+                  onClick={handleReset}
+                  disabled={resetting}
+                  className="px-2 py-0.5 rounded text-xs bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors"
+                >
+                  {resetting ? "..." : "Sim"}
+                </button>
+                <button
+                  onClick={() => setConfirmReset(false)}
+                  className="px-2 py-0.5 rounded text-xs bg-slate-500/20 text-slate-400 hover:bg-slate-500/30 transition-colors"
+                >
+                  Não
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmReset(true)}
+                className="text-[10px] text-slate-500 hover:text-slate-300 transition-colors underline underline-offset-2"
+              >
+                Zerar
+              </button>
+            )}
+          </div>
         </div>
 
         {isLoading ? (
@@ -316,7 +381,7 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
               return (
                 <div key={step} className="flex items-center gap-3">
                   <span className="text-xs text-slate-400 w-20 shrink-0">{STEP_LABELS[step - 1]}</span>
-                  <div className="flex-1 h-5 bg-[#0f0f12] rounded-full overflow-hidden relative">
+                  <div className="flex-1 h-5 bg-[#0f0f12] rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-700 ${color}`}
                       style={{ width: `${barWidth}%` }}
