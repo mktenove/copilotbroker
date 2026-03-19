@@ -661,13 +661,43 @@ app.get("/status", async (c) => {
           if (phoneNumber) {
             updateData.phone_number = phoneNumber;
           }
+
+          // Auto-configure per-instance webhook when first connecting
+          if (instance.status !== "connected") {
+            const webhookUrl = `${SUPABASE_URL}/functions/v1/whatsapp-webhook`;
+            const instanceToken = instance.instance_token;
+            try {
+              const whRes = await uazapiFetchWithAuthFallback(
+                `${UAZAPI_BASE_URL}/webhook`,
+                {
+                  method: "POST",
+                  includeJson: true,
+                  bodyString: JSON.stringify({
+                    url: webhookUrl,
+                    enabled: true,
+                    events: ["messages"],
+                    excludeMessages: ["wasSentByApi"],
+                  }),
+                },
+                instanceToken || UAZAPI_DEFAULT_TOKEN,
+                !instanceToken,
+              );
+              if (whRes.ok) {
+                console.log(`[WEBHOOK] Configured per-instance webhook for ${instance.instance_name}`);
+              } else {
+                console.error(`[WEBHOOK] Failed to configure webhook:`, await whRes.text());
+              }
+            } catch (whErr) {
+              console.error(`[WEBHOOK] Error configuring webhook:`, whErr);
+            }
+          }
         }
-        
+
         await supabase
           .from("broker_whatsapp_instances")
           .update(updateData)
           .eq("id", instance.id);
-        
+
         console.log(`[STATUS] Updated DB: status=${newStatus}, phone=${phoneNumber}`);
       }
     } else {
