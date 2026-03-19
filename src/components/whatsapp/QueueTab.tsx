@@ -268,33 +268,17 @@ const STEP_COLORS = [
 ];
 
 function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
-  // Fetch reset timestamp so we respect the same filter as the stat
-  const { data: resetAt } = useQuery({
-    queryKey: ["cadencia-stats-reset-at", brokerId],
-    queryFn: async () => {
-      let query = (supabase.from("broker_whatsapp_instances") as any)
-        .select("cadencia_stats_reset_at")
-        .limit(1);
-      if (brokerId) query = query.eq("broker_id", brokerId);
-      const { data } = await query;
-      return data?.[0]?.cadencia_stats_reset_at ?? null;
-    },
-    staleTime: 60_000,
-    enabled: !!brokerId,
-  });
-
   const { data: stepData, isLoading } = useQuery({
-    queryKey: ["cadencia-step-reply-stats", brokerId, resetAt],
+    queryKey: ["cadencia-step-reply-stats", brokerId],
     queryFn: async () => {
       const params: Record<string, any> = {};
       if (brokerId) params.p_broker_id = brokerId;
-      if (resetAt) params.p_since = resetAt;
       const { data, error } = await (supabase.rpc as any)("get_cadencia_step_reply_stats", params);
       if (error) throw error;
       return (data || []) as { step_number: number; reply_count: number }[];
     },
     staleTime: 60_000,
-    enabled: !!brokerId && resetAt !== undefined,
+    enabled: !!brokerId,
   });
 
   const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
