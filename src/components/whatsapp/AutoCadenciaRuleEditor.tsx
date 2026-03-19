@@ -13,6 +13,7 @@ import { useUserRole } from "@/hooks/use-user-role";
 import type { BrokerAutoCadenciaRule, AutoCadenciaStep } from "@/hooks/use-auto-cadencia-rules";
 
 const INTERESSE_OPTIONS = [
+  { value: "all", label: "🌐 Todos os interesses" },
   { value: "casa", label: "Interesse em Casa" },
   { value: "apartamento", label: "Interesse em Apartamento" },
   { value: "terreno", label: "Interesse em Terreno" },
@@ -205,7 +206,7 @@ export function AutoCadenciaRuleEditor({
     const data = {
       name: ruleName.trim() || null,
       project_id: targetMode === "project" && projectId !== "all" ? projectId : null,
-      interest_type: targetMode === "interest" ? interestType || null : null,
+      interest_type: targetMode === "interest" ? (interestType || "all") : null,
       is_active: true,
     };
 

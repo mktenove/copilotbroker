@@ -562,7 +562,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
             )}
             {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).map(rule => {
               const interestLabel = rule.interest_type
-                ? { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial" }[rule.interest_type] || rule.interest_type
+                ? ({ casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial", all: "Todos os Interesses" } as Record<string, string>)[rule.interest_type] || rule.interest_type
                 : null;
               const label = rule.name || rule.project?.name || interestLabel || "Cadência 10D";
               return (

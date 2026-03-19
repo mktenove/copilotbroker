@@ -90,7 +90,7 @@ export function AutoCadenciaSection() {
                     rule.project_id ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-300"
                   )}>
                     {rule.interest_type
-                      ? { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial" }[rule.interest_type] || rule.interest_type
+                      ? ({ casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial", all: "🌐 Todos os interesses" } as Record<string, string>)[rule.interest_type] || rule.interest_type
                       : rule.project?.name || "🌐 Todos"}
                   </span>
                   {rule.is_active ? (
