@@ -166,7 +166,7 @@ Deno.serve(async (req) => {
     if (lead.project_id) {
       const { data } = await supabase
         .from("broker_auto_cadencia_rules")
-        .select("*")
+        .select("*, project_status_filter")
         .eq("broker_id", lead.broker_id)
         .eq("project_id", lead.project_id)
         .maybeSingle();
@@ -179,7 +179,7 @@ Deno.serve(async (req) => {
     if (!rule && !ruleExplicitlyDisabled) {
       const { data } = await supabase
         .from("broker_auto_cadencia_rules")
-        .select("*")
+        .select("*, project_status_filter")
         .eq("broker_id", lead.broker_id)
         .is("project_id", null)
         .maybeSingle();
@@ -255,13 +255,25 @@ Deno.serve(async (req) => {
       .single();
 
     let projectName = "empreendimento";
+    let projectStatus: string | null = null;
     if (lead.project_id) {
       const { data: project } = await supabase
         .from("projects")
-        .select("name")
+        .select("name, status")
         .eq("id", lead.project_id)
         .single();
-      if (project) projectName = project.name;
+      if (project) {
+        projectName = project.name;
+        projectStatus = project.status;
+      }
+    }
+
+    // Check project_status_filter on the rule
+    if (rule && rule.project_status_filter && rule.project_status_filter !== projectStatus) {
+      console.log("Skipping - rule project_status_filter mismatch:", rule.project_status_filter, "vs project:", projectStatus);
+      return new Response(JSON.stringify({ status: "skipped", reason: "status_filter_mismatch" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const interestTypeLabel: Record<string, string> = { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Imóvel Comercial" };

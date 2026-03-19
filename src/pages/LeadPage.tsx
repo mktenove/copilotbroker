@@ -134,7 +134,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
       setLoading(true);
       const { data, error } = await supabase
         .from("leads")
-        .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
+        .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug, status), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
         .eq("id", leadId)
         .single();
       if (error) {
@@ -156,7 +156,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
     if (!leadId) return;
     const { data } = await supabase
       .from("leads")
-      .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
+      .select(`*, broker:brokers!leads_broker_id_fkey(id, name, slug), project:projects(id, name, slug, city_slug, status), attribution:lead_attribution(landing_page, utm_source, utm_medium, utm_campaign, utm_content, utm_term)`)
       .eq("id", leadId)
       .single();
     if (data) {
@@ -591,6 +591,8 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
               </Button>
             )}
             {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).filter(rule => {
+              // Check status filter: if rule has status filter, lead's project must match
+              if (rule.project_status_filter && lead.project?.status !== rule.project_status_filter) return false;
               if (lead.project_id) {
                 return rule.project_id === lead.project_id || (rule.project_id === null && !rule.interest_type);
               } else if (lead.interest_type) {

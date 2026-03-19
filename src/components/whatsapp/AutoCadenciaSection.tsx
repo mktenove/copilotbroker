@@ -93,6 +93,11 @@ export function AutoCadenciaSection() {
                       ? ({ casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial", all: "🌐 Todos os interesses" } as Record<string, string>)[rule.interest_type] || rule.interest_type
                       : rule.project?.name || "🌐 Todos"}
                   </span>
+                  {rule.project_status_filter && (
+                    <span className="px-2 py-0.5 rounded text-xs font-semibold bg-purple-500/20 text-purple-300 truncate">
+                      {({ pre_launch: "Pré-Lançamento", launch: "Lançamento", selling: "Em Vendas", sold_out: "Esgotado", renting: "Locação" } as Record<string,string>)[rule.project_status_filter] || rule.project_status_filter}
+                    </span>
+                  )}
                   {rule.is_active ? (
                     <span className="flex items-center gap-1 text-xs text-emerald-400 shrink-0">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />

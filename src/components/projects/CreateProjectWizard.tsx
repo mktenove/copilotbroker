@@ -524,6 +524,22 @@ export function CreateProjectWizard({
               </div>
             </div>
 
+            <div className="space-y-1.5">
+              <Label className="flex items-center gap-1.5 text-xs">
+                <Building2 className="w-3.5 h-3.5" /> Status
+              </Label>
+              <Select value={form.status} onValueChange={(v) => set("status", v as ProjectStatus)}>
+                <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                  {Object.entries(PROJECT_STATUS_CONFIG).map(([value, cfg]) => (
+                    <SelectItem key={value} value={value}>{cfg.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-3 gap-3">
               <div className="bg-[#141417] rounded-lg p-3 text-center border border-[#2a2a2e]">
                 <div className="text-2xl font-bold text-primary">{form._scraped_images.length}</div>

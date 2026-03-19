@@ -25,8 +25,8 @@ interface AutoCadenciaRuleEditorProps {
   isOpen: boolean;
   onClose: () => void;
   editingRule: BrokerAutoCadenciaRule | null;
-  createRule: (data: { name?: string | null; project_id: string | null; interest_type?: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => Promise<any>;
-  updateRule: (id: string, data: Partial<{ name: string | null; project_id: string | null; interest_type: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => Promise<any>;
+  createRule: (data: { name?: string | null; project_id: string | null; interest_type?: string | null; project_status_filter?: string | null; is_active: boolean; steps: AutoCadenciaStep[] }) => Promise<any>;
+  updateRule: (id: string, data: Partial<{ name: string | null; project_id: string | null; interest_type: string | null; project_status_filter: string | null; is_active: boolean }>, steps?: AutoCadenciaStep[]) => Promise<any>;
   isSaving: boolean;
   rules: BrokerAutoCadenciaRule[];
 }
@@ -85,6 +85,7 @@ export function AutoCadenciaRuleEditor({
   const [targetMode, setTargetMode] = useState<"project" | "interest">("project");
   const [projectId, setProjectId] = useState<string>("all");
   const [interestType, setInterestType] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("");
   const [checkingConflict, setCheckingConflict] = useState(false);
   const [hasFirstMessageConflict, setHasFirstMessageConflict] = useState(false);
   const [steps, setSteps] = useState<AutoCadenciaStep[]>(DEFAULT_AUTO_CADENCIA_STEPS.map(s => ({ ...s })));
@@ -144,6 +145,7 @@ export function AutoCadenciaRuleEditor({
   useEffect(() => {
     if (editingRule) {
       setRuleName(editingRule.name || "");
+      setStatusFilter(editingRule.project_status_filter || "");
       if (editingRule.interest_type) {
         setTargetMode("interest");
         setInterestType(editingRule.interest_type);
@@ -174,6 +176,7 @@ export function AutoCadenciaRuleEditor({
         });
     } else {
       setRuleName("");
+      setStatusFilter("");
       setTargetMode("project");
       setProjectId("all");
       setInterestType("");
@@ -207,6 +210,7 @@ export function AutoCadenciaRuleEditor({
       name: ruleName.trim() || null,
       project_id: targetMode === "project" && projectId !== "all" ? projectId : null,
       interest_type: targetMode === "interest" ? (interestType || "all") : null,
+      project_status_filter: statusFilter || null,
       is_active: true,
     };
 
@@ -320,6 +324,25 @@ export function AutoCadenciaRuleEditor({
                       </SelectContent>
                     </Select>
                   )}
+                </div>
+
+                {/* Status Filter */}
+                <div className="space-y-2">
+                  <Label className="text-slate-300">Status do Empreendimento <span className="text-slate-500 font-normal">(filtro opcional)</span></Label>
+                  <Select value={statusFilter || "all"} onValueChange={(v) => setStatusFilter(v === "all" ? "" : v)}>
+                    <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-white min-h-[44px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                      <SelectItem value="all" className="text-white">🌐 Qualquer status</SelectItem>
+                      <SelectItem value="pre_launch" className="text-white">🔮 Pré-Lançamento</SelectItem>
+                      <SelectItem value="launch" className="text-white">🚀 Lançamento</SelectItem>
+                      <SelectItem value="selling" className="text-white">✅ Em Vendas</SelectItem>
+                      <SelectItem value="sold_out" className="text-white">⛔ Esgotado</SelectItem>
+                      <SelectItem value="renting" className="text-white">🏠 Para Locação</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-slate-600">A regra só dispara para leads de empreendimentos com este status</p>
                 </div>
 
                 {/* Steps Editor */}

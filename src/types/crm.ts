@@ -71,6 +71,7 @@ export interface CRMLead {
     name: string;
     slug: string;
     city: string;
+    status?: string;
   } | null;
   // Attribution for checking origin type
   attribution?: {
