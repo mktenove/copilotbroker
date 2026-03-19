@@ -278,7 +278,6 @@ function StepReplyAnalytics({ brokerId }: { brokerId?: string }) {
       return (data || []) as { step_number: number; reply_count: number }[];
     },
     staleTime: 60_000,
-    enabled: !!brokerId,
   });
 
   const totalReplies = (stepData || []).reduce((acc, s) => acc + Number(s.reply_count), 0);
