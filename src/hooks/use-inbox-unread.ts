@@ -3,50 +3,52 @@ import { supabase } from "@/integrations/supabase/client";
 
 export function useInboxUnread() {
   const [unreadCount, setUnreadCount] = useState(0);
-  const [brokerId, setBrokerId] = useState<string | null>(null);
-
-  // Fetch broker_id once on mount
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      if (!user) return;
-      supabase
-        .from("brokers")
-        .select("id")
-        .eq("user_id", user.id)
-        .maybeSingle()
-        .then(({ data }) => {
-          if (data?.id) setBrokerId(data.id);
-        });
-    });
-  }, []);
 
   useEffect(() => {
-    if (brokerId === null) return; // wait until we know the broker
+    let brokerId: string | null = null;
 
     const fetchUnread = async () => {
-      const { data } = await supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      if (!brokerId) {
+        const { data: broker } = await supabase
+          .from("brokers")
+          .select("id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        brokerId = broker?.id ?? null;
+      }
+
+      let query = supabase
         .from("conversations")
         .select("unread_count")
         .gt("unread_count", 0)
-        .eq("is_archived", false)
-        .eq("broker_id", brokerId);
+        .eq("is_archived", false);
+
+      if (brokerId) query = query.eq("broker_id", brokerId);
+
+      const { data } = await query;
       setUnreadCount(data?.reduce((sum, c) => sum + (c.unread_count || 0), 0) ?? 0);
     };
 
-    fetchUnread();
+    fetchUnread().then(() => {
+      // Subscribe with filter once brokerId is known
+      const config: any = { event: "*", schema: "public", table: "conversations" };
+      if (brokerId) config.filter = `broker_id=eq.${brokerId}`;
 
-    const channel = supabase
-      .channel(`inbox-unread-${brokerId}`)
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "conversations",
-        filter: `broker_id=eq.${brokerId}`,
-      }, fetchUnread)
-      .subscribe();
+      supabase
+        .channel(`inbox-unread-${brokerId ?? "all"}`)
+        .on("postgres_changes", config, fetchUnread)
+        .subscribe();
+    });
 
-    return () => { supabase.removeChannel(channel); };
-  }, [brokerId]);
+    return () => {
+      supabase.removeChannel(
+        supabase.channel(`inbox-unread-${brokerId ?? "all"}`)
+      );
+    };
+  }, []);
 
   return { unreadCount };
 }

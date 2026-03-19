@@ -324,6 +324,30 @@ async function processReply(
           });
 
           console.log(`✅ Lead ${leadId} moved ${leadStatus} → info_sent after reply`);
+
+          // Cancel ALL pending follow-up messages for this lead (by lead_id)
+          // This is the most robust approach — doesn't depend on campaign_steps
+          const { data: cancelled } = await supabase
+            .from("whatsapp_message_queue")
+            .update({
+              status: "cancelled",
+              error_message: "Lead respondeu e foi para Atendimento — follow-up cancelado",
+              updated_at: new Date().toISOString(),
+            })
+            .eq("lead_id", leadId)
+            .in("status", ["scheduled", "queued", "paused_by_system"])
+            .select("id");
+
+          if (cancelled && cancelled.length > 0) {
+            console.log(`🚫 Cancelled ${cancelled.length} follow-up messages for lead ${leadId} (moved to atendimento)`);
+          }
+
+          // Mark all active campaigns for this lead as completed
+          await supabase
+            .from("whatsapp_campaigns")
+            .update({ status: "completed", completed_at: new Date().toISOString() })
+            .eq("lead_id", leadId)
+            .eq("status", "running");
         }
       }
     } catch (err) {
