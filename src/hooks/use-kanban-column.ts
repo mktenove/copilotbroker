@@ -9,7 +9,7 @@ const KANBAN_SELECT = `
   id, name, whatsapp, email, created_at, source, status,
   lead_origin, broker_id, project_id, roleta_id,
   status_distribuicao, comparecimento, last_interaction_at,
-  auto_first_message_sent, data_agendamento,
+  auto_first_message_sent, data_agendamento, interest_type,
   broker:brokers!leads_broker_id_fkey(id, name, slug),
   project:projects(id, name),
   attribution:lead_attribution(landing_page)
