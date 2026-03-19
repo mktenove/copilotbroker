@@ -11,11 +11,16 @@ const DEFAULT_STEPS = [
   { messageContent: "Oi {nome}! Voltei porque surgiu uma condição que muda totalmente o cenário desse projeto. Não estou enviando para todos, pois recebemos pouquíssimas unidades com uma condição realmente diferenciada, você tem 10 minutos hoje para entender?", delayMinutes: 14400, sendIfReplied: false },
 ];
 
-function replaceVars(text: string, vars: { nome: string; corretor_nome: string; empreendimento: string }) {
+function replaceVars(text: string, vars: { nome: string; corretor_nome: string; empreendimento: string; cidade?: string; dormitorios?: string; piscina?: string; interesse?: string; tags?: string }) {
   return text
     .replace(/{nome}/g, vars.nome)
     .replace(/{corretor_nome}/g, vars.corretor_nome)
-    .replace(/{empreendimento}/g, vars.empreendimento);
+    .replace(/{empreendimento}/g, vars.empreendimento)
+    .replace(/{cidade}/g, vars.cidade || "")
+    .replace(/{dormitorios}/g, vars.dormitorios || "")
+    .replace(/{piscina}/g, vars.piscina || "")
+    .replace(/{interesse}/g, vars.interesse || "")
+    .replace(/{tags}/g, vars.tags || "");
 }
 
 function formatPhoneE164(phone: string): string {
@@ -98,7 +103,7 @@ Deno.serve(async (req) => {
     // 1. Fetch lead
     const { data: lead, error: leadError } = await supabase
       .from("leads")
-      .select("id, broker_id, project_id, status, whatsapp, name")
+      .select("id, broker_id, project_id, status, whatsapp, name, interest_type, interest_city, interest_bedrooms, interest_pool, interest_tags")
       .eq("id", leadId)
       .single();
 
@@ -261,10 +266,16 @@ Deno.serve(async (req) => {
       if (project) projectName = project.name;
     }
 
+    const interestTypeLabel: Record<string, string> = { casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Imóvel Comercial" };
     const vars = {
       nome: lead.name.split(" ")[0],
       corretor_nome: broker?.name?.split(" ")[0] || "Corretor",
       empreendimento: projectName,
+      cidade: lead.interest_city || "",
+      dormitorios: lead.interest_bedrooms ? String(lead.interest_bedrooms) : "",
+      piscina: lead.interest_pool ? "com piscina" : "",
+      interesse: lead.interest_type ? (interestTypeLabel[lead.interest_type] || lead.interest_type) : "",
+      tags: Array.isArray(lead.interest_tags) && lead.interest_tags.length > 0 ? lead.interest_tags.join(", ") : "",
     };
 
     // 9. Create campaign

@@ -20,6 +20,10 @@ export interface CRMLead {
   cpf: string | null;
   notes: string | null;
   interest_type: string | null;
+  interest_city: string | null;
+  interest_bedrooms: number | null;
+  interest_pool: boolean | null;
+  interest_tags: string[] | null;
   source: string;
   lead_origin: string | null;
   lead_origin_detail: string | null;

@@ -77,6 +77,10 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
   const [targetMode, setTargetMode] = useState<"project" | "interest">("project");
   const [projectId, setProjectId] = useState<string>("");
   const [interesse, setInteresse] = useState<string>("");
+  const [interestCity, setInterestCity] = useState<string>("");
+  const [interestBedrooms, setInterestBedrooms] = useState<string>("");
+  const [interestPool, setInterestPool] = useState<boolean>(false);
+  const [interestTags, setInterestTags] = useState<string>("");
   const [observacao, setObservacao] = useState<string>("");
 
   // Fetch brokers and projects on mount
@@ -142,6 +146,10 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
     setTargetMode("project");
     setProjectId(projects.length === 1 ? projects[0].id : "");
     setInteresse("");
+    setInterestCity("");
+    setInterestBedrooms("");
+    setInterestPool(false);
+    setInterestTags("");
     setObservacao("");
   };
 
@@ -185,7 +193,13 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
         broker_id: brokerId === "enove" ? null : brokerId,
       };
       if (realProjectId) leadData.project_id = realProjectId;
-      if (targetMode === "interest" && interesse) leadData.interest_type = interesse;
+      if (targetMode === "interest" && interesse) {
+        leadData.interest_type = interesse;
+        if (interestCity.trim()) leadData.interest_city = interestCity.trim();
+        if (interestBedrooms) leadData.interest_bedrooms = parseInt(interestBedrooms);
+        leadData.interest_pool = interestPool;
+        if (interestTags.trim()) leadData.interest_tags = interestTags.split(",").map(t => t.trim()).filter(Boolean);
+      }
       if (observacao.trim()) leadData.notes = observacao.trim();
 
       // Insert lead
@@ -320,10 +334,10 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
               )}
 
               {targetMode === "interest" && (
-                <>
+                <div className="space-y-3 mt-1">
                   <Select value={interesse} onValueChange={setInteresse}>
                     <SelectTrigger className="bg-[#141417] border-[#2a2a2e] text-slate-200">
-                      <SelectValue placeholder="Selecione o interesse" />
+                      <SelectValue placeholder="Tipo de imóvel" />
                     </SelectTrigger>
                     <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
                       {INTERESSE_OPTIONS.map((opt) => (
@@ -333,13 +347,36 @@ export function AddLeadModal({ isOpen, onClose, onSuccess, defaultBrokerId, hide
                       ))}
                     </SelectContent>
                   </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">Cidade</label>
+                      <Input value={interestCity} onChange={(e) => setInterestCity(e.target.value)} placeholder="Ex: Porto Alegre" className="bg-[#141417] border-[#2a2a2e] text-slate-200 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-xs text-slate-400 mb-1 block">Dormitórios</label>
+                      <select value={interestBedrooms} onChange={(e) => setInterestBedrooms(e.target.value)} className="w-full rounded-md border border-[#2a2a2e] bg-[#141417] px-3 py-2 text-sm text-slate-200 focus:outline-none">
+                        <option value="">Qualquer</option>
+                        {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} dorm{n > 1 ? "s" : ""}.</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={interestPool} onChange={(e) => setInterestPool(e.target.checked)} className="rounded border-[#2a2a2e] accent-primary" />
+                      <span className="text-sm text-slate-300">Com piscina</span>
+                    </label>
+                  </div>
+                  <div>
+                    <label className="text-xs text-slate-400 mb-1 block">Características extras <span className="text-slate-600">(separadas por vírgula)</span></label>
+                    <Input value={interestTags} onChange={(e) => setInterestTags(e.target.value)} placeholder="Ex: varanda, garagem, 2 vagas" className="bg-[#141417] border-[#2a2a2e] text-slate-200 text-sm" />
+                  </div>
                   <Textarea
                     value={observacao}
                     onChange={(e) => setObservacao(e.target.value)}
-                    placeholder="Ex: Procura imóvel de 2 quartos, até R$ 400k, prefere Zona Sul..."
-                    className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500 min-h-[72px] resize-none mt-2"
+                    placeholder="Observações gerais sobre o lead..."
+                    className="bg-[#141417] border-[#2a2a2e] text-slate-200 placeholder:text-slate-500 min-h-[60px] resize-none"
                   />
-                </>
+                </div>
               )}
             </div>
 
