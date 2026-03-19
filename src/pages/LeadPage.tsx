@@ -22,7 +22,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ArrowLeft, Phone, Mail, Building2, Clock, Calendar, DollarSign, Trophy,
   UserX, Play, FileText, Users, ChevronRight, ChevronLeft, AlertTriangle, Zap, Eye,
-  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw, Square
+  TrendingUp, Timer, MessageCircle, ExternalLink, ArrowRightLeft, Pencil, Check, X, RotateCw, Square, Tag
 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
@@ -82,6 +82,12 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
   // Inline editing state
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  // Interest inline edit state
+  const [interestEditOpen, setInterestEditOpen] = useState(false);
+  const [interestEditType, setInterestEditType] = useState("");
+  const [interestEditCity, setInterestEditCity] = useState("");
+  const [interestEditBedrooms, setInterestEditBedrooms] = useState("");
 
   const { iniciarAtendimento, registrarAgendamento, registrarComparecimento, registrarProposta, registrarNaoComparecimento, reagendarLead, confirmarVenda, inactivateLead, reactivateLead, updateLeadStatus } = useKanbanLeads({ isAdmin: true });
   const { interactions, addInteraction } = useLeadInteractions(leadId || "");
@@ -210,6 +216,30 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
       setEditingField(null);
     } catch (err: any) {
       toast.error(err.message || "Erro ao salvar");
+    }
+  };
+
+  const openInterestEdit = () => {
+    if (!lead) return;
+    setInterestEditType(lead.interest_type || "");
+    setInterestEditCity(lead.interest_city || "");
+    setInterestEditBedrooms(lead.interest_bedrooms ? String(lead.interest_bedrooms) : "");
+    setInterestEditOpen(true);
+  };
+
+  const saveInterestFields = async () => {
+    if (!lead || !leadId) return;
+    try {
+      await supabase.from("leads").update({
+        interest_type: interestEditType || null,
+        interest_city: interestEditCity.trim() || null,
+        interest_bedrooms: interestEditBedrooms ? parseInt(interestEditBedrooms) : null,
+      } as any).eq("id", leadId);
+      await refreshLead();
+      setInterestEditOpen(false);
+      toast.success("Interesse atualizado");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar interesse");
     }
   };
 
@@ -560,7 +590,15 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                 <Calendar className="w-3.5 h-3.5 mr-1.5" />Reagendar
               </Button>
             )}
-            {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).map(rule => {
+            {!cadencia.isActive && cadenciaRules.filter(r => r.is_active).filter(rule => {
+              if (lead.project_id) {
+                return rule.project_id === lead.project_id || (rule.project_id === null && !rule.interest_type);
+              } else if (lead.interest_type) {
+                return rule.interest_type === lead.interest_type || rule.interest_type === "all";
+              } else {
+                return !rule.project_id && !rule.interest_type;
+              }
+            }).map(rule => {
               const interestLabel = rule.interest_type
                 ? ({ casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Comercial", all: "Todos os Interesses" } as Record<string, string>)[rule.interest_type] || rule.interest_type
                 : null;
@@ -709,11 +747,67 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
                   onSave={saveField}
                 />
 
+                {/* Interesse */}
+                <div className="flex items-start gap-3 group">
+                  <div className="w-8 h-8 rounded-lg bg-[#1a1a1e] flex items-center justify-center shrink-0 mt-0.5">
+                    <Tag className="w-3.5 h-3.5 text-slate-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-[10px] uppercase tracking-wider text-slate-600 mb-0.5">Interesse</p>
+                    {interestEditOpen ? (
+                      <div className="space-y-2 mt-1">
+                        <Select value={interestEditType} onValueChange={setInterestEditType}>
+                          <SelectTrigger className="h-8 text-sm bg-[#0f0f12] border-[#2a2a2e] text-white">
+                            <SelectValue placeholder="Tipo de imóvel" />
+                          </SelectTrigger>
+                          <SelectContent className="bg-[#1e1e22] border-[#2a2a2e]">
+                            <SelectItem value="casa" className="text-slate-200">Interesse em Casa</SelectItem>
+                            <SelectItem value="apartamento" className="text-slate-200">Interesse em Apartamento</SelectItem>
+                            <SelectItem value="terreno" className="text-slate-200">Interesse em Terreno</SelectItem>
+                            <SelectItem value="investimento" className="text-slate-200">Interesse em Investimento</SelectItem>
+                            <SelectItem value="comercial" className="text-slate-200">Interesse em Imóvel Comercial</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <Input value={interestEditCity} onChange={(e) => setInterestEditCity(e.target.value)} placeholder="Cidade" className="h-8 text-sm bg-[#0f0f12] border-[#2a2a2e] text-white placeholder:text-slate-600" />
+                          <select value={interestEditBedrooms} onChange={(e) => setInterestEditBedrooms(e.target.value)} className="h-8 rounded-md border border-[#2a2a2e] bg-[#0f0f12] px-2 text-sm text-slate-200 focus:outline-none">
+                            <option value="">Quartos</option>
+                            {[1,2,3,4,5].map(n => <option key={n} value={n}>{n} dorm{n > 1 ? "s" : ""}.</option>)}
+                          </select>
+                        </div>
+                        <div className="flex gap-1.5">
+                          <button onClick={saveInterestFields} className="px-2.5 py-1 rounded-md bg-emerald-600 hover:bg-emerald-700 text-white text-xs transition-colors flex items-center gap-1">
+                            <Check className="w-3 h-3" />Salvar
+                          </button>
+                          <button onClick={() => setInterestEditOpen(false)} className="p-1.5 rounded-md hover:bg-red-500/10 text-red-400 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <p className={cn("text-sm truncate", lead.interest_type ? "text-slate-200" : "text-slate-600 italic")}>
+                          {lead.interest_type
+                            ? [
+                                ({ casa: "Casa", apartamento: "Apartamento", terreno: "Terreno", investimento: "Investimento", comercial: "Imóvel Comercial" } as Record<string,string>)[lead.interest_type] || lead.interest_type,
+                                lead.interest_city,
+                                lead.interest_bedrooms ? `${lead.interest_bedrooms} dorms.` : null,
+                              ].filter(Boolean).join(" · ")
+                            : "—"}
+                        </p>
+                        <button onClick={openInterestEdit} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-[#1e1e22] transition-all">
+                          <Pencil className="w-3 h-3 text-slate-500" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <EditableSelectField
                   icon={Building2}
                   label="Empreendimento"
                   field="project_id"
-                  displayValue={lead.project?.name || (lead.interest_type ? `Interesse em ${lead.interest_type === "casa" ? "Casa" : lead.interest_type === "apartamento" ? "Apartamento" : lead.interest_type === "terreno" ? "Terreno" : lead.interest_type === "investimento" ? "Investimento" : lead.interest_type === "comercial" ? "Comercial" : lead.interest_type}` : "—")}
+                  displayValue={lead.project?.name || "—"}
                   currentValue={lead.project_id || ""}
                   options={allProjects.map((p: any) => ({ value: p.id, label: p.name }))}
                   editingField={editingField}
