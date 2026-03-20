@@ -9,6 +9,7 @@ interface UseWhatsAppInstanceReturn {
   instance: BrokerWhatsAppInstance | null;
   isLoading: boolean;
   qrCode: string | null;
+  pairingCode: string | null;
   isLoadingQR: boolean;
   error: string | null;
   initInstance: () => Promise<void>;
@@ -25,6 +26,7 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
   const [instance, setInstance] = useState<BrokerWhatsAppInstance | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [qrCode, setQRCode] = useState<string | null>(null);
+  const [pairingCode, setPairingCode] = useState<string | null>(null);
   const [isLoadingQR, setIsLoadingQR] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -128,6 +130,7 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
       }
 
       setQRCode(data.qrcode);
+      setPairingCode(data.pairingCode || null);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       console.error("QR Code error:", err);
@@ -342,6 +345,7 @@ export function useWhatsAppInstance(): UseWhatsAppInstanceReturn {
     instance,
     isLoading,
     qrCode,
+    pairingCode,
     isLoadingQR,
     error,
     initInstance,

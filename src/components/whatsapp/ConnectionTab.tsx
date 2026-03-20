@@ -25,6 +25,7 @@ export function ConnectionTab() {
     instance,
     isLoading,
     qrCode,
+    pairingCode,
     isLoadingQR,
     error,
     initInstance,
@@ -219,13 +220,37 @@ export function ConnectionTab() {
           </CardContent>
         </Card>
 
-        {/* QR Code or Health Card */}
+        {/* QR Code / Pairing Code / Health Card */}
         {needsQR ? (
-          <QRCodeDisplay 
-            qrCode={qrCode} 
-            isLoading={isLoadingQR} 
-            onRefresh={fetchQRCode} 
-          />
+          <Card className="bg-[#1a1a1d] border-[#2a2a2e]">
+            <CardHeader>
+              <CardTitle className="text-white text-base flex items-center gap-2">
+                QR Code
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <QRCodeDisplay
+                qrCode={qrCode}
+                isLoading={isLoadingQR}
+                onRefresh={fetchQRCode}
+              />
+              {pairingCode && (
+                <div className="border-t border-[#2a2a2e] pt-4 space-y-2">
+                  <p className="text-xs text-slate-400 text-center">
+                    Está no celular? Use o código de pareamento:
+                  </p>
+                  <p className="text-xs text-slate-500 text-center">
+                    WhatsApp → Aparelhos conectados → Conectar → Conectar com número de telefone
+                  </p>
+                  <div className="flex justify-center">
+                    <span className="font-mono text-2xl font-bold tracking-[0.3em] text-primary bg-primary/10 px-4 py-2 rounded-lg border border-primary/20 select-all">
+                      {pairingCode}
+                    </span>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         ) : (
           <HealthScoreCard instance={instance} />
         )}
