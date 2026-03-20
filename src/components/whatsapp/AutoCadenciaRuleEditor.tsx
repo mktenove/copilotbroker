@@ -82,7 +82,7 @@ export function AutoCadenciaRuleEditor({
   const [projects, setProjects] = useState<Project[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(true);
   const [ruleName, setRuleName] = useState<string>("");
-  const [targetMode, setTargetMode] = useState<"project" | "interest">("project");
+  const [targetMode, setTargetMode] = useState<"project" | "interest" | "none">("project");
   const [projectId, setProjectId] = useState<string>("all");
   const [interestType, setInterestType] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -146,7 +146,11 @@ export function AutoCadenciaRuleEditor({
     if (editingRule) {
       setRuleName(editingRule.name || "");
       setStatusFilter(editingRule.project_status_filter || "");
-      if (editingRule.interest_type) {
+      if (editingRule.interest_type === "none") {
+        setTargetMode("none");
+        setInterestType("");
+        setProjectId("all");
+      } else if (editingRule.interest_type) {
         setTargetMode("interest");
         setInterestType(editingRule.interest_type);
         setProjectId("all");
@@ -209,7 +213,7 @@ export function AutoCadenciaRuleEditor({
     const data = {
       name: ruleName.trim() || null,
       project_id: targetMode === "project" && projectId !== "all" ? projectId : null,
-      interest_type: targetMode === "interest" ? (interestType || "all") : null,
+      interest_type: targetMode === "interest" ? (interestType || "all") : targetMode === "none" ? "none" : null,
       project_status_filter: statusFilter || null,
       is_active: true,
     };
@@ -262,7 +266,7 @@ export function AutoCadenciaRuleEditor({
                 {/* Target: Empreendimento or Interesse */}
                 <div className="space-y-2">
                   <Label className="text-slate-300">Aplicar para</Label>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button
                       type="button"
                       onClick={() => { setTargetMode("project"); setInterestType(""); checkConflict(projectId); }}
@@ -284,6 +288,17 @@ export function AutoCadenciaRuleEditor({
                       }`}
                     >
                       <Tag className="w-4 h-4" />Interesse
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setTargetMode("none"); setProjectId("all"); setInterestType(""); }}
+                      className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg border text-sm transition-all ${
+                        targetMode === "none"
+                          ? "border-slate-400/50 bg-slate-500/10 text-slate-300"
+                          : "border-[#2a2a2e] bg-[#141417] text-slate-400 hover:border-slate-500"
+                      }`}
+                    >
+                      Sem definição
                     </button>
                   </div>
 

@@ -177,15 +177,61 @@ Deno.serve(async (req) => {
     }
 
     if (!rule && !ruleExplicitlyDisabled) {
-      const { data } = await supabase
-        .from("broker_auto_cadencia_rules")
-        .select("*, project_status_filter")
-        .eq("broker_id", lead.broker_id)
-        .is("project_id", null)
-        .maybeSingle();
-      if (data) {
-        if (!data.is_active) ruleExplicitlyDisabled = true;
-        else rule = data;
+      // Match by interest_type when lead has no project
+      if (!lead.project_id && lead.interest_type) {
+        // Look for rule matching this interest type, then "all"
+        const { data: interestRule } = await supabase
+          .from("broker_auto_cadencia_rules")
+          .select("*, project_status_filter")
+          .eq("broker_id", lead.broker_id)
+          .is("project_id", null)
+          .eq("interest_type", lead.interest_type)
+          .maybeSingle();
+        if (interestRule) {
+          if (!interestRule.is_active) ruleExplicitlyDisabled = true;
+          else rule = interestRule;
+        }
+        if (!rule && !ruleExplicitlyDisabled) {
+          const { data: allInterestRule } = await supabase
+            .from("broker_auto_cadencia_rules")
+            .select("*, project_status_filter")
+            .eq("broker_id", lead.broker_id)
+            .is("project_id", null)
+            .eq("interest_type", "all")
+            .maybeSingle();
+          if (allInterestRule) {
+            if (!allInterestRule.is_active) ruleExplicitlyDisabled = true;
+            else rule = allInterestRule;
+          }
+        }
+      } else if (!lead.project_id && !lead.interest_type) {
+        // Lead has no project and no interest → look for "none" rule first
+        const { data: noneRule } = await supabase
+          .from("broker_auto_cadencia_rules")
+          .select("*, project_status_filter")
+          .eq("broker_id", lead.broker_id)
+          .is("project_id", null)
+          .eq("interest_type", "none")
+          .maybeSingle();
+        if (noneRule) {
+          if (!noneRule.is_active) ruleExplicitlyDisabled = true;
+          else rule = noneRule;
+        }
+      }
+
+      // Fallback: global rule (project_id null, no interest_type)
+      if (!rule && !ruleExplicitlyDisabled) {
+        const { data } = await supabase
+          .from("broker_auto_cadencia_rules")
+          .select("*, project_status_filter")
+          .eq("broker_id", lead.broker_id)
+          .is("project_id", null)
+          .is("interest_type", null)
+          .maybeSingle();
+        if (data) {
+          if (!data.is_active) ruleExplicitlyDisabled = true;
+          else rule = data;
+        }
       }
     }
 

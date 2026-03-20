@@ -598,7 +598,7 @@ export default function LeadPage({ embeddedLeadId, onBack }: LeadPageProps = {})
               } else if (lead.interest_type) {
                 return rule.interest_type === lead.interest_type || rule.interest_type === "all";
               } else {
-                return !rule.project_id && !rule.interest_type;
+                return !rule.project_id && (!rule.interest_type || rule.interest_type === "none");
               }
             }).map(rule => {
               const interestLabel = rule.interest_type

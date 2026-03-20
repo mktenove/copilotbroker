@@ -142,6 +142,7 @@ export function CsvImportModal({
   const [autoFix9thDigit, setAutoFix9thDigit] = useState(true);
   const [defaultDdd, setDefaultDdd] = useState("");
   const [projectId, setProjectId] = useState("");
+  const [interestType, setInterestType] = useState("");
   const [origin, setOrigin] = useState("importacao_google_contacts");
   const [assignBroker, setAssignBroker] = useState(false);
   const [brokerId, setBrokerId] = useState(defaultBrokerId || "");
@@ -502,7 +503,8 @@ export function CsvImportModal({
           source: resolvedBrokerId ? "broker" : "enove",
           status: "new" as const,
           lead_origin: row.origin || originLabel,
-          project_id: projectId,
+          project_id: projectId || null,
+          interest_type: interestType || null,
           broker_id: resolvedBrokerId,
         }));
 
@@ -519,7 +521,7 @@ export function CsvImportModal({
           // Attribution
           const attrs = leadsData.map(l => ({
             lead_id: l.id,
-            project_id: projectId,
+            project_id: projectId || null,
             landing_page: "csv_import",
           }));
           await (supabase.from("lead_attribution" as any).insert(attrs as any) as any);
@@ -863,17 +865,34 @@ export function CsvImportModal({
 
                   {/* Project */}
                   <div className="space-y-2">
-                    <Label className="text-white font-medium">
-                      Empreendimento <span className="text-red-500">*</span>
-                    </Label>
+                    <Label className="text-white font-medium">Empreendimento</Label>
                     <Select value={projectId} onValueChange={setProjectId}>
                       <SelectTrigger className="bg-[#1e1e22] border-[#2a2a2e] text-white">
-                        <SelectValue placeholder="Selecione" />
+                        <SelectValue placeholder="Sem empreendimento definido" />
                       </SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="">Sem empreendimento definido</SelectItem>
                         {projects.map(p => (
                           <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Interest type */}
+                  <div className="space-y-2">
+                    <Label className="text-white font-medium">Interesse</Label>
+                    <Select value={interestType} onValueChange={setInterestType}>
+                      <SelectTrigger className="bg-[#1e1e22] border-[#2a2a2e] text-white">
+                        <SelectValue placeholder="Sem interesse definido" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">Sem interesse definido</SelectItem>
+                        <SelectItem value="casa">Casa</SelectItem>
+                        <SelectItem value="apartamento">Apartamento</SelectItem>
+                        <SelectItem value="terreno">Terreno</SelectItem>
+                        <SelectItem value="investimento">Investimento</SelectItem>
+                        <SelectItem value="comercial">Imóvel Comercial</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -919,7 +938,7 @@ export function CsvImportModal({
                     <Button variant="outline" size="sm" onClick={() => setStep(3)} className="border-[#2a2a2e] bg-[#1e1e22] text-white hover:bg-[#2a2a2e]">
                       <ArrowLeft className="w-4 h-4 mr-1" /> Voltar
                     </Button>
-                    <Button size="sm" disabled={!projectId} onClick={() => setStep(5)} className="bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 hover:shadow-[0_0_20px_rgba(255,255,0,0.3)] disabled:opacity-50">
+                    <Button size="sm" onClick={() => setStep(5)} className="bg-[#FFFF00] text-black hover:bg-[#FFFF00]/90 hover:shadow-[0_0_20px_rgba(255,255,0,0.3)]">
                       Validar <ArrowRight className="w-4 h-4 ml-1" />
                     </Button>
                   </div>
