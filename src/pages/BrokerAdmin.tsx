@@ -59,6 +59,7 @@ const BrokerAdmin = () => {
 
   // Redirect to connection page if WhatsApp instance is not connected
   useEffect(() => {
+    console.log("[BrokerAdmin] brokerId:", brokerId, "isRoleLoading:", isRoleLoading);
     if (!brokerId) {
       setInstanceChecked(true);
       return;
@@ -67,10 +68,13 @@ const BrokerAdmin = () => {
       .from("broker_whatsapp_instances" as any)
       .select("status")
       .eq("broker_id", brokerId)
-      .maybeSingle() as any).then(({ data }: any) => {
+      .maybeSingle() as any).then(({ data, error }: any) => {
+        console.log("[BrokerAdmin] instance query result:", { data, error });
         if (data && data.status !== "connected") {
+          console.log("[BrokerAdmin] redirecting - status:", data.status);
           navigate("/corretor/copiloto", { replace: true });
         } else {
+          console.log("[BrokerAdmin] instanceChecked = true");
           setInstanceChecked(true);
         }
       });
