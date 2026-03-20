@@ -46,6 +46,7 @@ const BrokerAdmin = () => {
   );
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
+  const [instanceChecked, setInstanceChecked] = useState(false);
 
   useEffect(() => {
     if (isRoleLoading) return;
@@ -66,6 +67,8 @@ const BrokerAdmin = () => {
       .maybeSingle() as any).then(({ data }: any) => {
         if (!data || data.status !== "connected") {
           navigate("/corretor/copiloto", { replace: true });
+        } else {
+          setInstanceChecked(true);
         }
       });
   }, [brokerId, navigate]);
@@ -163,7 +166,7 @@ const BrokerAdmin = () => {
 
   const brokerInitial = broker?.name?.charAt(0).toUpperCase() || "C";
 
-  if (isRoleLoading) {
+  if (isRoleLoading || !instanceChecked) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-primary" />
