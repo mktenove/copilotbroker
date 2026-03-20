@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Search, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { Search, RefreshCw, FileSpreadsheet, WifiOff } from "lucide-react";
 import { useCallback } from "react";
 import { useUserRole } from "@/hooks/use-user-role";
 import LeadsTable from "@/components/admin/LeadsTable";
@@ -13,6 +13,7 @@ import { KanbanBoard } from "@/components/crm";
 import { BrokerLayout } from "@/components/broker";
 import { BrokerRoletas } from "@/components/broker/BrokerRoletas";
 import { LeadStatus } from "@/types/crm";
+import { Button } from "@/components/ui/button";
 
 interface Lead {
   id: string;
@@ -45,6 +46,7 @@ const BrokerAdmin = () => {
     () => !!(location.state as any)?.openAddLead
   );
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
+  const [showDisconnectedModal, setShowDisconnectedModal] = useState(false);
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
   useEffect(() => {
     if (isRoleLoading) return;
@@ -68,7 +70,7 @@ const BrokerAdmin = () => {
         );
         const json = await res.json();
         if (json.instance && json.instance.status !== "connected") {
-          navigate("/corretor/copiloto", { replace: true });
+          setShowDisconnectedModal(true);
         }
       } catch {
         // silently ignore — don't block the user
@@ -255,6 +257,27 @@ const BrokerAdmin = () => {
         defaultBrokerId={brokerId || undefined}
         hideBrokerSelect={true}
       />
+
+      {/* WhatsApp Disconnected Modal */}
+      {showDisconnectedModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="bg-[#1a1a1d] border border-[#2a2a2e] rounded-2xl p-8 max-w-sm w-full mx-4 text-center shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+              <WifiOff className="w-8 h-8 text-red-400" />
+            </div>
+            <h2 className="text-white text-lg font-semibold mb-2">WhatsApp Desconectado</h2>
+            <p className="text-slate-400 text-sm mb-6">
+              Sua instância do WhatsApp está desconectada. Conecte-se para continuar usando o CoPilot.
+            </p>
+            <Button
+              className="w-full bg-green-600 hover:bg-green-700"
+              onClick={() => navigate("/corretor/copiloto")}
+            >
+              Ir para Conexão
+            </Button>
+          </div>
+        </div>
+      )}
     </>
   );
 };
