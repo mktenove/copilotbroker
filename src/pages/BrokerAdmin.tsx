@@ -46,8 +46,6 @@ const BrokerAdmin = () => {
   );
   const [isCsvImportOpen, setIsCsvImportOpen] = useState(false);
   const { role, brokerId, isLoading: isRoleLoading, isLeader } = useUserRole();
-  const [instanceChecked, setInstanceChecked] = useState(false);
-
   useEffect(() => {
     if (isRoleLoading) return;
     if (role === "admin") {
@@ -59,25 +57,24 @@ const BrokerAdmin = () => {
 
   // Redirect to connection page if WhatsApp instance is not connected
   useEffect(() => {
-    console.log("[BrokerAdmin] brokerId:", brokerId, "isRoleLoading:", isRoleLoading);
-    if (!brokerId) {
-      setInstanceChecked(true);
-      return;
-    }
-    (supabase
-      .from("broker_whatsapp_instances" as any)
-      .select("status")
-      .eq("broker_id", brokerId)
-      .maybeSingle() as any).then(({ data, error }: any) => {
-        console.log("[BrokerAdmin] instance query result:", { data, error });
-        if (data && data.status !== "connected") {
-          console.log("[BrokerAdmin] redirecting - status:", data.status);
+    if (!brokerId) return;
+    const check = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const res = await fetch(
+          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-instance-manager/status`,
+          { headers: { Authorization: `Bearer ${session.access_token}` } }
+        );
+        const json = await res.json();
+        if (json.instance && json.instance.status !== "connected") {
           navigate("/corretor/copiloto", { replace: true });
-        } else {
-          console.log("[BrokerAdmin] instanceChecked = true");
-          setInstanceChecked(true);
         }
-      });
+      } catch {
+        // silently ignore — don't block the user
+      }
+    };
+    check();
   }, [brokerId, navigate]);
 
   const fetchLeads = useCallback(async () => {
@@ -173,7 +170,7 @@ const BrokerAdmin = () => {
 
   const brokerInitial = broker?.name?.charAt(0).toUpperCase() || "C";
 
-  if (isRoleLoading || !instanceChecked) {
+  if (isRoleLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <RefreshCw className="w-8 h-8 animate-spin text-primary" />
