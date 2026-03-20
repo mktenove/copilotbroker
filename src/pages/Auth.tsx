@@ -56,23 +56,6 @@ const Auth = () => {
       if (from) {
         navigate(from, { replace: true });
       } else if (roles.includes("broker") || roles.includes("leader")) {
-        // Check if WhatsApp instance is connected; if not, land on connection page
-        const { data: brokerData } = await (supabase
-          .from("brokers" as any)
-          .select("id")
-          .eq("user_id", userId)
-          .single() as any);
-        if (brokerData?.id) {
-          const { data: instanceData } = await (supabase
-            .from("broker_whatsapp_instances" as any)
-            .select("status")
-            .eq("broker_id", brokerData.id)
-            .maybeSingle() as any);
-          if (!instanceData || instanceData.status !== "connected") {
-            navigate("/corretor/copiloto");
-            return;
-          }
-        }
         navigate("/corretor/admin");
       } else {
         navigate("/admin");

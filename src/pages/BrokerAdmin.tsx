@@ -56,6 +56,20 @@ const BrokerAdmin = () => {
     }
   }, [role, isRoleLoading, navigate]);
 
+  // Redirect to connection page if WhatsApp instance is not connected
+  useEffect(() => {
+    if (!brokerId) return;
+    (supabase
+      .from("broker_whatsapp_instances" as any)
+      .select("status")
+      .eq("broker_id", brokerId)
+      .maybeSingle() as any).then(({ data }: any) => {
+        if (!data || data.status !== "connected") {
+          navigate("/corretor/copiloto", { replace: true });
+        }
+      });
+  }, [brokerId, navigate]);
+
   const fetchLeads = useCallback(async () => {
     setIsLoading(true);
     try {
