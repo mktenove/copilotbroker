@@ -71,16 +71,9 @@ const CopilotHero = () => {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <a
-            href="/signup"
-            className="btn-primary text-base gap-2"
-          >
-            Começar Agora
-            <ArrowRight className="w-5 h-5" />
-          </a>
           <button
             onClick={scrollToPlanos}
-            className="btn-outline text-base"
+            className="btn-primary text-base"
           >
             Ver Planos
           </button>

@@ -2427,7 +2427,6 @@ export type Database = {
       lead_status:
         | "new"
         | "info_sent"
-        | "copiloto"
         | "awaiting_docs"
         | "scheduling"
         | "docs_received"
@@ -2601,7 +2600,6 @@ export const Constants = {
       lead_status: [
         "new",
         "info_sent",
-        "copiloto",
         "awaiting_docs",
         "scheduling",
         "docs_received",
